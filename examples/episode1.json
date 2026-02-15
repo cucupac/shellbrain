@@ -1,0 +1,55 @@
+{
+  "episode_id": "ep_demo_001",
+  "user_text": "Please use concise responses. Do not run destructive git commands. I will run tests after your patch.",
+  "assistant_text": "I updated the parser and ran lint.",
+  "model_name": "gpt-5",
+  "metadata": {
+    "scope_tier": "repo",
+    "scope_id": "memory"
+  },
+  "artifacts": [
+    {
+      "artifact_id": "art_demo_fail",
+      "artifact_kind": "tool_output",
+      "content": "pytest failed with error: AssertionError in test_memory.py",
+      "mime_type": "text/plain",
+      "metadata": {
+        "tool": "pytest",
+        "exit_code": 1
+      }
+    }
+  ],
+  "evidence_refs": [
+    {
+      "evidence_ref_id": "ev_user_pref",
+      "ref_kind": "user_span",
+      "target_id": "user_text",
+      "start_offset": 0,
+      "end_offset": 34,
+      "excerpt_text": "Please use concise responses."
+    },
+    {
+      "evidence_ref_id": "ev_user_constraint",
+      "ref_kind": "user_span",
+      "target_id": "user_text",
+      "start_offset": 35,
+      "end_offset": 74,
+      "excerpt_text": "Do not run destructive git commands."
+    },
+    {
+      "evidence_ref_id": "ev_user_commitment",
+      "ref_kind": "user_span",
+      "target_id": "user_text",
+      "start_offset": 75,
+      "end_offset": 114,
+      "excerpt_text": "I will run tests after your patch."
+    },
+    {
+      "evidence_ref_id": "ev_tool_failure",
+      "ref_kind": "tool_output",
+      "artifact_id": "art_demo_fail",
+      "target_id": "art_demo_fail",
+      "excerpt_text": "pytest failed with error: AssertionError in test_memory.py"
+    }
+  ]
+}
