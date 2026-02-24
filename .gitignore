@@ -54,3 +54,6 @@ artifacts/
 *.db-*
 *.sqlite
 *.sqlite3
+
+# Local Directories
+research/
