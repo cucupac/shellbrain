@@ -1,17 +1,18 @@
 # Memory Storage Relational Schema v1 (SQLite)
 
-Status: ratified direction from the 2026-02-18 conversation.
+Status: ratified direction from the 2026-02-18 conversation; extended on 2026-02-21 for work-session metadata and transfer logs.
 
 This card captures the concrete storage schema aligned to the approved interface and modeling decisions:
 - relational (SQLite), not graph DB, for v1;
 - no mutable truth/accuracy score;
 - `solution` and `failed_tactic` are regular memories;
 - direct problem-to-attempt linking via `problem_attempts`;
-- fact changes represented as immutable chain links that produce a current fact snapshot.
+- fact changes represented as immutable chain links that produce a current fact snapshot;
+- work-session partitioning with immutable per-session episodic events and transfer metadata.
 
 ## Authoritative vs derived
 
-- Authoritative: immutable records/tables (`memories`, links, observations, evidence refs).
+- Authoritative: immutable records/tables (`memories`, links, observations, work sessions/events/transfers, evidence refs).
 - Derived: query-time or materialized views (`current_fact_snapshot`, `global_utility`).
 
 ## SQL DDL
@@ -84,7 +85,56 @@ CREATE INDEX idx_utility_obs_memory ON utility_observations(memory_id);
 CREATE INDEX idx_utility_obs_problem ON utility_observations(problem_id);
 CREATE INDEX idx_utility_obs_created_at ON utility_observations(created_at);
 
--- 6) Evidence references and many-to-many links
+-- 6) Work sessions (episode-level partitioning + metadata)
+CREATE TABLE episodes (
+  id TEXT PRIMARY KEY,
+  repo_id TEXT NOT NULL,
+  thread_id TEXT,
+  title TEXT,
+  objective TEXT,
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'closed', 'archived')),
+  started_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  ended_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
+);
+
+CREATE INDEX idx_episodes_repo_status_started ON episodes(repo_id, status, started_at);
+CREATE INDEX idx_episodes_repo_thread ON episodes(repo_id, thread_id);
+
+-- 7) Immutable episodic events (one row per message/tool call)
+CREATE TABLE episode_events (
+  id TEXT PRIMARY KEY,
+  episode_id TEXT NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  seq INTEGER NOT NULL CHECK (seq > 0),
+  source TEXT NOT NULL CHECK (source IN ('user', 'assistant', 'tool', 'system')),
+  content TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE (episode_id, seq)
+);
+
+CREATE INDEX idx_episode_events_episode_created ON episode_events(episode_id, created_at);
+
+-- 8) Immutable cross-session transfer log
+CREATE TABLE session_transfers (
+  id TEXT PRIMARY KEY,
+  repo_id TEXT NOT NULL,
+  from_episode_id TEXT NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  to_episode_id TEXT NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  event_id TEXT NOT NULL REFERENCES episode_events(id) ON DELETE CASCADE,
+  transfer_kind TEXT NOT NULL CHECK (transfer_kind IN (
+    'message_handoff', 'context_summary', 'task_split', 'task_merge'
+  )),
+  rationale TEXT,
+  transferred_by TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
+  UNIQUE (from_episode_id, to_episode_id, event_id, transfer_kind)
+);
+
+CREATE INDEX idx_session_transfers_from ON session_transfers(from_episode_id, created_at);
+CREATE INDEX idx_session_transfers_to ON session_transfers(to_episode_id, created_at);
+CREATE INDEX idx_session_transfers_event ON session_transfers(event_id);
+
+-- 9) Evidence references and many-to-many links
 CREATE TABLE evidence_refs (
   id TEXT PRIMARY KEY,
   repo_id TEXT NOT NULL,
@@ -138,6 +188,9 @@ GROUP BY memory_id;
   - `old_fact_id` and `new_fact_id` with `kind = 'fact'`,
   - `change_id` with `kind = 'change'`.
 - `utility_observations.problem_id` should reference a `kind = 'problem'` memory.
+- `episode_events.episode_id` must reference a valid `episodes.id`; `seq` is unique per episode.
+- `session_transfers.from_episode_id` and `session_transfers.to_episode_id` should be different session IDs.
+- `session_transfers.event_id` should reference an event that belongs to `from_episode_id`.
 
 ## Why no truth score in v1
 

@@ -334,3 +334,110 @@ What remains open:
 - Canonical payload format for `episode_events.content` in v1.
 - Canonical string format for `evidence_refs.ref` (for example, `event:<id>` vs plain `<id>`).
 - Whether any minimal event metadata should be mandatory in `content` (for example, source role or tool name) without introducing rigid event-type enums.
+
+## 2026-02-21 - Ratified Episodic Session Extensions v1 (Work Session Metadata + Transfer Log)
+
+What changed:
+- Ratified that each `episodes` row is the canonical work-session container (for example, one chat thread or closely related problem cluster).
+- Extended `episodes` metadata to support session-level tracing and lifecycle:
+  - `thread_id`, `title`, `objective`, `status`, `started_at`, `ended_at`.
+- Extended `episode_events` to strengthen per-session immutability/ordering:
+  - one event per message/tool call,
+  - explicit `source`,
+  - unique `(episode_id, seq)` ordering.
+- Added immutable cross-session handoff tracking with:
+  - `session_transfers(from_episode_id, to_episode_id, event_id, transfer_kind, rationale, transferred_by, created_at)`.
+- Kept the prior storage stance intact:
+  - one canonical SQLite episodic store,
+  - session partitioning by ID,
+  - no markdown file as authoritative log.
+
+Why it changed:
+- To preserve strict immutable history while preventing unrelated tasks from blending into one undifferentiated episodic stream.
+- To support explicit handoff provenance when context/messages are transferred between work sessions.
+- To keep the model implementation-ready without introducing per-session database/file fragmentation.
+
+Files updated:
+- `insights/04-contracts/memory-storage-relational-schema-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Canonical payload shape for `episode_events.content` in v1.
+- Canonical `evidence_refs.ref` string format for event pointers.
+- Whether to keep DB naming as `episodes` long-term or rename to `work_sessions` with compatibility aliases.
+
+## 2026-02-21 - Ratified Read Policy v1 (RRF + Scenario Lift) and Write Policy Scenario Constructor
+
+Card added:
+- `03-refinements/read-policy-context-pack-v1.md`
+
+What changed:
+- Ratified read-policy seed retrieval over all atomic memory kinds:
+  - `problem`, `solution`, `failed_tactic`, `fact`, `change` (and optionally `preference`).
+- Ratified dual-lane seed retrieval with lane-specific thresholds and rank-fusion:
+  - semantic lane + keyword lane,
+  - RRF-based seed ranking (instead of raw-score max across unlike score scales).
+- Ratified concrete meaning/use of scores in read path:
+  - threshold gating,
+  - direct-seed ranking,
+  - explicit/implicit expansion ranking,
+  - spillover ordering,
+  - scenario bundle ranking.
+- Ratified scenario-aware context-pack assembly:
+  - derive scenario bundles from matched atomic memories,
+  - rank scenarios from matched-member evidence,
+  - include bounded scenario summaries + bounded member selections in final pack.
+- Ratified bounded fact-update-chain expansion direction for retrieval:
+  - `max_update_chain_depth` is tunable (default suggestion: `3`) for context relevance/token control.
+- Ratified write-policy extension for scenario construction:
+  - run `scenario_constructor(affected_ids)` synchronously in write path,
+  - update derived scenario projections in same transaction as authoritative writes,
+  - abort full transaction if projection update fails.
+
+Why it changed:
+- Read-policy naming/routing had been ratified, but concrete context-pack inclusion mechanics were still underspecified.
+- Scenario was recognized as a useful abstraction for both humans and LLMs, requiring deterministic construction and storage semantics.
+- A synchronous projection step keeps scenario abstraction available immediately after writes while preserving transactional consistency.
+
+Files updated:
+- `insights/03-refinements/read-policy-context-pack-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Final per-mode quota values for `N_direct`, `N_explicit`, `N_implicit`, `N_scenario`.
+- Final default for `max_update_chain_depth` (currently suggested `3`).
+- Final scenario projection schema names/fields and constructor trigger boundaries.
+
+## 2026-02-21 - Ratified Global Utility Prior Use in Read Policy v1
+
+Card updated:
+- `03-refinements/read-policy-context-pack-v1.md`
+
+What changed:
+- Ratified that `global_utility` is used in v1 as a weak prior only:
+  - never for threshold gating,
+  - never to rescue irrelevant memories,
+  - only as late-stage tie-breaker / near-tie nudger.
+- Ratified reliability shrinkage by observation count:
+  - `u_shrunk = utility_mean * (obs / (obs + lambda_utility))`.
+- Ratified late-stage score adjustment shape:
+  - `final_score = base_score + alpha_utility * u_shrunk`.
+- Ratified safety constraints:
+  - `alpha_utility` remains small (suggested `0.05`),
+  - applied within bucket and near-tie bands rather than across broad score gaps.
+
+Why it changed:
+- To concretize prior discussions that global utility should be a weak computed prior rather than a primary retrieval signal.
+- To avoid sparse-data overfitting while still using historical helpfulness when resolving close candidate decisions.
+- To align retrieval behavior with the existing architecture principle that relevance leads and memory utility is advisory.
+
+Files updated:
+- `insights/03-refinements/read-policy-context-pack-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Final defaults for `lambda_utility`, near-tie band width, and `alpha_utility`.
+- Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.

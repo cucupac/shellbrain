@@ -142,3 +142,64 @@ Rules:
 - Did not work / risk: if event payload shape is left too implicit, implementations may diverge on what gets serialized into `content`.
 - Open: define canonical v1 `episode_events.content` payload shape and canonical `evidence_ref` string format.
 - Files touched: `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-21 19:06:49 CST
+
+- Proposed: extend episodic schema to explicitly represent work sessions (session IDs + metadata) and immutable cross-session message transfers.
+- Worked: ratified `episodes` as the work-session container and extended metadata (`thread_id`, `title`, `objective`, `status`, `started_at`, `ended_at`).
+- Worked: ratified stronger per-session event constraints in `episode_events` (`source`, unique `(episode_id, seq)`).
+- Worked: added immutable `session_transfers` model to record cross-session handoff metadata (`from_episode_id`, `to_episode_id`, `event_id`, `transfer_kind`, `rationale`, `transferred_by`, timestamps).
+- Worked: preserved single canonical SQLite episodic store while keeping logs session-partitioned by IDs (not one undifferentiated stream, not one DB/file per session).
+- Did not work / risk: `episodes` naming may continue to read as narrative episodes instead of explicit work sessions unless aliasing or rename strategy is defined.
+- Open: canonical `episode_events.content` payload shape and canonical `evidence_ref` pointer string format remain unresolved.
+- Files touched: `insights/04-contracts/memory-storage-relational-schema-v1.md`, `insights/discovery.md`, `insights/00-lab/immutable-work-log.md`.
+
+## 2026-02-21 19:52:04 CST
+
+- Proposed: concretize read-policy context-pack assembly using lane-specific thresholds plus rank fusion (RRF), instead of raw-score max between semantic and keyword lanes.
+- Worked: defined `rank` explicitly as lane-local query position and captured concrete RRF formula for direct-seed ranking.
+- Worked: specified how fused seed score is used operationally:
+  - select direct bucket seeds,
+  - anchor explicit/implicit expansion scores,
+  - fill bounded mode quotas,
+  - dedupe and spill underfilled buckets,
+  - enforce hard `limit`.
+- Worked: captured explicit policy choice point for fact-update chains:
+  - full closure vs bounded depth (user currently leaning bounded depth, e.g. 3).
+- Did not work / risk: mode quota values and update-chain depth are still unresolved, so behavior can still drift across implementations.
+- Open: finalize quota values by mode and finalize full-closure vs bounded-depth chain policy.
+- Files touched: `insights/03-refinements/read-policy-context-pack-rrf-draft.md`, `insights/00-lab/immutable-work-log.md`.
+
+## 2026-02-21 20:18:36 CST
+
+- Proposed: ratify v1 read-policy pack construction and ratify write-policy extension for synchronous scenario projection construction.
+- Worked: ratified read-policy seed retrieval over all atomic memory kinds (`problem`, `solution`, `failed_tactic`, `fact`, `change`, optional `preference`) with lane-specific thresholds and RRF fusion.
+- Worked: ratified explicit use of scores for pack assembly only (gating, ranking, spillover, scenario ranking), not as absolute truth semantics.
+- Worked: ratified scenario-aware read layer:
+  - derive scenario bundles from matched atomic members,
+  - rank scenario bundles by matched-member evidence,
+  - include bounded scenario summaries and members in final pack.
+- Worked: ratified write-policy extension:
+  - run `scenario_constructor(affected_ids)` synchronously in write path,
+  - update derived scenario projections in same transaction as authoritative writes,
+  - abort full transaction on projection failure.
+- Worked: ratified bounded fact-update-chain expansion direction for read context relevance and token control (`max_update_chain_depth` tunable, suggested default `3`).
+- Did not work / risk: final mode quota values and final scenario projection schema details remain open.
+- Open: lock per-mode pack quotas and finalize scenario projection table naming/fields.
+- Files touched: `insights/03-refinements/read-policy-context-pack-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-21 20:34:42 CST
+
+- Proposed: concretize whether/how global utility prior is used in v1 read policy.
+- Worked: ratified that `global_utility` is weak and late-stage only:
+  - never used for threshold gating,
+  - never allowed to rescue irrelevant memories,
+  - applied only as tie-breaker/near-tie nudger.
+- Worked: captured reliability shrinkage by observation count:
+  - `u_shrunk = utility_mean * (obs / (obs + lambda_utility))`.
+- Worked: captured concrete late-stage adjustment:
+  - `final_score = base_score + alpha_utility * u_shrunk`,
+  - with small `alpha_utility` (suggested `0.05`) and within-bucket near-tie application.
+- Did not work / risk: numeric defaults for `lambda_utility` and near-tie band are still open and can influence ranking stability if set poorly.
+- Open: finalize `lambda_utility`, near-tie band width, and final `alpha_utility`.
+- Files touched: `insights/03-refinements/read-policy-context-pack-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
