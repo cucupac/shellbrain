@@ -11,6 +11,8 @@ Canonical organization:
 - `02-breakthrough/`: raw and structured breakthrough ideation.
 - `03-refinements/`: later policy notes and verbatim refinements.
 - `04-contracts/`: concrete interface contracts and schema cards.
+- `05-ratified/`: current ratified-state register that resolves doc drift by favoring newer ratified decisions.
+- `06-working-set/`: implementation-focused spec pack (current locked state by subsystem + open items).
 
 Naming convention:
 - Directory prefix is stage (`00`, `01`, `02`, `03`, `04`).
@@ -45,3 +47,9 @@ Raw log format (concise):
 ## Discovery Log
 
 Primary chronology file: `discovery.md`
+
+Current ratified-state digest:
+- `05-ratified/ratified-state-register-v1.md`
+
+Current implementation working set:
+- `06-working-set/README.md`

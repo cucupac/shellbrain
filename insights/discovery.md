@@ -441,3 +441,150 @@ Files updated:
 What remains open:
 - Final defaults for `lambda_utility`, near-tie band width, and `alpha_utility`.
 - Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.
+
+## 2026-02-25 - Ratified State Register v1 + Naming Locks (`create`, `episodes`)
+
+What changed:
+- Added a canonical ratified-state digest:
+  - `05-ratified/ratified-state-register-v1.md`
+- Ratified supersession rule for evolving docs:
+  - newer ratified decisions override older conflicting language.
+- Ratified naming lock from this conversation:
+  - prefer `create` over `write` for the interface creation verb.
+- Ratified naming lock from this conversation:
+  - keep `episodes` naming (do not rename to `work_sessions`).
+- Updated `insights/README.md` structure and discovery pointers to include the new ratified-state register.
+
+Why it changed:
+- To remove recurring ambiguity caused by timeline evolution and mixed-era terminology.
+- To provide one stable "what is ratified now" source so implementation can proceed without re-resolving prior drift each time.
+
+Files updated:
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/README.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Canonical payload shape for `episode_events.content`.
+- Canonical string format for `evidence_refs.ref`.
+- Final per-mode context-pack quotas (`N_direct`, `N_explicit`, `N_implicit`, `N_scenario`).
+- Final default for `max_update_chain_depth`.
+- Final scenario projection schema names/fields and constructor trigger boundaries.
+- Final defaults for `lambda_utility`, near-tie band width, and final `alpha_utility`.
+- Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.
+- Final published semantic validation matrix by operation/kind and any DB-trigger enforcement expansion.
+
+## 2026-02-25 - Contracts Aligned To Ratified Naming (`create`, `episodes`) and Strict Create Evidence
+
+What changed:
+- Updated interface contract card to use ratified creation verb naming end-to-end:
+  - `memory.write.request` -> `memory.create.request`,
+  - `op: "write"` -> `op: "create"`,
+  - operation semantics/examples rewritten to create-language.
+- Updated create-schema evidence requirements to match ratified Write Policy v1:
+  - `memory.evidence_refs` is required and `minItems = 1` for create requests.
+- Updated storage schema card naming alignment:
+  - `memories.write_confidence` -> `memories.create_confidence`,
+  - authoritative wording normalized to episodes/events/transfers,
+  - episodic section wording clarified around `episodes` as the session container.
+
+Why it changed:
+- To remove remaining contract drift after naming locks were ratified.
+- To keep interface and storage cards implementation-ready under one consistent vocabulary.
+- To make strict create evidence policy explicit at schema level rather than only semantic-policy prose.
+
+Files updated:
+- `insights/04-contracts/memory-interface-json-schemas-v1.md`
+- `insights/04-contracts/memory-storage-relational-schema-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Canonical payload shape for `episode_events.content`.
+- Canonical string format for `evidence_refs.ref`.
+- Final per-mode context-pack quotas (`N_direct`, `N_explicit`, `N_implicit`, `N_scenario`).
+- Final default for `max_update_chain_depth`.
+- Final scenario projection schema names/fields and constructor trigger boundaries.
+- Final defaults for `lambda_utility`, near-tie band width, and final `alpha_utility`.
+- Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.
+- Final published semantic validation matrix by operation/kind and any DB-trigger enforcement expansion.
+- Compatibility policy if any implementation already depends on legacy names (`op: "write"`, `write_confidence`).
+
+## 2026-02-25 - Ratified Refinements For Semantic Validation Matrix Lock
+
+What changed:
+- Ratified pre-lock constraints for the upcoming semantic validation matrix:
+  - `global` scope restriction to `preference` is not yet hard-enforced; keep as pending policy.
+  - do not enforce one-successor-only fact chain behavior in v1 (branching policy remains open).
+  - keep DB triggers minimal in v1; reserve them for hard integrity invariants.
+  - require explicit idempotency/duplicate handling policy in the validation matrix.
+  - require explicit validation-stage error contract (for example `schema_error`, `semantic_error`, `integrity_error`, `not_found`, `conflict`).
+
+Why it changed:
+- To prevent premature constraints from being mistaken as ratified policy.
+- To keep implementation deterministic while preserving intentionally open design decisions.
+- To ensure the semantic matrix captures behavior and error semantics, not only acceptance checks.
+
+Files updated:
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+
+What remains open:
+- Publish the full semantic validation matrix card with exact per-operation/per-kind rules and error payload schemas.
+- Canonical payload shape for `episode_events.content`.
+- Canonical string format for `evidence_refs.ref`.
+- Final per-mode context-pack quotas (`N_direct`, `N_explicit`, `N_implicit`, `N_scenario`).
+- Final default for `max_update_chain_depth`.
+- Final scenario projection schema names/fields and constructor trigger boundaries.
+- Final defaults for `lambda_utility`, near-tie band width, and final `alpha_utility`.
+- Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.
+- Compatibility policy if any implementation already depends on legacy names (`op: "write"`, `write_confidence`).
+
+## 2026-02-25 - Added Implementation Working Set Directory (`06-working-set`)
+
+What changed:
+- Added a dedicated implementation-facing directory:
+  - `06-working-set/`
+- Added subsystem cards for the current working set:
+  - `01-agent-interface-v1.md`
+  - `02-write-policy-v1.md`
+  - `03-read-policy-v1.md`
+  - `04-db-schema-v1.md`
+  - `05-validation-rules-v1.md`
+  - `06-context-pack-builder-v1.md`
+- Added supporting files:
+  - `06-working-set/README.md`
+  - `06-working-set/00-manifest-v1.md`
+- Updated `insights/README.md` to include this directory in canonical structure.
+- Cross-linked ratified register to the implementation pack.
+
+Why it changed:
+- To provide one stable "working set" location for implementation handoff and execution.
+- To reduce navigation overhead across historical stages while preserving the full chronology in discovery.
+
+Files updated:
+- `insights/06-working-set/README.md`
+- `insights/06-working-set/00-manifest-v1.md`
+- `insights/06-working-set/01-agent-interface-v1.md`
+- `insights/06-working-set/02-write-policy-v1.md`
+- `insights/06-working-set/03-read-policy-v1.md`
+- `insights/06-working-set/04-db-schema-v1.md`
+- `insights/06-working-set/05-validation-rules-v1.md`
+- `insights/06-working-set/06-context-pack-builder-v1.md`
+- `insights/README.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Publish the full semantic validation matrix card with exact per-operation/per-kind rules and error payload schemas.
+- Canonical payload shape for `episode_events.content`.
+- Canonical string format for `evidence_refs.ref`.
+- Final per-mode context-pack quotas (`N_direct`, `N_explicit`, `N_implicit`, `N_scenario`).
+- Final default for `max_update_chain_depth`.
+- Final scenario projection schema names/fields and constructor trigger boundaries.
+- Final defaults for `lambda_utility`, near-tie band width, and final `alpha_utility`.
+- Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.
+- Compatibility policy if any implementation already depends on legacy names (`op: "write"`, `write_confidence`).

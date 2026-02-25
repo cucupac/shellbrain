@@ -1,6 +1,6 @@
 # Memory Storage Relational Schema v1 (SQLite)
 
-Status: ratified direction from the 2026-02-18 conversation; extended on 2026-02-21 for work-session metadata and transfer logs.
+Status: ratified direction from the 2026-02-18 conversation; extended on 2026-02-21 for episodic session metadata and transfer logs; naming aligned on 2026-02-25.
 
 This card captures the concrete storage schema aligned to the approved interface and modeling decisions:
 - relational (SQLite), not graph DB, for v1;
@@ -12,7 +12,7 @@ This card captures the concrete storage schema aligned to the approved interface
 
 ## Authoritative vs derived
 
-- Authoritative: immutable records/tables (`memories`, links, observations, work sessions/events/transfers, evidence refs).
+- Authoritative: immutable records/tables (`memories`, links, observations, episodes/events/transfers, evidence refs).
 - Derived: query-time or materialized views (`current_fact_snapshot`, `global_utility`).
 
 ## SQL DDL
@@ -29,7 +29,7 @@ CREATE TABLE memories (
     'problem', 'solution', 'failed_tactic', 'fact', 'preference', 'change'
   )),
   text TEXT NOT NULL,
-  write_confidence REAL CHECK (write_confidence >= 0 AND write_confidence <= 1),
+  create_confidence REAL CHECK (create_confidence >= 0 AND create_confidence <= 1),
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now')),
   archived INTEGER NOT NULL DEFAULT 0 CHECK (archived IN (0, 1))
 );
@@ -85,7 +85,7 @@ CREATE INDEX idx_utility_obs_memory ON utility_observations(memory_id);
 CREATE INDEX idx_utility_obs_problem ON utility_observations(problem_id);
 CREATE INDEX idx_utility_obs_created_at ON utility_observations(created_at);
 
--- 6) Work sessions (episode-level partitioning + metadata)
+-- 6) Episodes (work-session container + metadata)
 CREATE TABLE episodes (
   id TEXT PRIMARY KEY,
   repo_id TEXT NOT NULL,

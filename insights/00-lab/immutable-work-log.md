@@ -203,3 +203,60 @@ Rules:
 - Did not work / risk: numeric defaults for `lambda_utility` and near-tie band are still open and can influence ranking stability if set poorly.
 - Open: finalize `lambda_utility`, near-tie band width, and final `alpha_utility`.
 - Files touched: `insights/03-refinements/read-policy-context-pack-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-24 20:51:46 CST
+
+- Proposed: create a single ratified-state register so "what is currently ratified" can be read in one place without re-walking all prior files.
+- Worked: added `insights/05-ratified/ratified-state-register-v1.md` as a canonical digest with explicit supersession rule ("newer ratified decisions win").
+- Worked: resolved current naming decisions from this conversation:
+  - prefer `create` over `write` for interface creation verb,
+  - keep `episodes` naming (do not rename to `work_sessions`).
+- Worked: mapped known doc-drift points to newer ratified direction inside the register.
+- Did not work / risk: several implementation-tuning and payload-format decisions still remain open and must still be ratified in discovery before considered locked.
+- Open: canonical `episode_events.content` payload, canonical `evidence_refs.ref` format, read quota defaults, scenario projection schema/trigger boundaries, utility-prior numeric defaults, near-tie mode policy, final semantic-validation matrix publication.
+- Files touched: `insights/05-ratified/ratified-state-register-v1.md`, `insights/README.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-24 20:56:05 CST
+
+- Proposed: bring interface and DB schema cards fully in line with newer ratified naming and policy decisions.
+- Worked: updated interface contract from `write` to `create`:
+  - `memory.write.request` -> `memory.create.request`,
+  - `op: "write"` -> `op: "create"`,
+  - operation semantics/examples switched to create-language.
+- Worked: made create evidence requirement explicit in JSON schema shape (`memory.evidence_refs` required with `minItems: 1`), matching ratified Write Policy v1 strict-create evidence.
+- Worked: aligned storage card naming/details:
+  - `memories.write_confidence` -> `memories.create_confidence`,
+  - authoritative wording normalized to episodes/events/transfers,
+  - episodic section title clarified as episodes as the work-session container.
+- Did not work / risk: if any implementation already shipped `op: "write"` or `write_confidence`, migration/compatibility handling is still needed.
+- Open: decide compatibility posture for legacy payloads/storage naming (`write` aliases and column rename migration rules) if existing implementations already depend on old names.
+- Files touched: `insights/04-contracts/memory-interface-json-schemas-v1.md`, `insights/04-contracts/memory-storage-relational-schema-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-24 21:10:09 CST
+
+- Proposed: refine the semantic-validation matrix proposal to avoid over-constraining unratified behavior before implementation lock.
+- Worked: accepted adjustment set for matrix finalization:
+  - treat `global`-scope restriction to `preference` as pending (not hard-enforced yet),
+  - do not enforce one-successor-only fact chains in v1 yet,
+  - keep DB-trigger usage minimal in v1 (hard invariants only),
+  - require idempotency/duplicate behavior to be explicitly specified,
+  - require explicit validation-stage error contract (`schema_error`, `semantic_error`, `integrity_error`, etc.).
+- Did not work / risk: if these constraints are not recorded in discovery/register, teams may still lock premature constraints into implementation.
+- Open: publish the full semantic validation matrix card with exact per-op/per-kind rules and error payloads.
+- Files touched: `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`, `insights/05-ratified/ratified-state-register-v1.md`.
+
+## 2026-02-24 21:14:17 CST
+
+- Proposed: create a dedicated implementation working-set directory so all currently concrete subsystem specs are reachable in one place.
+- Worked: added `insights/06-working-set/` with one subsystem card per area:
+  - agent interface,
+  - write policy,
+  - read policy,
+  - DB schema,
+  - validation rules,
+  - context-pack builder,
+  - plus manifest and README.
+- Worked: linked the new directory from `insights/README.md` and cross-linked from ratified register.
+- Did not work / risk: working-set cards are digest layers; if source cards change without sync updates, drift can reappear.
+- Open: keep working-set cards synchronized with source contracts/policy cards on every new ratification.
+- Files touched: `insights/06-working-set/README.md`, `insights/06-working-set/00-manifest-v1.md`, `insights/06-working-set/01-agent-interface-v1.md`, `insights/06-working-set/02-write-policy-v1.md`, `insights/06-working-set/03-read-policy-v1.md`, `insights/06-working-set/04-db-schema-v1.md`, `insights/06-working-set/05-validation-rules-v1.md`, `insights/06-working-set/06-context-pack-builder-v1.md`, `insights/README.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.

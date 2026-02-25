@@ -1,8 +1,8 @@
 # Memory Interface JSON Schemas v1
 
-Status: updated to align with storage v1 card on 2026-02-19.
+Status: aligned with storage v1 and ratified naming locks on 2026-02-25.
 
-This card records the `read` / `write` / `update` interface semantics and exact JSON schemas aligned to:
+This card records the `read` / `create` / `update` interface semantics and exact JSON schemas aligned to:
 - `04-contracts/memory-storage-relational-schema-v1.md`
 - immutable memory records + link tables
 - contextual utility observations
@@ -11,11 +11,11 @@ This card records the `read` / `write` / `update` interface semantics and exact 
 ## Operation Semantics
 
 - `read`: retrieval only.
-- `write`: creates immutable memory records and immutable link/evidence records.
+- `create`: creates immutable memory records and immutable link/evidence records.
 - `update`: lifecycle and feedback updates only (no mutable truth score).
-- "X changed in the codebase and invalidates Y" is represented by immutable writes:
-  - write a `change` memory,
-  - write a replacement `fact` memory,
+- "X changed in the codebase and invalidates Y" is represented by immutable creates:
+  - create a `change` memory,
+  - create a replacement `fact` memory,
   - link them with `update.type = "fact_update_link"`.
 
 ## `memory.read.request`
@@ -62,19 +62,19 @@ This card records the `read` / `write` / `update` interface semantics and exact 
 - `expand.include_problem_links`: include linked problem/attempt records.
 - `expand.include_fact_update_links`: include linked fact-update chain neighbors.
 
-## `memory.write.request`
+## `memory.create.request`
 
 ```json
 {
-  "$id": "memory.write.request",
+  "$id": "memory.create.request",
   "type": "object",
   "required": ["op", "repo_id", "memory"],
   "properties": {
-    "op": { "const": "write" },
+    "op": { "const": "create" },
     "repo_id": { "type": "string", "minLength": 1 },
     "memory": {
       "type": "object",
-      "required": ["text", "scope", "kind", "confidence"],
+      "required": ["text", "scope", "kind", "confidence", "evidence_refs"],
       "properties": {
         "text": { "type": "string", "minLength": 1 },
         "scope": { "enum": ["repo", "global"] },
@@ -88,25 +88,25 @@ This card records the `read` / `write` / `update` interface semantics and exact 
             "related_memory_ids": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
           }
         },
-        "evidence_refs": { "type": "array", "items": { "type": "string" }, "uniqueItems": true }
+        "evidence_refs": { "type": "array", "minItems": 1, "items": { "type": "string" }, "uniqueItems": true }
       }
     }
   }
 }
 ```
 
-### `memory.write.request` field meanings
+### `memory.create.request` field meanings
 
-- `op`: must be `write`.
+- `op`: must be `create`.
 - `repo_id`: repository identifier for storage and evidence namespace.
 - `memory.text`: immutable memory content.
 - `memory.scope`: `repo` or `global`.
 - `memory.kind`: memory type written to `memories.kind`.
-- `memory.confidence`: write-time confidence for audit and debugging.
-- `memory.rationale`: optional explanation for why this memory is being written.
+- `memory.confidence`: create-time confidence for audit and debugging (stored as `memories.create_confidence`).
+- `memory.rationale`: optional explanation for why this memory is being created.
 - `memory.links.problem_id`: required when `kind` is `solution` or `failed_tactic`.
 - `memory.links.related_memory_ids`: optional additional associations.
-- `memory.evidence_refs`: optional evidence references (strictly required by semantic rules for some kinds).
+- `memory.evidence_refs`: required evidence references (`minItems = 1`) for all create kinds in v1.
 
 ## `memory.update.request`
 
@@ -183,9 +183,9 @@ To reduce interface complexity without losing core behavior:
   - `archive_state`
   - `utility_vote`
   - `fact_update_link`
-- Represent truth change only via immutable writes + immutable linking:
-  - write `change`,
-  - write replacement `fact`,
+- Represent truth change only via immutable creates + immutable linking:
+  - create `change`,
+  - create replacement `fact`,
   - link via `fact_update_link`.
 - Treat all ranking/selection weighting as retrieval-engine internals, not interface payload parameters.
 
