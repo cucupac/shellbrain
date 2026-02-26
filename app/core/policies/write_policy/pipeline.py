@@ -1,6 +1,5 @@
 """This module defines write-policy pipeline orchestration for create and update requests."""
 
-from hashlib import sha256
 from uuid import uuid4
 from typing import Any
 
@@ -14,26 +13,22 @@ from app.core.entities.associations import (
 from app.core.entities.facts import FactUpdate, ProblemAttempt, ProblemAttemptRole
 from app.core.entities.memory import Memory, MemoryKind, MemoryScope
 from app.core.entities.utility import UtilityObservation
+from app.core.interfaces.embeddings import IEmbeddingProvider
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.core.policies.write_policy.side_effects import make_memory_create_effect, make_memory_evidence_effect, make_side_effect
 
-
-EMBEDDING_MODEL = "hash-v1"
-EMBEDDING_DIM = 32
-
-
-def build_write_plan(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def build_write_plan(payload: dict[str, Any], *, embedding_model: str = "unknown") -> list[dict[str, Any]]:
     """This function converts a validated payload into deterministic write side effects."""
 
     op = payload.get("op")
     if op == "create":
-        return _build_create_plan(payload)
+        return _build_create_plan(payload, embedding_model=embedding_model)
     if op == "update":
         return _build_update_plan(payload)
     raise ValueError(f"Unsupported write operation for plan build: {op}")
 
 
-def apply_write_plan(plan: list[dict[str, Any]], uow: IUnitOfWork) -> None:
+def apply_write_plan(plan: list[dict[str, Any]], uow: IUnitOfWork, *, embedding_provider: IEmbeddingProvider | None = None) -> None:
     """This function executes a deterministic write plan using repository interfaces inside one transaction."""
 
     for effect in plan:
@@ -53,10 +48,12 @@ def apply_write_plan(plan: list[dict[str, Any]], uow: IUnitOfWork) -> None:
             continue
 
         if effect_type == "memory_embedding.upsert":
+            if embedding_provider is None:
+                raise RuntimeError("Embedding provider is required for memory_embedding.upsert")
             uow.memories.upsert_embedding(
                 memory_id=params["memory_id"],
                 model=params["model"],
-                vector=_embed_text_hash(params["text"], params["dim"]),
+                vector=embedding_provider.embed(params["text"]),
             )
             continue
 
@@ -139,7 +136,7 @@ def apply_write_plan(plan: list[dict[str, Any]], uow: IUnitOfWork) -> None:
         raise ValueError(f"Unsupported write side effect type: {effect_type}")
 
 
-def _build_create_plan(payload: dict[str, Any]) -> list[dict[str, Any]]:
+def _build_create_plan(payload: dict[str, Any], *, embedding_model: str) -> list[dict[str, Any]]:
     """This function builds the deterministic create side-effect plan from validated payload fields."""
 
     memory = payload["memory"]
@@ -158,8 +155,7 @@ def _build_create_plan(payload: dict[str, Any]) -> list[dict[str, Any]]:
             "memory_embedding.upsert",
             {
                 "memory_id": memory_id,
-                "model": EMBEDDING_MODEL,
-                "dim": EMBEDDING_DIM,
+                "model": embedding_model,
                 "text": memory["text"],
             },
         ),
@@ -266,18 +262,3 @@ def _build_update_plan(payload: dict[str, Any]) -> list[dict[str, Any]]:
         ]
 
     raise ValueError(f"Unsupported update side-effect mapping: {update_type}")
-
-
-def _embed_text_hash(text: str, dim: int) -> list[float]:
-    """This function deterministically maps text to a fixed-size float vector for pgvector writes."""
-
-    if dim <= 0:
-        raise ValueError("Embedding dimension must be positive")
-    chunks: list[bytes] = []
-    counter = 0
-    while len(chunks) * 32 < dim:
-        payload = f"{counter}:{text}".encode("utf-8")
-        chunks.append(sha256(payload).digest())
-        counter += 1
-    raw = b"".join(chunks)[:dim]
-    return [((byte / 255.0) * 2.0) - 1.0 for byte in raw]

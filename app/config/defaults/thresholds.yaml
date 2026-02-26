@@ -1,7 +1,3 @@
-# This file defines threshold defaults for semantic, lexical, and tie-break behavior.
+# This file defines threshold defaults for semantic and lexical retrieval gates.
 semantic_threshold: 0.0
 keyword_threshold: 0.0
-utility:
-  lambda_utility: 10.0
-  alpha_utility: 0.05
-  near_tie_band: 0.02

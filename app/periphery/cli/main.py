@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from app.boot.config import get_config_provider
-from app.boot.use_cases import get_uow_factory
+from app.boot.use_cases import get_embedding_model, get_embedding_provider_factory, get_uow_factory
 from app.periphery.cli.handlers import handle_create, handle_read, handle_update
 from app.periphery.cli.hydration import (
     hydrate_create_payload,
@@ -55,10 +55,17 @@ def main() -> int:
     create_defaults = {"scope": "repo", "confidence": 0.75}
 
     uow_factory = get_uow_factory()
+    embedding_provider_factory = get_embedding_provider_factory()
+    embedding_model = get_embedding_model()
 
     if args.command == "create":
         payload = hydrate_create_payload(payload, inferred_repo_id=inferred_repo_id, defaults=create_defaults)
-        result = handle_create(payload, uow_factory=uow_factory)
+        result = handle_create(
+            payload,
+            uow_factory=uow_factory,
+            embedding_provider_factory=embedding_provider_factory,
+            embedding_model=embedding_model,
+        )
     elif args.command == "read":
         payload = hydrate_read_payload(payload, inferred_repo_id=inferred_repo_id, defaults=read_defaults)
         result = handle_read(payload, uow_factory=uow_factory)

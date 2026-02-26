@@ -6,3 +6,6 @@ jobs:
 cli:
   default_mode: targeted
   include_global: true
+embeddings:
+  provider: sentence_transformers
+  model: all-MiniLM-L6-v2
