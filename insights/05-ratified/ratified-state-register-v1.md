@@ -34,6 +34,11 @@ Implementation-facing pack:
   - semantic write/read policy validity,
   - DB integrity compatibility.
 - Write-path atomicity is required: accepted operations commit in one transaction or fully abort.
+- Two-layer interface model is ratified:
+  - strict internal contract (full payload, deterministic validation),
+  - ergonomic CLI adapter (contextual field inference before strict validation).
+- Ergonomic adapter rule is ratified:
+  - explicit agent-provided fields always override inferred defaults.
 
 ### 2) Naming locks (ratified in this conversation)
 - Canonical interface creation verb is `create` (not `write`).
@@ -56,20 +61,29 @@ Implementation-facing pack:
 - `update` is limited to lifecycle/feedback mechanics:
   - `archive_state`,
   - `utility_vote`,
-  - `fact_update_link`.
+  - `fact_update_link`,
+  - `association_link`.
 - "X changed and invalidates Y" is represented with immutable writes:
   - create `change`,
   - create replacement `fact`,
   - link via `fact_update_link`.
 - Create-path evidence policy is strict in Write Policy v1:
   - `evidence_refs >= 1` for all create kinds (preferences may cite user/session evidence).
+- Formal-association write path is ratified:
+  - explicit links authored by agent via `create.links.associations[]` or `update.association_link`,
+  - implicit co-activation reinforcement channel runs under the hood and strengthens/weakens association edges.
 
 ### 6) Storage model
 - SQLite relational v1 is ratified.
 - Authoritative immutable tables include memories, links, utility observations, episodes/events/transfers, and evidence references.
+- Formal-association storage is ratified:
+  - `association_edges`,
+  - `association_observations`,
+  - `association_edge_evidence`.
 - Derived views include:
   - `current_fact_snapshot`,
-  - `global_utility`.
+  - `global_utility`,
+  - dependency/dependent count views.
 - Graph behavior is represented through explicit relational link tables.
 
 ### 7) Episodic model
@@ -88,6 +102,8 @@ Implementation-facing pack:
   - implicit semantic expansion bucket,
   - dedupe/spill,
   - final hard cap.
+- Explicit-link expansion includes formal association links from `association_edges`.
+- No separate association-read interface is added; association traversal is integrated inside the existing read-policy expansion step.
 - Scenario lift is ratified as derived read abstraction and write-path projection dependency.
 - Global utility prior is weak and late-stage only:
   - never used for threshold gating,
@@ -100,6 +116,22 @@ Implementation-facing pack:
 - Keep DB triggers minimal in v1 and focus them on hard integrity invariants.
 - Final semantic matrix must include explicit idempotency/duplicate handling rules.
 - Final semantic matrix must include explicit validation-stage error contract.
+
+### 10) Ergonomic adapter defaults (ratified shape)
+- `repo_id` is inferred from cwd/repo resolver for agent-facing CLI calls unless explicitly set.
+- `read` defaults (mode/include_global/limits/expand knobs) are inferred from policy config unless explicitly set.
+- `create` defaults (`scope`, `confidence`) are inferred when omitted unless explicitly set.
+- Auto-attached evidence refs are allowed only when provenance is unambiguous; otherwise request must provide explicit evidence refs.
+- Typed association links (`links.associations[]`) are the preferred explicit relation path for agent-authored formal relationships.
+
+### 11) Tech stack (ratified for implementation start)
+- Runtime language: Python 3.12.
+- Interface mode: CLI-first, JSON input/output for agent calls.
+- Storage: PostgreSQL 16 with pgvector + PostgreSQL FTS.
+- Data/migrations: SQLAlchemy Core + Alembic.
+- Validation/tests: Pydantic v2 + pytest.
+- Execution shape: core memory engine package + thin CLI hydration adapter.
+- Background processing: start with in-process/session-end consolidation; escalate to queue worker only if needed.
 
 ## Resolved Drift Calls (Use Newer Direction)
 
@@ -121,9 +153,14 @@ Implementation-facing pack:
   - `lambda_utility`,
   - near-tie band width,
   - final `alpha_utility`.
+- Final defaults for association traversal/ranking knobs:
+  - `max_association_depth`,
+  - `max_association_fanout`,
+  - `min_association_strength`,
+  - relation/source weighting.
 - Whether near-tie behavior is shared or mode-specific (`ambient` vs `targeted`).
 - Final published semantic validation matrix by operation/kind and optional DB-trigger enforcement scope.
-- Compatibility policy if any implementation already depends on legacy names (`op: "write"`, `write_confidence`).
+- Future alias policy if interface names are ever changed.
 
 ## Update Protocol
 

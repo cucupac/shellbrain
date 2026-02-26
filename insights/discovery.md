@@ -588,3 +588,133 @@ What remains open:
 - Final defaults for `lambda_utility`, near-tie band width, and final `alpha_utility`.
 - Whether near-tie behavior is mode-specific (`ambient` vs `targeted`) or shared.
 - Compatibility policy if any implementation already depends on legacy names (`op: "write"`, `write_confidence`).
+
+## 2026-02-25 - Ratified Associative Structure Integration (Interface + Write + Read + DB)
+
+What changed:
+- Ratified interface integration for formal associations while preserving top-level verb simplicity:
+  - keep `create/read/update` only,
+  - do **not** add a separate `association.read` operation,
+  - add explicit association creation via `memory.create.request.memory.links.associations[]`,
+  - add association updates via `memory.update.request` with `update.type = "association_link"`.
+- Ratified write-policy structure for associations:
+  - explicit typed links are agent-authored via interface operations,
+  - implicit reinforcement runs under the hood from co-activation/session outcomes.
+- Ratified read-policy/context-pack integration point:
+  - explicit expansion bucket now includes formal association links from `association_edges` in addition to `problem_attempts` and `fact_updates`.
+- Ratified storage additions:
+  - `association_edges`,
+  - `association_observations`,
+  - `association_edge_evidence`,
+  - derived direct dependency/dependent count views.
+- Updated current-state digests (`05-ratified` and `06-working-set`) to include the associative structure as part of the active implementation scope.
+
+Why it changed:
+- To capture dependency-hierarchy retrieval behavior not covered by keyword, semantic similarity, or fact-update chains alone.
+- To keep the interface clean and stable while adding formal relationship memory as a first-class retrieval signal.
+- To keep the model brain-like (plastic and evidence-informed) without introducing a full graph-database migration.
+
+Files updated:
+- `insights/04-contracts/memory-interface-json-schemas-v1.md`
+- `insights/04-contracts/memory-storage-relational-schema-v1.md`
+- `insights/03-refinements/read-policy-context-pack-v1.md`
+- `insights/06-working-set/00-manifest-v1.md`
+- `insights/06-working-set/01-agent-interface-v1.md`
+- `insights/06-working-set/02-write-policy-v1.md`
+- `insights/06-working-set/03-read-policy-v1.md`
+- `insights/06-working-set/04-db-schema-v1.md`
+- `insights/06-working-set/05-validation-rules-v1.md`
+- `insights/06-working-set/06-context-pack-builder-v1.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Final defaults for association traversal/ranking knobs:
+  - `max_association_depth`,
+  - `max_association_fanout`,
+  - `min_association_strength`,
+  - relation/source weighting.
+- Final implicit reinforcement tuning:
+  - promotion/demotion thresholds,
+  - strength-update parameter defaults.
+- Final response/error schema publication for new association-linked create/update flows.
+
+## 2026-02-25 - Ratified Ergonomic Agent Interface Layer (Strict Contract + CLI Hydration)
+
+What changed:
+- Ratified two-layer interface model:
+  - strict internal contract remains canonical for validation/storage,
+  - ergonomic CLI adapter hydrates contextual defaults before strict validation.
+- Ratified explicit/inferred precedence:
+  - explicit agent-provided values override inferred defaults.
+- Ratified adapter inference defaults:
+  - infer `repo_id` from cwd/repo resolver,
+  - infer `read` defaults from policy config (`mode`, `include_global`, `limit`, expansion defaults),
+  - infer `create` defaults (`scope`, `confidence`) when omitted.
+- Ratified evidence hydration guard:
+  - auto-attached evidence refs are allowed only when provenance is unambiguous,
+  - otherwise the request must provide explicit evidence refs.
+- Ratified explicit relation authoring preference:
+  - use typed `links.associations[]` for explicit formal relation authoring in agent-facing calls.
+
+Why it changed:
+- To keep agent interaction lightweight and reliable without weakening deterministic validation behavior.
+- To reduce repetitive payload overhead while preserving strict internal contract guarantees.
+- To keep relation authoring clear and machine-actionable for read-policy traversal.
+
+Files updated:
+- `insights/04-contracts/memory-interface-json-schemas-v1.md`
+- `insights/06-working-set/01-agent-interface-v1.md`
+- `insights/06-working-set/02-write-policy-v1.md`
+- `insights/06-working-set/05-validation-rules-v1.md`
+- `insights/06-working-set/06-context-pack-builder-v1.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Final response/error schemas for interface operations.
+- Final published semantic validation matrix with full adapter-hydration checks.
+- Final defaults for association traversal/ranking knobs and implicit reinforcement tuning.
+
+## 2026-02-25 - Ratified Tech Stack v1 (CLI-First Build Start)
+
+What changed:
+- Ratified implementation stack for build start:
+  - Python 3.12 runtime,
+  - CLI-first interface,
+  - JSON input/output for agent interaction.
+- Ratified data/retrieval substrate:
+  - PostgreSQL 16,
+  - pgvector for embeddings,
+  - PostgreSQL FTS for keyword retrieval.
+- Ratified data tooling:
+  - SQLAlchemy Core,
+  - Alembic migrations.
+- Ratified validation/testing baseline:
+  - Pydantic v2,
+  - pytest.
+- Ratified execution shape:
+  - core memory engine package + thin CLI hydration adapter.
+- Added tech stack card to implementation working set and linked via manifest.
+
+Why it changed:
+- To remove remaining stack ambiguity before architecture/build execution.
+- To align implementation tooling with ratified interface/read/write/schema decisions.
+- To keep agent integration lightweight with CLI while preserving strict contract validation.
+
+Files updated:
+- `insights/06-working-set/07-tech-stack-v1.md`
+- `insights/06-working-set/README.md`
+- `insights/06-working-set/00-manifest-v1.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Final CLI command names/subcommand taxonomy and output envelope schema.
+- Final response/error schema publication for interface operations.
+- Final semantic validation matrix publication.
+- Final association traversal/reinforcement numeric defaults.
+- Criteria for escalating from in-process consolidation to queue-backed worker execution.

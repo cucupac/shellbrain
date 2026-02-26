@@ -9,16 +9,20 @@ Status: locked schema card with a few open policy-level details.
   - `memories`
   - `problem_attempts`
   - `fact_updates`
+  - `association_edges`
+  - `association_observations`
   - `utility_observations`
   - `episodes`
   - `episode_events`
   - `session_transfers`
   - `evidence_refs`
   - `memory_evidence`
+  - `association_edge_evidence`
 - `memories` uses `create_confidence`.
 - Derived views:
   - `current_fact_snapshot`
   - `global_utility`
+  - direct dependency/dependent count views
 - No mutable truth score in v1.
 
 Source:
@@ -28,4 +32,5 @@ Source:
 
 - Canonical `episode_events.content` payload shape (data contract, not table existence).
 - Canonical `evidence_refs.ref` pointer string format.
+- Final defaults for association strength update function parameters.
 - Final compatibility/migration policy for legacy naming if needed.

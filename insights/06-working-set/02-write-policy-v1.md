@@ -15,12 +15,23 @@ Status: locked at high level; final semantic matrix details still pending.
   - accepted write-path requests commit in one transaction or fully abort.
 - Strict create evidence:
   - `evidence_refs >= 1` for all create kinds.
+- Ergonomic adapter evidence hydration:
+  - adapter may auto-attach evidence refs only when provenance is unambiguous,
+  - if provenance is ambiguous, request is rejected for explicit evidence instead of guessing.
 - Deterministic side effects:
   - `create(problem|fact|preference|change)` -> `memories` (+ evidence links)
   - `create(solution|failed_tactic)` -> `memories` + `problem_attempts` (+ evidence links)
+  - `create(... with links.associations[])` -> association-edge upserts + edge-evidence links (+ immutable association observations)
   - `update(archive_state)` -> `memories.archived`
   - `update(utility_vote)` -> `utility_observations`
   - `update(fact_update_link)` -> `fact_updates`
+  - `update(association_link)` -> association-edge upsert + immutable association observation (+ edge-evidence links)
+- Association write channels:
+  - explicit agent links via interface (`create.links.associations[]` and `update.association_link`),
+  - implicit reinforcement via session-end co-activation consolidator (internal channel).
+- Association source discipline in v1:
+  - implicit channel creates/reinforces only `associated_with`,
+  - typed dependency links (`depends_on`) are agent-authored.
 
 Sources:
 - `insights/discovery.md` (2026-02-19, 2026-02-25 entries)
@@ -31,4 +42,5 @@ Sources:
 
 - Final published per-kind semantic validation matrix.
 - Idempotency/duplicate behavior policy.
-- Compatibility rules for legacy naming (`write` payloads).
+- Final trigger cadence for implicit association consolidation (session-end only vs additional periodic runs).
+- Future alias policy if interface operation names ever change.

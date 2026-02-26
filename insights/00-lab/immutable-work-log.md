@@ -260,3 +260,68 @@ Rules:
 - Did not work / risk: working-set cards are digest layers; if source cards change without sync updates, drift can reappear.
 - Open: keep working-set cards synchronized with source contracts/policy cards on every new ratification.
 - Files touched: `insights/06-working-set/README.md`, `insights/06-working-set/00-manifest-v1.md`, `insights/06-working-set/01-agent-interface-v1.md`, `insights/06-working-set/02-write-policy-v1.md`, `insights/06-working-set/03-read-policy-v1.md`, `insights/06-working-set/04-db-schema-v1.md`, `insights/06-working-set/05-validation-rules-v1.md`, `insights/06-working-set/06-context-pack-builder-v1.md`, `insights/README.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-25 21:45:32 CST
+
+- Proposed: ratify formal associative structure integration across interface, write policy, read policy context-pack assembly, and DB schema without adding a separate read operation.
+- Worked: locked interface pattern:
+  - keep top-level `create/read/update`,
+  - no `association.read`,
+  - add explicit association writes via `create.links.associations[]` and `update.type = association_link`.
+- Worked: locked write-policy split:
+  - explicit agent-authored typed links,
+  - implicit under-the-hood reinforcement channel for co-activation learning.
+- Worked: locked read-policy integration point:
+  - association edges are expanded inside existing explicit-association bucket alongside `problem_attempts` and `fact_updates`.
+- Worked: locked storage additions:
+  - `association_edges`,
+  - `association_observations`,
+  - `association_edge_evidence`,
+  - derived dependency/dependent count views.
+- Worked: synchronized ratified register + working-set cards to include associative structure as part of current implementation state.
+- Did not work / risk: numeric defaults for association traversal/ranking/strength update remain open and require later tuning.
+- Open: finalize association traversal defaults (`max_association_depth`, fanout, min strength), relation/source weights, and implicit-channel promotion/demotion thresholds.
+- Files touched: `insights/04-contracts/memory-interface-json-schemas-v1.md`, `insights/04-contracts/memory-storage-relational-schema-v1.md`, `insights/03-refinements/read-policy-context-pack-v1.md`, `insights/06-working-set/00-manifest-v1.md`, `insights/06-working-set/01-agent-interface-v1.md`, `insights/06-working-set/02-write-policy-v1.md`, `insights/06-working-set/03-read-policy-v1.md`, `insights/06-working-set/04-db-schema-v1.md`, `insights/06-working-set/05-validation-rules-v1.md`, `insights/06-working-set/06-context-pack-builder-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-25 22:00:15 CST
+
+- Proposed: ratify ergonomic agent-interface simplification so agent calls stay minimal while strict contracts remain deterministic.
+- Worked: locked two-layer interface shape:
+  - strict internal contract (full payload + deterministic validation),
+  - ergonomic CLI adapter that hydrates contextual defaults before strict validation.
+- Worked: locked explicit-vs-inferred rule:
+  - explicit agent-provided values override inferred defaults.
+- Worked: locked adapter inference defaults:
+  - infer `repo_id` from cwd/repo resolver,
+  - infer `read` defaults (mode/include_global/limit/expand knobs) from policy config,
+  - infer `create` defaults (`scope`, `confidence`) when omitted.
+- Worked: locked evidence guard:
+  - auto-evidence attachment is allowed only when provenance is unambiguous; otherwise request must provide explicit evidence refs.
+- Worked: clarified preferred explicit relation path:
+  - use typed `links.associations[]` for explicit agent-authored formal relations.
+- Did not work / risk: response/error schema and full semantic matrix publication remain open, so error handling details can still drift across implementations.
+- Open: publish final response/error schemas and final semantic validation matrix with adapter hydration checks codified.
+- Files touched: `insights/04-contracts/memory-interface-json-schemas-v1.md`, `insights/06-working-set/01-agent-interface-v1.md`, `insights/06-working-set/02-write-policy-v1.md`, `insights/06-working-set/05-validation-rules-v1.md`, `insights/06-working-set/06-context-pack-builder-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-25 22:04:35 CST
+
+- Proposed: ratify implementation tech stack so architecture/build work can begin without stack ambiguity.
+- Worked: locked stack direction:
+  - Python 3.12,
+  - CLI-first interface,
+  - JSON in/out payload style for agent interaction.
+- Worked: locked storage/retrieval substrate:
+  - PostgreSQL 16,
+  - pgvector for embeddings,
+  - PostgreSQL FTS for lexical retrieval.
+- Worked: locked data/migration/validation/testing tooling:
+  - SQLAlchemy Core,
+  - Alembic,
+  - Pydantic v2,
+  - pytest.
+- Worked: locked execution shape:
+  - core memory engine package + thin CLI hydration adapter.
+- Worked: recorded stack in working-set and ratified register.
+- Did not work / risk: final CLI command naming and output envelope schema still open; background worker strategy beyond in-process jobs still open.
+- Open: finalize CLI command map/output envelope and define criteria for escalating to queue-backed worker model.
+- Files touched: `insights/06-working-set/07-tech-stack-v1.md`, `insights/06-working-set/README.md`, `insights/06-working-set/00-manifest-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.

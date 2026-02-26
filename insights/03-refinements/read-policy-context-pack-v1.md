@@ -1,6 +1,6 @@
-# Read Policy Context-Pack v1 (RRF + Scenario Lift)
+# Read Policy Context-Pack v1 (RRF + Scenario Lift + Formal Association Links)
 
-Status: ratified direction on 2026-02-21.
+Status: ratified direction on 2026-02-21; extended with formal association-link integration on 2026-02-25.
 
 ## Intent
 
@@ -46,7 +46,8 @@ Given `limit = N`:
 3. Expand associations from direct seeds:
 - Explicit associations:
   - problem/attempt links from `problem_attempts`,
-  - fact/update links from `fact_updates`.
+  - fact/update links from `fact_updates`,
+  - formal relation links from `association_edges` (`depends_on`, `associated_with`).
 - Implicit associations:
   - semantic-neighbor hops with decay.
 
@@ -54,8 +55,15 @@ Given `limit = N`:
 - Explicit candidate from anchor seed `s` at link-distance `d`:
 
 ```text
-explicit_score = rrf_score(s) * (explicit_decay ^ d) * link_type_weight
+explicit_score = rrf_score(s) * (explicit_decay ^ d) * link_type_weight * relation_strength * source_weight
 ```
+
+- For non-relation explicit links (`problem_attempts`, `fact_updates`), set:
+  - `relation_strength = 1`,
+  - `source_weight = 1`.
+- For `association_edges`, use stored edge strength and source/state-aware weighting.
+- Suggested ordering behavior:
+  - confirmed/agent-sourced association edges outrank tentative/implicit edges at near ties.
 
 - Implicit candidate from anchor seed `s` at hop `h`:
 
@@ -94,6 +102,7 @@ scenario_score = max(member_score) + scenario_support_weight * ln(1 + matched_me
   - ranking within buckets,
   - spillover selection,
   - scenario ranking and tie-breaks.
+- No separate association-read operation is introduced; association traversal is internal to this read-path expansion phase.
 
 ## Global utility prior usage (ratified v1 direction)
 
@@ -121,6 +130,18 @@ final_score = base_score + alpha_utility * u_shrunk
 - `alpha_utility` is small (suggested v1: `0.05`).
 - Apply this only inside the same bucket and near-tie band; do not reorder across large score gaps.
 
+## Formal association traversal policy (ratified structure)
+
+- Association links are expanded only through existing read-policy flow (no new top-level read op).
+- Traversal over `association_edges` is bounded:
+  - `max_association_depth` (default suggestion: `2`, tunable),
+  - per-anchor fanout cap (`max_association_fanout`, tunable),
+  - minimum eligible edge strength (`min_association_strength`, tunable).
+- `associated_with` is treated as associative/undirected for traversal.
+- `depends_on` is treated as directional for dependency context:
+  - dependency expansion follows `from -> to`,
+  - dependent expansion may optionally include reverse traversal under a separate budget.
+
 ## Update-chain policy (ratified v1 direction)
 
 For `fact_updates` expansion:
@@ -146,5 +167,12 @@ For `fact_updates` expansion:
 
 - Final mode quota numbers (`N_direct`, `N_explicit`, `N_implicit`, `N_scenario` by mode).
 - Final default for `max_update_chain_depth` (currently suggested `3`).
+- Final defaults for association traversal knobs:
+  - `max_association_depth`,
+  - `max_association_fanout`,
+  - `min_association_strength`.
+- Final defaults for relation ranking weights:
+  - `relation_type_weight`,
+  - `source_weight` (agent/confirmed vs implicit/tentative).
 - Final defaults for `lambda_utility`, near-tie band width, and `alpha_utility`.
 - Final scenario projection schema names/fields and constructor trigger boundaries.

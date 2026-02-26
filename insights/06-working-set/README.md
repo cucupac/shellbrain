@@ -16,6 +16,7 @@ Contents:
 - `04-db-schema-v1.md`
 - `05-validation-rules-v1.md`
 - `06-context-pack-builder-v1.md`
+- `07-tech-stack-v1.md`
 
 Update protocol:
 1. Ratify change in `insights/discovery.md`.
