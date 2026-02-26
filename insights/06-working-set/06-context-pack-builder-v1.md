@@ -19,7 +19,6 @@ Status: structure locked, quota/default tuning still open.
   - include bounded summaries/members.
 - Fact update-chain expansion is bounded (parameterized depth).
 - Association-link traversal is bounded and integrated under read-policy expansion (no separate read operation).
-- Global utility is weak late-stage tie-break signal only.
 - If read request omits expansion knobs, runtime uses policy-config defaults before pack assembly.
 
 Source:

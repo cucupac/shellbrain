@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory System Architecture Explorer</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: #0a0a0f;
+    color: #c8ccd4;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    height: 100vh;
+  }
+
+  .sidebar {
+    background: #12121a;
+    border-right: 1px solid #1e1e2e;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .sidebar h1 {
+    font-size: 14px;
+    font-weight: 600;
+    color: #e8e8f0;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .sidebar h2 {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b7280;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .section { margin-bottom: 4px; }
+
+  .preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+  }
+
+  .preset-btn {
+    background: #1a1a2e;
+    border: 1px solid #2a2a3e;
+    color: #9ca3af;
+    padding: 5px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: inherit;
+  }
+
+  .preset-btn:hover { background: #22223a; color: #e0e0e8; }
+  .preset-btn.active { background: #2563eb22; border-color: #2563eb; color: #60a5fa; }
+
+  .toggle-group { display: flex; flex-direction: column; gap: 2px; }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+
+  .toggle-row:hover { background: #1a1a2e; }
+
+  .toggle-row input[type="checkbox"] { display: none; }
+
+  .toggle-indicator {
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    border: 2px solid #444;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+
+  .toggle-row input:checked + .toggle-indicator {
+    border-color: currentColor;
+    background: currentColor;
+  }
+
+  .toggle-row input:checked + .toggle-indicator::after {
+    content: '\2713';
+    color: #0a0a0f;
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .toggle-label {
+    font-size: 12px;
+    color: #9ca3af;
+    flex: 1;
+  }
+
+  .toggle-row input:checked ~ .toggle-label { color: #d1d5db; }
+
+  .toggle-count {
+    font-size: 10px;
+    color: #555;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .main-area {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: #12121a;
+    border-bottom: 1px solid #1e1e2e;
+  }
+
+  .toolbar .view-btn {
+    background: #1a1a2e;
+    border: 1px solid #2a2a3e;
+    color: #9ca3af;
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s;
+  }
+
+  .toolbar .view-btn:hover { background: #22223a; color: #e0e0e8; }
+  .toolbar .view-btn.active { background: #2563eb22; border-color: #2563eb; color: #60a5fa; }
+
+  .toolbar .spacer { flex: 1; }
+
+  .zoom-controls {
+    display: flex;
+    gap: 4px;
+  }
+
+  .zoom-btn {
+    background: #1a1a2e;
+    border: 1px solid #2a2a3e;
+    color: #9ca3af;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .zoom-btn:hover { background: #22223a; color: #e0e0e8; }
+
+  .canvas-container {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+    background:
+      radial-gradient(circle at 50% 50%, #0f0f1a 0%, #0a0a0f 100%);
+  }
+
+  svg.diagram {
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+
+  svg.diagram:active { cursor: grabbing; }
+
+  .node-group { cursor: pointer; }
+
+  .node-rect {
+    rx: 6;
+    ry: 6;
+    stroke-width: 1.5;
+    transition: filter 0.15s, stroke-width 0.15s;
+  }
+
+  .node-group:hover .node-rect {
+    filter: brightness(1.2);
+    stroke-width: 2.5;
+  }
+
+  .node-group.dimmed { opacity: 0.15; }
+  .node-group.highlighted .node-rect {
+    stroke-width: 3;
+    filter: brightness(1.3) drop-shadow(0 0 8px currentColor);
+  }
+
+  .node-title {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    fill: #e8e8f0;
+    pointer-events: none;
+  }
+
+  .node-subtitle {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 9px;
+    fill: #6b7280;
+    pointer-events: none;
+  }
+
+  .node-badge {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 8px;
+    fill: #0a0a0f;
+    font-weight: 700;
+    pointer-events: none;
+  }
+
+  .connection-line {
+    fill: none;
+    stroke-width: 1.5;
+    transition: opacity 0.15s;
+  }
+
+  .connection-line.dimmed { opacity: 0.06; }
+  .connection-line.highlighted { stroke-width: 2.5; }
+
+  .connection-label {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 9px;
+    fill: #555;
+    pointer-events: none;
+  }
+
+  .legend {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: #12121acc;
+    backdrop-filter: blur(8px);
+    border: 1px solid #1e1e2e;
+    border-radius: 6px;
+    padding: 10px 14px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    color: #6b7280;
+  }
+
+  .legend-swatch {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid #333;
+  }
+
+  .legend-line {
+    width: 20px;
+    height: 2px;
+    border-radius: 1px;
+  }
+
+  .detail-panel {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 300px;
+    background: #12121acc;
+    backdrop-filter: blur(12px);
+    border: 1px solid #1e1e2e;
+    border-radius: 8px;
+    padding: 16px;
+    display: none;
+    font-size: 12px;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
+
+  .detail-panel.visible { display: block; }
+
+  .detail-panel h3 {
+    font-size: 14px;
+    color: #e8e8f0;
+    margin-bottom: 4px;
+  }
+
+  .detail-panel .detail-category {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 10px;
+  }
+
+  .detail-panel .detail-desc {
+    color: #9ca3af;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  .detail-panel .detail-fields {
+    margin-bottom: 12px;
+  }
+
+  .detail-panel .detail-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 3px 0;
+    border-bottom: 1px solid #1a1a2e;
+  }
+
+  .detail-panel .detail-field-name {
+    color: #6b7280;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+  }
+
+  .detail-panel .detail-field-val {
+    color: #c8ccd4;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+  }
+
+  .detail-panel .close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #555;
+    font-size: 16px;
+    cursor: pointer;
+    padding: 2px 6px;
+  }
+
+  .detail-panel .close-btn:hover { color: #aaa; }
+
+  .detail-panel .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 600;
+    margin-right: 4px;
+    margin-bottom: 4px;
+  }
+
+  .tag-essential { background: #166534; color: #86efac; }
+  .tag-important { background: #1e3a5f; color: #7dd3fc; }
+  .tag-deferrable { background: #713f12; color: #fde68a; }
+  .tag-speculative { background: #7f1d1d; color: #fca5a5; }
+
+  .prompt-bar {
+    background: #12121a;
+    border-top: 1px solid #1e1e2e;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .prompt-text {
+    flex: 1;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    color: #6b7280;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .copy-btn {
+    background: #2563eb;
+    border: none;
+    color: #fff;
+    padding: 6px 16px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    font-family: inherit;
+    white-space: nowrap;
+    transition: background 0.15s;
+  }
+
+  .copy-btn:hover { background: #3b82f6; }
+
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-track { background: transparent; }
+  .sidebar::-webkit-scrollbar-thumb { background: #2a2a3e; border-radius: 2px; }
+
+  .divider {
+    height: 1px;
+    background: #1e1e2e;
+    margin: 4px 0;
+  }
+
+  .note {
+    font-size: 10px;
+    color: #4b5563;
+    line-height: 1.4;
+    padding: 6px 8px;
+    background: #1a1a2e44;
+    border-radius: 4px;
+    border-left: 2px solid #333;
+  }
+</style>
+</head>
+<body>
+<div class="layout">
+  <div class="sidebar">
+    <div>
+      <h1>Memory System</h1>
+      <div class="note">Architecture explorer. Click nodes for details. Toggle layers to focus.</div>
+    </div>
+
+    <div class="section">
+      <h2>View</h2>
+      <div class="preset-row" id="view-presets"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Layers</h2>
+      <div class="toggle-group" id="layer-toggles"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Connections</h2>
+      <div class="toggle-group" id="conn-toggles"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section">
+      <h2>Priority Filter</h2>
+      <div class="toggle-group" id="priority-toggles"></div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section" id="comments-section" style="display:none">
+      <h2>Notes (<span id="comment-count">0</span>)</h2>
+      <div id="comments-list"></div>
+    </div>
+  </div>
+
+  <div class="main-area">
+    <div class="toolbar">
+      <button class="view-btn active" data-view="ontology">Data Model</button>
+      <button class="view-btn" data-view="read-pipeline">Read Pipeline</button>
+      <button class="view-btn" data-view="write-pipeline">Write Pipeline</button>
+      <button class="view-btn" data-view="layers">Arch Layers</button>
+      <div class="spacer"></div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">+</button>
+        <button class="zoom-btn" onclick="zoomOut()">&minus;</button>
+        <button class="zoom-btn" onclick="zoomReset()">R</button>
+      </div>
+    </div>
+
+    <div class="canvas-container">
+      <svg class="diagram" id="svg"></svg>
+      <div class="legend" id="legend"></div>
+      <div class="detail-panel" id="detail-panel">
+        <button class="close-btn" onclick="closeDetail()">&times;</button>
+        <div id="detail-content"></div>
+      </div>
+    </div>
+
+    <div class="prompt-bar">
+      <div class="prompt-text" id="prompt-text">Click components to add notes. Toggle layers to explore.</div>
+      <button class="copy-btn" onclick="copyPrompt()">Copy Prompt</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── Color palette ────────────────────────────────────────────
+const C = {
+  core:       { fill: '#1a2744', stroke: '#3b82f6', text: '#93c5fd' },
+  links:      { fill: '#1a3328', stroke: '#22c55e', text: '#86efac' },
+  episodic:   { fill: '#2a1f3d', stroke: '#a855f7', text: '#c4b5fd' },
+  evidence:   { fill: '#2d2215', stroke: '#f59e0b', text: '#fcd34d' },
+  derived:    { fill: '#1f2937', stroke: '#6b7280', text: '#9ca3af' },
+  interface:  { fill: '#1a2233', stroke: '#06b6d4', text: '#67e8f9' },
+  pipeline:   { fill: '#1c1917', stroke: '#f97316', text: '#fdba74' },
+  infra:      { fill: '#1a1a2e', stroke: '#6366f1', text: '#a5b4fc' },
+};
+
+const CONN_COLORS = {
+  fk:          '#3b82f6',
+  link:        '#22c55e',
+  evidence:    '#f59e0b',
+  dataflow:    '#06b6d4',
+  expansion:   '#a855f7',
+  derived:     '#6b7280',
+};
+
+// ─── Ontology view data ───────────────────────────────────────
+const ontologyNodes = [
+  // Core memories
+  { id: 'memories', label: 'memories', subtitle: '6 kinds, immutable', x: 480, y: 40, w: 160, h: 50, layer: 'core', priority: 'essential',
+    desc: 'Core immutable memory records. Each has kind, scope (repo/global), text, create_confidence. Append-only.',
+    fields: { id: 'TEXT PK', repo_id: 'TEXT', scope: 'repo|global', kind: '6 enum values', text: 'TEXT', create_confidence: 'REAL [0,1]', archived: 'INTEGER', created_at: 'TIMESTAMP' }},
+
+  { id: 'mem-problem', label: 'problem', subtitle: 'kind', x: 60, y: 160, w: 120, h: 42, layer: 'core', priority: 'essential',
+    desc: 'A problem encountered during work. Anchors solutions and failed tactics.' },
+  { id: 'mem-solution', label: 'solution', subtitle: 'kind', x: 220, y: 160, w: 120, h: 42, layer: 'core', priority: 'essential',
+    desc: 'A successful approach to a problem. Linked via problem_attempts.' },
+  { id: 'mem-failed', label: 'failed_tactic', subtitle: 'kind', x: 380, y: 160, w: 130, h: 42, layer: 'core', priority: 'essential',
+    desc: 'An approach that was tried and failed. Prevents repeating mistakes across sessions.' },
+  { id: 'mem-fact', label: 'fact', subtitle: 'kind', x: 550, y: 160, w: 120, h: 42, layer: 'core', priority: 'essential',
+    desc: 'A factual observation about the codebase or domain. Can be superseded via fact_updates chain.' },
+  { id: 'mem-pref', label: 'preference', subtitle: 'kind', x: 710, y: 160, w: 120, h: 42, layer: 'core', priority: 'essential',
+    desc: 'User-stated preference. Evidence may cite user messages rather than code.' },
+  { id: 'mem-change', label: 'change', subtitle: 'kind', x: 870, y: 160, w: 120, h: 42, layer: 'core', priority: 'essential',
+    desc: 'Records that something changed. Used in fact_updates chains to link old_fact → change → new_fact.' },
+
+  // Structural links — row 3
+  { id: 'problem-attempts', label: 'problem_attempts', subtitle: 'problem ↔ solution|failed_tactic', x: 100, y: 290, w: 220, h: 50, layer: 'links', priority: 'essential',
+    desc: 'Links problems to their solutions and failed tactics with a role column. Core experiential structure.',
+    fields: { problem_id: 'FK → memories', attempt_id: 'FK → memories', role: 'solution|failed_tactic' }},
+  { id: 'fact-updates', label: 'fact_updates', subtitle: 'old_fact → change → new_fact', x: 560, y: 290, w: 210, h: 50, layer: 'links', priority: 'essential',
+    desc: 'Immutable chain links modeling fact evolution. Truth is the snapshot view, not a mutable score.',
+    fields: { old_fact_id: 'FK → memories (fact)', change_id: 'FK → memories (change)', new_fact_id: 'FK → memories (fact)' }},
+
+  // Embeddings — row 3 right
+  { id: 'mem-embeddings', label: 'memory_embeddings', subtitle: 'pgvector cache', x: 860, y: 290, w: 170, h: 46, layer: 'derived', priority: 'essential',
+    desc: 'Cached vector embeddings for semantic retrieval. One per memory. Derived/rebuildable.',
+    fields: { memory_id: 'FK', model: 'TEXT', dim: 'INTEGER', vector: 'VECTOR' }},
+
+  // Association + utility — row 4
+  { id: 'assoc-edges', label: 'association_edges', subtitle: 'depends_on | associated_with', x: 60, y: 420, w: 210, h: 50, layer: 'links', priority: 'important',
+    desc: 'Typed directed edges between memories. Agent-authored (depends_on, associated_with) or implicit co-activation. Preserves structural relationships across sessions.',
+    fields: { from_memory_id: 'FK', to_memory_id: 'FK', relation_type: 'depends_on|associated_with', source_mode: 'agent|implicit|mixed', state: 'tentative|confirmed|deprecated', strength: 'REAL [0,1]' }},
+  { id: 'utility-obs', label: 'utility_observations', subtitle: 'memory × problem → vote', x: 400, y: 420, w: 200, h: 50, layer: 'links', priority: 'deferrable',
+    desc: 'Contextual utility feedback. Records how helpful a memory was for a specific problem. Powers the weak global utility prior.',
+    fields: { memory_id: 'FK', problem_id: 'FK (kind=problem)', vote: 'REAL [-1,1]' }},
+
+  // Evidence — row 4 right
+  { id: 'evidence-refs', label: 'evidence_refs', subtitle: 'canonical ref pointers', x: 720, y: 420, w: 170, h: 50, layer: 'evidence', priority: 'essential',
+    desc: 'Canonical evidence references. Deduplicated by (repo_id, ref). Points to episode events or external sources.',
+    fields: { ref: 'TEXT (pointer format TBD)', repo_id: 'TEXT' }},
+
+  // Row 5 — observation/evidence junction tables
+  { id: 'assoc-obs', label: 'association_observations', subtitle: 'reinforcement events', x: 60, y: 550, w: 210, h: 50, layer: 'links', priority: 'deferrable',
+    desc: 'Immutable observations that reinforce or weaken edges. Powers implicit co-activation learning. Each has valence [-1,1] and salience.',
+    fields: { edge_id: 'FK → assoc_edges', source: 'agent|implicit|feedback', valence: 'REAL [-1,1]', salience: 'REAL [0,1]' }},
+  { id: 'assoc-edge-ev', label: 'association_edge_evidence', subtitle: 'edge ↔ evidence', x: 340, y: 550, w: 210, h: 46, layer: 'evidence', priority: 'deferrable',
+    desc: 'Many-to-many link between association edges and evidence references.' },
+  { id: 'memory-evidence', label: 'memory_evidence', subtitle: 'memory ↔ evidence', x: 720, y: 550, w: 170, h: 46, layer: 'evidence', priority: 'essential',
+    desc: 'Many-to-many link. Every created memory must have ≥1 evidence ref.' },
+
+  // Row 6 — episodic layer + derived views
+  { id: 'v-fact-snap', label: 'current_fact_snapshot', subtitle: 'view: latest facts', x: 60, y: 700, w: 190, h: 46, layer: 'derived', priority: 'essential',
+    desc: 'Facts not superseded by any fact_update chain. This IS current truth.' },
+  { id: 'v-utility', label: 'global_utility', subtitle: 'view: avg vote/memory', x: 290, y: 700, w: 170, h: 46, layer: 'derived', priority: 'deferrable',
+    desc: 'Computed global utility prior. AVG(vote) per memory. Used only as weak late-stage tie-breaker.' },
+  { id: 'episode-events', label: 'episode_events', subtitle: 'immutable event stream', x: 500, y: 700, w: 180, h: 50, layer: 'episodic', priority: 'important',
+    desc: 'One row per message/tool call. Ordered by (episode_id, seq). Source is user/assistant/tool/system.',
+    fields: { episode_id: 'FK', seq: 'INTEGER (unique per ep)', source: 'user|assistant|tool|system', content: 'TEXT (shape TBD)' }},
+  { id: 'episodes', label: 'episodes', subtitle: 'work session container', x: 720, y: 700, w: 160, h: 50, layer: 'episodic', priority: 'important',
+    desc: 'Each episode is one work session (chat thread or problem cluster). Has lifecycle status, title, objective.',
+    fields: { thread_id: 'TEXT', title: 'TEXT', objective: 'TEXT', status: 'active|closed|archived' }},
+  { id: 'session-xfer', label: 'session_transfers', subtitle: 'cross-session handoff', x: 920, y: 700, w: 180, h: 50, layer: 'episodic', priority: 'deferrable',
+    desc: 'Tracks handoffs between episodes: message_handoff, context_summary, task_split, task_merge.',
+    fields: { from_episode_id: 'FK', to_episode_id: 'FK', event_id: 'FK', transfer_kind: '4 enum values' }},
+];
+
+const ontologyConns = [
+  // Kind instances — no labels to avoid clutter
+  { from: 'memories', to: 'mem-problem', type: 'fk', label: '' },
+  { from: 'memories', to: 'mem-solution', type: 'fk', label: '' },
+  { from: 'memories', to: 'mem-failed', type: 'fk', label: '' },
+  { from: 'memories', to: 'mem-fact', type: 'fk', label: '' },
+  { from: 'memories', to: 'mem-pref', type: 'fk', label: '' },
+  { from: 'memories', to: 'mem-change', type: 'fk', label: '' },
+
+  // Structural links
+  { from: 'mem-problem', to: 'problem-attempts', type: 'link', label: 'problem_id' },
+  { from: 'mem-solution', to: 'problem-attempts', type: 'link', label: 'attempt' },
+  { from: 'mem-failed', to: 'problem-attempts', type: 'link', label: 'attempt' },
+
+  { from: 'mem-fact', to: 'fact-updates', type: 'link', label: 'old / new' },
+  { from: 'mem-change', to: 'fact-updates', type: 'link', label: 'change_id' },
+
+  // Associations
+  { from: 'memories', to: 'assoc-edges', type: 'link', label: 'from / to' },
+  { from: 'assoc-edges', to: 'assoc-obs', type: 'fk', label: '' },
+  { from: 'assoc-edges', to: 'assoc-edge-ev', type: 'evidence', label: '' },
+
+  // Utility
+  { from: 'memories', to: 'utility-obs', type: 'fk', label: '' },
+  { from: 'mem-problem', to: 'utility-obs', type: 'fk', label: '' },
+
+  // Evidence
+  { from: 'memories', to: 'memory-evidence', type: 'evidence', label: '' },
+  { from: 'evidence-refs', to: 'memory-evidence', type: 'evidence', label: '' },
+  { from: 'evidence-refs', to: 'assoc-edge-ev', type: 'evidence', label: '' },
+  { from: 'episode-events', to: 'evidence-refs', type: 'evidence', label: 'event ref' },
+
+  // Episodic
+  { from: 'episodes', to: 'episode-events', type: 'fk', label: '' },
+  { from: 'episodes', to: 'session-xfer', type: 'fk', label: '' },
+
+  // Embeddings
+  { from: 'memories', to: 'mem-embeddings', type: 'derived', label: '' },
+
+  // Derived views
+  { from: 'mem-fact', to: 'v-fact-snap', type: 'derived', label: '' },
+  { from: 'fact-updates', to: 'v-fact-snap', type: 'derived', label: '' },
+  { from: 'utility-obs', to: 'v-utility', type: 'derived', label: '' },
+];
+
+// ─── Read pipeline view ───────────────────────────────────────
+const readNodes = [
+  { id: 'r-query', label: 'Query', subtitle: 'agent or ambient', x: 450, y: 40, w: 130, h: 45, layer: 'interface', priority: 'essential',
+    desc: 'Natural language query. Ambient mode at session start, targeted mode mid-task.' },
+  { id: 'r-sem', label: 'Semantic Lane', subtitle: 'pgvector similarity', x: 300, y: 130, w: 150, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'Vector similarity search against memory_embeddings. Has threshold gate.' },
+  { id: 'r-kw', label: 'Keyword Lane', subtitle: 'PostgreSQL FTS', x: 600, y: 130, w: 150, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'Full-text search via tsvector/tsquery. Has separate threshold gate.' },
+  { id: 'r-rrf', label: 'RRF Fusion', subtitle: 'reciprocal rank fusion', x: 450, y: 230, w: 150, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'Merges semantic + keyword lanes. k_rrf parameter controls rank smoothing. Produces unified seed ranking.' },
+  { id: 'r-exp-expl', label: 'Explicit Expansion', subtitle: 'problem_attempts, fact_updates, assoc_edges', x: 250, y: 330, w: 210, h: 50, layer: 'pipeline', priority: 'essential',
+    desc: 'Traverses structural links from seed memories. Pulls in linked solutions, failed tactics, fact chains, and formal associations.' },
+  { id: 'r-exp-impl', label: 'Implicit Expansion', subtitle: 'semantic neighbors', x: 550, y: 330, w: 180, h: 50, layer: 'pipeline', priority: 'important',
+    desc: 'Bounded semantic-neighbor expansion. Additional similar memories not found by direct search.' },
+  { id: 'r-score', label: 'Scoring', subtitle: 'stage-specific formulas', x: 450, y: 430, w: 150, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'Scores candidates within each bucket. Used for ranking, gating, spillover ordering.' },
+  { id: 'r-pack', label: 'Context Pack', subtitle: 'direct + explicit + implicit buckets', x: 450, y: 530, w: 180, h: 50, layer: 'pipeline', priority: 'essential',
+    desc: 'Assembles final pack: direct bucket, explicit expansion bucket, implicit bucket, dedupe, spillover, hard final cap.' },
+  { id: 'r-util', label: 'Utility Prior', subtitle: 'weak tie-break nudge', x: 250, y: 610, w: 160, h: 45, layer: 'pipeline', priority: 'deferrable',
+    desc: 'Global utility as near-tie nudger only. u_shrunk = mean * (obs/(obs+lambda)). alpha_utility ~0.05. Never gates, never rescues.' },
+  { id: 'r-scen', label: 'Scenario Lift', subtitle: 'derived bundles', x: 600, y: 610, w: 150, h: 45, layer: 'pipeline', priority: 'speculative',
+    desc: 'Derives scenario bundles from matched memories. Ranks by member evidence. Schema not yet ratified.' },
+  { id: 'r-output', label: 'Context Pack Output', subtitle: 'JSON → agent system prompt', x: 450, y: 710, w: 180, h: 45, layer: 'interface', priority: 'essential',
+    desc: 'Final assembled context injected into agent. Ambient packs go to system prompt. Targeted results returned inline.' },
+];
+
+const readConns = [
+  { from: 'r-query', to: 'r-sem', type: 'dataflow', label: 'embed' },
+  { from: 'r-query', to: 'r-kw', type: 'dataflow', label: 'normalize' },
+  { from: 'r-sem', to: 'r-rrf', type: 'dataflow', label: 'ranked seeds' },
+  { from: 'r-kw', to: 'r-rrf', type: 'dataflow', label: 'ranked seeds' },
+  { from: 'r-rrf', to: 'r-exp-expl', type: 'expansion', label: 'seed IDs' },
+  { from: 'r-rrf', to: 'r-exp-impl', type: 'expansion', label: 'seed vectors' },
+  { from: 'r-rrf', to: 'r-score', type: 'dataflow', label: 'direct bucket' },
+  { from: 'r-exp-expl', to: 'r-score', type: 'dataflow', label: 'explicit bucket' },
+  { from: 'r-exp-impl', to: 'r-score', type: 'dataflow', label: 'implicit bucket' },
+  { from: 'r-score', to: 'r-pack', type: 'dataflow', label: 'scored candidates' },
+  { from: 'r-pack', to: 'r-util', type: 'dataflow', label: 'near-ties' },
+  { from: 'r-pack', to: 'r-scen', type: 'dataflow', label: 'matched members' },
+  { from: 'r-util', to: 'r-output', type: 'dataflow', label: 'nudged pack' },
+  { from: 'r-scen', to: 'r-output', type: 'dataflow', label: 'scenario bundles' },
+  { from: 'r-pack', to: 'r-output', type: 'dataflow', label: 'final pack' },
+];
+
+// ─── Write pipeline view ──────────────────────────────────────
+const writeNodes = [
+  { id: 'w-input', label: 'Agent Payload', subtitle: 'create | update', x: 450, y: 40, w: 160, h: 45, layer: 'interface', priority: 'essential',
+    desc: 'Compact JSON from agent. CLI adapter hydrates defaults before strict validation.' },
+  { id: 'w-hydrate', label: 'CLI Hydration', subtitle: 'infer repo_id, scope, confidence', x: 450, y: 130, w: 180, h: 45, layer: 'interface', priority: 'essential',
+    desc: 'Ergonomic adapter. Infers repo_id from cwd, default scope/confidence. Agent values override.' },
+  { id: 'w-schema', label: 'Schema Validation', subtitle: 'Pydantic v2', x: 450, y: 230, w: 170, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'JSON shape, types, enums, required fields. Pydantic model validation.' },
+  { id: 'w-semantic', label: 'Semantic Validation', subtitle: 'kind/role/link checks', x: 450, y: 320, w: 180, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'Domain rules: problem_id kind checks, fact-update consistency, association self-loop prevention, evidence requirements.' },
+  { id: 'w-integrity', label: 'Integrity Validation', subtitle: 'FK + visibility checks', x: 450, y: 410, w: 180, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'Referenced IDs exist in DB. Scope/repo visibility constraints met. Association targets accessible.' },
+  { id: 'w-plan', label: 'Side-Effect Plan', subtitle: 'deterministic mapping', x: 450, y: 500, w: 180, h: 50, layer: 'pipeline', priority: 'essential',
+    desc: 'Maps validated request to exact DB operations. Each create kind has defined side effects.' },
+  { id: 'w-tx', label: 'Transaction', subtitle: 'commit or full abort', x: 450, y: 600, w: 150, h: 45, layer: 'pipeline', priority: 'essential',
+    desc: 'All side effects execute in one transaction. Any failure rolls back everything.' },
+  { id: 'w-create-mem', label: 'create → memories', subtitle: 'all kinds', x: 180, y: 600, w: 160, h: 40, layer: 'core', priority: 'essential',
+    desc: 'Insert immutable memory record + evidence links.' },
+  { id: 'w-create-pa', label: 'create → problem_attempts', subtitle: 'solution|failed_tactic', x: 180, y: 660, w: 190, h: 40, layer: 'links', priority: 'essential',
+    desc: 'Additionally links solution/failed_tactic to problem.' },
+  { id: 'w-create-assoc', label: 'create → association_edges', subtitle: 'with links.associations[]', x: 180, y: 720, w: 200, h: 40, layer: 'links', priority: 'important',
+    desc: 'Upserts agent-authored association edges + observations + edge evidence.' },
+  { id: 'w-upd-archive', label: 'update → archived', subtitle: 'archive_state', x: 720, y: 560, w: 170, h: 40, layer: 'core', priority: 'essential',
+    desc: 'Toggles memories.archived flag.' },
+  { id: 'w-upd-util', label: 'update → utility_observations', subtitle: 'utility_vote', x: 720, y: 620, w: 200, h: 40, layer: 'links', priority: 'deferrable',
+    desc: 'Appends contextual utility observation (memory × problem → vote).' },
+  { id: 'w-upd-fact', label: 'update → fact_updates', subtitle: 'fact_update_link', x: 720, y: 680, w: 190, h: 40, layer: 'links', priority: 'essential',
+    desc: 'Creates fact-update chain row linking old_fact → change → new_fact.' },
+  { id: 'w-upd-assoc', label: 'update → association_edges', subtitle: 'association_link', x: 720, y: 740, w: 200, h: 40, layer: 'links', priority: 'important',
+    desc: 'Upserts association edge + immutable observation + edge evidence.' },
+  { id: 'w-jobs', label: 'Post-Commit Jobs', subtitle: 'implicit consolidation', x: 450, y: 720, w: 180, h: 45, layer: 'pipeline', priority: 'deferrable',
+    desc: 'Session-end co-activation consolidator. Implicit channel only creates/reinforces associated_with edges.' },
+];
+
+const writeConns = [
+  { from: 'w-input', to: 'w-hydrate', type: 'dataflow', label: '' },
+  { from: 'w-hydrate', to: 'w-schema', type: 'dataflow', label: 'hydrated payload' },
+  { from: 'w-schema', to: 'w-semantic', type: 'dataflow', label: 'pass' },
+  { from: 'w-semantic', to: 'w-integrity', type: 'dataflow', label: 'pass' },
+  { from: 'w-integrity', to: 'w-plan', type: 'dataflow', label: 'pass' },
+  { from: 'w-plan', to: 'w-tx', type: 'dataflow', label: 'side effects' },
+  { from: 'w-tx', to: 'w-create-mem', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-create-pa', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-create-assoc', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-upd-archive', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-upd-util', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-upd-fact', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-upd-assoc', type: 'link', label: '' },
+  { from: 'w-tx', to: 'w-jobs', type: 'dataflow', label: 'post-commit' },
+];
+
+// ─── Arch layers view ─────────────────────────────────────────
+const layerNodes = [
+  // Core
+  { id: 'l-entities', label: 'core/entities/', subtitle: 'Memory, Episode, Association...', x: 80, y: 80, w: 170, h: 45, layer: 'core', priority: 'essential',
+    desc: 'Immutable dataclass domain models.' },
+  { id: 'l-interfaces', label: 'core/interfaces/', subtitle: 'IMemoriesRepo, IUnitOfWork...', x: 300, y: 80, w: 190, h: 45, layer: 'core', priority: 'essential',
+    desc: 'ABC port abstractions for all periphery boundaries.' },
+  { id: 'l-contracts', label: 'core/contracts/', subtitle: 'requests, responses, errors', x: 540, y: 80, w: 180, h: 45, layer: 'core', priority: 'essential',
+    desc: 'Pydantic request/response models. Strict typed boundary contracts.' },
+  { id: 'l-validation', label: 'core/validation/', subtitle: 'schema → semantic → integrity', x: 770, y: 80, w: 190, h: 45, layer: 'core', priority: 'essential',
+    desc: 'Three-gate validation pipeline. Functional, rule-based.' },
+  { id: 'l-policies', label: 'core/policies/', subtitle: 'read_policy/, write_policy/', x: 80, y: 170, w: 180, h: 45, layer: 'core', priority: 'essential',
+    desc: 'Business logic. Functional: deterministic retrieval math and write-path side-effect planning.' },
+  { id: 'l-usecases', label: 'core/use_cases/', subtitle: 'create, read, update', x: 300, y: 170, w: 180, h: 45, layer: 'core', priority: 'essential',
+    desc: 'Functional orchestrators. Compose interfaces + policy functions.' },
+
+  // Periphery
+  { id: 'l-db-models', label: 'periphery/db/models/', subtitle: 'SQLAlchemy Core tables', x: 80, y: 320, w: 190, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'All table definitions grouped by domain aggregate.' },
+  { id: 'l-db-repos', label: 'periphery/db/repos/', subtitle: '6 aggregate repos + 2 search', x: 330, y: 320, w: 200, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'OOP classes implementing core interfaces. One per aggregate, not per table.' },
+  { id: 'l-db-uow', label: 'periphery/db/uow.py', subtitle: 'PostgresUnitOfWork', x: 580, y: 320, w: 170, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'Transaction boundary. Context manager with auto-commit/rollback.' },
+  { id: 'l-cli', label: 'periphery/cli/', subtitle: 'main, handlers, hydration', x: 800, y: 320, w: 170, h: 45, layer: 'interface', priority: 'essential',
+    desc: 'CLI adapter. Argparse + Pydantic validation + JSON presenter.' },
+  { id: 'l-search', label: 'periphery/db/repos/search/', subtitle: 'pgvector + FTS', x: 330, y: 400, w: 190, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'Semantic (pgvector) and keyword (FTS) retrieval adapters.' },
+  { id: 'l-config', label: 'periphery/config/', subtitle: 'YAML loader + defaults', x: 580, y: 400, w: 180, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'Config provider + YAML defaults for policies, thresholds, runtime.' },
+  { id: 'l-jobs-periph', label: 'periphery/jobs/', subtitle: 'runner + job implementations', x: 800, y: 400, w: 180, h: 45, layer: 'infra', priority: 'deferrable',
+    desc: 'In-process job runner. Future: queue-backed swap.' },
+
+  // Boot
+  { id: 'l-boot-db', label: 'boot/db.py', subtitle: 'engine + session factories', x: 180, y: 540, w: 170, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'get_engine(), get_session_factory(). Singleton management.' },
+  { id: 'l-boot-repos', label: 'boot/repos.py', subtitle: 'get_uow()', x: 400, y: 540, w: 150, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'Unit-of-work factory function.' },
+  { id: 'l-boot-config', label: 'boot/config.py', subtitle: 'get_config_provider()', x: 600, y: 540, w: 180, h: 45, layer: 'infra', priority: 'essential',
+    desc: 'Config provider factory. YAML loading lives here.' },
+  { id: 'l-boot-jobs', label: 'boot/jobs.py', subtitle: 'get_job_runner()', x: 820, y: 540, w: 160, h: 45, layer: 'infra', priority: 'deferrable',
+    desc: 'Job runner factory with registered jobs.' },
+];
+
+const layerConns = [
+  { from: 'l-usecases', to: 'l-interfaces', type: 'dataflow', label: 'depends on' },
+  { from: 'l-usecases', to: 'l-policies', type: 'dataflow', label: 'calls' },
+  { from: 'l-usecases', to: 'l-validation', type: 'dataflow', label: 'calls' },
+  { from: 'l-usecases', to: 'l-contracts', type: 'dataflow', label: 'uses' },
+  { from: 'l-policies', to: 'l-entities', type: 'dataflow', label: 'operates on' },
+  { from: 'l-db-repos', to: 'l-interfaces', type: 'fk', label: 'implements' },
+  { from: 'l-db-uow', to: 'l-interfaces', type: 'fk', label: 'implements' },
+  { from: 'l-search', to: 'l-interfaces', type: 'fk', label: 'implements' },
+  { from: 'l-cli', to: 'l-contracts', type: 'dataflow', label: 'validates with' },
+  { from: 'l-boot-db', to: 'l-db-uow', type: 'link', label: 'provides session' },
+  { from: 'l-boot-repos', to: 'l-db-repos', type: 'link', label: 'instantiates' },
+  { from: 'l-boot-config', to: 'l-config', type: 'link', label: 'instantiates' },
+  { from: 'l-boot-jobs', to: 'l-jobs-periph', type: 'link', label: 'instantiates' },
+];
+
+// ─── State ────────────────────────────────────────────────────
+const VIEWS = {
+  ontology:       { nodes: ontologyNodes, conns: ontologyConns },
+  'read-pipeline': { nodes: readNodes,   conns: readConns },
+  'write-pipeline':{ nodes: writeNodes,  conns: writeConns },
+  layers:         { nodes: layerNodes,   conns: layerConns },
+};
+
+const state = {
+  view: 'ontology',
+  layers: { core: true, links: true, episodic: true, evidence: true, derived: true, interface: true, pipeline: true, infra: true },
+  conns: { fk: true, link: true, evidence: true, dataflow: true, expansion: true, derived: true },
+  priority: { essential: true, important: true, deferrable: true, speculative: true },
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  selected: null,
+  comments: [],
+  dragging: false,
+  dragStart: { x: 0, y: 0 },
+};
+
+const LAYER_META = {
+  core:      { label: 'Core Ontology', color: C.core.stroke },
+  links:     { label: 'Structural Links', color: C.links.stroke },
+  episodic:  { label: 'Episodic Layer', color: C.episodic.stroke },
+  evidence:  { label: 'Evidence Layer', color: C.evidence.stroke },
+  derived:   { label: 'Derived / Views', color: C.derived.stroke },
+  interface: { label: 'Interface', color: C.interface.stroke },
+  pipeline:  { label: 'Pipeline Stages', color: C.pipeline.stroke },
+  infra:     { label: 'Infrastructure', color: C.infra.stroke },
+};
+
+const CONN_META = {
+  fk:        { label: 'Foreign Key', color: CONN_COLORS.fk, dash: '' },
+  link:      { label: 'Structural Link', color: CONN_COLORS.link, dash: '6,3' },
+  evidence:  { label: 'Evidence', color: CONN_COLORS.evidence, dash: '4,4' },
+  dataflow:  { label: 'Data Flow', color: CONN_COLORS.dataflow, dash: '' },
+  expansion: { label: 'Expansion', color: CONN_COLORS.expansion, dash: '8,4' },
+  derived:   { label: 'Derived From', color: CONN_COLORS.derived, dash: '3,3' },
+};
+
+const PRIORITY_META = {
+  essential:   { label: 'Essential (ship v1)', color: '#22c55e' },
+  important:   { label: 'Important (ship v1)', color: '#3b82f6' },
+  deferrable:  { label: 'Deferrable (post-v1)', color: '#f59e0b' },
+  speculative: { label: 'Speculative (maybe never)', color: '#ef4444' },
+};
+
+// ─── SVG setup ────────────────────────────────────────────────
+const svg = document.getElementById('svg');
+let svgGroup;
+
+function initSVG() {
+  svg.innerHTML = '';
+
+  // Arrowhead markers
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  Object.entries(CONN_COLORS).forEach(([type, color]) => {
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', `arrow-${type}`);
+    marker.setAttribute('markerWidth', '8');
+    marker.setAttribute('markerHeight', '6');
+    marker.setAttribute('refX', '7');
+    marker.setAttribute('refY', '3');
+    marker.setAttribute('orient', 'auto');
+    const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+    poly.setAttribute('points', '0 0, 8 3, 0 6');
+    poly.setAttribute('fill', color);
+    marker.appendChild(poly);
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  svgGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+  svgGroup.setAttribute('id', 'pan-group');
+  svg.appendChild(svgGroup);
+}
+
+// ─── Rendering ────────────────────────────────────────────────
+function getNodeCenter(node) {
+  return { x: node.x + node.w / 2, y: node.y + node.h / 2 };
+}
+
+function getEdgePoint(fromNode, toNode) {
+  const fc = getNodeCenter(fromNode);
+  const tc = getNodeCenter(toNode);
+  const dx = tc.x - fc.x;
+  const dy = tc.y - fc.y;
+  const angle = Math.atan2(dy, dx);
+
+  function clampToRect(cx, cy, w, h, a) {
+    const hw = w / 2, hh = h / 2;
+    const tanA = Math.tan(a);
+    let ex, ey;
+    if (Math.abs(Math.cos(a)) * hh > Math.abs(Math.sin(a)) * hw) {
+      ex = Math.sign(Math.cos(a)) * hw;
+      ey = ex * tanA;
+    } else {
+      ey = Math.sign(Math.sin(a)) * hh;
+      ex = ey / tanA;
+    }
+    return { x: cx + ex, y: cy + ey };
+  }
+
+  const from = clampToRect(fc.x, fc.y, fromNode.w, fromNode.h, angle);
+  const to = clampToRect(tc.x, tc.y, toNode.w, toNode.h, angle + Math.PI);
+  return { from, to };
+}
+
+function render() {
+  initSVG();
+  const viewData = VIEWS[state.view];
+  const nodes = viewData.nodes;
+  const conns = viewData.conns;
+  const nodeMap = {};
+  nodes.forEach(n => nodeMap[n.id] = n);
+
+  const visibleLayers = state.layers;
+  const visibleConns = state.conns;
+  const visiblePriority = state.priority;
+
+  // Draw connections
+  conns.forEach(c => {
+    const fromNode = nodeMap[c.from];
+    const toNode = nodeMap[c.to];
+    if (!fromNode || !toNode) return;
+
+    const fromVis = visibleLayers[fromNode.layer] && visiblePriority[fromNode.priority];
+    const toVis = visibleLayers[toNode.layer] && visiblePriority[toNode.priority];
+    const connVis = visibleConns[c.type];
+
+    if (!connVis) return;
+
+    const pts = getEdgePoint(fromNode, toNode);
+    const mx = (pts.from.x + pts.to.x) / 2;
+    const my = (pts.from.y + pts.to.y) / 2;
+    const dx = pts.to.x - pts.from.x;
+    const dy = pts.to.y - pts.from.y;
+    const offset = Math.min(30, Math.sqrt(dx*dx + dy*dy) * 0.15);
+    const cx = mx + (dy > 0 ? -1 : 1) * offset * 0.3;
+    const cy = my + (dx > 0 ? 1 : -1) * offset * 0.3;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${pts.from.x} ${pts.from.y} Q ${cx} ${cy} ${pts.to.x} ${pts.to.y}`);
+    path.setAttribute('stroke', CONN_COLORS[c.type] || '#555');
+    path.setAttribute('marker-end', `url(#arrow-${c.type})`);
+    path.classList.add('connection-line');
+    if (CONN_META[c.type]?.dash) path.setAttribute('stroke-dasharray', CONN_META[c.type].dash);
+
+    const dimmed = !fromVis || !toVis;
+    if (dimmed) path.classList.add('dimmed');
+    if (state.selected && (c.from === state.selected || c.to === state.selected)) {
+      path.classList.remove('dimmed');
+      path.classList.add('highlighted');
+    }
+
+    svgGroup.appendChild(path);
+
+    if (c.label && !dimmed) {
+      const lbl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      lbl.setAttribute('x', cx);
+      lbl.setAttribute('y', cy - 6);
+      lbl.setAttribute('text-anchor', 'middle');
+      lbl.classList.add('connection-label');
+      lbl.textContent = c.label;
+      svgGroup.appendChild(lbl);
+    }
+  });
+
+  // Draw nodes
+  nodes.forEach(n => {
+    const vis = visibleLayers[n.layer] && visiblePriority[n.priority];
+    const colors = C[n.layer] || C.core;
+
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.classList.add('node-group');
+    if (!vis) g.classList.add('dimmed');
+    if (state.selected === n.id) g.classList.add('highlighted');
+
+    // Priority border
+    const prioColor = PRIORITY_META[n.priority]?.color || '#555';
+
+    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    rect.setAttribute('x', n.x);
+    rect.setAttribute('y', n.y);
+    rect.setAttribute('width', n.w);
+    rect.setAttribute('height', n.h);
+    rect.setAttribute('fill', colors.fill);
+    rect.setAttribute('stroke', colors.stroke);
+    rect.classList.add('node-rect');
+    g.appendChild(rect);
+
+    // Priority indicator (small dot)
+    const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    dot.setAttribute('cx', n.x + n.w - 8);
+    dot.setAttribute('cy', n.y + 8);
+    dot.setAttribute('r', 4);
+    dot.setAttribute('fill', prioColor);
+    g.appendChild(dot);
+
+    const title = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    title.setAttribute('x', n.x + 10);
+    title.setAttribute('y', n.y + 20);
+    title.classList.add('node-title');
+    title.textContent = n.label;
+    g.appendChild(title);
+
+    if (n.subtitle) {
+      const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      sub.setAttribute('x', n.x + 10);
+      sub.setAttribute('y', n.y + 34);
+      sub.classList.add('node-subtitle');
+      sub.textContent = n.subtitle;
+      g.appendChild(sub);
+    }
+
+    g.addEventListener('click', (e) => {
+      e.stopPropagation();
+      selectNode(n);
+    });
+
+    svgGroup.appendChild(g);
+  });
+
+  updateTransform();
+  updateLegend();
+  updatePrompt();
+}
+
+function updateTransform() {
+  svgGroup.setAttribute('transform', `translate(${state.panX}, ${state.panY}) scale(${state.zoom})`);
+}
+
+function selectNode(node) {
+  state.selected = node.id;
+  showDetail(node);
+  render();
+}
+
+function clearSelection() {
+  state.selected = null;
+  document.getElementById('detail-panel').classList.remove('visible');
+  render();
+}
+
+// ─── Detail panel ─────────────────────────────────────────────
+function showDetail(node) {
+  const panel = document.getElementById('detail-panel');
+  const content = document.getElementById('detail-content');
+  const colors = C[node.layer] || C.core;
+  const prioMeta = PRIORITY_META[node.priority];
+
+  let html = `<h3 style="color:${colors.text}">${node.label}</h3>`;
+  html += `<div class="detail-category" style="color:${colors.text}">${LAYER_META[node.layer]?.label || node.layer}</div>`;
+  html += `<div style="margin-bottom:10px"><span class="tag tag-${node.priority}">${prioMeta.label}</span></div>`;
+  html += `<div class="detail-desc">${node.desc || ''}</div>`;
+
+  if (node.fields) {
+    html += '<div class="detail-fields">';
+    Object.entries(node.fields).forEach(([k, v]) => {
+      html += `<div class="detail-field"><span class="detail-field-name">${k}</span><span class="detail-field-val">${v}</span></div>`;
+    });
+    html += '</div>';
+  }
+
+  // Connected nodes
+  const viewData = VIEWS[state.view];
+  const connected = viewData.conns
+    .filter(c => c.from === node.id || c.to === node.id)
+    .map(c => {
+      const otherId = c.from === node.id ? c.to : c.from;
+      const other = viewData.nodes.find(n => n.id === otherId);
+      const dir = c.from === node.id ? '→' : '←';
+      return other ? `${dir} ${other.label}` : null;
+    })
+    .filter(Boolean);
+
+  if (connected.length) {
+    html += '<div style="margin-top:8px"><div style="font-size:10px;color:#555;margin-bottom:4px">CONNECTED TO</div>';
+    connected.forEach(c => {
+      html += `<div style="font-size:11px;color:#9ca3af;padding:2px 0">${c}</div>`;
+    });
+    html += '</div>';
+  }
+
+  // Add comment button
+  html += `<div style="margin-top:12px"><button onclick="addComment('${node.id}')" style="background:#1a1a2e;border:1px solid #2a2a3e;color:#9ca3af;padding:5px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit;">Add Note</button></div>`;
+
+  content.innerHTML = html;
+  panel.classList.add('visible');
+}
+
+function closeDetail() {
+  state.selected = null;
+  document.getElementById('detail-panel').classList.remove('visible');
+  render();
+}
+
+// ─── Comments ─────────────────────────────────────────────────
+function addComment(nodeId) {
+  const text = prompt('Add a note about this component:');
+  if (!text) return;
+  const viewData = VIEWS[state.view];
+  const node = viewData.nodes.find(n => n.id === nodeId);
+  state.comments.push({
+    id: Date.now(),
+    view: state.view,
+    target: nodeId,
+    targetLabel: node?.label || nodeId,
+    text,
+  });
+  updateComments();
+  updatePrompt();
+}
+
+function removeComment(id) {
+  state.comments = state.comments.filter(c => c.id !== id);
+  updateComments();
+  updatePrompt();
+}
+
+function updateComments() {
+  const section = document.getElementById('comments-section');
+  const list = document.getElementById('comments-list');
+  const count = document.getElementById('comment-count');
+
+  if (state.comments.length === 0) {
+    section.style.display = 'none';
+    return;
+  }
+
+  section.style.display = 'block';
+  count.textContent = state.comments.length;
+  list.innerHTML = state.comments.map(c => `
+    <div style="padding:6px 8px;background:#1a1a2e;border-radius:4px;margin-bottom:4px;font-size:11px;">
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="color:#e0e0e8;font-weight:600">${c.targetLabel}</span>
+        <button onclick="removeComment(${c.id})" style="background:none;border:none;color:#555;cursor:pointer;font-size:12px">&times;</button>
+      </div>
+      <div style="color:#6b7280;margin-top:2px">${c.text}</div>
+    </div>
+  `).join('');
+}
+
+// ─── Legend ───────────────────────────────────────────────────
+function updateLegend() {
+  const legend = document.getElementById('legend');
+  const viewData = VIEWS[state.view];
+
+  const usedLayers = new Set(viewData.nodes.map(n => n.layer));
+  const usedConns = new Set(viewData.conns.map(c => c.type));
+
+  let html = '';
+  Object.entries(LAYER_META).forEach(([key, meta]) => {
+    if (!usedLayers.has(key)) return;
+    html += `<div class="legend-item"><div class="legend-swatch" style="background:${C[key]?.fill || '#1a1a2e'};border-color:${meta.color}"></div>${meta.label}</div>`;
+  });
+
+  Object.entries(PRIORITY_META).forEach(([key, meta]) => {
+    html += `<div class="legend-item"><div style="width:8px;height:8px;border-radius:50%;background:${meta.color}"></div>${meta.label}</div>`;
+  });
+
+  legend.innerHTML = html;
+}
+
+// ─── Prompt ───────────────────────────────────────────────────
+function updatePrompt() {
+  const el = document.getElementById('prompt-text');
+  const viewData = VIEWS[state.view];
+
+  const hiddenLayers = Object.entries(state.layers).filter(([k, v]) => !v).map(([k]) => LAYER_META[k]?.label || k);
+  const hiddenPrios = Object.entries(state.priority).filter(([k, v]) => !v).map(([k]) => PRIORITY_META[k]?.label || k);
+
+  let parts = [];
+  parts.push(`Viewing: ${state.view.replace('-', ' ')}.`);
+
+  if (hiddenLayers.length) parts.push(`Hidden layers: ${hiddenLayers.join(', ')}.`);
+  if (hiddenPrios.length) parts.push(`Filtered out: ${hiddenPrios.join(', ')}.`);
+
+  if (state.comments.length) {
+    parts.push('Notes:');
+    state.comments.forEach(c => {
+      parts.push(`  ${c.targetLabel}: ${c.text}`);
+    });
+  }
+
+  el.textContent = parts.join(' ');
+}
+
+function copyPrompt() {
+  const text = document.getElementById('prompt-text').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Prompt', 1500);
+  });
+}
+
+// ─── Controls ─────────────────────────────────────────────────
+function buildControls() {
+  // View presets
+  const presets = document.getElementById('view-presets');
+  const presetDefs = [
+    { label: 'Essential Only', fn: () => { state.priority = { essential: true, important: false, deferrable: false, speculative: false }; }},
+    { label: 'Ship v1', fn: () => { state.priority = { essential: true, important: true, deferrable: false, speculative: false }; }},
+    { label: 'Everything', fn: () => { state.priority = { essential: true, important: true, deferrable: true, speculative: true }; }},
+  ];
+  presetDefs.forEach(p => {
+    const btn = document.createElement('button');
+    btn.className = 'preset-btn';
+    btn.textContent = p.label;
+    btn.addEventListener('click', () => {
+      p.fn();
+      buildPriorityToggles();
+      render();
+    });
+    presets.appendChild(btn);
+  });
+
+  // Layer toggles
+  buildLayerToggles();
+  buildConnToggles();
+  buildPriorityToggles();
+
+  // View buttons
+  document.querySelectorAll('.toolbar .view-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.toolbar .view-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.view = btn.dataset.view;
+      state.selected = null;
+      document.getElementById('detail-panel').classList.remove('visible');
+      state.panX = 0;
+      state.panY = 0;
+      state.zoom = 1;
+      render();
+    });
+  });
+}
+
+function buildLayerToggles() {
+  const container = document.getElementById('layer-toggles');
+  container.innerHTML = '';
+  Object.entries(LAYER_META).forEach(([key, meta]) => {
+    const viewData = VIEWS[state.view];
+    const count = viewData.nodes.filter(n => n.layer === key).length;
+    if (count === 0) return;
+
+    const label = document.createElement('label');
+    label.className = 'toggle-row';
+    label.innerHTML = `
+      <input type="checkbox" ${state.layers[key] ? 'checked' : ''}>
+      <span class="toggle-indicator" style="color:${meta.color}"></span>
+      <span class="toggle-label">${meta.label}</span>
+      <span class="toggle-count">${count}</span>
+    `;
+    label.querySelector('input').addEventListener('change', (e) => {
+      state.layers[key] = e.target.checked;
+      render();
+    });
+    container.appendChild(label);
+  });
+}
+
+function buildConnToggles() {
+  const container = document.getElementById('conn-toggles');
+  container.innerHTML = '';
+  Object.entries(CONN_META).forEach(([key, meta]) => {
+    const viewData = VIEWS[state.view];
+    const count = viewData.conns.filter(c => c.type === key).length;
+    if (count === 0) return;
+
+    const label = document.createElement('label');
+    label.className = 'toggle-row';
+    label.innerHTML = `
+      <input type="checkbox" ${state.conns[key] ? 'checked' : ''}>
+      <span class="toggle-indicator" style="color:${meta.color}"></span>
+      <span class="toggle-label">${meta.label}</span>
+      <span class="toggle-count">${count}</span>
+    `;
+    label.querySelector('input').addEventListener('change', (e) => {
+      state.conns[key] = e.target.checked;
+      render();
+    });
+    container.appendChild(label);
+  });
+}
+
+function buildPriorityToggles() {
+  const container = document.getElementById('priority-toggles');
+  container.innerHTML = '';
+  Object.entries(PRIORITY_META).forEach(([key, meta]) => {
+    const label = document.createElement('label');
+    label.className = 'toggle-row';
+    label.innerHTML = `
+      <input type="checkbox" ${state.priority[key] ? 'checked' : ''}>
+      <span class="toggle-indicator" style="color:${meta.color}"></span>
+      <span class="toggle-label">${meta.label}</span>
+    `;
+    label.querySelector('input').addEventListener('change', (e) => {
+      state.priority[key] = e.target.checked;
+      render();
+    });
+    container.appendChild(label);
+  });
+}
+
+// ─── Zoom & Pan ───────────────────────────────────────────────
+function zoomIn() { state.zoom = Math.min(3, state.zoom * 1.2); updateTransform(); }
+function zoomOut() { state.zoom = Math.max(0.3, state.zoom / 1.2); updateTransform(); }
+function zoomReset() { state.zoom = 1; state.panX = 0; state.panY = 0; updateTransform(); }
+
+svg.addEventListener('mousedown', (e) => {
+  if (e.target === svg || e.target === svgGroup) {
+    state.dragging = true;
+    state.dragStart = { x: e.clientX - state.panX, y: e.clientY - state.panY };
+    svg.style.cursor = 'grabbing';
+  }
+});
+
+svg.addEventListener('mousemove', (e) => {
+  if (state.dragging) {
+    state.panX = e.clientX - state.dragStart.x;
+    state.panY = e.clientY - state.dragStart.y;
+    updateTransform();
+  }
+});
+
+svg.addEventListener('mouseup', () => {
+  state.dragging = false;
+  svg.style.cursor = 'grab';
+});
+
+svg.addEventListener('mouseleave', () => {
+  state.dragging = false;
+  svg.style.cursor = 'grab';
+});
+
+svg.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  state.zoom = Math.max(0.3, Math.min(3, state.zoom * delta));
+  updateTransform();
+});
+
+svg.addEventListener('click', (e) => {
+  if (e.target === svg || e.target === svgGroup) {
+    clearSelection();
+  }
+});
+
+// ─── Init ─────────────────────────────────────────────────────
+buildControls();
+render();
+</script>
+</body>
+</html>

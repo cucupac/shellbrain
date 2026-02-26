@@ -75,3 +75,6 @@ pgdata/
 
 # Local Directories
 research/
+
+# AI Directories
+.claude/

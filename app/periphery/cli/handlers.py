@@ -14,7 +14,7 @@ def _error_response(errors: list[ErrorDetail]) -> dict:
     return OperationResult(status="error", errors=errors).model_dump(mode="python")
 
 
-def handle_create(payload: dict, *, uow_factory):
+def handle_create(payload: dict, *, uow_factory, embedding_provider_factory, embedding_model: str):
     """This function validates and dispatches a create payload to the create use-case."""
 
     request, errors = validate_create_schema(payload)
@@ -23,7 +23,13 @@ def handle_create(payload: dict, *, uow_factory):
     assert request is not None
     with uow_factory() as uow:
         try:
-            return execute_create_memory(request, uow).model_dump(mode="python")
+            embedding_provider = embedding_provider_factory()
+            return execute_create_memory(
+                request,
+                uow,
+                embedding_provider=embedding_provider,
+                embedding_model=embedding_model,
+            ).model_dump(mode="python")
         except Exception as exc:  # pragma: no cover - defensive fallback envelope
             return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
 

@@ -12,6 +12,17 @@ from app.core.use_cases.create_memory import execute_create_memory
 from app.core.use_cases.update_memory import execute_update_memory
 
 
+class _StubEmbeddingProvider:
+    """This helper class provides deterministic in-memory embedding vectors for tests."""
+
+    def embed(self, text: str) -> list[float]:
+        """This method returns a stable pseudo-vector derived from input text length."""
+
+        size = 8
+        value = float(len(text) % 10) / 10.0
+        return [value for _ in range(size)]
+
+
 @dataclass
 class _MemoriesRepo:
     """This helper class provides a minimal in-memory memories repository for tests."""
@@ -178,12 +189,18 @@ def test_create_problem_commits_memory_and_evidence() -> None:
         }
     )
 
-    result = execute_create_memory(request, uow)
+    result = execute_create_memory(
+        request,
+        uow,
+        embedding_provider=_StubEmbeddingProvider(),
+        embedding_model="test-embedding-v1",
+    )
     assert result.status == "ok"
     memory_id = result.data["memory_id"]
     assert uow.memories.get(memory_id) is not None
     assert memory_id in uow.memories.embeddings
-    assert len(uow.memories.embeddings[memory_id]["vector"]) == 32
+    assert uow.memories.embeddings[memory_id]["model"] == "test-embedding-v1"
+    assert len(uow.memories.embeddings[memory_id]["vector"]) == 8
     assert len(uow.evidence.memory_links) == 1
 
 
@@ -205,7 +222,12 @@ def test_create_solution_without_problem_id_fails_semantic_gate() -> None:
         }
     )
 
-    result = execute_create_memory(request, uow)
+    result = execute_create_memory(
+        request,
+        uow,
+        embedding_provider=_StubEmbeddingProvider(),
+        embedding_model="test-embedding-v1",
+    )
     assert result.status == "error"
     assert result.errors[0].code.value == "semantic_error"
 

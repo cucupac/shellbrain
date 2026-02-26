@@ -20,7 +20,9 @@ Status: ratified for implementation start.
 ## Storage and retrieval
 
 - Primary database: PostgreSQL 16.
-- Embeddings: pgvector.
+- Embeddings: local sentence-transformers model + pgvector persistence.
+- Embedding write behavior:
+  - `create` writes `memory_embeddings` via configured local sentence-transformers model.
 - Keyword retrieval: PostgreSQL full-text search.
 - Association/dependency traversal: relational link tables + bounded traversal logic.
 
