@@ -1,11 +1,17 @@
 # OS / editor noise
 .DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
 Thumbs.db
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
+*.orig
+*.rej
 
 # Python bytecode and caches
 __pycache__/
@@ -21,6 +27,9 @@ __pycache__/
 .coverage
 .coverage.*
 htmlcov/
+.ipynb_checkpoints/
+.python-version
+.cache/
 
 # Virtual environments
 .venv/
@@ -39,10 +48,15 @@ pip-wheel-metadata/
 # Local environment and secrets
 .env
 .env.*
+!.env.example
 *.local
 
 # Logs and temp files
 *.log
+*.pid
+*.seed
+*.out
+*.err
 logs/
 tmp/
 temp/
@@ -54,6 +68,10 @@ artifacts/
 *.db-*
 *.sqlite
 *.sqlite3
+.local/postgres-data/
+postgres-data/
+pgdata/
+*.tar.gz
 
 # Local Directories
 research/
