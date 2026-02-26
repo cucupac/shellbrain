@@ -718,3 +718,34 @@ What remains open:
 - Final semantic validation matrix publication.
 - Final association traversal/reinforcement numeric defaults.
 - Criteria for escalating from in-process consolidation to queue-backed worker execution.
+
+## 2026-02-25 - Ratified PostgreSQL Durability/Portability Baseline (Docker-Independent Data Persistence)
+
+What changed:
+- Ratified mandatory local durability property for PostgreSQL-backed v1:
+  - memory data must survive container deletion/recreation,
+  - memory data must survive Docker uninstall.
+- Ratified local storage discipline:
+  - PostgreSQL data directory must use a host bind-mounted path (outside container-only filesystem state and outside Docker-managed ephemeral container layers).
+- Ratified portability baseline:
+  - logical export path (`pg_dump` / `pg_dumpall`) is part of v1 operational baseline for moving data across machines/runtimes.
+- Reconciled active storage cards to remove stale SQLite wording and align implementation-facing schema docs with the ratified PostgreSQL substrate.
+- Updated current-state docs to encode this policy in both implementation-facing and ratified digest layers.
+
+Why it changed:
+- To make the persistence guarantee explicit and testable before implementation.
+- To remove ambiguity between "container lifecycle safe" and "Docker uninstall safe" behavior.
+- To ensure storage operations preserve user-owned data independently of container tooling lifecycle.
+
+Files updated:
+- `insights/06-working-set/07-tech-stack-v1.md`
+- `insights/06-working-set/04-db-schema-v1.md`
+- `insights/04-contracts/memory-storage-relational-schema-v1.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Concrete default host bind-mount path conventions per environment (local dev, CI, server).
+- Backup cadence/retention policy for logical exports.
+- Restore runbook details and periodic recovery validation checks.

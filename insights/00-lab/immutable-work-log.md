@@ -325,3 +325,19 @@ Rules:
 - Did not work / risk: final CLI command naming and output envelope schema still open; background worker strategy beyond in-process jobs still open.
 - Open: finalize CLI command map/output envelope and define criteria for escalating to queue-backed worker model.
 - Files touched: `insights/06-working-set/07-tech-stack-v1.md`, `insights/06-working-set/README.md`, `insights/06-working-set/00-manifest-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-02-25 22:18:39 CST
+
+- Proposed: ratify local PostgreSQL durability requirements so data survives container deletion and Docker uninstall.
+- Worked: locked operational durability property for local deployment:
+  - PostgreSQL data directory must be host bind-mounted (outside container-only filesystem state),
+  - container lifecycle operations (delete/recreate) must not be data-destructive.
+- Worked: locked portability baseline:
+  - logical backup/export path (`pg_dump`/`pg_dumpall`) is part of v1 expectations for easy transfer across machines/runtimes.
+- Worked: reconciled stale storage wording so active contract cards match ratified PostgreSQL substrate:
+  - `06-working-set/04-db-schema-v1.md` now states PostgreSQL 16 + pgvector + PostgreSQL FTS,
+  - `04-contracts/memory-storage-relational-schema-v1.md` now carries PostgreSQL-oriented schema contract wording.
+- Worked: synchronized ratified register + working-set tech stack card with the durability/portability policy.
+- Did not work / risk: if host bind-mount path is deleted by user/OS, durability is still lost; backup scheduling/retention policy is not yet ratified.
+- Open: define concrete default host-path conventions and backup cadence/retention policy.
+- Files touched: `insights/04-contracts/memory-storage-relational-schema-v1.md`, `insights/06-working-set/04-db-schema-v1.md`, `insights/06-working-set/07-tech-stack-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.

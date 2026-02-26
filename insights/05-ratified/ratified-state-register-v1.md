@@ -74,7 +74,7 @@ Implementation-facing pack:
   - implicit co-activation reinforcement channel runs under the hood and strengthens/weakens association edges.
 
 ### 6) Storage model
-- SQLite relational v1 is ratified.
+- PostgreSQL 16 relational v1 is ratified.
 - Authoritative immutable tables include memories, links, utility observations, episodes/events/transfers, and evidence references.
 - Formal-association storage is ratified:
   - `association_edges`,
@@ -87,7 +87,7 @@ Implementation-facing pack:
 - Graph behavior is represented through explicit relational link tables.
 
 ### 7) Episodic model
-- Canonical episodic source is SQLite tables (not markdown logs).
+- Canonical episodic source is PostgreSQL tables (not markdown logs).
 - `episodes` is the session container with lifecycle metadata.
 - `episode_events` is one row per individual message/tool call with per-episode ordered sequence.
 - `session_transfers` captures immutable cross-session handoff provenance.
@@ -128,6 +128,9 @@ Implementation-facing pack:
 - Runtime language: Python 3.12.
 - Interface mode: CLI-first, JSON input/output for agent calls.
 - Storage: PostgreSQL 16 with pgvector + PostgreSQL FTS.
+- Durability requirement: data persistence must survive container deletion and Docker uninstall.
+- Local storage discipline: PostgreSQL must use host bind-mounted data directory paths for local runs (not container-only filesystem state).
+- Portability requirement: logical backup/export path (`pg_dump`/`pg_dumpall`) is part of v1 operational baseline.
 - Data/migrations: SQLAlchemy Core + Alembic.
 - Validation/tests: Pydantic v2 + pytest.
 - Execution shape: core memory engine package + thin CLI hydration adapter.

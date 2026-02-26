@@ -24,6 +24,15 @@ Status: ratified for implementation start.
 - Keyword retrieval: PostgreSQL full-text search.
 - Association/dependency traversal: relational link tables + bounded traversal logic.
 
+## Durability and portability requirements
+
+- Mandatory persistence property:
+  - memory data must survive container deletion and Docker uninstall.
+- Local deployment requirement:
+  - PostgreSQL data directory must use a host bind mount path (outside Docker-managed volume lifecycle).
+- Portability requirement:
+  - maintain logical backup/export capability (`pg_dump`/`pg_dumpall`) so data can be moved to another machine/runtime without Docker-coupled state.
+
 ## Data layer and migrations
 
 - SQLAlchemy Core (explicit SQL-oriented data access).

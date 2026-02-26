@@ -1,0 +1,11 @@
+# This file defines default read-policy controls for retrieval and context-pack assembly.
+weights:
+  semantic: 1.0
+  keyword: 1.0
+k_rrf: 20
+limits:
+  default: 20
+expansion:
+  semantic_hops: 2
+  max_association_depth: 2
+  min_association_strength: 0.25

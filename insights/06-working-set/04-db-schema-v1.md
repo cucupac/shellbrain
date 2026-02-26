@@ -4,7 +4,7 @@ Status: locked schema card with a few open policy-level details.
 
 ## Locked
 
-- Relational SQLite v1.
+- Relational PostgreSQL 16 v1 (+ pgvector + PostgreSQL FTS).
 - Core immutable tables:
   - `memories`
   - `problem_attempts`
