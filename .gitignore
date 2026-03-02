@@ -78,3 +78,6 @@ research/
 
 # AI Directories
 .claude/
+
+# Local Directories
+writing/
