@@ -75,9 +75,7 @@ pgdata/
 
 # Local Directories
 research/
+writing/
 
 # AI Directories
 .claude/
-
-# Local Directories
-writing/
