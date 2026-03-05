@@ -21,8 +21,8 @@ def handle_create(payload: dict, *, uow_factory, embedding_provider_factory, emb
     if errors:
         return _error_response(errors)
     assert request is not None
-    with uow_factory() as uow:
-        try:
+    try:
+        with uow_factory() as uow:
             embedding_provider = embedding_provider_factory()
             return execute_create_memory(
                 request,
@@ -30,8 +30,8 @@ def handle_create(payload: dict, *, uow_factory, embedding_provider_factory, emb
                 embedding_provider=embedding_provider,
                 embedding_model=embedding_model,
             ).model_dump(mode="python")
-        except Exception as exc:  # pragma: no cover - defensive fallback envelope
-            return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
+    except Exception as exc:  # pragma: no cover - defensive fallback envelope
+        return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
 
 
 def handle_read(payload: dict, *, uow_factory):
@@ -41,11 +41,11 @@ def handle_read(payload: dict, *, uow_factory):
     if errors:
         return _error_response(errors)
     assert request is not None
-    with uow_factory() as uow:
-        try:
+    try:
+        with uow_factory() as uow:
             return execute_read_memory(request, uow).model_dump(mode="python")
-        except Exception as exc:  # pragma: no cover - defensive fallback envelope
-            return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
+    except Exception as exc:  # pragma: no cover - defensive fallback envelope
+        return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
 
 
 def handle_update(payload: dict, *, uow_factory):
@@ -55,8 +55,8 @@ def handle_update(payload: dict, *, uow_factory):
     if errors:
         return _error_response(errors)
     assert request is not None
-    with uow_factory() as uow:
-        try:
+    try:
+        with uow_factory() as uow:
             return execute_update_memory(request, uow).model_dump(mode="python")
-        except Exception as exc:  # pragma: no cover - defensive fallback envelope
-            return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
+    except Exception as exc:  # pragma: no cover - defensive fallback envelope
+        return _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])

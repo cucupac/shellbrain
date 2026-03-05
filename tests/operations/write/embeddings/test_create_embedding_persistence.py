@@ -71,7 +71,7 @@ def test_create_persists_memory_embedding_row() -> None:
 def _run_alembic_upgrade(dsn: str) -> None:
     """This helper applies latest alembic schema before integration assertions."""
 
-    repo_root = Path(__file__).resolve().parents[2]
+    repo_root = Path(__file__).resolve().parents[4]
     env = dict(os.environ)
     env["MEMORY_DB_DSN"] = dsn
     subprocess.run(

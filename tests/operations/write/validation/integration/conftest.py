@@ -126,7 +126,7 @@ def count_rows(integration_engine: Engine) -> Callable[[str], int]:
 def _run_alembic_upgrade(dsn: str) -> None:
     """Run alembic upgrade head against integration database."""
 
-    repo_root = Path(__file__).resolve().parents[4]
+    repo_root = Path(__file__).resolve().parents[5]
     env = dict(os.environ)
     env["MEMORY_DB_DSN"] = dsn
     subprocess.run(
