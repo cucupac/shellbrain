@@ -7,7 +7,6 @@ on:
 jobs:
   write-validation:
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       db:
         image: pgvector/pgvector:pg16
@@ -44,3 +43,21 @@ jobs:
 
       - name: Run write validation tests
         run: ./scripts/run_write_validation_tests
+
+      - name: Add visualization report to summary
+        if: always()
+        run: |
+          REPORT="tests/visualization/artifacts/write_validation_status.md"
+          if [ -f "$REPORT" ]; then
+            cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Visualization report not found: $REPORT" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload visualization report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: write-validation-status-report
+          path: tests/visualization/artifacts/write_validation_status.md
+          if-no-files-found: warn

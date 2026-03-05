@@ -41,4 +41,4 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run real embedding smoke
-        run: python -m pytest -q tests/integration/test_create_embedding_persistence.py -m real_embedding
+        run: python -m pytest -q tests/operations/write/embeddings/test_create_embedding_persistence.py -m real_embedding

@@ -5,7 +5,7 @@ DEFAULT_DSN="postgresql+psycopg://memory:memory@localhost:5432/memory"
 export MEMORY_DB_DSN_TEST="${MEMORY_DB_DSN_TEST:-$DEFAULT_DSN}"
 export MEMORY_DB_DSN="$MEMORY_DB_DSN_TEST"
 
-python - <<'PY'
+python3 - <<'PY'
 import os
 import time
 from urllib.parse import urlparse, urlunparse
@@ -42,4 +42,4 @@ with psycopg.connect(dsn, autocommit=True) as conn:
 PY
 
 alembic upgrade head
-python -m pytest -q tests/write/validation
+python3 -m pytest -q tests/operations/write/validation
