@@ -1,6 +1,8 @@
 """This integration test validates that create writes embedding rows into PostgreSQL."""
 
 import os
+from pathlib import Path
+import subprocess
 
 import pytest
 from sqlalchemy import select, text
@@ -15,6 +17,7 @@ from app.periphery.db.session import get_session_factory
 from app.periphery.db.uow import PostgresUnitOfWork
 
 
+@pytest.mark.real_embedding
 def test_create_persists_memory_embedding_row() -> None:
     """This test verifies create inserts a memory_embedding row from the local sentence-transformers provider."""
 
@@ -23,10 +26,12 @@ def test_create_persists_memory_embedding_row() -> None:
         pytest.skip("Set MEMORY_DB_DSN_TEST to run PostgreSQL integration tests.")
 
     engine = get_engine(dsn)
+    _run_alembic_upgrade(dsn)
     with engine.begin() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-    target_metadata.drop_all(bind=engine)
-    target_metadata.create_all(bind=engine)
+        table_names = [table.name for table in reversed(target_metadata.sorted_tables)]
+        if table_names:
+            joined = ", ".join(table_names)
+            conn.execute(text(f"TRUNCATE TABLE {joined} RESTART IDENTITY CASCADE;"))
 
     request = MemoryCreateRequest.model_validate(
         {
@@ -61,3 +66,17 @@ def test_create_persists_memory_embedding_row() -> None:
     assert row is not None
     assert row["model"] == "all-MiniLM-L6-v2"
     assert row["dim"] == 384
+
+
+def _run_alembic_upgrade(dsn: str) -> None:
+    """This helper applies latest alembic schema before integration assertions."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    env = dict(os.environ)
+    env["MEMORY_DB_DSN"] = dsn
+    subprocess.run(
+        ["alembic", "upgrade", "head"],
+        check=True,
+        cwd=repo_root,
+        env=env,
+    )

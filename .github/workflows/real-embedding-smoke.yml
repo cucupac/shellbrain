@@ -1,0 +1,44 @@
+name: Write Validation Real Embedding Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  write-validation-real-embedding-smoke:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: memory
+          POSTGRES_USER: memory
+          POSTGRES_PASSWORD: memory
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U memory -d memory"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      MEMORY_DB_DSN: postgresql+psycopg://memory:memory@localhost:5432/memory
+      MEMORY_DB_DSN_TEST: postgresql+psycopg://memory:memory@localhost:5432/memory
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run real embedding smoke
+        run: python -m pytest -q tests/integration/test_create_embedding_persistence.py -m real_embedding
