@@ -4,7 +4,7 @@ from app.core.validation.schema_validation import validate_create_schema, valida
 
 
 def test_create_rejects_unknown_fields() -> None:
-    """create payload should always reject unknown fields."""
+    """create requests should always reject unknown fields."""
 
     payload = {
         "op": "create",
@@ -26,7 +26,7 @@ def test_create_rejects_unknown_fields() -> None:
 
 
 def test_update_rejects_unknown_update_type() -> None:
-    """update payload should always reject unknown update types."""
+    """update requests should always reject unrecognized update.type values."""
 
     payload = {
         "op": "update",
@@ -45,7 +45,7 @@ def test_update_rejects_unknown_update_type() -> None:
 
 
 def test_update_rejects_invalid_operation() -> None:
-    """update payload should always reject invalid op values."""
+    """update requests should always reject op values other than update."""
 
     payload = {
         "op": "create",
@@ -65,7 +65,7 @@ def test_update_rejects_invalid_operation() -> None:
 
 
 def test_schema_enforces_bounds_and_unique_evidence() -> None:
-    """schema should always enforce numeric bounds and unique evidence refs."""
+    """create requests should always enforce confidence bounds and unique evidence refs."""
 
     payload = {
         "op": "create",
@@ -88,7 +88,7 @@ def test_schema_enforces_bounds_and_unique_evidence() -> None:
 
 
 def test_schema_requires_non_empty_evidence_refs() -> None:
-    """schema should always require at least one evidence ref."""
+    """create requests should always require at least one evidence ref."""
 
     payload = {
         "op": "create",

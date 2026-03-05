@@ -1,0 +1,59 @@
+# Tests Status
+
+Generated: 2026-03-05 01:34:05 PST
+
+## Summary
+
+- Total: 35
+- Passed: 35
+- Failed: 0
+- Skipped/Not Run: 0
+
+## write/validation
+
+- ✅ create should always reject problem references that do not exist.
+- ✅ create should always reject problem references outside repo visibility.
+- ✅ create should always require links.problem_id to reference a problem memory.
+- ✅ create should always reject association targets outside repo visibility.
+- ✅ validation failures should always write nothing.
+- ✅ embedding failures should always write nothing.
+- ✅ utility_vote updates should always require a visible problem reference.
+- ✅ utility_vote updates should always require problem_id to reference a problem memory.
+- ✅ fact_update_link updates should always require fact endpoints and a change-memory target.
+- ✅ association_link updates should always reject targets outside repo visibility.
+- ✅ create requests should always reject unknown fields.
+- ✅ update requests should always reject unrecognized update.type values.
+- ✅ update requests should always reject op values other than update.
+- ✅ create requests should always enforce confidence bounds and unique evidence refs.
+- ✅ create requests should always require at least one evidence ref.
+- ✅ solution memories should always include links.problem_id.
+- ✅ failed_tactic memories should always include links.problem_id.
+- ✅ non-attempt kinds should always reject links.problem_id.
+- ✅ create association lists should always reject duplicate target+relation pairs.
+- ✅ association_link updates should always reject self-links.
+- ✅ fact_update_link updates should always require different old_fact_id and new_fact_id.
+
+## write/execution
+
+- ✅ create(problem) should always persist one memory row and no problem_attempt row.
+- ✅ create(solution) should always persist one problem_attempt row with role solution.
+- ✅ create(failed_tactic) should always persist one problem_attempt row with role failed_tactic.
+- ✅ create should always persist one memory_embedding row for the new memory.
+- ✅ create should always attach each evidence ref exactly once in memory_evidence.
+- ✅ create with associations should always persist association_edge and association_observation rows.
+- ✅ create with associations should always link evidence refs in association_edge_evidence.
+- ✅ mid-write side-effect failures should always roll back all prior side effects.
+- ✅ update(archive_state) commit should always change archived state and preserve other memory fields.
+- ✅ update(utility_vote) commit should always append one utility_observation with the provided payload.
+- ✅ update(fact_update_link) commit should always append one fact_update with change_id equal to memory_id.
+- ✅ update(association_link) commit should always persist edge, observation, and edge evidence links.
+- ✅ update(dry_run) should always return planned_side_effects and write nothing.
+- ✅ write plans should always preserve deterministic effect ordering by operation type.
+
+## read
+
+No tests discovered.
+
+## update
+
+No tests discovered.

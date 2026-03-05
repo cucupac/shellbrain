@@ -12,7 +12,7 @@ def test_utility_vote_requires_visible_problem(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
 ) -> None:
-    """utility_vote should always require a visible problem reference."""
+    """utility_vote updates should always require a visible problem reference."""
 
     seed_memory(
         memory_id="target-memory",
@@ -54,7 +54,7 @@ def test_utility_vote_requires_problem_kind(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
 ) -> None:
-    """utility_vote should always require problem_id to reference kind problem."""
+    """utility_vote updates should always require problem_id to reference a problem memory."""
 
     seed_memory(
         memory_id="target-memory",
@@ -96,7 +96,7 @@ def test_fact_update_requires_fact_and_change_kinds(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
 ) -> None:
-    """fact_update_link should always require old/new facts and target kind change."""
+    """fact_update_link updates should always require fact endpoints and a change-memory target."""
 
     seed_memory(
         memory_id="target-not-change",
@@ -147,7 +147,7 @@ def test_association_update_rejects_invisible_target(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
 ) -> None:
-    """association update should always reject targets outside repo visibility."""
+    """association_link updates should always reject targets outside repo visibility."""
 
     seed_memory(
         memory_id="source-memory",

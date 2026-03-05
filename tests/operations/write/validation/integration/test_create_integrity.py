@@ -13,7 +13,7 @@ def test_create_rejects_missing_problem_reference(
     uow_factory: Callable[[], PostgresUnitOfWork],
     stub_embedding_provider: IEmbeddingProvider,
 ) -> None:
-    """create should always reject missing problem references."""
+    """create should always reject problem references that do not exist."""
 
     request = MemoryCreateRequest.model_validate(
         {
@@ -89,7 +89,7 @@ def test_create_rejects_non_problem_reference(
     seed_memory: Callable[..., object],
     stub_embedding_provider: IEmbeddingProvider,
 ) -> None:
-    """create should always require links.problem_id to reference kind problem."""
+    """create should always require links.problem_id to reference a problem memory."""
 
     seed_memory(
         memory_id="fact-1",

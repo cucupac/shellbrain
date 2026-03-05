@@ -11,11 +11,12 @@ from typing import Any
 
 CATEGORY_ROOTS = {
     "write/validation": Path("tests/operations/write/validation"),
+    "write/execution": Path("tests/operations/write/execution"),
     "read": Path("tests/operations/read"),
     "update": Path("tests/operations/update"),
 }
 
-ARTIFACT_PATH = Path("tests/visualization/artifacts/write_validation_status.md")
+ARTIFACT_PATH = Path("tests/visualization/artifacts/tests_status.md")
 
 STATUS_PASSED = "passed"
 STATUS_FAILED = "failed"
@@ -160,7 +161,7 @@ class VisualizationReportPlugin:
         generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
         lines: list[str] = []
-        lines.append("# Write Validation Test Status")
+        lines.append("# Tests Status")
         lines.append("")
         lines.append(f"Generated: {generated}")
         lines.append("")
@@ -172,7 +173,7 @@ class VisualizationReportPlugin:
         lines.append(f"- Skipped/Not Run: {skipped_or_not_run}")
         lines.append("")
 
-        for category in ["write/validation", "read", "update"]:
+        for category in ["write/validation", "write/execution", "read", "update"]:
             lines.append(f"## {category}")
             lines.append("")
             category_rows = [(record, status) for record, status in rows if record.category == category]

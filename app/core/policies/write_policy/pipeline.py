@@ -177,6 +177,7 @@ def _build_create_plan(payload: dict[str, Any], *, embedding_model: str) -> list
 
     for association in (memory.get("links") or {}).get("associations", []):
         confidence = association.get("confidence")
+        salience = association.get("salience")
         plan.append(
             make_side_effect(
                 "association.upsert_and_observe",
@@ -192,7 +193,7 @@ def _build_create_plan(payload: dict[str, Any], *, embedding_model: str) -> list
                     "observation_id": str(uuid4()),
                     "observation_source": "agent_explicit",
                     "valence": confidence if confidence is not None else 0.5,
-                    "salience": association.get("salience", 0.5),
+                    "salience": salience if salience is not None else 0.5,
                     "evidence_refs": list(memory["evidence_refs"]),
                 },
             )
@@ -240,6 +241,7 @@ def _build_update_plan(payload: dict[str, Any]) -> list[dict[str, Any]]:
 
     if update_type == "association_link":
         confidence = update.get("confidence")
+        salience = update.get("salience")
         return [
             make_side_effect(
                 "association.upsert_and_observe",
@@ -255,7 +257,7 @@ def _build_update_plan(payload: dict[str, Any]) -> list[dict[str, Any]]:
                     "observation_id": str(uuid4()),
                     "observation_source": "agent_explicit",
                     "valence": confidence if confidence is not None else 0.5,
-                    "salience": update.get("salience", 0.5),
+                    "salience": salience if salience is not None else 0.5,
                     "evidence_refs": list(update.get("evidence_refs", [])),
                 },
             )
