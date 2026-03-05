@@ -22,7 +22,7 @@ def test_validation_failure_writes_nothing(
     stub_embedding_provider: IEmbeddingProvider,
     count_rows: Callable[[str], int],
 ) -> None:
-    """validation failure should always write nothing."""
+    """validation failures should always write nothing."""
 
     request = MemoryCreateRequest.model_validate(
         {
@@ -56,7 +56,7 @@ def test_embedding_failure_writes_nothing(
     uow_factory: Callable[[], PostgresUnitOfWork],
     count_rows: Callable[[str], int],
 ) -> None:
-    """embedding failure should always write nothing."""
+    """embedding failures should always write nothing."""
 
     payload = {
         "op": "create",

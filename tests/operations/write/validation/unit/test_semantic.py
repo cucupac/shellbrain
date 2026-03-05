@@ -5,7 +5,7 @@ from app.core.validation.semantic_validation import validate_create_semantics, v
 
 
 def test_solution_requires_problem_id() -> None:
-    """solution should always require links.problem_id."""
+    """solution memories should always include links.problem_id."""
 
     request = MemoryCreateRequest.model_validate(
         {
@@ -28,7 +28,7 @@ def test_solution_requires_problem_id() -> None:
 
 
 def test_failed_tactic_requires_problem_id() -> None:
-    """failed_tactic should always require links.problem_id."""
+    """failed_tactic memories should always include links.problem_id."""
 
     request = MemoryCreateRequest.model_validate(
         {
@@ -51,7 +51,7 @@ def test_failed_tactic_requires_problem_id() -> None:
 
 
 def test_non_attempt_kinds_forbid_problem_id() -> None:
-    """problem, fact, preference, and change should always forbid links.problem_id."""
+    """non-attempt kinds should always reject links.problem_id."""
 
     for kind in ["problem", "fact", "preference", "change"]:
         request = MemoryCreateRequest.model_validate(
@@ -76,7 +76,7 @@ def test_non_attempt_kinds_forbid_problem_id() -> None:
 
 
 def test_create_rejects_duplicate_association_pairs() -> None:
-    """create associations should always reject duplicate (to_memory_id, relation_type) pairs."""
+    """create association lists should always reject duplicate target+relation pairs."""
 
     request = MemoryCreateRequest.model_validate(
         {
@@ -104,7 +104,7 @@ def test_create_rejects_duplicate_association_pairs() -> None:
 
 
 def test_update_association_rejects_self_link() -> None:
-    """association update should always reject self-links."""
+    """association_link updates should always reject self-links."""
 
     request = MemoryUpdateRequest.model_validate(
         {
@@ -128,7 +128,7 @@ def test_update_association_rejects_self_link() -> None:
 
 
 def test_fact_update_requires_distinct_old_and_new() -> None:
-    """fact_update_link should always require different old_fact_id and new_fact_id."""
+    """fact_update_link updates should always require different old_fact_id and new_fact_id."""
 
     request = MemoryUpdateRequest.model_validate(
         {

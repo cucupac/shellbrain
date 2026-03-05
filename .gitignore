@@ -64,6 +64,8 @@ temp/
 # Local runtime state for this repo
 .memory/
 artifacts/
+!tests/visualization/artifacts/
+!tests/visualization/artifacts/*.md
 *.db
 *.db-*
 *.sqlite

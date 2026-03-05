@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  write-validation:
+  tests:
     runs-on: ubuntu-latest
     services:
       db:
@@ -41,13 +41,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Run write validation tests
-        run: ./scripts/run_write_validation_tests
+      - name: Run tests
+        run: ./scripts/run_tests
 
       - name: Add visualization report to summary
         if: always()
         run: |
-          REPORT="tests/visualization/artifacts/write_validation_status.md"
+          REPORT="tests/visualization/artifacts/tests_status.md"
           if [ -f "$REPORT" ]; then
             cat "$REPORT" >> "$GITHUB_STEP_SUMMARY"
           else
@@ -58,6 +58,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: write-validation-status-report
-          path: tests/visualization/artifacts/write_validation_status.md
+          name: tests-status-report
+          path: tests/visualization/artifacts/tests_status.md
           if-no-files-found: warn

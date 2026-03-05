@@ -42,4 +42,4 @@ with psycopg.connect(dsn, autocommit=True) as conn:
 PY
 
 alembic upgrade head
-python3 -m pytest -q tests/operations/write/validation
+python3 -m pytest -q tests -m "not real_embedding"
