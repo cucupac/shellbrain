@@ -28,11 +28,27 @@ class MemoryReadRequest(StrictBaseModel):
     op: Literal["read"] = "read"
     repo_id: str
     mode: Literal["ambient", "targeted"]
-    query: str
+    query: str = Field(min_length=1)
     include_global: bool = True
-    kinds: list[str] | None = None
+    kinds: (
+        list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
+    ) = None
     limit: int = Field(default=20, ge=1, le=100)
     expand: ReadExpandRequest = Field(default_factory=ReadExpandRequest)
+
+    @field_validator("kinds")
+    @classmethod
+    def _validate_kinds_unique(
+        cls,
+        value: list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None,
+    ) -> list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None:
+        """This validator enforces unique kinds filters for read requests."""
+
+        if value is None:
+            return value
+        if len(value) != len(set(value)):
+            raise ValueError("kinds must be unique")
+        return value
 
 
 class MemoryCreateAssociationLink(StrictBaseModel):

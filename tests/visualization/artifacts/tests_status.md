@@ -1,13 +1,41 @@
 # Tests Status
 
-Generated: 2026-03-05 01:34:05 PST
+Generated: 2026-03-05 02:18:52 PST
 
 ## Summary
 
-- Total: 35
-- Passed: 35
-- Failed: 0
+- Total: 53
+- Passed: 45
+- Failed: 8
 - Skipped/Not Run: 0
+
+## read/validation
+
+- ✅ read hydration should always infer repo_id and default knobs when omitted.
+- ✅ read hydration should always preserve explicit payload values over inferred defaults.
+- ✅ read requests should always reject unknown fields.
+- ✅ read requests should always reject op values other than read.
+- ✅ read requests should always require non-empty query text.
+- ✅ read requests should always limit kinds filters to ratified memory kinds.
+- ✅ read requests should always require unique kinds filters.
+- ✅ read requests should always enforce limit and expansion knob bounds.
+
+## read/execution
+
+- ✅ read should always be retrieval-only and never mutate database state.
+- ❌ read should always enforce repo visibility and include_global scope rules.
+- ❌ read should always apply kinds as include-only filters.
+- ❌ read should always enforce a hard output cap equal to limit.
+- ✅ read should always return an empty pack when nothing passes retrieval gates.
+- ❌ read should always include linked problem attempts when problem-link expansion is enabled.
+- ❌ read should always include linked fact updates when fact-update expansion is enabled.
+- ❌ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+- ❌ read should always return each memory at most once even if reached by multiple paths.
+- ❌ read should always produce deterministic ordering for the same input and snapshot.
+
+## update
+
+No tests discovered.
 
 ## write/validation
 
@@ -49,11 +77,3 @@ Generated: 2026-03-05 01:34:05 PST
 - ✅ update(association_link) commit should always persist edge, observation, and edge evidence links.
 - ✅ update(dry_run) should always return planned_side_effects and write nothing.
 - ✅ write plans should always preserve deterministic effect ordering by operation type.
-
-## read
-
-No tests discovered.
-
-## update
-
-No tests discovered.

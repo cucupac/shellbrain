@@ -3,12 +3,14 @@
 from app.core.contracts.requests import MemoryReadRequest
 from app.core.contracts.responses import OperationResult
 from app.core.interfaces.unit_of_work import IUnitOfWork
+from app.core.policies.read_policy.pipeline import build_context_pack
 
 
 def execute_read_memory(request: MemoryReadRequest, uow: IUnitOfWork) -> OperationResult:
     """This function orchestrates read flow with retrieval and context-pack policy hooks."""
 
-    # TODO: Run dual-lane retrieval and RRF seed fusion.
-    # TODO: Run bounded expansion and context-pack assembly.
-    _ = (request, uow)
-    return OperationResult(status="ok", data={"todo": "read_memory pipeline not implemented"})
+    # TODO: Thread unit-of-work repositories and query embeddings into policy stages.
+    _ = uow
+    payload = request.model_dump(mode="python")
+    context_pack = build_context_pack(payload)
+    return OperationResult(status="ok", data=context_pack)

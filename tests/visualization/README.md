@@ -8,9 +8,9 @@ The report is updated on every test run and includes:
 
 - one-line intuitive test docstrings
 - `✅`/`❌`/`⚪` status
-- category sections (`write/validation`, `write/execution`, `read`, `update`)
+- category sections computed deterministically from `tests/operations/*` folder paths
+- one-line descriptions computed deterministically from test-function docstring first lines
 - directory mapping:
-  - `tests/operations/write/validation/**` -> `write/validation`
-  - `tests/operations/write/execution/**` -> `write/execution`
-  - `tests/operations/read/**` -> `read`
-  - `tests/operations/update/**` -> `update`
+  - `tests/operations/<operation>/validation/**` -> `<operation>/validation`
+  - `tests/operations/<operation>/execution/**` -> `<operation>/execution`
+  - `tests/operations/<operation>/**` (when no validation/execution split exists) -> `<operation>`
