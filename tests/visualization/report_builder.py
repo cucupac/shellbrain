@@ -3,18 +3,14 @@
 from __future__ import annotations
 
 import ast
-from datetime import datetime
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 
-CATEGORY_ROOTS = {
-    "write/validation": Path("tests/operations/write/validation"),
-    "write/execution": Path("tests/operations/write/execution"),
-    "read": Path("tests/operations/read"),
-    "update": Path("tests/operations/update"),
-}
+OPERATIONS_ROOT = Path("tests/operations")
+SUBCATEGORY_ORDER = ("validation", "execution")
 
 ARTIFACT_PATH = Path("tests/visualization/artifacts/tests_status.md")
 
@@ -40,6 +36,7 @@ class VisualizationReportPlugin:
 
     def __init__(self, root_path: Path) -> None:
         self._root_path = root_path
+        self._categories = self._discover_categories()
         self._discovered = self._discover_tests()
         self._nodeid_to_key: dict[str, str] = {}
         self._status_by_key: dict[str, str] = {}
@@ -110,17 +107,40 @@ class VisualizationReportPlugin:
         """Discover categorized test functions and first-line docstrings from source files."""
 
         discovered: list[DiscoveredTest] = []
+        operations_root = (self._root_path / OPERATIONS_ROOT).resolve()
+        if not operations_root.exists():
+            return discovered
+        allowed_categories = set(self._categories)
 
-        for category, root in CATEGORY_ROOTS.items():
-            absolute_root = self._root_path / root
-            if not absolute_root.exists():
+        for path in sorted(operations_root.rglob("*.py")):
+            if path.name in {"conftest.py", "__init__.py"}:
                 continue
-            for path in sorted(absolute_root.rglob("*.py")):
-                if path.name == "conftest.py":
-                    continue
-                discovered.extend(self._extract_test_functions(path, category))
+            category = _category_from_path(path, operations_root)
+            if category is None or category not in allowed_categories:
+                continue
+            discovered.extend(self._extract_test_functions(path, category))
 
         return discovered
+
+    def _discover_categories(self) -> list[str]:
+        """Discover section categories deterministically from operation folder paths."""
+
+        operations_root = (self._root_path / OPERATIONS_ROOT).resolve()
+        if not operations_root.exists():
+            return []
+
+        categories: list[str] = []
+        for operation_dir in sorted(path for path in operations_root.iterdir() if path.is_dir() and not path.name.startswith("_")):
+            operation_name = operation_dir.name
+            subdirs = {path.name for path in operation_dir.iterdir() if path.is_dir()}
+            added_subcategory = False
+            for subcategory in SUBCATEGORY_ORDER:
+                if subcategory in subdirs:
+                    categories.append(f"{operation_name}/{subcategory}")
+                    added_subcategory = True
+            if not added_subcategory:
+                categories.append(operation_name)
+        return categories
 
     def _extract_test_functions(self, path: Path, category: str) -> list[DiscoveredTest]:
         """Extract test functions and one-line docstrings from a Python module."""
@@ -173,7 +193,7 @@ class VisualizationReportPlugin:
         lines.append(f"- Skipped/Not Run: {skipped_or_not_run}")
         lines.append("")
 
-        for category in ["write/validation", "write/execution", "read", "update"]:
+        for category in self._categories:
             lines.append(f"## {category}")
             lines.append("")
             category_rows = [(record, status) for record, status in rows if record.category == category]
@@ -236,3 +256,21 @@ def _escape_markdown(value: str) -> str:
     """Escape markdown characters used by list syntax."""
 
     return value.replace("|", "\\|")
+
+
+def _category_from_path(path: Path, operations_root: Path) -> str | None:
+    """Resolve category from a test file path under tests/operations."""
+
+    try:
+        parts = path.resolve().relative_to(operations_root).parts
+    except Exception:
+        return None
+
+    if len(parts) < 2:
+        return None
+    operation = parts[0]
+    if operation.startswith("_"):
+        return None
+    if len(parts) >= 3 and parts[1] in SUBCATEGORY_ORDER:
+        return f"{operation}/{parts[1]}"
+    return operation
