@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-06 02:15:43 PST
+Generated: 2026-03-06 02:22:39 PST
 
 ## Summary
 
-- Total: 72
-- Passed: 72
+- Total: 73
+- Passed: 73
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -35,6 +35,7 @@ Generated: 2026-03-06 02:15:43 PST
 - ✅ read should always fuse semantic and keyword direct hits without duplicating shared memories.
 - ✅ read should always expand implicit semantic neighbors only up to semantic_hops depth.
 - ✅ read should always keep semantic ordering deterministic for the same input and snapshot.
+- ✅ read should always exclude archived memories from direct retrieval and all expansion paths.
 - ✅ read should always return each memory at most once even if reached by multiple paths.
 - ✅ read should always produce deterministic ordering for the same input and snapshot.
 

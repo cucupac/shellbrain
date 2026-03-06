@@ -293,6 +293,175 @@ def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
     assert _item_ids(first) == _item_ids(second)
 
 
+def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion_paths(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_read_embedding: Callable[..., None],
+    seed_problem_attempt_link: Callable[..., None],
+    seed_fact_update_link: Callable[..., None],
+    seed_association_edge: Callable[..., None],
+    stub_vector_search: Callable[[dict[str, list[float]]], IVectorSearch],
+    semantic_retrieval_override_factory: Callable[..., object],
+) -> None:
+    """read should always exclude archived memories from direct retrieval and all expansion paths."""
+
+    seed_read_memory(
+        memory_id="visible-problem",
+        repo_id="repo-a",
+        scope="repo",
+        kind="problem",
+        text_value="archived probe visible problem anchor",
+    )
+    seed_read_memory(
+        memory_id="archived-direct",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="archived probe archived direct memory",
+        archived=True,
+    )
+    seed_read_embedding(memory_id="archived-direct", vector=[1.0, 0.0, 0.0, 0.0])
+
+    seed_read_memory(
+        memory_id="visible-solution",
+        repo_id="repo-a",
+        scope="repo",
+        kind="solution",
+        text_value="visible solution without query overlap",
+    )
+    seed_read_memory(
+        memory_id="archived-failed-tactic",
+        repo_id="repo-a",
+        scope="repo",
+        kind="failed_tactic",
+        text_value="archived failed tactic without query overlap",
+        archived=True,
+    )
+    seed_problem_attempt_link(problem_id="visible-problem", attempt_id="visible-solution", role="solution")
+    seed_problem_attempt_link(problem_id="visible-problem", attempt_id="archived-failed-tactic", role="failed_tactic")
+
+    seed_read_memory(
+        memory_id="visible-old-fact",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="archived probe visible fact anchor",
+    )
+    seed_read_memory(
+        memory_id="visible-change",
+        repo_id="repo-a",
+        scope="repo",
+        kind="change",
+        text_value="visible change without query overlap",
+    )
+    seed_read_memory(
+        memory_id="archived-new-fact",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="archived replacement fact without query overlap",
+        archived=True,
+    )
+    seed_fact_update_link(
+        link_id="fact-link-archived",
+        old_fact_id="visible-old-fact",
+        change_id="visible-change",
+        new_fact_id="archived-new-fact",
+    )
+
+    seed_read_memory(
+        memory_id="visible-assoc-anchor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="archived probe visible association anchor",
+    )
+    seed_read_memory(
+        memory_id="visible-assoc-neighbor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="visible association neighbor without query overlap",
+    )
+    seed_read_memory(
+        memory_id="archived-assoc-neighbor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="archived association neighbor without query overlap",
+        archived=True,
+    )
+    seed_association_edge(
+        edge_id="edge-visible",
+        repo_id="repo-a",
+        from_memory_id="visible-assoc-anchor",
+        to_memory_id="visible-assoc-neighbor",
+        relation_type="associated_with",
+        strength=0.9,
+    )
+    seed_association_edge(
+        edge_id="edge-archived",
+        repo_id="repo-a",
+        from_memory_id="visible-assoc-anchor",
+        to_memory_id="archived-assoc-neighbor",
+        relation_type="associated_with",
+        strength=0.9,
+    )
+
+    seed_read_memory(
+        memory_id="visible-semantic-anchor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="latent anchor without shared query tokens",
+    )
+    seed_read_memory(
+        memory_id="visible-semantic-neighbor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="visible latent neighbor without shared query tokens",
+    )
+    seed_read_memory(
+        memory_id="archived-semantic-neighbor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="archived latent neighbor without shared query tokens",
+        archived=True,
+    )
+    seed_read_embedding(memory_id="visible-semantic-anchor", vector=[1.0, 0.0, 0.0, 0.0])
+    seed_read_embedding(memory_id="visible-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0])
+    seed_read_embedding(memory_id="archived-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0])
+
+    request = _make_read_request(
+        repo_id="repo-a",
+        query="archived probe",
+        expand={"semantic_hops": 1},
+    )
+    result = _execute_read_with_semantic_override(
+        request,
+        uow_factory=uow_factory,
+        vector_search=stub_vector_search({"archived probe": [1.0, 0.0, 0.0, 0.0]}),
+        semantic_retrieval_override_factory=semantic_retrieval_override_factory,
+    )
+
+    ids = _item_ids(result)
+    assert "visible-problem" in ids
+    assert "visible-solution" in ids
+    assert "visible-old-fact" in ids
+    assert "visible-change" in ids
+    assert "visible-assoc-anchor" in ids
+    assert "visible-assoc-neighbor" in ids
+    assert "visible-semantic-anchor" in ids
+    assert "visible-semantic-neighbor" in ids
+    assert "archived-direct" not in ids
+    assert "archived-failed-tactic" not in ids
+    assert "archived-new-fact" not in ids
+    assert "archived-assoc-neighbor" not in ids
+    assert "archived-semantic-neighbor" not in ids
+
+
 def _execute_read_with_semantic_override(
     request: MemoryReadRequest,
     *,
