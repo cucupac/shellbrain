@@ -10,6 +10,7 @@ from app.core.interfaces.repos import (
     IExperiencesRepo,
     IKeywordRetrievalRepo,
     IMemoriesRepo,
+    IReadPolicyRepo,
     ISemanticRetrievalRepo,
     IUtilityRepo,
 )
@@ -26,6 +27,7 @@ class IUnitOfWork(ABC):
     evidence: IEvidenceRepo
     semantic_retrieval: ISemanticRetrievalRepo
     keyword_retrieval: IKeywordRetrievalRepo
+    read_policy: IReadPolicyRepo
 
     @abstractmethod
     def __enter__(self) -> Self:
