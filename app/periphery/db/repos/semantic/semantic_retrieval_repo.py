@@ -27,3 +27,18 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         # TODO: Implement pgvector similarity query with scope/kind filters.
         _ = (repo_id, include_global, query_vector, kinds, limit)
         return []
+
+    def list_semantic_neighbors(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        anchor_memory_id: str,
+        kinds: Sequence[str] | None,
+        limit: int | None = None,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns implicit semantic neighbors for one anchor memory."""
+
+        # TODO: Implement pgvector neighbor expansion with visibility and kind filters.
+        _ = (repo_id, include_global, anchor_memory_id, kinds, limit)
+        return []

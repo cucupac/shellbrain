@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-06 01:48:59 PST
+Generated: 2026-03-06 02:15:43 PST
 
 ## Summary
 
-- Total: 67
-- Passed: 67
+- Total: 72
+- Passed: 72
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -30,6 +30,11 @@ Generated: 2026-03-06 01:48:59 PST
 - ✅ read should always include linked problem attempts when problem-link expansion is enabled.
 - ✅ read should always include linked fact updates when fact-update expansion is enabled.
 - ✅ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+- ✅ read should always return semantic seed matches when lexical retrieval misses.
+- ✅ read should always apply repo visibility, include_global, and kinds filters before admitting semantic matches.
+- ✅ read should always fuse semantic and keyword direct hits without duplicating shared memories.
+- ✅ read should always expand implicit semantic neighbors only up to semantic_hops depth.
+- ✅ read should always keep semantic ordering deterministic for the same input and snapshot.
 - ✅ read should always return each memory at most once even if reached by multiple paths.
 - ✅ read should always produce deterministic ordering for the same input and snapshot.
 
