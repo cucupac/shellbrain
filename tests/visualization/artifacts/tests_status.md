@@ -1,12 +1,12 @@
 # Tests Status
 
-Generated: 2026-03-06 00:19:31 PST
+Generated: 2026-03-06 00:55:59 PST
 
 ## Summary
 
-- Total: 62
-- Passed: 53
-- Failed: 9
+- Total: 67
+- Passed: 59
+- Failed: 8
 - Skipped/Not Run: 0
 
 ## read/validation
@@ -37,13 +37,21 @@ Generated: 2026-03-06 00:19:31 PST
 
 - ✅ update requests should always require memory_id to reference a visible memory.
 - ✅ utility_vote updates should always require problem_id to reference a visible problem memory.
-- ❌ fact_update_link updates should always require visible fact endpoints and memory_id to reference a visible change memory.
+- ✅ fact_update_link updates should always require visible fact endpoints and memory_id to reference a visible change memory.
 - ✅ association_link updates should always require to_memory_id to reference a visible memory.
 - ✅ rejected update requests should always write nothing.
 - ✅ update hydration should always infer repo_id and default commit mode when omitted.
 - ✅ update hydration should always preserve explicit repo_id and mode over inferred defaults.
 - ✅ association_link updates should always reject self-links.
 - ✅ fact_update_link updates should always require distinct fact endpoints and reserve memory_id for the change memory.
+
+## update/execution
+
+- ✅ preview-only updates should always describe the writes they would make and then make no writes.
+- ✅ archiving a memory should always change only its archived flag.
+- ✅ non-archiving updates should always leave the original memory row unchanged.
+- ✅ each update type should always write only its own kind of related record.
+- ✅ failed update execution should always roll back every partial write.
 
 ## write/validation
 
