@@ -110,6 +110,18 @@ class ISemanticRetrievalRepo(ABC):
     ) -> Sequence[dict[str, Any]]:
         """This method returns semantic retrieval candidates with scores."""
 
+    @abstractmethod
+    def list_semantic_neighbors(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        anchor_memory_id: str,
+        kinds: Sequence[str] | None,
+        limit: int | None = None,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns implicit semantic neighbors for one anchor memory."""
+
 
 class IKeywordRetrievalRepo(ABC):
     """This interface defines keyword-lane retrieval against FTS indexes."""

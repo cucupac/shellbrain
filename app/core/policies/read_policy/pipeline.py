@@ -27,7 +27,12 @@ def build_context_pack(
         keyword_retrieval=keyword_retrieval,
     )
     direct_candidates = fuse_with_rrf(seeds["semantic"], seeds["keyword"])
-    expanded_candidates = expand_candidates(direct_candidates, payload, read_policy=read_policy)
+    expanded_candidates = expand_candidates(
+        direct_candidates,
+        payload,
+        read_policy=read_policy,
+        semantic_retrieval=semantic_retrieval,
+    )
     bucketed_candidates = {
         "direct": direct_candidates,
         "explicit": expanded_candidates["explicit"],

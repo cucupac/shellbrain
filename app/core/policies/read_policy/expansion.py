@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.core.interfaces.repos import IReadPolicyRepo
+from app.core.interfaces.repos import IReadPolicyRepo, ISemanticRetrievalRepo
 
 
 def expand_candidates(
@@ -10,15 +10,18 @@ def expand_candidates(
     payload: dict[str, Any],
     *,
     read_policy: IReadPolicyRepo,
+    semantic_retrieval: ISemanticRetrievalRepo,
 ) -> dict[str, list[dict[str, Any]]]:
     """This function expands direct candidates via explicit links and semantic neighbors."""
 
     explicit: list[dict[str, Any]] = []
+    implicit: list[dict[str, Any]] = []
     expand = payload.get("expand", {})
     repo_id = payload["repo_id"]
     include_global = payload.get("include_global", True)
     kinds = payload.get("kinds")
     min_strength = expand.get("min_association_strength", 0.25)
+    semantic_hops = int(expand.get("semantic_hops", 0))
 
     for direct_candidate in direct_candidates:
         anchor_memory_id = direct_candidate["memory_id"]
@@ -73,4 +76,34 @@ def expand_candidates(
                     }
                 )
 
-    return {"explicit": explicit, "implicit": []}
+        if semantic_hops > 0:
+            seen_memory_ids = {str(anchor_memory_id)}
+            frontier = [str(anchor_memory_id)]
+            for hop in range(1, semantic_hops + 1):
+                next_frontier: list[str] = []
+                for frontier_memory_id in frontier:
+                    for neighbor in semantic_retrieval.list_semantic_neighbors(
+                        repo_id=repo_id,
+                        include_global=include_global,
+                        anchor_memory_id=frontier_memory_id,
+                        kinds=kinds,
+                        limit=payload.get("limit"),
+                    ):
+                        neighbor_memory_id = str(neighbor["memory_id"])
+                        if neighbor_memory_id in seen_memory_ids:
+                            continue
+                        seen_memory_ids.add(neighbor_memory_id)
+                        next_frontier.append(neighbor_memory_id)
+                        implicit.append(
+                            {
+                                "memory_id": neighbor_memory_id,
+                                "anchor_memory_id": anchor_memory_id,
+                                "expansion_type": "semantic_neighbor",
+                                "score": anchor_score * float(neighbor["score"]) / hop,
+                            }
+                        )
+                frontier = next_frontier
+                if not frontier:
+                    break
+
+    return {"explicit": explicit, "implicit": implicit}
