@@ -111,12 +111,28 @@ def validate_update_integrity(request: MemoryUpdateRequest, uow: IUnitOfWork) ->
         new_fact, new_errors = _require_memory(uow, memory_id=update.new_fact_id, field="update.new_fact_id")
         errors.extend(old_errors)
         errors.extend(new_errors)
+        if old_fact and not _is_visible(old_fact, request.repo_id):
+            errors.append(
+                ErrorDetail(
+                    code=ErrorCode.INTEGRITY_ERROR,
+                    message="old_fact_id is not visible for this repo_id",
+                    field="update.old_fact_id",
+                )
+            )
         if old_fact and old_fact.kind != MemoryKind.FACT:
             errors.append(
                 ErrorDetail(
                     code=ErrorCode.INTEGRITY_ERROR,
                     message="old_fact_id must reference a fact memory",
                     field="update.old_fact_id",
+                )
+            )
+        if new_fact and not _is_visible(new_fact, request.repo_id):
+            errors.append(
+                ErrorDetail(
+                    code=ErrorCode.INTEGRITY_ERROR,
+                    message="new_fact_id is not visible for this repo_id",
+                    field="update.new_fact_id",
                 )
             )
         if new_fact and new_fact.kind != MemoryKind.FACT:
