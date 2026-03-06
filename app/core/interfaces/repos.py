@@ -99,7 +99,15 @@ class ISemanticRetrievalRepo(ABC):
     """This interface defines semantic-lane retrieval against embeddings."""
 
     @abstractmethod
-    def query_semantic(self, *, repo_id: str, query_vector: Sequence[float], kinds: Sequence[str] | None, limit: int) -> Sequence[dict[str, Any]]:
+    def query_semantic(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        query_vector: Sequence[float],
+        kinds: Sequence[str] | None,
+        limit: int,
+    ) -> Sequence[dict[str, Any]]:
         """This method returns semantic retrieval candidates with scores."""
 
 
@@ -107,5 +115,51 @@ class IKeywordRetrievalRepo(ABC):
     """This interface defines keyword-lane retrieval against FTS indexes."""
 
     @abstractmethod
-    def query_keyword(self, *, repo_id: str, query_text: str, kinds: Sequence[str] | None, limit: int) -> Sequence[dict[str, Any]]:
+    def query_keyword(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        query_text: str,
+        kinds: Sequence[str] | None,
+        limit: int,
+    ) -> Sequence[dict[str, Any]]:
         """This method returns lexical retrieval candidates with scores."""
+
+
+class IReadPolicyRepo(ABC):
+    """This interface defines read-path visibility and explicit expansion queries."""
+
+    @abstractmethod
+    def list_problem_attempt_neighbors(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        anchor_memory_id: str,
+        kinds: Sequence[str] | None,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns visible problem-attempt neighbors for an anchor memory."""
+
+    @abstractmethod
+    def list_fact_update_neighbors(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        anchor_memory_id: str,
+        kinds: Sequence[str] | None,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns visible fact-update neighbors for an anchor memory."""
+
+    @abstractmethod
+    def list_association_neighbors(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        anchor_memory_id: str,
+        kinds: Sequence[str] | None,
+        min_strength: float,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns visible association neighbors for an anchor memory."""

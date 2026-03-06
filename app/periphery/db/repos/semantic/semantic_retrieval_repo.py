@@ -13,9 +13,17 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
 
         self._session = session
 
-    def query_semantic(self, *, repo_id: str, query_vector: Sequence[float], kinds: Sequence[str] | None, limit: int) -> Sequence[dict[str, Any]]:
+    def query_semantic(
+        self,
+        *,
+        repo_id: str,
+        include_global: bool,
+        query_vector: Sequence[float],
+        kinds: Sequence[str] | None,
+        limit: int,
+    ) -> Sequence[dict[str, Any]]:
         """This method returns semantic candidates and similarity scores."""
 
         # TODO: Implement pgvector similarity query with scope/kind filters.
-        _ = (repo_id, query_vector, kinds, limit)
+        _ = (repo_id, include_global, query_vector, kinds, limit)
         return []

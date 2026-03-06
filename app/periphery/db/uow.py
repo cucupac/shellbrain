@@ -6,6 +6,7 @@ from app.periphery.db.repos.relational.episodes_repo import EpisodesRepo
 from app.periphery.db.repos.relational.evidence_repo import EvidenceRepo
 from app.periphery.db.repos.relational.experiences_repo import ExperiencesRepo
 from app.periphery.db.repos.relational.memories_repo import MemoriesRepo
+from app.periphery.db.repos.relational.read_policy_repo import ReadPolicyRepo
 from app.periphery.db.repos.relational.utility_repo import UtilityRepo
 from app.periphery.db.repos.semantic.keyword_retrieval_repo import KeywordRetrievalRepo
 from app.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
@@ -32,6 +33,7 @@ class PostgresUnitOfWork(IUnitOfWork):
         self.evidence = EvidenceRepo(self._session)
         self.semantic_retrieval = SemanticRetrievalRepo(self._session)
         self.keyword_retrieval = KeywordRetrievalRepo(self._session)
+        self.read_policy = ReadPolicyRepo(self._session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

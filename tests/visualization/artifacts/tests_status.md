@@ -1,12 +1,12 @@
 # Tests Status
 
-Generated: 2026-03-06 00:55:59 PST
+Generated: 2026-03-06 01:48:59 PST
 
 ## Summary
 
 - Total: 67
-- Passed: 59
-- Failed: 8
+- Passed: 67
+- Failed: 0
 - Skipped/Not Run: 0
 
 ## read/validation
@@ -23,15 +23,15 @@ Generated: 2026-03-06 00:55:59 PST
 ## read/execution
 
 - ✅ read should always be retrieval-only and never mutate database state.
-- ❌ read should always enforce repo visibility and include_global scope rules.
-- ❌ read should always apply kinds as include-only filters.
-- ❌ read should always enforce a hard output cap equal to limit.
+- ✅ read should always enforce repo visibility and include_global scope rules.
+- ✅ read should always apply kinds as include-only filters.
+- ✅ read should always enforce a hard output cap equal to limit.
 - ✅ read should always return an empty pack when nothing passes retrieval gates.
-- ❌ read should always include linked problem attempts when problem-link expansion is enabled.
-- ❌ read should always include linked fact updates when fact-update expansion is enabled.
-- ❌ read should always include linked association neighbors only when enabled and edge strength passes threshold.
-- ❌ read should always return each memory at most once even if reached by multiple paths.
-- ❌ read should always produce deterministic ordering for the same input and snapshot.
+- ✅ read should always include linked problem attempts when problem-link expansion is enabled.
+- ✅ read should always include linked fact updates when fact-update expansion is enabled.
+- ✅ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+- ✅ read should always return each memory at most once even if reached by multiple paths.
+- ✅ read should always produce deterministic ordering for the same input and snapshot.
 
 ## update/validation
 
