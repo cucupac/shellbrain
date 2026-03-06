@@ -1,12 +1,12 @@
 # Tests Status
 
-Generated: 2026-03-05 02:18:52 PST
+Generated: 2026-03-06 00:19:31 PST
 
 ## Summary
 
-- Total: 53
-- Passed: 45
-- Failed: 8
+- Total: 62
+- Passed: 53
+- Failed: 9
 - Skipped/Not Run: 0
 
 ## read/validation
@@ -33,9 +33,17 @@ Generated: 2026-03-05 02:18:52 PST
 - ❌ read should always return each memory at most once even if reached by multiple paths.
 - ❌ read should always produce deterministic ordering for the same input and snapshot.
 
-## update
+## update/validation
 
-No tests discovered.
+- ✅ update requests should always require memory_id to reference a visible memory.
+- ✅ utility_vote updates should always require problem_id to reference a visible problem memory.
+- ❌ fact_update_link updates should always require visible fact endpoints and memory_id to reference a visible change memory.
+- ✅ association_link updates should always require to_memory_id to reference a visible memory.
+- ✅ rejected update requests should always write nothing.
+- ✅ update hydration should always infer repo_id and default commit mode when omitted.
+- ✅ update hydration should always preserve explicit repo_id and mode over inferred defaults.
+- ✅ association_link updates should always reject self-links.
+- ✅ fact_update_link updates should always require distinct fact endpoints and reserve memory_id for the change memory.
 
 ## write/validation
 
