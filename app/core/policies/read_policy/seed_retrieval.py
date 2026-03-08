@@ -31,6 +31,7 @@ def retrieve_seeds(
     keyword = list(
         keyword_retrieval.query_keyword(
             repo_id=repo_id,
+            mode=payload["mode"],
             include_global=include_global,
             query_text=query_text,
             kinds=kinds,

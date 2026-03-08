@@ -50,7 +50,7 @@ def test_read_enforces_repo_visibility_and_include_global_scope(
         repo_id="repo-a",
         scope="global",
         kind="preference",
-        text_value="Global preference for deployment rollback.",
+        text_value="Global preference for deployment issue rollback.",
     )
     seed_read_memory(
         memory_id="repo-b-problem",
@@ -200,4 +200,3 @@ def _item_ids(result) -> list[str]:
     assert result.status == "ok"
     assert "items" in result.data
     return [item["memory_id"] for item in result.data["items"]]
-

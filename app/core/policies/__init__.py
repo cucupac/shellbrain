@@ -1,1 +1,1 @@
-"""This package defines core read and write policy pipelines."""
+"""This package defines core create, read, and update policy packages."""
