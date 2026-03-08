@@ -14,6 +14,7 @@ from app.core.interfaces.repos import (
     ISemanticRetrievalRepo,
     IUtilityRepo,
 )
+from app.core.interfaces.retrieval import IVectorSearch
 
 
 class IUnitOfWork(ABC):
@@ -28,6 +29,7 @@ class IUnitOfWork(ABC):
     semantic_retrieval: ISemanticRetrievalRepo
     keyword_retrieval: IKeywordRetrievalRepo
     read_policy: IReadPolicyRepo
+    vector_search: IVectorSearch | None
 
     @abstractmethod
     def __enter__(self) -> Self:

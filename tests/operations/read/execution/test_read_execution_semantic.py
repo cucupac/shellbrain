@@ -472,6 +472,7 @@ def _execute_read_with_semantic_override(
     """Execute one read request with a deterministic semantic retrieval override."""
 
     with uow_factory() as uow:
+        uow.vector_search = vector_search
         uow.semantic_retrieval = semantic_retrieval_override_factory(
             session=uow._session,
             vector_search=vector_search,

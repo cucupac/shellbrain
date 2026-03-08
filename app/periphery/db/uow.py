@@ -1,5 +1,8 @@
 """This module defines a PostgreSQL-backed unit-of-work implementation with repo bindings."""
 
+from collections.abc import Callable
+
+from app.core.interfaces.retrieval import IVectorSearch
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.periphery.db.repos.relational.associations_repo import AssociationsRepo
 from app.periphery.db.repos.relational.episodes_repo import EpisodesRepo
@@ -15,16 +18,26 @@ from app.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetr
 class PostgresUnitOfWork(IUnitOfWork):
     """This class coordinates transaction boundaries and repository lifecycle."""
 
-    def __init__(self, session_factory) -> None:
-        """This method stores a session factory used to create transaction sessions."""
+    def __init__(
+        self,
+        session_factory,
+        *,
+        vector_search_factory: Callable[[], IVectorSearch] | None = None,
+    ) -> None:
+        """Store factories used to create one transaction scope and its read dependencies."""
 
         self._session_factory = session_factory
+        self._vector_search_factory = vector_search_factory
         self._session = None
+        self.vector_search = None
 
     def __enter__(self):
         """This method opens a DB session and binds repositories to it."""
 
         self._session = self._session_factory()
+        self.vector_search = (
+            self._vector_search_factory() if self._vector_search_factory is not None else None
+        )
         self.memories = MemoriesRepo(self._session)
         self.experiences = ExperiencesRepo(self._session)
         self.associations = AssociationsRepo(self._session)
@@ -45,6 +58,7 @@ class PostgresUnitOfWork(IUnitOfWork):
             self.rollback()
         if self._session is not None:
             self._session.close()
+        self.vector_search = None
 
     def commit(self) -> None:
         """This method commits the active SQLAlchemy session."""

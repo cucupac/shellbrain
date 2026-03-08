@@ -3,6 +3,7 @@
 from typing import Any
 
 from app.core.interfaces.repos import IKeywordRetrievalRepo, IReadPolicyRepo, ISemanticRetrievalRepo
+from app.core.interfaces.retrieval import IVectorSearch
 from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
 from app.core.policies.read_policy.expansion import expand_candidates
 from app.core.policies.read_policy.fusion_rrf import fuse_with_rrf
@@ -18,6 +19,7 @@ def build_context_pack(
     keyword_retrieval: IKeywordRetrievalRepo,
     semantic_retrieval: ISemanticRetrievalRepo,
     read_policy: IReadPolicyRepo,
+    vector_search: IVectorSearch | None,
 ) -> dict[str, Any]:
     """This function orchestrates ratified read-policy stages into a final pack."""
 
@@ -25,6 +27,7 @@ def build_context_pack(
         payload,
         semantic_retrieval=semantic_retrieval,
         keyword_retrieval=keyword_retrieval,
+        vector_search=vector_search,
     )
     direct_candidates = fuse_with_rrf(seeds["semantic"], seeds["keyword"])
     expanded_candidates = expand_candidates(
