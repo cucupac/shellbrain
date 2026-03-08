@@ -11,7 +11,7 @@ Supersession:
 Contents:
 - `00-manifest-v1.md`
 - `01-agent-interface-v1.md`
-- `02-write-policy-v1.md`
+- `02-write-policy-v1.md` (create/update policy)
 - `03-read-policy-v1.md`
 - `04-db-schema-v1.md`
 - `05-validation-rules-v1.md`

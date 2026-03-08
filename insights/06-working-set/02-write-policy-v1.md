@@ -1,18 +1,18 @@
-# Write Policy v1
+# Create and Update Policy v1
 
 Status: locked at high level; final semantic matrix details still pending.
 
 ## Locked
 
 - Routing:
-  - `create` -> Write Policy
-  - `update` -> Write Policy
+  - `create` -> Create Policy
+  - `update` -> Update Policy
 - Ordered gates:
   1. schema validity
   2. semantic validity
   3. DB integrity validity
 - Atomicity:
-  - accepted write-path requests commit in one transaction or fully abort.
+  - accepted create/update requests commit in one transaction or fully abort.
 - Strict create evidence:
   - `evidence_refs >= 1` for all create kinds.
 - Ergonomic adapter evidence hydration:

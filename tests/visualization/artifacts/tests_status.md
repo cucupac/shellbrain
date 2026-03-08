@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-06 02:22:39 PST
+Generated: 2026-03-08 01:12:44 PST
 
 ## Summary
 
-- Total: 73
-- Passed: 73
+- Total: 81
+- Passed: 81
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -30,12 +30,20 @@ Generated: 2026-03-06 02:22:39 PST
 - ✅ read should always include linked problem attempts when problem-link expansion is enabled.
 - ✅ read should always include linked fact updates when fact-update expansion is enabled.
 - ✅ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+- ✅ keyword retrieval should always admit high-coverage partial matches while rejecting low-coverage generic partial matches.
+- ✅ keyword retrieval should always be stricter for ambient reads than for targeted reads.
+- ✅ keyword retrieval should always rank denser shorter matches ahead of verbose matches.
+- ✅ keyword retrieval should always gate the visible lexical corpus before scoring.
+- ✅ keyword retrieval should always break equal-score ties by memory identifier.
 - ✅ read should always return semantic seed matches when lexical retrieval misses.
 - ✅ read should always apply repo visibility, include_global, and kinds filters before admitting semantic matches.
 - ✅ read should always fuse semantic and keyword direct hits without duplicating shared memories.
 - ✅ read should always expand implicit semantic neighbors only up to semantic_hops depth.
 - ✅ read should always keep semantic ordering deterministic for the same input and snapshot.
 - ✅ read should always exclude archived memories from direct retrieval and all expansion paths.
+- ✅ read should always return visible semantic matches through the real semantic lane when lexical retrieval misses.
+- ✅ read should always apply archived, repo visibility, include_global, and kinds filters in the real semantic lane.
+- ✅ read should always expand semantic neighbors through the real semantic lane only up to semantic_hops depth.
 - ✅ read should always return each memory at most once even if reached by multiple paths.
 - ✅ read should always produce deterministic ordering for the same input and snapshot.
 

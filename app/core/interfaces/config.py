@@ -12,8 +12,12 @@ class IConfigProvider(ABC):
         """This method returns read-policy configuration values."""
 
     @abstractmethod
-    def get_write_policy(self) -> dict[str, Any]:
-        """This method returns write-policy configuration values."""
+    def get_create_policy(self) -> dict[str, Any]:
+        """This method returns create-policy configuration values."""
+
+    @abstractmethod
+    def get_update_policy(self) -> dict[str, Any]:
+        """This method returns update-policy configuration values."""
 
     @abstractmethod
     def get_thresholds(self) -> dict[str, Any]:

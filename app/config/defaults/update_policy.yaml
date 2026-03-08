@@ -1,0 +1,6 @@
+# This file defines default update-policy controls for deterministic side-effect planning.
+gates:
+  - schema
+  - semantic
+  - integrity
+atomicity: true

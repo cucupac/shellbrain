@@ -1,6 +1,6 @@
 """Write plan ordering contracts for deterministic side-effect sequencing."""
 
-from app.core.policies.write_policy.pipeline import build_write_plan
+from app.core.policies.create_policy.pipeline import build_create_plan
 
 
 def test_write_plan_preserves_deterministic_effect_ordering_by_operation_type() -> None:
@@ -37,8 +37,8 @@ def test_write_plan_preserves_deterministic_effect_ordering_by_operation_type() 
         "association.upsert_and_observe",
     ]
 
-    first_plan = build_write_plan(payload, embedding_model="stub-v1")
-    second_plan = build_write_plan(payload, embedding_model="stub-v1")
+    first_plan = build_create_plan(payload, embedding_model="stub-v1")
+    second_plan = build_create_plan(payload, embedding_model="stub-v1")
 
     assert [effect["effect_type"] for effect in first_plan] == expected_effect_types
     assert [effect["effect_type"] for effect in second_plan] == expected_effect_types

@@ -50,7 +50,7 @@ Status: ratified for implementation start.
 - Pydantic v2 for request/response schema validation.
 - pytest for:
   - contract tests,
-  - read/write policy tests,
+  - create/read/update policy tests,
   - retrieval/context-pack behavior tests.
 
 ## CLI expectations

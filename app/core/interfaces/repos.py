@@ -124,13 +124,14 @@ class ISemanticRetrievalRepo(ABC):
 
 
 class IKeywordRetrievalRepo(ABC):
-    """This interface defines keyword-lane retrieval against FTS indexes."""
+    """This interface defines keyword-lane retrieval against the lexical relevance engine."""
 
     @abstractmethod
     def query_keyword(
         self,
         *,
         repo_id: str,
+        mode: str,
         include_global: bool,
         query_text: str,
         kinds: Sequence[str] | None,

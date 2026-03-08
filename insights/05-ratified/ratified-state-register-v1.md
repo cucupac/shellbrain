@@ -28,7 +28,8 @@ Implementation-facing pack:
 - External interface verbs are conceptually `create`, `read`, `update`.
 - Policy routing is fixed:
   - `read` -> Read Policy.
-  - `create` and `update` -> Write Policy.
+  - `create` -> Create Policy.
+  - `update` -> Update Policy.
 - Validation layer sits directly below interface and enforces:
   - schema validity,
   - semantic write/read policy validity,
@@ -67,7 +68,7 @@ Implementation-facing pack:
   - create `change`,
   - create replacement `fact`,
   - link via `fact_update_link`.
-- Create-path evidence policy is strict in Write Policy v1:
+- Create-path evidence policy is strict in Create Policy v1:
   - `evidence_refs >= 1` for all create kinds (preferences may cite user/session evidence).
 - Formal-association write path is ratified:
   - explicit links authored by agent via `create.links.associations[]` or `update.association_link`,
