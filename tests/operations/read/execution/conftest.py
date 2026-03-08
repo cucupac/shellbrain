@@ -15,6 +15,7 @@ from app.core.interfaces.retrieval import IVectorSearch
 from app.periphery.db.models.associations import association_edges
 from app.periphery.db.models.experiences import fact_updates, problem_attempts
 from app.periphery.db.models.memories import memories, memory_embeddings
+from app.periphery.db.uow import PostgresUnitOfWork
 
 from tests.operations._shared.integration_db_fixtures import *  # noqa: F401,F403
 
@@ -32,6 +33,29 @@ _TABLES_FOR_MUTATION_CHECK = (
     "utility_observations",
     "evidence_refs",
 )
+
+
+class _DefaultVectorSearch(IVectorSearch):
+    """Deterministic default query-vector provider for live read-path tests."""
+
+    def embed_query(self, text: str) -> list[float]:
+        """Return a non-empty stable vector for any read query."""
+
+        _ = text
+        return [1.0, 0.0, 0.0, 0.0]
+
+
+@pytest.fixture
+def uow_factory(integration_session_factory) -> Callable[[], PostgresUnitOfWork]:
+    """Provide a read-path unit of work with deterministic query-vector wiring."""
+
+    def _factory() -> PostgresUnitOfWork:
+        return PostgresUnitOfWork(
+            integration_session_factory,
+            vector_search_factory=_DefaultVectorSearch,
+        )
+
+    return _factory
 
 
 @pytest.fixture

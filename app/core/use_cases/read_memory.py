@@ -15,5 +15,6 @@ def execute_read_memory(request: MemoryReadRequest, uow: IUnitOfWork) -> Operati
         keyword_retrieval=uow.keyword_retrieval,
         semantic_retrieval=uow.semantic_retrieval,
         read_policy=uow.read_policy,
+        vector_search=uow.vector_search,
     )
     return OperationResult(status="ok", data=context_pack)

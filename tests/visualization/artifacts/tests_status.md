@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-08 01:12:44 PST
+Generated: 2026-03-08 03:01:27 PDT
 
 ## Summary
 
-- Total: 81
-- Passed: 81
+- Total: 84
+- Passed: 84
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -44,6 +44,9 @@ Generated: 2026-03-08 01:12:44 PST
 - ✅ read should always return visible semantic matches through the real semantic lane when lexical retrieval misses.
 - ✅ read should always apply archived, repo visibility, include_global, and kinds filters in the real semantic lane.
 - ✅ read should always expand semantic neighbors through the real semantic lane only up to semantic_hops depth.
+- ✅ read should always return semantic direct matches through the live query-embedding seam when lexical retrieval misses.
+- ✅ read should always fuse live semantic seeds with keyword direct hits without duplicates.
+- ✅ read should always surface query-embedding failure as a structured read error rather than silently dropping the semantic lane.
 - ✅ read should always return each memory at most once even if reached by multiple paths.
 - ✅ read should always produce deterministic ordering for the same input and snapshot.
 

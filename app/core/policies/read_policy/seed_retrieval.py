@@ -3,6 +3,7 @@
 from typing import Any
 
 from app.core.interfaces.repos import IKeywordRetrievalRepo, ISemanticRetrievalRepo
+from app.core.interfaces.retrieval import IVectorSearch
 
 
 def retrieve_seeds(
@@ -10,6 +11,7 @@ def retrieve_seeds(
     *,
     semantic_retrieval: ISemanticRetrievalRepo,
     keyword_retrieval: IKeywordRetrievalRepo,
+    vector_search: IVectorSearch | None,
 ) -> dict[str, list[dict[str, Any]]]:
     """This function retrieves initial semantic and keyword candidate seeds."""
 
@@ -18,12 +20,17 @@ def retrieve_seeds(
     kinds = payload.get("kinds")
     limit = payload.get("limit", 20)
     query_text = payload["query"]
+    query_vector = (
+        list(vector_search.embed_query(query_text))
+        if vector_search is not None
+        else []
+    )
 
     semantic = list(
         semantic_retrieval.query_semantic(
             repo_id=repo_id,
             include_global=include_global,
-            query_vector=[],
+            query_vector=query_vector,
             kinds=kinds,
             limit=limit,
         )
