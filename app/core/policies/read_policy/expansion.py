@@ -25,7 +25,7 @@ def expand_candidates(
 
     for direct_candidate in direct_candidates:
         anchor_memory_id = direct_candidate["memory_id"]
-        anchor_score = float(direct_candidate["score"])
+        anchor_score = float(direct_candidate.get("rrf_score", direct_candidate.get("score", 0.0)))
 
         if expand.get("include_problem_links", True):
             for neighbor in read_policy.list_problem_attempt_neighbors(
@@ -38,8 +38,9 @@ def expand_candidates(
                     {
                         "memory_id": neighbor["memory_id"],
                         "anchor_memory_id": anchor_memory_id,
+                        "anchor_score": anchor_score,
+                        "depth": 1,
                         "expansion_type": neighbor["expansion_type"],
-                        "score": anchor_score,
                     }
                 )
 
@@ -54,8 +55,9 @@ def expand_candidates(
                     {
                         "memory_id": neighbor["memory_id"],
                         "anchor_memory_id": anchor_memory_id,
+                        "anchor_score": anchor_score,
+                        "depth": 1,
                         "expansion_type": neighbor["expansion_type"],
-                        "score": anchor_score,
                     }
                 )
 
@@ -71,8 +73,10 @@ def expand_candidates(
                     {
                         "memory_id": neighbor["memory_id"],
                         "anchor_memory_id": anchor_memory_id,
+                        "anchor_score": anchor_score,
+                        "depth": 1,
                         "expansion_type": neighbor["expansion_type"],
-                        "score": anchor_score * float(neighbor["strength"]),
+                        "relation_strength": float(neighbor["strength"]),
                     }
                 )
 
@@ -98,8 +102,10 @@ def expand_candidates(
                             {
                                 "memory_id": neighbor_memory_id,
                                 "anchor_memory_id": anchor_memory_id,
+                                "anchor_score": anchor_score,
+                                "hop": hop,
                                 "expansion_type": "semantic_neighbor",
-                                "score": anchor_score * float(neighbor["score"]) / hop,
+                                "neighbor_similarity": float(neighbor["score"]),
                             }
                         )
                 frontier = next_frontier

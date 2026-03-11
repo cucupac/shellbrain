@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-08 03:01:27 PDT
+Generated: 2026-03-11 16:39:56 PDT
 
 ## Summary
 
-- Total: 84
-- Passed: 84
+- Total: 95
+- Passed: 95
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -35,6 +35,17 @@ Generated: 2026-03-08 03:01:27 PDT
 - ✅ keyword retrieval should always rank denser shorter matches ahead of verbose matches.
 - ✅ keyword retrieval should always gate the visible lexical corpus before scoring.
 - ✅ keyword retrieval should always break equal-score ties by memory identifier.
+- ✅ read scoring should always preserve RRF ordering for fused direct seeds.
+- ✅ read scoring should always rank a dual-lane hit above single-lane hits.
+- ✅ read scoring should always break equal RRF scores by memory identifier.
+- ✅ read scoring should always rank shallower explicit candidates above deeper ones.
+- ✅ read scoring should always rank stronger association edges above weaker ones.
+- ✅ read scoring should always ignore relation strength for non-association explicit links.
+- ✅ read scoring should always rank higher-similarity implicit candidates above lower ones.
+- ✅ read scoring should always rank lower-hop implicit candidates above higher-hop ones.
+- ✅ read scoring should always return raw explicit metadata for downstream scoring.
+- ✅ read scoring should always return raw implicit metadata for downstream scoring.
+- ✅ read scoring should always order competing expanded candidates via the scoring stage.
 - ✅ read should always return semantic seed matches when lexical retrieval misses.
 - ✅ read should always apply repo visibility, include_global, and kinds filters before admitting semantic matches.
 - ✅ read should always fuse semantic and keyword direct hits without duplicating shared memories.

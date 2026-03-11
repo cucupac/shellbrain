@@ -11,6 +11,7 @@ Status: locked structure, open numeric defaults.
   - gating,
   - ranking,
   - spillover ordering.
+- `global_utility` is not used in online read ranking in v1; the earlier tie-break idea was dropped as over-engineering.
 - Expansion types:
   - explicit link expansion (`problem_attempts`, `fact_updates`)
   - explicit formal association-link expansion (`association_edges`)

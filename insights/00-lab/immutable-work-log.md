@@ -341,3 +341,13 @@ Rules:
 - Did not work / risk: if host bind-mount path is deleted by user/OS, durability is still lost; backup scheduling/retention policy is not yet ratified.
 - Open: define concrete default host-path conventions and backup cadence/retention policy.
 - Files touched: `insights/04-contracts/memory-storage-relational-schema-v1.md`, `insights/06-working-set/04-db-schema-v1.md`, `insights/06-working-set/07-tech-stack-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-03-11 16:20:10 PDT
+
+- Proposed: simplify read-policy ranking by removing the planned utility-based near-tie adjustment.
+- Worked: superseded the earlier utility-prior read-ranking idea and documented that choice as over-engineering for v1.
+- Worked: clarified that online read ranking remains driven by retrieval relevance, RRF fusion, expansion scoring, and deterministic pack assembly only.
+- Worked: preserved `global_utility` as optional historical metadata for possible offline analysis or future non-ranking uses.
+- Did not work / risk: future product surfaces that want to expose utility will need a separate ratified purpose and should not silently re-enter online ranking.
+- Open: finalize pack quotas, expansion/ranking knobs, update-chain depth defaults, and scenario projection boundaries.
+- Files touched: `insights/03-refinements/read-policy-context-pack-v1.md`, `insights/06-working-set/03-read-policy-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.

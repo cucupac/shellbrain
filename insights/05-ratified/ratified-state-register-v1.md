@@ -106,10 +106,9 @@ Implementation-facing pack:
 - Explicit-link expansion includes formal association links from `association_edges`.
 - No separate association-read interface is added; association traversal is integrated inside the existing read-policy expansion step.
 - Scenario lift is ratified as derived read abstraction and write-path projection dependency.
-- Global utility prior is weak and late-stage only:
-  - never used for threshold gating,
-  - never rescues irrelevant memories,
-  - applied only for near-tie/tie-break ordering.
+- `global_utility` is not part of online read ranking in v1.
+- Earlier utility tie-break / near-tie nudge plans are superseded as over-engineering for the current retrieval system.
+- Retrieval ordering remains grounded in direct-seed fusion, bucket-local expansion scoring, and deterministic pack assembly.
 
 ### 9) Semantic-matrix shaping constraints (ratified pre-lock)
 - Do not hard-enforce `global` scope restriction to `preference` until separately ratified.
@@ -153,16 +152,11 @@ Implementation-facing pack:
   - `N_direct`, `N_explicit`, `N_implicit`, `N_scenario`.
 - Final default for `max_update_chain_depth`.
 - Final scenario projection schema names/fields and constructor trigger boundaries.
-- Final utility-prior numeric defaults:
-  - `lambda_utility`,
-  - near-tie band width,
-  - final `alpha_utility`.
 - Final defaults for association traversal/ranking knobs:
   - `max_association_depth`,
   - `max_association_fanout`,
   - `min_association_strength`,
   - relation/source weighting.
-- Whether near-tie behavior is shared or mode-specific (`ambient` vs `targeted`).
 - Final published semantic validation matrix by operation/kind and optional DB-trigger enforcement scope.
 - Future alias policy if interface names are ever changed.
 

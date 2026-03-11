@@ -749,3 +749,36 @@ What remains open:
 - Concrete default host bind-mount path conventions per environment (local dev, CI, server).
 - Backup cadence/retention policy for logical exports.
 - Restore runbook details and periodic recovery validation checks.
+
+## 2026-03-11 - Simplified Read Policy: Removed Utility Tie-Break from Online Ranking
+
+Card updated:
+- `03-refinements/read-policy-context-pack-v1.md`
+
+What changed:
+- Ratified that `global_utility` is not part of online read ranking in v1.
+- Superseded the earlier utility-prior / near-tie tie-break plan as over-engineering for the current retrieval system.
+- Clarified that online read ordering stays grounded in:
+  - threshold gating,
+  - RRF direct-seed ranking,
+  - explicit/implicit expansion scoring,
+  - deterministic bounded pack assembly.
+- Preserved `global_utility` only as optional historical metadata for possible offline analysis, maintenance heuristics, or future product surfaces.
+
+Why it changed:
+- The read path already has enough structure with semantic + keyword retrieval, RRF fusion, expansion scoring, and pack assembly.
+- Adding utility-time nudging would introduce extra tuning surface and stale-memory bias without enough practical benefit.
+- The simpler design better matches the project principle that current relevance should lead retrieval behavior.
+
+Files updated:
+- `insights/03-refinements/read-policy-context-pack-v1.md`
+- `insights/06-working-set/03-read-policy-v1.md`
+- `insights/05-ratified/ratified-state-register-v1.md`
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Final per-mode context-pack quota values (`N_direct`, `N_explicit`, `N_implicit`, `N_scenario`).
+- Final default for `max_update_chain_depth`.
+- Final defaults for association traversal/ranking knobs.
+- Final scenario projection schema names/fields and constructor trigger boundaries.

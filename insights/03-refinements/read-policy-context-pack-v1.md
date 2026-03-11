@@ -104,31 +104,16 @@ scenario_score = max(member_score) + scenario_support_weight * ln(1 + matched_me
   - scenario ranking and tie-breaks.
 - No separate association-read operation is introduced; association traversal is internal to this read-path expansion phase.
 
-## Global utility prior usage (ratified v1 direction)
+## Global utility stance (revised v1 direction)
 
-- `global_utility` is used as a weak prior, not a primary relevance signal.
-- It cannot make irrelevant memories eligible and cannot bypass threshold gates.
-- It is applied late in candidate ordering as a tie-breaker/near-tie nudger.
-
-Per-memory prior from observations:
-
-```text
-u_shrunk = utility_mean * (obs / (obs + lambda_utility))
-```
-
-- `utility_mean` and `obs` come from `global_utility`.
-- `lambda_utility` controls shrinkage for low-observation memories.
-- Fewer observations => stronger shrink toward 0.
-
-Late-stage ordering adjustment:
-
-```text
-final_score = base_score + alpha_utility * u_shrunk
-```
-
-- `base_score` is the read-path score before utility prior.
-- `alpha_utility` is small (suggested v1: `0.05`).
-- Apply this only inside the same bucket and near-tie band; do not reorder across large score gaps.
+- `global_utility` may still exist as derived historical metadata, but it is not part of online read ranking in v1.
+- The earlier tie-break / near-tie utility-prior idea is removed as over-engineering for the current system.
+- Online read ranking should remain driven by:
+  - threshold gating,
+  - RRF direct-seed ordering,
+  - explicit/implicit expansion scoring,
+  - bounded context-pack assembly.
+- `global_utility` is reserved for possible offline analysis, maintenance heuristics, or future product surfaces rather than retrieval-time ordering.
 
 ## Formal association traversal policy (ratified structure)
 
@@ -154,6 +139,7 @@ For `fact_updates` expansion:
 - Preserves deterministic, bounded context packing.
 - Uses scenario abstraction as a higher-level retrieval lens without making scenario an authoritative storage primitive.
 - Keeps a small number of tunable knobs.
+- Avoids introducing a stale-helpfulness bias into online retrieval ordering.
 
 ## Write-policy dependency: scenario constructor (ratified)
 
@@ -174,5 +160,4 @@ For `fact_updates` expansion:
 - Final defaults for relation ranking weights:
   - `relation_type_weight`,
   - `source_weight` (agent/confirmed vs implicit/tentative).
-- Final defaults for `lambda_utility`, near-tie band width, and `alpha_utility`.
 - Final scenario projection schema names/fields and constructor trigger boundaries.
