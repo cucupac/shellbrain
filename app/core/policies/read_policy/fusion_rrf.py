@@ -23,12 +23,12 @@ def fuse_with_rrf(semantic: list[dict[str, Any]], keyword: list[dict[str, Any]])
                 memory_id,
                 {
                     "memory_id": memory_id,
-                    "score": 0.0,
+                    "rrf_score": 0.0,
                     "rank_semantic": None,
                     "rank_keyword": None,
                 },
             )
             entry[f"rank_{lane_name}"] = rank
-            entry["score"] += lane_weights[lane_name] / (k_rrf + rank)
+            entry["rrf_score"] += lane_weights[lane_name] / (k_rrf + rank)
 
-    return sorted(fused.values(), key=lambda item: (-float(item["score"]), str(item["memory_id"])))
+    return sorted(fused.values(), key=lambda item: (-float(item["rrf_score"]), str(item["memory_id"])))
