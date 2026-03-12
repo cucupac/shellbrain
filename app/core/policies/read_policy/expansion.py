@@ -77,6 +77,7 @@ def expand_candidates(
                         "depth": 1,
                         "expansion_type": neighbor["expansion_type"],
                         "relation_strength": float(neighbor["strength"]),
+                        "relation_type": neighbor["relation_type"],
                     }
                 )
 

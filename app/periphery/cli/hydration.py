@@ -18,7 +18,13 @@ def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defa
     merged.setdefault("repo_id", inferred_repo_id)
     merged.setdefault("mode", defaults.get("default_mode", "targeted"))
     merged.setdefault("include_global", defaults.get("include_global", True))
-    merged.setdefault("limit", defaults.get("limit", 20))
+    if "limit" not in merged:
+        mode = str(merged["mode"])
+        limits_by_mode = defaults.get("limits_by_mode")
+        if isinstance(limits_by_mode, dict):
+            merged["limit"] = limits_by_mode.get(mode, defaults.get("limit", 20))
+        else:
+            merged["limit"] = defaults.get("limit", 20)
     merged.setdefault(
         "expand",
         {

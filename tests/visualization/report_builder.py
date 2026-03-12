@@ -129,18 +129,14 @@ class VisualizationReportPlugin:
         if not operations_root.exists():
             return []
 
-        categories: list[str] = []
-        for operation_dir in sorted(path for path in operations_root.iterdir() if path.is_dir() and not path.name.startswith("_")):
-            operation_name = operation_dir.name
-            subdirs = {path.name for path in operation_dir.iterdir() if path.is_dir()}
-            added_subcategory = False
-            for subcategory in SUBCATEGORY_ORDER:
-                if subcategory in subdirs:
-                    categories.append(f"{operation_name}/{subcategory}")
-                    added_subcategory = True
-            if not added_subcategory:
-                categories.append(operation_name)
-        return categories
+        categories: set[str] = set()
+        for path in sorted(operations_root.rglob("*.py")):
+            if path.name in {"conftest.py", "__init__.py"}:
+                continue
+            category = _category_from_path(path, operations_root)
+            if category is not None:
+                categories.add(category)
+        return sorted(categories, key=_category_sort_key)
 
     def _extract_test_functions(self, path: Path, category: str) -> list[DiscoveredTest]:
         """Extract test functions and one-line docstrings from a Python module."""
@@ -272,5 +268,18 @@ def _category_from_path(path: Path, operations_root: Path) -> str | None:
     if operation.startswith("_"):
         return None
     if len(parts) >= 3 and parts[1] in SUBCATEGORY_ORDER:
-        return f"{operation}/{parts[1]}"
+        suffix_parts = [operation, parts[1], *parts[2:-1]]
+        return "/".join(suffix_parts)
     return operation
+
+
+def _category_sort_key(category: str) -> tuple[object, ...]:
+    """Return a stable sort key that keeps parent sections before nested sections."""
+
+    parts = category.split("/")
+    operation = parts[0]
+    remainder = parts[1:]
+    subcategory = remainder[0] if remainder else ""
+    subcategory_index = SUBCATEGORY_ORDER.index(subcategory) if subcategory in SUBCATEGORY_ORDER else len(SUBCATEGORY_ORDER)
+    nested = remainder[1:] if len(remainder) > 1 else []
+    return (operation, subcategory_index, len(nested), tuple(nested))

@@ -41,6 +41,24 @@ class MemoriesRepo(IMemoriesRepo):
         row = self._session.execute(select(memories).where(memories.c.id == memory_id)).mappings().first()
         if row is None:
             return None
+        return self._to_memory(row)
+
+    def list_by_ids(self, ids: Sequence[str]) -> Sequence[Memory]:
+        """This method loads visible memory records in the caller's identifier order."""
+
+        unique_ids = list(dict.fromkeys(str(memory_id) for memory_id in ids))
+        if not unique_ids:
+            return []
+        rows = self._session.execute(select(memories).where(memories.c.id.in_(unique_ids))).mappings().all()
+        memories_by_id = {
+            str(row["id"]): self._to_memory(row)
+            for row in rows
+        }
+        return [memories_by_id[memory_id] for memory_id in unique_ids if memory_id in memories_by_id]
+
+    def _to_memory(self, row) -> Memory:
+        """Convert one relational row into the canonical memory entity."""
+
         return Memory(
             id=row["id"],
             repo_id=row["repo_id"],

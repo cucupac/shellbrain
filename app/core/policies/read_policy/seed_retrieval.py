@@ -18,7 +18,7 @@ def retrieve_seeds(
     repo_id = payload["repo_id"]
     include_global = payload.get("include_global", True)
     kinds = payload.get("kinds")
-    limit = payload.get("limit", 20)
+    limit = int(payload.get("limit", 20))
     query_text = payload["query"]
     query_vector = (
         list(vector_search.embed_query(query_text))

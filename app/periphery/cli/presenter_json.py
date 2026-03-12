@@ -5,6 +5,6 @@ from typing import Any
 
 
 def render(payload: dict[str, Any]) -> str:
-    """This function renders payloads as deterministic sorted JSON output."""
+    """This function renders payloads as deterministic compact JSON output."""
 
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return json.dumps(payload, separators=(",", ":"))
