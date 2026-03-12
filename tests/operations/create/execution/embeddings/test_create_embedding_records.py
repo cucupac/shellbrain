@@ -24,7 +24,6 @@ def test_create_persists_memory_embedding_row(
                 "text": "Embedding target memory.",
                 "scope": "repo",
                 "kind": "fact",
-                "confidence": 0.8,
                 "evidence_refs": ["session://1"],
             },
         }

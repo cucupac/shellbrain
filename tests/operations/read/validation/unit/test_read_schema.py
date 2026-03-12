@@ -8,8 +8,6 @@ def test_read_rejects_unknown_fields() -> None:
 
     payload = {
         "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
         "query": "find deployment issue memory",
         "unknown": "nope",
     }
@@ -25,8 +23,6 @@ def test_read_rejects_invalid_operation() -> None:
 
     payload = {
         "op": "create",
-        "repo_id": "repo-a",
-        "mode": "targeted",
         "query": "find deployment issue memory",
     }
 
@@ -41,8 +37,6 @@ def test_read_requires_non_empty_query() -> None:
 
     payload = {
         "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
         "query": "",
     }
 
@@ -58,8 +52,6 @@ def test_read_kinds_reject_non_ratified_values() -> None:
 
     payload = {
         "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
         "query": "find deployment issue memory",
         "kinds": ["problem", "unknown_kind"],
     }
@@ -76,8 +68,6 @@ def test_read_kinds_reject_duplicates() -> None:
 
     payload = {
         "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
         "query": "find deployment issue memory",
         "kinds": ["problem", "problem"],
     }
@@ -89,19 +79,17 @@ def test_read_kinds_reject_duplicates() -> None:
     assert any((error.field or "").startswith("kinds") for error in errors)
 
 
-def test_read_enforces_limit_and_expand_bounds() -> None:
-    """read requests should always enforce limit and expansion knob bounds."""
+def test_read_rejects_config_override_knobs_at_agent_interface() -> None:
+    """read requests should always reject config override knobs at the agent interface."""
 
     payload = {
         "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
         "query": "find deployment issue memory",
-        "limit": 0,
+        "mode": "ambient",
+        "include_global": False,
+        "limit": 99,
         "expand": {
-            "semantic_hops": 4,
-            "max_association_depth": 0,
-            "min_association_strength": 1.1,
+            "semantic_hops": 0,
         },
     }
 
@@ -109,7 +97,7 @@ def test_read_enforces_limit_and_expand_bounds() -> None:
 
     assert request is None
     fields = {error.field for error in errors}
+    assert "mode" in fields
+    assert "include_global" in fields
     assert "limit" in fields
-    assert "expand.semantic_hops" in fields
-    assert "expand.max_association_depth" in fields
-    assert "expand.min_association_strength" in fields
+    assert "expand" in fields

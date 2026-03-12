@@ -35,7 +35,6 @@ def apply_side_effects(
                     scope=MemoryScope(str(params["scope"])),
                     kind=MemoryKind(str(params["kind"])),
                     text=str(params["text"]),
-                    create_confidence=params["confidence"],  # type: ignore[arg-type]
                 )
             )
             continue

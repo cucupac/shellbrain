@@ -27,7 +27,6 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
                 "text": "Evidence attachment memory.",
                 "scope": "repo",
                 "kind": "preference",
-                "confidence": 0.9,
                 "evidence_refs": ["session://1", "session://2"],
             },
         }
@@ -73,7 +72,6 @@ def test_create_association_links_attach_edge_evidence(
                 "text": "Association source memory.",
                 "scope": "repo",
                 "kind": "problem",
-                "confidence": 0.8,
                 "links": {
                     "associations": [
                         {

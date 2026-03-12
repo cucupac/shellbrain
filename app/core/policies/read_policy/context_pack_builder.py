@@ -17,7 +17,7 @@ _BUCKET_PRIORITY = {bucket_name: index for index, bucket_name in enumerate(_BUCK
 def assemble_context_pack(scored_candidates: dict[str, list[dict[str, Any]]], payload: dict[str, Any]) -> dict[str, Any]:
     """This function assembles a final context pack from bucketed candidate groups."""
 
-    mode = str(payload.get("mode", "targeted"))
+    mode = str(payload["mode"])
     limit = resolve_read_limit(mode=mode, explicit_limit=payload.get("limit"))
     quotas = resolve_read_quotas(mode=mode)
     sorted_buckets = {

@@ -135,7 +135,24 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
 
     monkeypatch.setattr("app.core.use_cases.read_memory.build_context_pack", _build_context_pack_raising)
 
-    result = handle_read(_make_read_payload(query="latent semantic regression"), uow_factory=uow_factory)
+    result = handle_read(
+        {"query": "latent semantic regression"},
+        uow_factory=uow_factory,
+        inferred_repo_id="repo-a",
+        defaults={
+            "default_mode": "targeted",
+            "include_global": True,
+            "limits_by_mode": {"targeted": 8, "ambient": 12},
+            "expand": {
+                "semantic_hops": 2,
+                "include_problem_links": False,
+                "include_fact_update_links": False,
+                "include_association_links": False,
+                "max_association_depth": 2,
+                "min_association_strength": 0.25,
+            },
+        },
+    )
 
     assert result["status"] == "error"
     assert result["errors"] == [

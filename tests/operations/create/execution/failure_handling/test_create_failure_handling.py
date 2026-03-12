@@ -26,13 +26,10 @@ def test_validation_failure_writes_nothing(
     """validation failures should always write nothing."""
 
     payload = {
-        "op": "create",
-        "repo_id": "repo-a",
         "memory": {
             "text": "Invalid solution payload.",
             "scope": "repo",
             "kind": "solution",
-            "confidence": 0.7,
             "evidence_refs": ["session://1"],
         },
     }
@@ -42,6 +39,8 @@ def test_validation_failure_writes_nothing(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -57,13 +56,10 @@ def test_embedding_failure_writes_nothing(
     """embedding failures should always write nothing."""
 
     payload = {
-        "op": "create",
-        "repo_id": "repo-a",
         "memory": {
             "text": "Create path with failing embedding.",
             "scope": "repo",
             "kind": "problem",
-            "confidence": 0.7,
             "evidence_refs": ["session://1"],
         },
     }
@@ -73,6 +69,8 @@ def test_embedding_failure_writes_nothing(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: _FailingEmbeddingProvider(),
         embedding_model="failing-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -95,7 +93,6 @@ def test_side_effect_failure_mid_write_rolls_back_all_prior_effects(
                 "text": "Create memory with failing embedding side effect.",
                 "scope": "repo",
                 "kind": "problem",
-                "confidence": 0.8,
                 "evidence_refs": ["session://1"],
             },
         }

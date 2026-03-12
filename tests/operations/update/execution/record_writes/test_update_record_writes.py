@@ -301,7 +301,6 @@ def _make_update_request(
     repo_id: str,
     memory_id: str,
     update: dict[str, object],
-    mode: str = "commit",
 ) -> MemoryUpdateRequest:
     """Build a valid update request with caller-provided payload."""
 
@@ -310,7 +309,6 @@ def _make_update_request(
             "op": "update",
             "repo_id": repo_id,
             "memory_id": memory_id,
-            "mode": mode,
             "update": update,
         }
     )

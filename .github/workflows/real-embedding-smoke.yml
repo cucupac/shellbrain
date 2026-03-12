@@ -24,6 +24,7 @@ jobs:
     env:
       MEMORY_DB_DSN: postgresql+psycopg://memory:memory@localhost:5432/memory
       MEMORY_DB_DSN_TEST: postgresql+psycopg://memory:memory@localhost:5432/memory
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
 
     steps:
       - name: Checkout
@@ -35,10 +36,17 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Cache embedding model downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/huggingface
+          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('requirements.txt', 'app/config/defaults/runtime.yaml') }}
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
       - name: Run real embedding smoke
-        run: python -m pytest -q tests/operations/write/embeddings/test_create_embedding_persistence.py -m real_embedding
+        run: python -m pytest -q tests/operations/create/execution/embeddings/test_create_embedding_persistence.py -m real_embedding

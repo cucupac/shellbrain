@@ -13,13 +13,10 @@ def test_create_rejects_missing_problem_reference(
     """create should always reject problem references that do not exist."""
 
     payload = {
-        "op": "create",
-        "repo_id": "repo-a",
         "memory": {
             "text": "Candidate solution.",
             "scope": "repo",
             "kind": "solution",
-            "confidence": 0.8,
             "links": {"problem_id": "problem-missing"},
             "evidence_refs": ["session://1"],
         },
@@ -30,6 +27,8 @@ def test_create_rejects_missing_problem_reference(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -51,13 +50,10 @@ def test_create_rejects_invisible_problem_reference(
     )
 
     payload = {
-        "op": "create",
-        "repo_id": "repo-a",
         "memory": {
             "text": "Candidate solution.",
             "scope": "repo",
             "kind": "solution",
-            "confidence": 0.8,
             "links": {"problem_id": "problem-hidden"},
             "evidence_refs": ["session://1"],
         },
@@ -68,6 +64,8 @@ def test_create_rejects_invisible_problem_reference(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -89,13 +87,10 @@ def test_create_rejects_non_problem_reference(
     )
 
     payload = {
-        "op": "create",
-        "repo_id": "repo-a",
         "memory": {
             "text": "Candidate solution.",
             "scope": "repo",
             "kind": "solution",
-            "confidence": 0.8,
             "links": {"problem_id": "fact-1"},
             "evidence_refs": ["session://1"],
         },
@@ -106,6 +101,8 @@ def test_create_rejects_non_problem_reference(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -127,13 +124,10 @@ def test_create_rejects_invisible_association_target(
     )
 
     payload = {
-        "op": "create",
-        "repo_id": "repo-a",
         "memory": {
             "text": "Problem with hidden association target.",
             "scope": "repo",
             "kind": "problem",
-            "confidence": 0.8,
             "links": {
                 "associations": [
                     {
@@ -151,6 +145,8 @@ def test_create_rejects_invisible_association_target(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"

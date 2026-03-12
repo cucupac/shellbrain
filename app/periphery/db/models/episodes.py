@@ -18,6 +18,7 @@ episodes = Table(
     Column("started_at", TIMESTAMP(timezone=True), nullable=False),
     Column("ended_at", TIMESTAMP(timezone=True)),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
+    CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="ck_episodes_ended_after_started"),
 )
 
 episode_events = Table(
@@ -45,4 +46,6 @@ session_transfers = Table(
     Column("rationale", Text),
     Column("transferred_by", String),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
+    CheckConstraint("from_episode_id <> to_episode_id", name="ck_session_transfers_distinct_episodes"),
+    UniqueConstraint("from_episode_id", "to_episode_id", "event_id", "transfer_kind", name="uq_session_transfers_transfer"),
 )

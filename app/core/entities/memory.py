@@ -31,5 +31,4 @@ class Memory:
     scope: MemoryScope
     kind: MemoryKind
     text: str
-    create_confidence: float | None = None
     archived: bool = False

@@ -13,10 +13,3 @@ class OperationResult(BaseModel):
     status: Literal["ok", "error"]
     data: dict[str, Any] = Field(default_factory=dict)
     errors: list[ErrorDetail] = Field(default_factory=list)
-
-
-class DryRunPreview(BaseModel):
-    """This model defines a minimal preview payload for dry-run operations."""
-
-    accepted: bool
-    planned_side_effects: list[dict[str, Any]] = Field(default_factory=list)

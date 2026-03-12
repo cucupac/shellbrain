@@ -29,7 +29,6 @@ class MemoriesRepo(IMemoriesRepo):
                 scope=memory.scope.value,
                 kind=memory.kind.value,
                 text=memory.text,
-                create_confidence=memory.create_confidence,
                 created_at=datetime.now(timezone.utc),
                 archived=memory.archived,
             )
@@ -65,7 +64,6 @@ class MemoriesRepo(IMemoriesRepo):
             scope=MemoryScope(row["scope"]),
             kind=MemoryKind(row["kind"]),
             text=row["text"],
-            create_confidence=row["create_confidence"],
             archived=row["archived"],
         )
 

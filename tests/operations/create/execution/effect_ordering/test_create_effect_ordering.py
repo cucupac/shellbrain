@@ -14,7 +14,6 @@ def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type()
             "text": "A solution with one explicit association.",
             "scope": "repo",
             "kind": "solution",
-            "confidence": 0.8,
             "links": {
                 "problem_id": "problem-1",
                 "associations": [

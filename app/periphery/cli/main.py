@@ -5,13 +5,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.boot.create_policy import get_create_hydration_defaults
 from app.boot.read_policy import get_read_hydration_defaults
 from app.boot.use_cases import get_embedding_model, get_embedding_provider_factory, get_uow_factory
 from app.periphery.cli.handlers import handle_create, handle_read, handle_update
 from app.periphery.cli.hydration import (
-    hydrate_create_payload,
-    hydrate_read_payload,
-    hydrate_update_payload,
     infer_repo_id,
 )
 from app.periphery.cli.presenter_json import render
@@ -40,26 +38,30 @@ def main() -> int:
     payload = _load_payload(args.json_text, args.json_file)
     inferred_repo_id = infer_repo_id()
     read_defaults = get_read_hydration_defaults()
-    create_defaults = {"scope": "repo", "confidence": 0.75}
+    create_defaults = get_create_hydration_defaults()
 
     uow_factory = get_uow_factory()
     embedding_provider_factory = get_embedding_provider_factory()
     embedding_model = get_embedding_model()
 
     if args.command == "create":
-        payload = hydrate_create_payload(payload, inferred_repo_id=inferred_repo_id, defaults=create_defaults)
         result = handle_create(
             payload,
             uow_factory=uow_factory,
             embedding_provider_factory=embedding_provider_factory,
             embedding_model=embedding_model,
+            inferred_repo_id=inferred_repo_id,
+            defaults=create_defaults,
         )
     elif args.command == "read":
-        payload = hydrate_read_payload(payload, inferred_repo_id=inferred_repo_id, defaults=read_defaults)
-        result = handle_read(payload, uow_factory=uow_factory)
+        result = handle_read(
+            payload,
+            uow_factory=uow_factory,
+            inferred_repo_id=inferred_repo_id,
+            defaults=read_defaults,
+        )
     else:
-        payload = hydrate_update_payload(payload, inferred_repo_id=inferred_repo_id)
-        result = handle_update(payload, uow_factory=uow_factory)
+        result = handle_update(payload, uow_factory=uow_factory, inferred_repo_id=inferred_repo_id)
 
     print(render(result))
     return 0

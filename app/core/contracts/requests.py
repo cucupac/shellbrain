@@ -14,12 +14,12 @@ class StrictBaseModel(BaseModel):
 class ReadExpandRequest(StrictBaseModel):
     """This model defines expansion knobs for read requests."""
 
-    semantic_hops: int = Field(default=2, ge=0, le=3)
-    include_problem_links: bool = True
-    include_fact_update_links: bool = True
-    include_association_links: bool = True
-    max_association_depth: int = Field(default=2, ge=1, le=4)
-    min_association_strength: float = Field(default=0.25, ge=0.0, le=1.0)
+    semantic_hops: int | None = Field(default=None, ge=0, le=3)
+    include_problem_links: bool | None = None
+    include_fact_update_links: bool | None = None
+    include_association_links: bool | None = None
+    max_association_depth: int | None = Field(default=None, ge=1, le=4)
+    min_association_strength: float | None = Field(default=None, ge=0.0, le=1.0)
 
 
 class MemoryReadRequest(StrictBaseModel):
@@ -29,12 +29,12 @@ class MemoryReadRequest(StrictBaseModel):
     repo_id: str
     mode: Literal["ambient", "targeted"]
     query: str = Field(min_length=1)
-    include_global: bool = True
+    include_global: bool | None = None
     kinds: (
         list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
     ) = None
     limit: int | None = Field(default=None, ge=1, le=100)
-    expand: ReadExpandRequest = Field(default_factory=ReadExpandRequest)
+    expand: ReadExpandRequest | None = None
 
     @field_validator("kinds")
     @classmethod
@@ -84,7 +84,6 @@ class MemoryCreateBody(StrictBaseModel):
     text: str
     scope: Literal["repo", "global"]
     kind: Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]
-    confidence: float = Field(ge=0.0, le=1.0)
     rationale: str | None = None
     links: MemoryCreateLinks = Field(default_factory=MemoryCreateLinks)
     evidence_refs: list[str] = Field(min_length=1)
@@ -186,5 +185,4 @@ class MemoryUpdateRequest(StrictBaseModel):
     op: Literal["update"] = "update"
     repo_id: str
     memory_id: str
-    mode: Literal["dry_run", "commit"] = "commit"
     update: UpdatePayload

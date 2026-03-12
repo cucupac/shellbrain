@@ -41,7 +41,6 @@ def test_create_persists_memory_embedding_row() -> None:
                 "text": "Integration test memory",
                 "scope": "repo",
                 "kind": "problem",
-                "confidence": 0.8,
                 "evidence_refs": ["integration://evidence/1"],
             },
         }

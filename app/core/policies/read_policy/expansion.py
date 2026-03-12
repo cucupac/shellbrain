@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from app.boot.read_policy import resolve_read_payload_defaults
 from app.core.interfaces.repos import IReadPolicyRepo, ISemanticRetrievalRepo
 
 
@@ -14,20 +15,22 @@ def expand_candidates(
 ) -> dict[str, list[dict[str, Any]]]:
     """This function expands direct candidates via explicit links and semantic neighbors."""
 
+    payload = resolve_read_payload_defaults(payload)
     explicit: list[dict[str, Any]] = []
     implicit: list[dict[str, Any]] = []
-    expand = payload.get("expand", {})
+    expand = payload["expand"]
     repo_id = payload["repo_id"]
-    include_global = payload.get("include_global", True)
+    include_global = bool(payload["include_global"])
     kinds = payload.get("kinds")
-    min_strength = expand.get("min_association_strength", 0.25)
-    semantic_hops = int(expand.get("semantic_hops", 0))
+    min_strength = float(expand["min_association_strength"])
+    semantic_hops = int(expand["semantic_hops"])
+    max_association_depth = int(expand["max_association_depth"])
 
     for direct_candidate in direct_candidates:
         anchor_memory_id = direct_candidate["memory_id"]
         anchor_score = float(direct_candidate.get("rrf_score", direct_candidate.get("score", 0.0)))
 
-        if expand.get("include_problem_links", True):
+        if expand["include_problem_links"]:
             for neighbor in read_policy.list_problem_attempt_neighbors(
                 repo_id=repo_id,
                 include_global=include_global,
@@ -44,7 +47,7 @@ def expand_candidates(
                     }
                 )
 
-        if expand.get("include_fact_update_links", True):
+        if expand["include_fact_update_links"]:
             for neighbor in read_policy.list_fact_update_neighbors(
                 repo_id=repo_id,
                 include_global=include_global,
@@ -61,25 +64,38 @@ def expand_candidates(
                     }
                 )
 
-        if expand.get("include_association_links", True):
-            for neighbor in read_policy.list_association_neighbors(
-                repo_id=repo_id,
-                include_global=include_global,
-                anchor_memory_id=anchor_memory_id,
-                kinds=kinds,
-                min_strength=min_strength,
-            ):
-                explicit.append(
-                    {
-                        "memory_id": neighbor["memory_id"],
-                        "anchor_memory_id": anchor_memory_id,
-                        "anchor_score": anchor_score,
-                        "depth": 1,
-                        "expansion_type": neighbor["expansion_type"],
-                        "relation_strength": float(neighbor["strength"]),
-                        "relation_type": neighbor["relation_type"],
-                    }
-                )
+        if expand["include_association_links"] and max_association_depth > 0:
+            seen_association_memory_ids = {str(anchor_memory_id)}
+            association_frontier = [str(anchor_memory_id)]
+            for depth in range(1, max_association_depth + 1):
+                next_association_frontier: list[str] = []
+                for frontier_memory_id in association_frontier:
+                    for neighbor in read_policy.list_association_neighbors(
+                        repo_id=repo_id,
+                        include_global=include_global,
+                        anchor_memory_id=frontier_memory_id,
+                        kinds=kinds,
+                        min_strength=min_strength,
+                    ):
+                        neighbor_memory_id = str(neighbor["memory_id"])
+                        if neighbor_memory_id in seen_association_memory_ids:
+                            continue
+                        seen_association_memory_ids.add(neighbor_memory_id)
+                        next_association_frontier.append(neighbor_memory_id)
+                        explicit.append(
+                            {
+                                "memory_id": neighbor_memory_id,
+                                "anchor_memory_id": anchor_memory_id,
+                                "anchor_score": anchor_score,
+                                "depth": depth,
+                                "expansion_type": neighbor["expansion_type"],
+                                "relation_strength": float(neighbor["strength"]),
+                                "relation_type": neighbor["relation_type"],
+                            }
+                        )
+                association_frontier = next_association_frontier
+                if not association_frontier:
+                    break
 
         if semantic_hops > 0:
             seen_memory_ids = {str(anchor_memory_id)}

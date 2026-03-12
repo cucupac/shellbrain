@@ -7,7 +7,13 @@ def get_threshold_settings() -> dict[str, float]:
     """Return normalized retrieval thresholds from YAML config."""
 
     thresholds = get_config_provider().get_thresholds()
+    semantic_threshold = thresholds.get("semantic_threshold")
+    keyword_threshold = thresholds.get("keyword_threshold")
+    if isinstance(semantic_threshold, bool) or not isinstance(semantic_threshold, (int, float)):
+        raise ValueError("thresholds.semantic_threshold must be numeric")
+    if isinstance(keyword_threshold, bool) or not isinstance(keyword_threshold, (int, float)):
+        raise ValueError("thresholds.keyword_threshold must be numeric")
     return {
-        "semantic_threshold": float(thresholds.get("semantic_threshold", 0.0)),
-        "keyword_threshold": float(thresholds.get("keyword_threshold", 0.0)),
+        "semantic_threshold": float(semantic_threshold),
+        "keyword_threshold": float(keyword_threshold),
     }

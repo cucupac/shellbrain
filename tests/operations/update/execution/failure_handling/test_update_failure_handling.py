@@ -72,7 +72,6 @@ def _make_update_request(
             "op": "update",
             "repo_id": repo_id,
             "memory_id": memory_id,
-            "mode": "commit",
             "update": update,
         }
     )

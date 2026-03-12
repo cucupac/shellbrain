@@ -26,7 +26,6 @@ def test_create_problem_persists_memory_without_problem_attempt(
                 "text": "A problem memory.",
                 "scope": "repo",
                 "kind": "problem",
-                "confidence": 0.8,
                 "evidence_refs": ["session://1"],
             },
         }
@@ -72,7 +71,6 @@ def test_create_solution_persists_problem_attempt_with_solution_role(
                 "text": "A candidate solution.",
                 "scope": "repo",
                 "kind": "solution",
-                "confidence": 0.75,
                 "links": {"problem_id": "problem-1"},
                 "evidence_refs": ["session://1"],
             },
@@ -118,7 +116,6 @@ def test_create_failed_tactic_persists_problem_attempt_with_failed_tactic_role(
                 "text": "A failed tactic.",
                 "scope": "repo",
                 "kind": "failed_tactic",
-                "confidence": 0.6,
                 "links": {"problem_id": "problem-1"},
                 "evidence_refs": ["session://1"],
             },

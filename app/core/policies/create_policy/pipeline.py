@@ -26,7 +26,6 @@ def build_create_plan(payload: dict[str, Any], *, embedding_model: str = "unknow
                 "scope": memory["scope"],
                 "kind": memory["kind"],
                 "text": memory["text"],
-                "confidence": memory.get("confidence"),
             },
         ),
         make_side_effect(
