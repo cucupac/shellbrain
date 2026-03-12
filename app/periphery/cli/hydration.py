@@ -25,17 +25,23 @@ def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defa
             merged["limit"] = limits_by_mode.get(mode, defaults.get("limit", 20))
         else:
             merged["limit"] = defaults.get("limit", 20)
-    merged.setdefault(
-        "expand",
-        {
+    expand_defaults = defaults.get("expand")
+    if not isinstance(expand_defaults, dict):
+        expand_defaults = {
             "semantic_hops": defaults.get("semantic_hops", 2),
             "include_problem_links": defaults.get("include_problem_links", True),
             "include_fact_update_links": defaults.get("include_fact_update_links", True),
             "include_association_links": defaults.get("include_association_links", True),
             "max_association_depth": defaults.get("max_association_depth", 2),
             "min_association_strength": defaults.get("min_association_strength", 0.25),
-        },
-    )
+        }
+    incoming_expand = merged.get("expand")
+    if isinstance(incoming_expand, dict):
+        merged_expand = dict(expand_defaults)
+        merged_expand.update(incoming_expand)
+        merged["expand"] = merged_expand
+    else:
+        merged.setdefault("expand", dict(expand_defaults))
     return merged
 
 

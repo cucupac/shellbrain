@@ -12,5 +12,5 @@ def test_yaml_config_provider_exposes_separate_create_and_update_policy_sections
 
     assert provider.get_create_policy()["gates"] == ["schema", "semantic", "integrity"]
     assert provider.get_update_policy()["gates"] == ["schema", "semantic", "integrity"]
-    assert provider.get_create_policy()["strict_create_evidence"] is True
-    assert "strict_create_evidence" not in provider.get_update_policy()
+    assert set(provider.get_create_policy()) == {"gates"}
+    assert set(provider.get_update_policy()) == {"gates"}

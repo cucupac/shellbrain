@@ -2,6 +2,7 @@
 
 from typing import Any
 
+from app.boot.thresholds import get_threshold_settings
 from app.core.interfaces.repos import IKeywordRetrievalRepo, ISemanticRetrievalRepo
 from app.core.interfaces.retrieval import IVectorSearch
 
@@ -25,18 +26,22 @@ def retrieve_seeds(
         if vector_search is not None
         else []
     )
+    thresholds = get_threshold_settings()
 
-    semantic = list(
-        semantic_retrieval.query_semantic(
+    semantic = [
+        candidate
+        for candidate in semantic_retrieval.query_semantic(
             repo_id=repo_id,
             include_global=include_global,
             query_vector=query_vector,
             kinds=kinds,
             limit=limit,
         )
-    )
-    keyword = list(
-        keyword_retrieval.query_keyword(
+        if float(candidate["score"]) >= thresholds["semantic_threshold"]
+    ]
+    keyword = [
+        candidate
+        for candidate in keyword_retrieval.query_keyword(
             repo_id=repo_id,
             mode=payload["mode"],
             include_global=include_global,
@@ -44,5 +49,6 @@ def retrieve_seeds(
             kinds=kinds,
             limit=limit,
         )
-    )
+        if float(candidate["score"]) >= thresholds["keyword_threshold"]
+    ]
     return {"semantic": semantic, "keyword": keyword}
