@@ -12,5 +12,6 @@ def test_yaml_config_provider_exposes_separate_create_and_update_policy_sections
 
     assert provider.get_create_policy()["gates"] == ["schema", "semantic", "integrity"]
     assert provider.get_update_policy()["gates"] == ["schema", "semantic", "integrity"]
-    assert set(provider.get_create_policy()) == {"gates"}
+    assert provider.get_create_policy()["defaults"] == {"scope": "repo"}
+    assert set(provider.get_create_policy()) == {"gates", "defaults"}
     assert set(provider.get_update_policy()) == {"gates"}

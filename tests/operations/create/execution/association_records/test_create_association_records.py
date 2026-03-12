@@ -33,7 +33,6 @@ def test_create_association_links_persist_edge_and_observation(
                 "text": "Association source memory.",
                 "scope": "repo",
                 "kind": "problem",
-                "confidence": 0.8,
                 "links": {
                     "associations": [
                         {

@@ -16,9 +16,8 @@ Status: locked schema card with a few open policy-level details.
   - `episode_events`
   - `session_transfers`
   - `evidence_refs`
-  - `memory_evidence`
-  - `association_edge_evidence`
-- `memories` uses `create_confidence`.
+- `memory_evidence`
+- `association_edge_evidence`
 - Derived views:
   - `current_fact_snapshot`
   - `global_utility`

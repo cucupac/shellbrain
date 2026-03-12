@@ -1,7 +1,7 @@
 """This module defines SQLAlchemy Core tables for memories and memory embeddings."""
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, CheckConstraint, Column, Float, ForeignKey, Integer, String, Table, Text, UniqueConstraint
+from sqlalchemy import Boolean, CheckConstraint, Column, ForeignKey, Integer, String, Table, Text, UniqueConstraint
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from app.periphery.db.models.metadata import metadata
@@ -15,7 +15,6 @@ memories = Table(
     Column("scope", String, nullable=False),
     Column("kind", String, nullable=False),
     Column("text", Text, nullable=False),
-    Column("create_confidence", Float),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
     Column("archived", Boolean, nullable=False, default=False),
 )

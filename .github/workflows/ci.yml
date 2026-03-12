@@ -25,6 +25,7 @@ jobs:
     env:
       MEMORY_DB_DSN: postgresql+psycopg://memory:memory@localhost:5432/memory
       MEMORY_DB_DSN_TEST: postgresql+psycopg://memory:memory@localhost:5432/memory
+      HF_HOME: ${{ github.workspace }}/.cache/huggingface
 
     steps:
       - name: Checkout
@@ -35,6 +36,13 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
+
+      - name: Cache embedding model downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.cache/huggingface
+          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('requirements.txt', 'app/config/defaults/runtime.yaml') }}
 
       - name: Install dependencies
         run: |

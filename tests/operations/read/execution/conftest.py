@@ -70,7 +70,6 @@ def seed_read_memory(integration_engine: Engine) -> Callable[..., None]:
         kind: MemoryKind | str,
         text_value: str,
         archived: bool = False,
-        confidence: float | None = 0.7,
         created_at: datetime | None = None,
     ) -> None:
         scope_value = scope.value if isinstance(scope, MemoryScope) else scope
@@ -84,7 +83,6 @@ def seed_read_memory(integration_engine: Engine) -> Callable[..., None]:
                     scope=scope_value,
                     kind=kind_value,
                     text=text_value,
-                    create_confidence=confidence,
                     created_at=ts,
                     archived=archived,
                 )

@@ -15,7 +15,6 @@ def test_solution_requires_problem_id() -> None:
                 "text": "Try larger timeout.",
                 "scope": "repo",
                 "kind": "solution",
-                "confidence": 0.8,
                 "evidence_refs": ["session://1"],
             },
         }
@@ -38,7 +37,6 @@ def test_failed_tactic_requires_problem_id() -> None:
                 "text": "Restarting the service did not help.",
                 "scope": "repo",
                 "kind": "failed_tactic",
-                "confidence": 0.7,
                 "evidence_refs": ["session://1"],
             },
         }
@@ -62,7 +60,6 @@ def test_non_attempt_kinds_forbid_problem_id() -> None:
                     "text": f"{kind} payload.",
                     "scope": "repo",
                     "kind": kind,
-                    "confidence": 0.6,
                     "links": {"problem_id": "problem-1"},
                     "evidence_refs": ["session://1"],
                 },
@@ -86,7 +83,6 @@ def test_create_rejects_duplicate_association_pairs() -> None:
                 "text": "Duplicate association pair.",
                 "scope": "repo",
                 "kind": "problem",
-                "confidence": 0.5,
                 "links": {
                     "associations": [
                         {"to_memory_id": "m-2", "relation_type": "depends_on"},

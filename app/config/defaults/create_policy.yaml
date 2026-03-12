@@ -3,3 +3,5 @@ gates:
   - schema
   - semantic
   - integrity
+defaults:
+  scope: repo

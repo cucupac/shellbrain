@@ -3,8 +3,8 @@
 from app.periphery.cli.hydration import hydrate_update_payload
 
 
-def test_update_hydration_infers_missing_defaults() -> None:
-    """update hydration should always infer repo_id and default commit mode when omitted."""
+def test_update_hydration_infers_missing_repo_id() -> None:
+    """update hydration should always infer repo_id when omitted."""
 
     payload = {
         "memory_id": "memory-1",
@@ -20,7 +20,6 @@ def test_update_hydration_infers_missing_defaults() -> None:
         "op": "update",
         "repo_id": "repo-inferred",
         "memory_id": "memory-1",
-        "mode": "commit",
         "update": {
             "type": "archive_state",
             "archived": True,
@@ -28,14 +27,13 @@ def test_update_hydration_infers_missing_defaults() -> None:
     }
 
 
-def test_update_hydration_preserves_explicit_values() -> None:
-    """update hydration should always preserve explicit repo_id and mode over inferred defaults."""
+def test_update_hydration_preserves_explicit_repo_id() -> None:
+    """update hydration should always preserve explicit repo_id over inferred defaults."""
 
     payload = {
         "op": "update",
         "repo_id": "repo-explicit",
         "memory_id": "memory-1",
-        "mode": "dry_run",
         "update": {
             "type": "archive_state",
             "archived": True,

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.read_policy import resolve_read_limit
+from app.boot.read_policy import resolve_read_payload_defaults
 from app.core.interfaces.repos import IKeywordRetrievalRepo, IMemoriesRepo, IReadPolicyRepo, ISemanticRetrievalRepo
 from app.core.interfaces.retrieval import IVectorSearch
 from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
@@ -57,11 +57,7 @@ def build_context_pack(
 def _resolve_read_defaults(payload: dict[str, Any]) -> dict[str, Any]:
     """Resolve mode-based read defaults for callers that omit a limit."""
 
-    resolved = dict(payload)
-    if resolved.get("limit") is None:
-        mode = str(resolved.get("mode", "targeted"))
-        resolved["limit"] = resolve_read_limit(mode=mode, explicit_limit=None)
-    return resolved
+    return resolve_read_payload_defaults(payload)
 
 
 def _hydrate_pack_items(pack: dict[str, Any], memories: IMemoriesRepo) -> dict[str, Any]:

@@ -1,11 +1,76 @@
 """CLI schema-validation helpers for strict request contracts."""
 
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import ValidationError
+from pydantic import Field, ValidationError, field_validator
 
 from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.requests import MemoryCreateRequest, MemoryReadRequest, MemoryUpdateRequest
+from app.core.contracts.requests import (
+    MemoryCreateLinks,
+    MemoryCreateRequest,
+    MemoryReadRequest,
+    MemoryUpdateRequest,
+    StrictBaseModel,
+    UpdatePayload,
+)
+
+
+class AgentReadRequest(StrictBaseModel):
+    """Agent-facing read payload with config-only retrieval knobs removed."""
+
+    op: Literal["read"] = "read"
+    repo_id: str | None = None
+    query: str = Field(min_length=1)
+    kinds: (
+        list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
+    ) = None
+
+    @field_validator("kinds")
+    @classmethod
+    def _validate_kinds_unique(
+        cls,
+        value: list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None,
+    ) -> list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None:
+        """This validator enforces unique kinds filters for agent read requests."""
+
+        if value is None:
+            return value
+        if len(value) != len(set(value)):
+            raise ValueError("kinds must be unique")
+        return value
+
+
+class AgentCreateBody(StrictBaseModel):
+    """Agent-facing create payload with transport fields removed."""
+
+    text: str
+    scope: Literal["repo", "global"] | None = None
+    kind: Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]
+    rationale: str | None = None
+    links: MemoryCreateLinks = Field(default_factory=MemoryCreateLinks)
+    evidence_refs: list[str] = Field(min_length=1)
+
+    @field_validator("evidence_refs")
+    @classmethod
+    def _validate_evidence_unique(cls, value: list[str]) -> list[str]:
+        """This validator enforces unique evidence references for agent create requests."""
+
+        if len(value) != len(set(value)):
+            raise ValueError("evidence_refs must be unique")
+        return value
+
+
+class AgentCreateRequest(StrictBaseModel):
+    """Agent-facing create payload with repo/op transport details removed."""
+
+    memory: AgentCreateBody
+
+
+class AgentUpdateRequest(StrictBaseModel):
+    """Agent-facing update payload with repo/op transport details removed."""
+
+    memory_id: str
+    update: UpdatePayload
 
 
 def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
@@ -24,17 +89,26 @@ def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
     return details
 
 
-def validate_create_schema(payload: dict[str, Any]) -> tuple[MemoryCreateRequest | None, list[ErrorDetail]]:
-    """Validate and parse create payloads into the strict create contract."""
+def validate_create_schema(payload: dict[str, Any]) -> tuple[AgentCreateRequest | None, list[ErrorDetail]]:
+    """Validate and parse agent create payloads into the simplified create contract."""
 
     try:
-        return MemoryCreateRequest.model_validate(payload), []
+        return AgentCreateRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 
 
-def validate_read_schema(payload: dict[str, Any]) -> tuple[MemoryReadRequest | None, list[ErrorDetail]]:
-    """Validate and parse read payloads into the strict read contract."""
+def validate_read_schema(payload: dict[str, Any]) -> tuple[AgentReadRequest | None, list[ErrorDetail]]:
+    """Validate and parse agent read payloads into the simplified read contract."""
+
+    try:
+        return AgentReadRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_internal_read_contract(payload: dict[str, Any]) -> tuple[MemoryReadRequest | None, list[ErrorDetail]]:
+    """Validate one hydrated read payload against the full internal read contract."""
 
     try:
         return MemoryReadRequest.model_validate(payload), []
@@ -42,8 +116,26 @@ def validate_read_schema(payload: dict[str, Any]) -> tuple[MemoryReadRequest | N
         return None, _format_validation_errors(exc)
 
 
-def validate_update_schema(payload: dict[str, Any]) -> tuple[MemoryUpdateRequest | None, list[ErrorDetail]]:
-    """Validate and parse update payloads into the strict update contract."""
+def validate_internal_create_contract(payload: dict[str, Any]) -> tuple[MemoryCreateRequest | None, list[ErrorDetail]]:
+    """Validate one hydrated create payload against the full internal create contract."""
+
+    try:
+        return MemoryCreateRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_update_schema(payload: dict[str, Any]) -> tuple[AgentUpdateRequest | None, list[ErrorDetail]]:
+    """Validate and parse agent update payloads into the simplified update contract."""
+
+    try:
+        return AgentUpdateRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_internal_update_contract(payload: dict[str, Any]) -> tuple[MemoryUpdateRequest | None, list[ErrorDetail]]:
+    """Validate one hydrated update payload against the full internal update contract."""
 
     try:
         return MemoryUpdateRequest.model_validate(payload), []

@@ -169,6 +169,88 @@ def test_read_applies_association_expansion_flag_and_strength_threshold(
     assert "neighbor-strong" not in disabled_ids
 
 
+def test_read_expands_association_neighbors_only_up_to_max_association_depth(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_association_edge: Callable[..., None],
+) -> None:
+    """read should always expand association neighbors only up to max_association_depth."""
+
+    seed_read_memory(
+        memory_id="anchor-depth",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="Depth anchor memory for association traversal.",
+    )
+    seed_read_memory(
+        memory_id="association-hop-1",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="First association hop.",
+    )
+    seed_read_memory(
+        memory_id="association-hop-2",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="Second association hop.",
+    )
+    seed_association_edge(
+        edge_id="edge-hop-1",
+        repo_id="repo-a",
+        from_memory_id="anchor-depth",
+        to_memory_id="association-hop-1",
+        relation_type="depends_on",
+        strength=0.9,
+    )
+    seed_association_edge(
+        edge_id="edge-hop-2",
+        repo_id="repo-a",
+        from_memory_id="association-hop-1",
+        to_memory_id="association-hop-2",
+        relation_type="depends_on",
+        strength=0.8,
+    )
+
+    one_hop = _make_read_request(
+        repo_id="repo-a",
+        query="depth anchor",
+        expand={
+            "semantic_hops": 0,
+            "include_problem_links": False,
+            "include_fact_update_links": False,
+            "include_association_links": True,
+            "max_association_depth": 1,
+            "min_association_strength": 0.25,
+        },
+    )
+    two_hops = _make_read_request(
+        repo_id="repo-a",
+        query="depth anchor",
+        expand={
+            "semantic_hops": 0,
+            "include_problem_links": False,
+            "include_fact_update_links": False,
+            "include_association_links": True,
+            "max_association_depth": 2,
+            "min_association_strength": 0.25,
+        },
+    )
+
+    with uow_factory() as uow:
+        one_hop_result = execute_read_memory(one_hop, uow)
+    with uow_factory() as uow:
+        two_hop_result = execute_read_memory(two_hops, uow)
+
+    one_hop_ids = _item_ids(one_hop_result)
+    two_hop_ids = _item_ids(two_hop_result)
+    assert "association-hop-1" in one_hop_ids
+    assert "association-hop-2" not in one_hop_ids
+    assert "association-hop-2" in two_hop_ids
+
+
 def _make_read_request(**overrides: object) -> MemoryReadRequest:
     """Build a read request with deterministic defaults and caller overrides."""
 

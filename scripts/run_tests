@@ -4,6 +4,8 @@ set -euo pipefail
 DEFAULT_DSN="postgresql+psycopg://memory:memory@localhost:5432/memory"
 export MEMORY_DB_DSN_TEST="${MEMORY_DB_DSN_TEST:-$DEFAULT_DSN}"
 export MEMORY_DB_DSN="$MEMORY_DB_DSN_TEST"
+export HF_HOME="${HF_HOME:-$PWD/.local/huggingface}"
+mkdir -p "$HF_HOME"
 
 python3 - <<'PY'
 import os
@@ -42,4 +44,4 @@ with psycopg.connect(dsn, autocommit=True) as conn:
 PY
 
 alembic upgrade head
-python3 -m pytest -q tests -m "not real_embedding"
+python3 -m pytest -q tests

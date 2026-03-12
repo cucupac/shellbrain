@@ -12,8 +12,12 @@ def get_db_dsn() -> str:
     """This function resolves the database DSN from environment configuration."""
 
     runtime = get_config_provider().get_runtime()
-    database = runtime.get("database") or {}
-    dsn_env = str(database.get("dsn_env", "MEMORY_DB_DSN"))
+    database = runtime.get("database")
+    if not isinstance(database, dict):
+        raise RuntimeError("runtime.database must be configured")
+    dsn_env = database.get("dsn_env")
+    if not isinstance(dsn_env, str) or not dsn_env:
+        raise RuntimeError("runtime.database.dsn_env must be configured")
     dsn = os.getenv(dsn_env)
     if not dsn:
         raise RuntimeError(f"{dsn_env} is not set")

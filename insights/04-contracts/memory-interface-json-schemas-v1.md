@@ -81,12 +81,11 @@ This card records the `read` / `create` / `update` interface semantics and exact
     "repo_id": { "type": "string", "minLength": 1 },
     "memory": {
       "type": "object",
-      "required": ["text", "scope", "kind", "confidence", "evidence_refs"],
+      "required": ["text", "scope", "kind", "evidence_refs"],
       "properties": {
         "text": { "type": "string", "minLength": 1 },
         "scope": { "enum": ["repo", "global"] },
         "kind": { "enum": ["problem", "solution", "failed_tactic", "fact", "preference", "change"] },
-        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
         "rationale": { "type": "string" },
         "links": {
           "type": "object",
@@ -123,7 +122,6 @@ This card records the `read` / `create` / `update` interface semantics and exact
 - `memory.text`: immutable memory content.
 - `memory.scope`: `repo` or `global`.
 - `memory.kind`: memory type written to `memories.kind`.
-- `memory.confidence`: create-time confidence for audit and debugging (stored as `memories.create_confidence`).
 - `memory.rationale`: optional explanation for why this memory is being created.
 - `memory.links.problem_id`: required when `kind` is `solution` or `failed_tactic`.
 - `memory.links.related_memory_ids`: optional additional associations.
@@ -136,12 +134,11 @@ This card records the `read` / `create` / `update` interface semantics and exact
 {
   "$id": "memory.update.request",
   "type": "object",
-  "required": ["op", "repo_id", "memory_id", "mode", "update"],
+  "required": ["op", "repo_id", "memory_id", "update"],
   "properties": {
     "op": { "const": "update" },
     "repo_id": { "type": "string", "minLength": 1 },
     "memory_id": { "type": "string" },
-    "mode": { "enum": ["dry_run", "commit"] },
     "update": {
       "type": "object",
       "oneOf": [
@@ -196,7 +193,6 @@ This card records the `read` / `create` / `update` interface semantics and exact
 - `op`: must be `update`.
 - `repo_id`: repository identifier for the operation.
 - `memory_id`: target memory.
-- `mode`: `dry_run` validates and previews; `commit` persists.
 - `update.type`:
   - `archive_state`: toggles `memories.archived`.
   - `utility_vote`: appends contextual utility observation for `(memory_id, problem_id)`.
@@ -254,7 +250,6 @@ Hydration rules by operation:
   - inferred by adapter:
     - `repo_id` from cwd/repo resolver,
     - `memory.scope = "repo"` unless explicitly set,
-    - `memory.confidence` default from config,
     - `memory.evidence_refs` auto-attached only when provenance is unambiguous; otherwise request is rejected.
   - association link preference:
     - use typed `memory.links.associations[]` when explicitly linking memories.
@@ -264,7 +259,6 @@ Hydration rules by operation:
   - required from agent: `memory_id`, `update.type`, and type-specific required fields.
   - inferred by adapter:
     - `repo_id` from cwd/repo resolver,
-    - `mode = "commit"` by default unless `--dry-run` is requested.
     - `update.evidence_refs` auto-attached for `association_link` only when provenance is unambiguous; otherwise request is rejected.
 
 ## Validation Placement

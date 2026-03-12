@@ -372,7 +372,6 @@ def _make_update_request(*, repo_id: str, memory_id: str, update: dict[str, obje
             "op": "update",
             "repo_id": repo_id,
             "memory_id": memory_id,
-            "mode": "commit",
             "update": update,
         }
     )

@@ -9,38 +9,6 @@ from app.periphery.db.models.memories import memories
 from app.periphery.db.uow import PostgresUnitOfWork
 
 
-def test_update_preview_only_describes_writes_and_makes_no_writes(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    seed_memory: Callable[..., object],
-    count_rows: Callable[[str], int],
-) -> None:
-    """preview-only updates should always describe the writes they would make and then make no writes."""
-
-    seed_memory(
-        memory_id="memory-1",
-        repo_id="repo-a",
-        scope=MemoryScope.REPO,
-        kind=MemoryKind.FACT,
-        text_value="Preview-only target memory.",
-    )
-    before = _snapshot_update_counts(count_rows)
-    request = _make_update_request(
-        repo_id="repo-a",
-        memory_id="memory-1",
-        mode="dry_run",
-        update={"type": "archive_state", "archived": True},
-    )
-
-    with uow_factory() as uow:
-        result = execute_update_memory(request, uow)
-
-    assert result.status == "ok"
-    assert result.data["accepted"] is True
-    assert len(result.data["planned_side_effects"]) == 1
-    assert result.data["planned_side_effects"][0]["effect_type"] == "memory.archive_state"
-    assert _snapshot_update_counts(count_rows) == before
-
-
 def test_update_archiving_changes_only_archived_flag(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
@@ -55,7 +23,6 @@ def test_update_archiving_changes_only_archived_flag(
         scope=MemoryScope.REPO,
         kind=MemoryKind.FACT,
         text_value="Archive candidate.",
-        confidence=0.33,
     )
     before_row = _fetch_memory_row(fetch_rows, "memory-1")
     before_counts = _snapshot_related_update_counts(count_rows)
@@ -160,7 +127,6 @@ def test_update_non_archiving_preserves_original_memory_row(
             scope=MemoryScope.REPO,
             kind=target_kind,
             text_value="Unchanged target memory.",
-            confidence=0.42,
         )
         extra_seed()
         before_row = _fetch_memory_row(fetch_rows, target_id)
@@ -183,7 +149,6 @@ def _make_update_request(
     repo_id: str,
     memory_id: str,
     update: dict[str, object],
-    mode: str = "commit",
 ) -> MemoryUpdateRequest:
     """Build a valid update request with caller-provided payload."""
 
@@ -192,7 +157,6 @@ def _make_update_request(
             "op": "update",
             "repo_id": repo_id,
             "memory_id": memory_id,
-            "mode": mode,
             "update": update,
         }
     )
@@ -207,21 +171,6 @@ def _fetch_memory_row(
     rows = fetch_rows(memories, memories.c.id == memory_id)
     assert len(rows) == 1
     return rows[0]
-
-
-def _snapshot_update_counts(count_rows: Callable[[str], int]) -> dict[str, int]:
-    """Capture counts for all tables update execution may touch."""
-
-    return {
-        "memories": count_rows("memories"),
-        "memory_embeddings": count_rows("memory_embeddings"),
-        "utility_observations": count_rows("utility_observations"),
-        "fact_updates": count_rows("fact_updates"),
-        "association_edges": count_rows("association_edges"),
-        "association_observations": count_rows("association_observations"),
-        "association_edge_evidence": count_rows("association_edge_evidence"),
-        "evidence_refs": count_rows("evidence_refs"),
-    }
 
 
 def _snapshot_related_update_counts(count_rows: Callable[[str], int]) -> dict[str, int]:

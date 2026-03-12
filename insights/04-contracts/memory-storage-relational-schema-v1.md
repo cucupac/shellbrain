@@ -30,7 +30,6 @@ CREATE TABLE memories (
     'problem', 'solution', 'failed_tactic', 'fact', 'preference', 'change'
   )),
   text TEXT NOT NULL,
-  create_confidence DOUBLE PRECISION CHECK (create_confidence >= 0 AND create_confidence <= 1),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   archived BOOLEAN NOT NULL DEFAULT FALSE
 );

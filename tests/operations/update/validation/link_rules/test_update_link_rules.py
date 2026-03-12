@@ -12,7 +12,6 @@ def test_update_association_rejects_self_link() -> None:
             "op": "update",
             "repo_id": "repo-a",
             "memory_id": "memory-1",
-            "mode": "commit",
             "update": {
                 "type": "association_link",
                 "to_memory_id": "memory-1",
@@ -36,7 +35,6 @@ def test_fact_update_requires_distinct_endpoints_and_reserves_memory_id() -> Non
             "op": "update",
             "repo_id": "repo-a",
             "memory_id": "change-1",
-            "mode": "commit",
             "update": {
                 "type": "fact_update_link",
                 "old_fact_id": "fact-1",
@@ -54,7 +52,6 @@ def test_fact_update_requires_distinct_endpoints_and_reserves_memory_id() -> Non
             "op": "update",
             "repo_id": "repo-a",
             "memory_id": "change-1",
-            "mode": "commit",
             "update": {
                 "type": "fact_update_link",
                 "old_fact_id": "change-1",

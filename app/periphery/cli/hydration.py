@@ -13,28 +13,27 @@ def infer_repo_id() -> str:
 def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]) -> dict[str, Any]:
     """This function hydrates read payloads with inferred defaults before strict validation."""
 
+    if not isinstance(defaults.get("limits_by_mode"), dict):
+        raise ValueError("read hydration defaults must include limits_by_mode")
+    if not isinstance(defaults.get("expand"), dict):
+        raise ValueError("read hydration defaults must include expand")
+    if "default_mode" not in defaults:
+        raise ValueError("read hydration defaults must include default_mode")
+    if "include_global" not in defaults:
+        raise ValueError("read hydration defaults must include include_global")
+
     merged = dict(payload)
     merged.setdefault("op", "read")
     merged.setdefault("repo_id", inferred_repo_id)
-    merged.setdefault("mode", defaults.get("default_mode", "targeted"))
-    merged.setdefault("include_global", defaults.get("include_global", True))
+    merged.setdefault("mode", defaults["default_mode"])
+    merged.setdefault("include_global", defaults["include_global"])
     if "limit" not in merged:
         mode = str(merged["mode"])
-        limits_by_mode = defaults.get("limits_by_mode")
-        if isinstance(limits_by_mode, dict):
-            merged["limit"] = limits_by_mode.get(mode, defaults.get("limit", 20))
-        else:
-            merged["limit"] = defaults.get("limit", 20)
-    expand_defaults = defaults.get("expand")
-    if not isinstance(expand_defaults, dict):
-        expand_defaults = {
-            "semantic_hops": defaults.get("semantic_hops", 2),
-            "include_problem_links": defaults.get("include_problem_links", True),
-            "include_fact_update_links": defaults.get("include_fact_update_links", True),
-            "include_association_links": defaults.get("include_association_links", True),
-            "max_association_depth": defaults.get("max_association_depth", 2),
-            "min_association_strength": defaults.get("min_association_strength", 0.25),
-        }
+        limits_by_mode = defaults["limits_by_mode"]
+        if mode not in limits_by_mode:
+            raise ValueError(f"read hydration defaults must define limit for mode: {mode}")
+        merged["limit"] = limits_by_mode[mode]
+    expand_defaults = dict(defaults["expand"])
     incoming_expand = merged.get("expand")
     if isinstance(incoming_expand, dict):
         merged_expand = dict(expand_defaults)
@@ -46,22 +45,22 @@ def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defa
 
 
 def hydrate_create_payload(payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]) -> dict[str, Any]:
-    """This function hydrates create payloads with inferred scope and confidence defaults."""
+    """This function hydrates create payloads with inferred scope defaults."""
 
+    if "scope" not in defaults:
+        raise ValueError("create hydration defaults must include scope")
     merged = dict(payload)
     merged.setdefault("op", "create")
     merged.setdefault("repo_id", inferred_repo_id)
     if isinstance(merged.get("memory"), dict):
-        merged["memory"].setdefault("scope", defaults.get("scope", "repo"))
-        merged["memory"].setdefault("confidence", defaults.get("confidence", 0.75))
+        merged["memory"].setdefault("scope", defaults["scope"])
     return merged
 
 
 def hydrate_update_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
-    """This function hydrates update payloads with inferred repo and mode defaults."""
+    """This function hydrates update payloads with inferred repo defaults."""
 
     merged = dict(payload)
     merged.setdefault("op", "update")
     merged.setdefault("repo_id", inferred_repo_id)
-    merged.setdefault("mode", "commit")
     return merged

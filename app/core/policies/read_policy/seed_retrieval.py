@@ -17,9 +17,9 @@ def retrieve_seeds(
     """This function retrieves initial semantic and keyword candidate seeds."""
 
     repo_id = payload["repo_id"]
-    include_global = payload.get("include_global", True)
+    include_global = bool(payload["include_global"])
     kinds = payload.get("kinds")
-    limit = int(payload.get("limit", 20))
+    limit = int(payload["limit"])
     query_text = payload["query"]
     query_vector = (
         list(vector_search.embed_query(query_text))

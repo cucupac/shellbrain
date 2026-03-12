@@ -96,7 +96,6 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
         scope: MemoryScope,
         kind: MemoryKind,
         text_value: str,
-        confidence: float | None = 0.7,
     ) -> Memory:
         memory = Memory(
             id=memory_id,
@@ -104,7 +103,6 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
             scope=scope,
             kind=kind,
             text=text_value,
-            create_confidence=confidence,
         )
         with uow_factory() as uow:
             uow.memories.create(memory)
@@ -161,4 +159,3 @@ def _find_repo_root() -> Path:
             return current
         current = current.parent
     raise RuntimeError("Could not resolve repository root from execution test fixtures.")
-

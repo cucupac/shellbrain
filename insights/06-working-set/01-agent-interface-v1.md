@@ -22,11 +22,11 @@ Status: mostly locked.
 
 - `create`:
   - agent supplies: `memory.kind`, `memory.text` (plus `links.problem_id` when required by kind).
-  - adapter infers: `repo_id`, default `scope`, default `confidence`, and auto-attached evidence refs only when provenance is unambiguous.
+  - adapter infers: `repo_id`, default `scope`, and auto-attached evidence refs only when provenance is unambiguous.
 
 - `update`:
   - agent supplies: `memory_id`, `update.type`, and type-specific required fields.
-  - adapter infers: `repo_id`, default `mode` (`commit` unless `dry_run` requested), and auto evidence only when unambiguous.
+  - adapter infers: `repo_id` and auto evidence only when unambiguous.
 
 - explicit override rule:
   - agent-provided values take precedence over inferred defaults.

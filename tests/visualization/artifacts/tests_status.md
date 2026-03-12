@@ -1,13 +1,13 @@
 # Tests Status
 
-Generated: 2026-03-11 19:35:04 PDT
+Generated: 2026-03-12 03:26:29 PDT
 
 ## Summary
 
-- Total: 113
-- Passed: 112
+- Total: 121
+- Passed: 121
 - Failed: 0
-- Skipped/Not Run: 1
+- Skipped/Not Run: 0
 
 ## create/validation/link_rules
 
@@ -26,8 +26,11 @@ Generated: 2026-03-11 19:35:04 PDT
 ## create/validation/request_shape
 
 - ✅ create requests should always reject unknown fields.
-- ✅ create requests should always enforce confidence bounds and unique evidence refs.
+- ✅ create requests should always enforce unique evidence refs.
 - ✅ create requests should always require at least one evidence ref.
+- ✅ create requests should always reject op/repo_id at the agent interface.
+- ✅ create hydration should always infer configured scope when omitted.
+- ✅ create hydration should always preserve explicit scope over configured defaults.
 
 ## create/execution/association_records
 
@@ -39,7 +42,7 @@ Generated: 2026-03-11 19:35:04 PDT
 
 ## create/execution/embeddings
 
-- ⚪ not run create should always persist a memory_embedding row in PostgreSQL when real embeddings are enabled.
+- ✅ create should always persist a memory_embedding row in PostgreSQL when real embeddings are enabled.
 - ✅ create should always persist one memory_embedding row for the new memory.
 - ✅ local embedding providers should always return embeddings when sentence-transformers is available.
 - ✅ local embedding providers should always fail fast when sentence-transformers is unavailable.
@@ -71,7 +74,7 @@ Generated: 2026-03-11 19:35:04 PDT
 - ✅ read requests should always require non-empty query text.
 - ✅ read requests should always limit kinds filters to ratified memory kinds.
 - ✅ read requests should always require unique kinds filters.
-- ✅ read requests should always enforce limit and expansion knob bounds.
+- ✅ read requests should always reject config override knobs at the agent interface.
 
 ## read/execution/context_pack
 
@@ -107,6 +110,7 @@ Generated: 2026-03-11 19:35:04 PDT
 - ✅ read should always include linked problem attempts when problem-link expansion is enabled.
 - ✅ read should always include linked fact updates when fact-update expansion is enabled.
 - ✅ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+- ✅ read should always expand association neighbors only up to max_association_depth.
 
 ## read/execution/high_level_behavior
 
@@ -159,8 +163,8 @@ Generated: 2026-03-11 19:35:04 PDT
 
 ## update/validation/hydration
 
-- ✅ update hydration should always infer repo_id and default commit mode when omitted.
-- ✅ update hydration should always preserve explicit repo_id and mode over inferred defaults.
+- ✅ update hydration should always infer repo_id when omitted.
+- ✅ update hydration should always preserve explicit repo_id over inferred defaults.
 
 ## update/validation/link_rules
 
@@ -178,15 +182,19 @@ Generated: 2026-03-11 19:35:04 PDT
 ## update/validation/request_shape
 
 - ✅ update requests should always reject unrecognized update.type values.
-- ✅ update requests should always reject op values other than update.
+- ✅ update requests should always reject op/repo_id at the agent interface.
 
 ## update/execution/failure_handling
 
+- ✅ problem_attempt rows should always reject identical problem_id and attempt_id values.
+- ✅ fact_update rows should always reject identical old_fact_id and new_fact_id values.
+- ✅ fact_update rows should always reject change_id values that equal old_fact_id or new_fact_id.
+- ✅ episode rows should always reject ended_at values earlier than started_at.
+- ✅ session_transfer rows should always reject identical from_episode_id and to_episode_id values.
 - ✅ failed update execution should always roll back every partial write.
 
 ## update/execution/high_level_behavior
 
-- ✅ preview-only updates should always describe the writes they would make and then make no writes.
 - ✅ archiving a memory should always change only its archived flag.
 - ✅ non-archiving updates should always leave the original memory row unchanged.
 
