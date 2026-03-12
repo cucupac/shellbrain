@@ -13,8 +13,9 @@ def execute_read_memory(request: MemoryReadRequest, uow: IUnitOfWork) -> Operati
     context_pack = build_context_pack(
         payload,
         keyword_retrieval=uow.keyword_retrieval,
+        memories=uow.memories,
         semantic_retrieval=uow.semantic_retrieval,
         read_policy=uow.read_policy,
         vector_search=uow.vector_search,
     )
-    return OperationResult(status="ok", data=context_pack)
+    return OperationResult(status="ok", data={"pack": context_pack})

@@ -4,20 +4,10 @@ from app.core.contracts.requests import MemoryUpdateRequest
 from app.core.contracts.responses import DryRunPreview, OperationResult
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.core.policies.update_policy.pipeline import apply_update_plan, build_update_plan
-from app.core.validation.integrity_validation import validate_update_integrity
-from app.core.validation.semantic_validation import validate_update_semantics
 
 
 def execute_update_memory(request: MemoryUpdateRequest, uow: IUnitOfWork) -> OperationResult:
-    """This function orchestrates update flow with deterministic update-policy hooks."""
-
-    semantic_errors = validate_update_semantics(request)
-    if semantic_errors:
-        return OperationResult(status="error", errors=semantic_errors)
-
-    integrity_errors = validate_update_integrity(request, uow)
-    if integrity_errors:
-        return OperationResult(status="error", errors=integrity_errors)
+    """This function orchestrates update flow for an already-validated request."""
 
     payload = request.model_dump(mode="python")
     plan = build_update_plan(payload)

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from sqlalchemy import func, literal, or_, select, union_all
+from sqlalchemy import literal, or_, select, union_all
 
 from app.core.interfaces.repos import IReadPolicyRepo
 from app.periphery.db.models.associations import association_edges
@@ -154,14 +154,33 @@ class ReadPolicyRepo(IReadPolicyRepo):
         stmt = (
             select(
                 union_stmt.c.memory_id,
-                func.max(union_stmt.c.strength).label("strength"),
-                literal("association").label("expansion_type"),
+                union_stmt.c.relation_type,
+                union_stmt.c.strength,
+                union_stmt.c.expansion_type,
             )
             .where(union_stmt.c.memory_id != anchor_memory_id)
-            .group_by(union_stmt.c.memory_id)
-            .order_by(func.max(union_stmt.c.strength).desc(), union_stmt.c.memory_id.asc())
+            .order_by(union_stmt.c.strength.desc(), union_stmt.c.memory_id.asc(), union_stmt.c.relation_type.asc())
         )
-        return list(self._session.execute(stmt).mappings().all())
+        rows = self._session.execute(stmt).mappings().all()
+        best_by_memory_id: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            memory_id = str(row["memory_id"])
+            strength = float(row["strength"])
+            relation_type = str(row["relation_type"])
+            current = best_by_memory_id.get(memory_id)
+            if current is None or strength > float(current["strength"]) or (
+                strength == float(current["strength"]) and relation_type < str(current["relation_type"])
+            ):
+                best_by_memory_id[memory_id] = {
+                    "memory_id": memory_id,
+                    "relation_type": relation_type,
+                    "strength": strength,
+                    "expansion_type": str(row["expansion_type"]),
+                }
+        return sorted(
+            best_by_memory_id.values(),
+            key=lambda item: (-float(item["strength"]), str(item["memory_id"]), str(item["relation_type"])),
+        )
 
     def _visibility_filters(
         self,

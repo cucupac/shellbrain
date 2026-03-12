@@ -33,7 +33,7 @@ class MemoryReadRequest(StrictBaseModel):
     kinds: (
         list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
     ) = None
-    limit: int = Field(default=20, ge=1, le=100)
+    limit: int | None = Field(default=None, ge=1, le=100)
     expand: ReadExpandRequest = Field(default_factory=ReadExpandRequest)
 
     @field_validator("kinds")

@@ -44,13 +44,21 @@ def main() -> int:
     inferred_repo_id = infer_repo_id()
 
     cli_runtime_defaults = runtime.get("cli", {})
+    limits = read_policy.get("limits") or {}
+    expansion = read_policy.get("expansion") or {}
     read_defaults = {
         "default_mode": cli_runtime_defaults.get("default_mode", "targeted"),
         "include_global": cli_runtime_defaults.get("include_global", True),
-        "limit": (read_policy.get("limits") or {}).get("default", 20),
-        "semantic_hops": (read_policy.get("expansion") or {}).get("semantic_hops", 2),
-        "max_association_depth": (read_policy.get("expansion") or {}).get("max_association_depth", 2),
-        "min_association_strength": (read_policy.get("expansion") or {}).get("min_association_strength", 0.25),
+        "limits_by_mode": {
+            "targeted": limits.get("targeted", 8),
+            "ambient": limits.get("ambient", 12),
+        },
+        "semantic_hops": expansion.get("semantic_hops", 2),
+        "include_problem_links": expansion.get("include_problem_links", True),
+        "include_fact_update_links": expansion.get("include_fact_update_links", True),
+        "include_association_links": expansion.get("include_association_links", True),
+        "max_association_depth": expansion.get("max_association_depth", 2),
+        "min_association_strength": expansion.get("min_association_strength", 0.25),
     }
     create_defaults = {"scope": "repo", "confidence": 0.75}
 

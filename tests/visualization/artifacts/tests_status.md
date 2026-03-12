@@ -1,15 +1,67 @@
 # Tests Status
 
-Generated: 2026-03-11 16:39:56 PDT
+Generated: 2026-03-11 19:10:35 PDT
 
 ## Summary
 
-- Total: 95
-- Passed: 95
+- Total: 112
+- Passed: 111
 - Failed: 0
-- Skipped/Not Run: 0
+- Skipped/Not Run: 1
 
-## read/validation
+## create/validation/link_rules
+
+- ✅ solution memories should always include links.problem_id.
+- ✅ failed_tactic memories should always include links.problem_id.
+- ✅ non-attempt kinds should always reject links.problem_id.
+- ✅ create association lists should always reject duplicate target+relation pairs.
+
+## create/validation/reference_checks
+
+- ✅ create should always reject problem references that do not exist.
+- ✅ create should always reject problem references outside repo visibility.
+- ✅ create should always require links.problem_id to reference a problem memory.
+- ✅ create should always reject association targets outside repo visibility.
+
+## create/validation/request_shape
+
+- ✅ create requests should always reject unknown fields.
+- ✅ create requests should always enforce confidence bounds and unique evidence refs.
+- ✅ create requests should always require at least one evidence ref.
+
+## create/execution/association_records
+
+- ✅ create with associations should always persist association_edge and association_observation rows.
+
+## create/execution/effect_ordering
+
+- ✅ create plans should always preserve deterministic effect ordering by operation type.
+
+## create/execution/embeddings
+
+- ⚪ not run create should always persist a memory_embedding row in PostgreSQL when real embeddings are enabled.
+- ✅ create should always persist one memory_embedding row for the new memory.
+- ✅ local embedding providers should always return embeddings when sentence-transformers is available.
+- ✅ local embedding providers should always fail fast when sentence-transformers is unavailable.
+
+## create/execution/evidence_links
+
+- ✅ create should always attach each evidence ref exactly once in memory_evidence.
+- ✅ create with associations should always link evidence refs in association_edge_evidence.
+
+## create/execution/failure_handling
+
+- ✅ validation failures should always write nothing.
+- ✅ embedding failures should always write nothing.
+- ✅ mid-write side-effect failures should always roll back all prior side effects.
+
+## create/execution/memory_records
+
+- ✅ create(problem) should always persist one memory row and no problem_attempt row.
+- ✅ create(solution) should always persist one problem_attempt row with role solution.
+- ✅ create(failed_tactic) should always persist one problem_attempt row with role failed_tactic.
+
+## read/validation/unit
 
 - ✅ read hydration should always infer repo_id and default knobs when omitted.
 - ✅ read hydration should always preserve explicit payload values over inferred defaults.
@@ -20,21 +72,59 @@ Generated: 2026-03-11 16:39:56 PDT
 - ✅ read requests should always require unique kinds filters.
 - ✅ read requests should always enforce limit and expansion knob bounds.
 
-## read/execution
+## read/execution/context_pack
+
+- ✅ read context pack config should always define mode-specific limits in read policy yaml.
+- ✅ read context pack config should always define direct-heavy quotas by mode in read policy yaml.
+- ✅ read context pack config should always load RRF defaults from the read policy yaml.
+- ✅ context pack builder should always use targeted mode as eight items by default.
+- ✅ context pack builder should always use ambient mode as twelve items by default.
+- ✅ read context pack should always return grouped sections under data.pack.
+- ✅ read context pack should always order sections as meta, direct, explicit_related, then implicit_related.
+- ✅ read context pack should always assign global priority values in displayed order.
+- ✅ read context pack should always include kind and text for each returned memory.
+- ✅ read context pack should always include why_included for every item.
+- ✅ read context pack should always include anchor_memory_id only for non-direct items.
+- ✅ read context pack should always include relation_type only for association-link items.
+- ✅ read context pack should always omit scenarios in this slice.
+- ✅ context pack builder should always fill targeted quotas in direct-first order.
+- ✅ context pack builder should always fill ambient quotas with more related context than targeted mode.
+- ✅ context pack builder should always deduplicate repeated memories across sections.
+- ✅ context pack builder should always let earlier sections win dedupe ties.
+- ✅ context pack builder should always shrink a small custom limit in direct-first order.
+- ✅ context pack builder should always use spillover when a section underfills.
+- ✅ context pack builder should always pick the highest-scoring unselected candidates during spillover.
+- ✅ context pack builder should always enforce the hard limit after quotas and spill.
+
+## read/execution/determinism
+
+- ✅ read should always return each memory at most once even if reached by multiple paths.
+- ✅ read should always produce deterministic ordering for the same input and snapshot.
+
+## read/execution/expansion
+
+- ✅ read should always include linked problem attempts when problem-link expansion is enabled.
+- ✅ read should always include linked fact updates when fact-update expansion is enabled.
+- ✅ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+
+## read/execution/high_level_behavior
 
 - ✅ read should always be retrieval-only and never mutate database state.
 - ✅ read should always enforce repo visibility and include_global scope rules.
 - ✅ read should always apply kinds as include-only filters.
 - ✅ read should always enforce a hard output cap equal to limit.
 - ✅ read should always return an empty pack when nothing passes retrieval gates.
-- ✅ read should always include linked problem attempts when problem-link expansion is enabled.
-- ✅ read should always include linked fact updates when fact-update expansion is enabled.
-- ✅ read should always include linked association neighbors only when enabled and edge strength passes threshold.
+
+## read/execution/keyword
+
 - ✅ keyword retrieval should always admit high-coverage partial matches while rejecting low-coverage generic partial matches.
 - ✅ keyword retrieval should always be stricter for ambient reads than for targeted reads.
 - ✅ keyword retrieval should always rank denser shorter matches ahead of verbose matches.
 - ✅ keyword retrieval should always gate the visible lexical corpus before scoring.
 - ✅ keyword retrieval should always break equal-score ties by memory identifier.
+
+## read/execution/scoring
+
 - ✅ read scoring should always preserve RRF ordering for fused direct seeds.
 - ✅ read scoring should always rank a dual-lane hit above single-lane hits.
 - ✅ read scoring should always break equal RRF scores by memory identifier.
@@ -46,6 +136,9 @@ Generated: 2026-03-11 16:39:56 PDT
 - ✅ read scoring should always return raw explicit metadata for downstream scoring.
 - ✅ read scoring should always return raw implicit metadata for downstream scoring.
 - ✅ read scoring should always order competing expanded candidates via the scoring stage.
+
+## read/execution/semantic
+
 - ✅ read should always return semantic seed matches when lexical retrieval misses.
 - ✅ read should always apply repo visibility, include_global, and kinds filters before admitting semantic matches.
 - ✅ read should always fuse semantic and keyword direct hits without duplicating shared memories.
@@ -58,66 +151,47 @@ Generated: 2026-03-11 16:39:56 PDT
 - ✅ read should always return semantic direct matches through the live query-embedding seam when lexical retrieval misses.
 - ✅ read should always fuse live semantic seeds with keyword direct hits without duplicates.
 - ✅ read should always surface query-embedding failure as a structured read error rather than silently dropping the semantic lane.
-- ✅ read should always return each memory at most once even if reached by multiple paths.
-- ✅ read should always produce deterministic ordering for the same input and snapshot.
 
-## update/validation
+## update/validation/failure_handling
+
+- ✅ rejected update requests should always write nothing.
+
+## update/validation/hydration
+
+- ✅ update hydration should always infer repo_id and default commit mode when omitted.
+- ✅ update hydration should always preserve explicit repo_id and mode over inferred defaults.
+
+## update/validation/link_rules
+
+- ✅ association_link updates should always reject self-links.
+- ✅ fact_update_link updates should always require distinct fact endpoints and reserve memory_id for the change memory.
+
+## update/validation/reference_checks
 
 - ✅ update requests should always require memory_id to reference a visible memory.
 - ✅ utility_vote updates should always require problem_id to reference a visible problem memory.
 - ✅ fact_update_link updates should always require visible fact endpoints and memory_id to reference a visible change memory.
+- ✅ fact_update_link updates should always require fact endpoints and a change-memory target.
 - ✅ association_link updates should always require to_memory_id to reference a visible memory.
-- ✅ rejected update requests should always write nothing.
-- ✅ update hydration should always infer repo_id and default commit mode when omitted.
-- ✅ update hydration should always preserve explicit repo_id and mode over inferred defaults.
-- ✅ association_link updates should always reject self-links.
-- ✅ fact_update_link updates should always require distinct fact endpoints and reserve memory_id for the change memory.
 
-## update/execution
+## update/validation/request_shape
+
+- ✅ update requests should always reject unrecognized update.type values.
+- ✅ update requests should always reject op values other than update.
+
+## update/execution/failure_handling
+
+- ✅ failed update execution should always roll back every partial write.
+
+## update/execution/high_level_behavior
 
 - ✅ preview-only updates should always describe the writes they would make and then make no writes.
 - ✅ archiving a memory should always change only its archived flag.
 - ✅ non-archiving updates should always leave the original memory row unchanged.
-- ✅ each update type should always write only its own kind of related record.
-- ✅ failed update execution should always roll back every partial write.
 
-## write/validation
+## update/execution/record_writes
 
-- ✅ create should always reject problem references that do not exist.
-- ✅ create should always reject problem references outside repo visibility.
-- ✅ create should always require links.problem_id to reference a problem memory.
-- ✅ create should always reject association targets outside repo visibility.
-- ✅ validation failures should always write nothing.
-- ✅ embedding failures should always write nothing.
-- ✅ utility_vote updates should always require a visible problem reference.
-- ✅ utility_vote updates should always require problem_id to reference a problem memory.
-- ✅ fact_update_link updates should always require fact endpoints and a change-memory target.
-- ✅ association_link updates should always reject targets outside repo visibility.
-- ✅ create requests should always reject unknown fields.
-- ✅ update requests should always reject unrecognized update.type values.
-- ✅ update requests should always reject op values other than update.
-- ✅ create requests should always enforce confidence bounds and unique evidence refs.
-- ✅ create requests should always require at least one evidence ref.
-- ✅ solution memories should always include links.problem_id.
-- ✅ failed_tactic memories should always include links.problem_id.
-- ✅ non-attempt kinds should always reject links.problem_id.
-- ✅ create association lists should always reject duplicate target+relation pairs.
-- ✅ association_link updates should always reject self-links.
-- ✅ fact_update_link updates should always require different old_fact_id and new_fact_id.
-
-## write/execution
-
-- ✅ create(problem) should always persist one memory row and no problem_attempt row.
-- ✅ create(solution) should always persist one problem_attempt row with role solution.
-- ✅ create(failed_tactic) should always persist one problem_attempt row with role failed_tactic.
-- ✅ create should always persist one memory_embedding row for the new memory.
-- ✅ create should always attach each evidence ref exactly once in memory_evidence.
-- ✅ create with associations should always persist association_edge and association_observation rows.
-- ✅ create with associations should always link evidence refs in association_edge_evidence.
-- ✅ mid-write side-effect failures should always roll back all prior side effects.
-- ✅ update(archive_state) commit should always change archived state and preserve other memory fields.
 - ✅ update(utility_vote) commit should always append one utility_observation with the provided payload.
 - ✅ update(fact_update_link) commit should always append one fact_update with change_id equal to memory_id.
 - ✅ update(association_link) commit should always persist edge, observation, and edge evidence links.
-- ✅ update(dry_run) should always return planned_side_effects and write nothing.
-- ✅ write plans should always preserve deterministic effect ordering by operation type.
+- ✅ each update type should always write only its own kind of related record.

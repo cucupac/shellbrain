@@ -23,6 +23,10 @@ class IMemoriesRepo(ABC):
         """This method fetches a memory by identifier."""
 
     @abstractmethod
+    def list_by_ids(self, ids: Sequence[str]) -> Sequence[Memory]:
+        """This method fetches memories in the input identifier order."""
+
+    @abstractmethod
     def set_archived(self, *, memory_id: str, archived: bool) -> bool:
         """This method updates the archived state for a memory and reports whether a row changed."""
 
