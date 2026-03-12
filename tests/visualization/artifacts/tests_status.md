@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-11 19:10:35 PDT
+Generated: 2026-03-11 19:35:04 PDT
 
 ## Summary
 
-- Total: 112
-- Passed: 111
+- Total: 113
+- Passed: 112
 - Failed: 0
 - Skipped/Not Run: 1
 
@@ -65,6 +65,7 @@ Generated: 2026-03-11 19:10:35 PDT
 
 - ✅ read hydration should always infer repo_id and default knobs when omitted.
 - ✅ read hydration should always preserve explicit payload values over inferred defaults.
+- ✅ read hydration should always merge partial expand overrides over config defaults.
 - ✅ read requests should always reject unknown fields.
 - ✅ read requests should always reject op values other than read.
 - ✅ read requests should always require non-empty query text.

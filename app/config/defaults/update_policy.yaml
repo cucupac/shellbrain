@@ -3,4 +3,3 @@ gates:
   - schema
   - semantic
   - integrity
-atomicity: true

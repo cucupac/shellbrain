@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.config import get_config_provider
+from app.boot.read_policy import resolve_read_limit
 from app.core.interfaces.repos import IKeywordRetrievalRepo, IMemoriesRepo, IReadPolicyRepo, ISemanticRetrievalRepo
 from app.core.interfaces.retrieval import IVectorSearch
 from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
@@ -59,10 +59,8 @@ def _resolve_read_defaults(payload: dict[str, Any]) -> dict[str, Any]:
 
     resolved = dict(payload)
     if resolved.get("limit") is None:
-        read_policy = get_config_provider().get_read_policy()
-        limits = read_policy.get("limits") or {}
         mode = str(resolved.get("mode", "targeted"))
-        resolved["limit"] = int(limits.get(mode, 20))
+        resolved["limit"] = resolve_read_limit(mode=mode, explicit_limit=None)
     return resolved
 
 

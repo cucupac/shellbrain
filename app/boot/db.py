@@ -3,6 +3,7 @@
 import os
 from pathlib import Path
 
+from app.boot.config import get_config_provider
 from app.periphery.db.engine import get_engine
 from app.periphery.db.session import get_session_factory
 
@@ -10,9 +11,12 @@ from app.periphery.db.session import get_session_factory
 def get_db_dsn() -> str:
     """This function resolves the database DSN from environment configuration."""
 
-    dsn = os.getenv("MEMORY_DB_DSN")
+    runtime = get_config_provider().get_runtime()
+    database = runtime.get("database") or {}
+    dsn_env = str(database.get("dsn_env", "MEMORY_DB_DSN"))
+    dsn = os.getenv(dsn_env)
     if not dsn:
-        raise RuntimeError("MEMORY_DB_DSN is not set")
+        raise RuntimeError(f"{dsn_env} is not set")
     return dsn
 
 

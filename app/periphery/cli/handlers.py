@@ -1,5 +1,7 @@
 """This module defines CLI command handlers that dispatch to core use-case functions."""
 
+from app.boot.create_policy import get_create_policy_settings, validate_create_policy_settings
+from app.boot.update_policy import get_update_policy_settings, validate_update_policy_settings
 from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import MemoryCreateRequest, MemoryUpdateRequest
 from app.core.contracts.responses import OperationResult
@@ -17,34 +19,44 @@ def _error_response(errors: list[ErrorDetail]) -> dict:
     return OperationResult(status="error", errors=errors).model_dump(mode="python")
 
 
-def _validate_create_request(request: MemoryCreateRequest, *, uow) -> list[ErrorDetail]:
+def _validate_create_request(request: MemoryCreateRequest, *, uow, gates: list[str]) -> list[ErrorDetail]:
     """Run non-schema create validations before invoking core execution."""
 
-    semantic_errors = validate_create_semantics(request)
-    if semantic_errors:
-        return semantic_errors
-    return validate_create_integrity(request, uow)
+    if "semantic" in gates:
+        semantic_errors = validate_create_semantics(request)
+        if semantic_errors:
+            return semantic_errors
+    if "integrity" in gates:
+        return validate_create_integrity(request, uow)
+    return []
 
 
-def _validate_update_request(request: MemoryUpdateRequest, *, uow) -> list[ErrorDetail]:
+def _validate_update_request(request: MemoryUpdateRequest, *, uow, gates: list[str]) -> list[ErrorDetail]:
     """Run non-schema update validations before invoking core execution."""
 
-    semantic_errors = validate_update_semantics(request)
-    if semantic_errors:
-        return semantic_errors
-    return validate_update_integrity(request, uow)
+    if "semantic" in gates:
+        semantic_errors = validate_update_semantics(request)
+        if semantic_errors:
+            return semantic_errors
+    if "integrity" in gates:
+        return validate_update_integrity(request, uow)
+    return []
 
 
 def handle_create(payload: dict, *, uow_factory, embedding_provider_factory, embedding_model: str):
     """This function validates and dispatches a create payload to the create use-case."""
 
+    policy_errors = validate_create_policy_settings()
+    if policy_errors:
+        return _error_response(policy_errors)
+    policy = get_create_policy_settings()
     request, errors = validate_create_schema(payload)
     if errors:
         return _error_response(errors)
     assert request is not None
     try:
         with uow_factory() as uow:
-            validation_errors = _validate_create_request(request, uow=uow)
+            validation_errors = _validate_create_request(request, uow=uow, gates=policy["gates"])
             if validation_errors:
                 return _error_response(validation_errors)
             embedding_provider = embedding_provider_factory()
@@ -75,13 +87,17 @@ def handle_read(payload: dict, *, uow_factory):
 def handle_update(payload: dict, *, uow_factory):
     """This function validates and dispatches an update payload to the update use-case."""
 
+    policy_errors = validate_update_policy_settings()
+    if policy_errors:
+        return _error_response(policy_errors)
+    policy = get_update_policy_settings()
     request, errors = validate_update_schema(payload)
     if errors:
         return _error_response(errors)
     assert request is not None
     try:
         with uow_factory() as uow:
-            validation_errors = _validate_update_request(request, uow=uow)
+            validation_errors = _validate_update_request(request, uow=uow, gates=policy["gates"])
             if validation_errors:
                 return _error_response(validation_errors)
             return execute_update_memory(request, uow).model_dump(mode="python")

@@ -4,6 +4,7 @@ from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
+    MemoryCreateAssociationLink,
     MemoryCreateRequest,
     MemoryUpdateRequest,
     UtilityVoteUpdate,
@@ -52,7 +53,7 @@ def validate_create_integrity(request: MemoryCreateRequest, uow: IUnitOfWork) ->
                 )
             )
 
-    for index, association in enumerate(links.associations):
+    for index, association in enumerate[MemoryCreateAssociationLink](links.associations):
         target, target_errors = _require_memory(
             uow,
             memory_id=association.to_memory_id,

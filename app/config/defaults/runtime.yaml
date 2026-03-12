@@ -1,8 +1,6 @@
 # This file defines runtime defaults for database connectivity and execution mode.
 database:
   dsn_env: MEMORY_DB_DSN
-jobs:
-  mode: in_process
 cli:
   default_mode: targeted
   include_global: true

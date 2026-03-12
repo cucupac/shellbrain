@@ -1,5 +1,6 @@
 """This module defines YAML-backed configuration loading for policy and runtime settings."""
 
+from copy import deepcopy
 from pathlib import Path
 from typing import Any
 
@@ -34,24 +35,24 @@ class YamlConfigProvider(IConfigProvider):
     def get_read_policy(self) -> dict[str, Any]:
         """This method returns read-policy configuration values."""
 
-        return dict(self._read_policy)
+        return deepcopy(self._read_policy)
 
     def get_create_policy(self) -> dict[str, Any]:
         """This method returns create-policy configuration values."""
 
-        return dict(self._create_policy)
+        return deepcopy(self._create_policy)
 
     def get_update_policy(self) -> dict[str, Any]:
         """This method returns update-policy configuration values."""
 
-        return dict(self._update_policy)
+        return deepcopy(self._update_policy)
 
     def get_thresholds(self) -> dict[str, Any]:
         """This method returns threshold configuration values."""
 
-        return dict(self._thresholds)
+        return deepcopy(self._thresholds)
 
     def get_runtime(self) -> dict[str, Any]:
         """This method returns runtime configuration values."""
 
-        return dict(self._runtime)
+        return deepcopy(self._runtime)

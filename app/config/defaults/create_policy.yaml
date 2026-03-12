@@ -3,5 +3,3 @@ gates:
   - schema
   - semantic
   - integrity
-atomicity: true
-strict_create_evidence: true

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.config import get_config_provider
+from app.boot.read_policy import resolve_read_limit, resolve_read_quotas
 
 
 _BUCKET_ORDER = ("direct", "explicit", "implicit")
@@ -17,10 +17,9 @@ _BUCKET_PRIORITY = {bucket_name: index for index, bucket_name in enumerate(_BUCK
 def assemble_context_pack(scored_candidates: dict[str, list[dict[str, Any]]], payload: dict[str, Any]) -> dict[str, Any]:
     """This function assembles a final context pack from bucketed candidate groups."""
 
-    read_policy = get_config_provider().get_read_policy()
     mode = str(payload.get("mode", "targeted"))
-    limit = _resolve_limit(payload, read_policy)
-    quotas = _resolve_quotas(read_policy, mode)
+    limit = resolve_read_limit(mode=mode, explicit_limit=payload.get("limit"))
+    quotas = resolve_read_quotas(mode=mode)
     sorted_buckets = {
         bucket_name: sorted(
             scored_candidates.get(bucket_name, []),
@@ -87,28 +86,6 @@ def assemble_context_pack(scored_candidates: dict[str, list[dict[str, Any]]], pa
         "direct": sections["direct"],
         "explicit_related": sections["explicit_related"],
         "implicit_related": sections["implicit_related"],
-    }
-
-
-def _resolve_limit(payload: dict[str, Any], read_policy: dict[str, Any]) -> int:
-    """Resolve the effective context-pack limit for the current read mode."""
-
-    explicit_limit = payload.get("limit")
-    if explicit_limit is not None:
-        return int(explicit_limit)
-    mode = str(payload.get("mode", "targeted"))
-    limits = read_policy.get("limits") or {}
-    return int(limits.get(mode, 20))
-
-
-def _resolve_quotas(read_policy: dict[str, Any], mode: str) -> dict[str, int]:
-    """Resolve the per-bucket selection quotas for one read mode."""
-
-    quotas = (read_policy.get("quotas") or {}).get(mode) or {}
-    return {
-        "direct": int(quotas.get("direct", 0)),
-        "explicit": int(quotas.get("explicit", 0)),
-        "implicit": int(quotas.get("implicit", 0)),
     }
 
 
