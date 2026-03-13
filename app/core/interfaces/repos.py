@@ -1,6 +1,7 @@
 """This module defines repository interfaces for relational and semantic data access."""
 
 from abc import ABC, abstractmethod
+from datetime import datetime
 from typing import Any, Sequence
 
 from app.core.entities.associations import AssociationEdge, AssociationObservation
@@ -75,8 +76,29 @@ class IEpisodesRepo(ABC):
         """This method persists an episode row."""
 
     @abstractmethod
+    def get_episode_by_thread(
+        self,
+        *,
+        repo_id: str,
+        thread_id: str,
+    ) -> Episode | None:
+        """This method fetches one episode by canonical host session key."""
+
+    @abstractmethod
+    def list_event_keys(self, *, episode_id: str) -> Sequence[str]:
+        """This method returns already-imported upstream event keys for one episode."""
+
+    @abstractmethod
+    def next_event_seq(self, *, episode_id: str) -> int:
+        """This method returns the next append sequence number for one episode."""
+
+    @abstractmethod
     def append_event(self, event: EpisodeEvent) -> None:
         """This method appends an event into an episode stream."""
+
+    @abstractmethod
+    def close_episode(self, *, episode_id: str, ended_at: datetime) -> None:
+        """This method marks an active episode closed."""
 
     @abstractmethod
     def append_transfer(self, transfer: SessionTransfer) -> None:

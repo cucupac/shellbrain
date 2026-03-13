@@ -1,6 +1,7 @@
 """This module defines episodic session entities and transfer provenance entities."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 
@@ -27,10 +28,14 @@ class Episode:
 
     id: str
     repo_id: str
+    host_app: str
     thread_id: str | None = None
     title: str | None = None
     objective: str | None = None
     status: EpisodeStatus = EpisodeStatus.ACTIVE
+    started_at: datetime | None = None
+    ended_at: datetime | None = None
+    created_at: datetime | None = None
 
 
 @dataclass(kw_only=True)
@@ -40,8 +45,10 @@ class EpisodeEvent:
     id: str
     episode_id: str
     seq: int
+    host_event_key: str
     source: EpisodeEventSource
     content: str
+    created_at: datetime | None = None
 
 
 @dataclass(kw_only=True)
@@ -56,3 +63,4 @@ class SessionTransfer:
     transfer_kind: str
     rationale: str | None = None
     transferred_by: str | None = None
+    created_at: datetime | None = None

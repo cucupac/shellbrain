@@ -104,6 +104,7 @@ def test_episode_rows_reject_end_times_before_start_times(
                 episodes.insert().values(
                     id="episode-1",
                     repo_id="repo-a",
+                    host_app="codex",
                     thread_id="thread-1",
                     title="Episode",
                     objective="Objective",
@@ -128,6 +129,7 @@ def test_session_transfer_rows_reject_self_transfers(
             episodes.insert().values(
                 id="episode-1",
                 repo_id="repo-a",
+                host_app="codex",
                 thread_id="thread-1",
                 title="Episode",
                 objective="Objective",
@@ -142,6 +144,7 @@ def test_session_transfer_rows_reject_self_transfers(
                 id="event-1",
                 episode_id="episode-1",
                 seq=1,
+                host_event_key="event-1",
                 source="assistant",
                 content="event",
                 created_at=now,
