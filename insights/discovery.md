@@ -782,3 +782,58 @@ What remains open:
 - Final default for `max_update_chain_depth`.
 - Final defaults for association traversal/ranking knobs.
 - Final scenario projection schema names/fields and constructor trigger boundaries.
+
+## 2026-03-12 - Ratified Local Transcript Extraction Paths for Codex and Claude Code
+
+What changed:
+- Ratified that automatic episodic ingestion is feasible for both Codex desktop sessions and Claude Code sessions inside the Claude desktop app because both persist machine-readable local transcript/event logs.
+- Ratified Codex local transcript source:
+  - authoritative transcript is the rollout JSONL under `~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<thread-id>.jsonl`,
+  - thread IDs can be resolved through the Codex app/server thread APIs (`thread/list`, `thread/read`) or by searching `~/.codex/sessions` for the thread ID,
+  - deeplinks like `codex://threads/<id>` are useful for human navigation but are not the storage source the memory system should ingest.
+- Ratified Claude Code local transcript source:
+  - session metadata is stored under `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/local_<session-id>.json`,
+  - that metadata contains the `cliSessionId`,
+  - the actual transcript is stored separately at `~/.claude/projects/<cwd-encoded>/<cliSessionId>.jsonl`,
+  - Claude's app log at `~/Library/Logs/Claude/main.log` can be used as an additional proof/debug surface because it records lines like `Loaded N transcript messages for session ...`.
+- Ratified operational implication:
+  - one host thread/session can map directly to one `episode`,
+  - the JSONL stream can be transformed into `episode_events`,
+  - the main solving agent does not need to manually maintain an episode log.
+- Clarified current proof boundary:
+  - proven for Codex threads,
+  - proven for Claude Code / local agent mode sessions inside Claude desktop,
+  - not yet proven for ordinary non-Code Claude desktop chat threads.
+
+Why it changed:
+- Earlier, full passive episode capture looked blocked because desktop apps did not appear to expose transcript export or message/tool hooks.
+- Local transcript discovery removes that blocker for two important host environments and makes passive episodic provenance practical.
+- This preserves the design goal that the main agent should stay focused on solving the user's task rather than bookkeeping.
+
+How to access the transcripts:
+- Codex:
+  - get the thread ID,
+  - resolve/read the thread via Codex's thread API or search `~/.codex/sessions`,
+  - read the matching `rollout-...jsonl` file from `~/.codex/sessions/...`.
+- Claude Code:
+  - read the latest `local_*.json` session metadata under `~/Library/Application Support/Claude/claude-code-sessions/...`,
+  - extract `cliSessionId`,
+  - read `~/.claude/projects/<cwd-encoded>/<cliSessionId>.jsonl`.
+
+Concrete proof examples:
+- Codex thread transcript:
+  - `/Users/adamcuculich/.codex/sessions/2026/03/12/rollout-2026-03-12T01-43-16-019ce136-e14d-7b80-92bc-be07e4330536.jsonl`
+- Claude Code session metadata:
+  - `/Users/adamcuculich/Library/Application Support/Claude/claude-code-sessions/3ff3a721-e42f-47c6-be94-ef31595eba06/39666ff3-194c-4c9a-8310-8a1fe89d92e3/local_9d640378-6572-4541-8db1-f2f3c241484e.json`
+- Claude Code transcript:
+  - `/Users/adamcuculich/.claude/projects/-Users-adamcuculich-relay-backends-solver/46cc92ee-1291-49d2-89e5-ef0ac1603709.jsonl`
+
+Files updated:
+- `insights/00-lab/immutable-work-log.md`
+- `insights/discovery.md`
+
+What remains open:
+- Canonical `episode_events.content` payload shape for imported host transcript records.
+- Canonical `evidence_refs.ref` format for pointers into imported host events.
+- Generic adapter logic for finding the active/current host thread or session automatically.
+- Whether ordinary Claude desktop non-Code chats expose a comparable local transcript file.

@@ -351,3 +351,14 @@ Rules:
 - Did not work / risk: future product surfaces that want to expose utility will need a separate ratified purpose and should not silently re-enter online ranking.
 - Open: finalize pack quotas, expansion/ranking knobs, update-chain depth defaults, and scenario projection boundaries.
 - Files touched: `insights/03-refinements/read-policy-context-pack-v1.md`, `insights/06-working-set/03-read-policy-v1.md`, `insights/05-ratified/ratified-state-register-v1.md`, `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.
+
+## 2026-03-12 22:42:00 PDT
+
+- Proposed: verify whether Codex desktop and Claude Code desktop sessions are actually persisted locally in a way that can power passive episodic ingestion.
+- Worked: proved Codex stores machine-readable per-thread rollout JSONL files under `~/.codex/sessions/.../rollout-<timestamp>-<thread-id>.jsonl`.
+- Worked: proved Claude Code stores session metadata under `~/Library/Application Support/Claude/claude-code-sessions/.../local_<session-id>.json` and transcript JSONL separately under `~/.claude/projects/<cwd-encoded>/<cliSessionId>.jsonl`.
+- Worked: proved Claude's own app log records transcript load counts, which gives an additional local confirmation/debug surface.
+- Worked: established that passive episodes are practical for Codex and Claude Code without asking the main agent to log every turn manually.
+- Did not work / risk: ordinary non-Code Claude desktop chats are still not proven to expose a comparable local transcript file.
+- Open: define the canonical imported `episode_events.content` payload and canonical host-event evidence-ref format.
+- Files touched: `insights/00-lab/immutable-work-log.md`, `insights/discovery.md`.

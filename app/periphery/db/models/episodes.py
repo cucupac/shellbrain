@@ -11,6 +11,7 @@ episodes = Table(
     metadata,
     Column("id", String, primary_key=True),
     Column("repo_id", String, nullable=False),
+    Column("host_app", String, nullable=False),
     Column("thread_id", String),
     Column("title", String),
     Column("objective", String),
@@ -18,6 +19,7 @@ episodes = Table(
     Column("started_at", TIMESTAMP(timezone=True), nullable=False),
     Column("ended_at", TIMESTAMP(timezone=True)),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
+    UniqueConstraint("repo_id", "thread_id", name="uq_episodes_repo_thread"),
     CheckConstraint("ended_at IS NULL OR ended_at >= started_at", name="ck_episodes_ended_after_started"),
 )
 
@@ -27,11 +29,13 @@ episode_events = Table(
     Column("id", String, primary_key=True),
     Column("episode_id", String, ForeignKey("episodes.id", ondelete="CASCADE"), nullable=False),
     Column("seq", Integer, nullable=False),
+    Column("host_event_key", String, nullable=False),
     Column("source", String, nullable=False),
     Column("content", Text, nullable=False),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
     CheckConstraint("seq > 0", name="ck_episode_events_seq_positive"),
     UniqueConstraint("episode_id", "seq", name="uq_episode_events_seq"),
+    UniqueConstraint("episode_id", "host_event_key", name="uq_episode_events_host_event_key"),
 )
 
 session_transfers = Table(

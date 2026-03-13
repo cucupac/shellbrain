@@ -63,6 +63,14 @@ def main() -> int:
     else:
         result = handle_update(payload, uow_factory=uow_factory, inferred_repo_id=inferred_repo_id)
 
+    if result.get("status") == "ok":
+        try:
+            from app.periphery.episodes.launcher import ensure_episode_sync_started
+
+            ensure_episode_sync_started(repo_id=inferred_repo_id, repo_root=Path.cwd().resolve())
+        except Exception:
+            pass
+
     print(render(result))
     return 0
 

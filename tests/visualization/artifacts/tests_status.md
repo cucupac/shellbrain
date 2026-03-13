@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-12 03:26:29 PDT
+Generated: 2026-03-13 00:49:10 PDT
 
 ## Summary
 
-- Total: 121
-- Passed: 121
+- Total: 140
+- Passed: 140
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -63,6 +63,40 @@ Generated: 2026-03-12 03:26:29 PDT
 - ✅ create(problem) should always persist one memory row and no problem_attempt row.
 - ✅ create(solution) should always persist one problem_attempt row with role solution.
 - ✅ create(failed_tactic) should always persist one problem_attempt row with role failed_tactic.
+
+## episodes/validation/normalization
+
+- ✅ codex parsing should always normalize user and assistant messages into the common event shape.
+- ✅ claude code parsing should always normalize user and assistant messages into the common event shape.
+- ✅ episode parsing should always keep meaningful tool results and drop noisy tool chatter.
+- ✅ episode parsing should always skip unknown transcript lines without failing normalization.
+
+## episodes/validation/source_discovery
+
+- ✅ codex source resolution should always find a rollout transcript from a thread id.
+- ✅ claude code source resolution should always find a transcript from local session metadata.
+- ✅ source resolution should always recover when the transcript moved within known host roots.
+- ✅ source resolution should always fail clearly when the host transcript can no longer be found.
+
+## episodes/execution/failure_handling
+
+- ✅ episode rows should always reject duplicate repo_id and thread_id pairs.
+- ✅ episode_event rows should always reject duplicate host_event_key values within one episode.
+- ✅ episode import should always surface a user-actionable error when a host source disappears.
+- ✅ episode import should always roll back partial writes if a DB write fails mid-import.
+
+## episodes/execution/high_level_behavior
+
+- ✅ codex and claude code imports should always produce the same stored event shape for equivalent flows.
+- ✅ episode import should always store compact event content rather than raw noisy transcript blobs.
+- ✅ episode import should always preserve user and assistant order.
+
+## episodes/execution/record_writes
+
+- ✅ first episode import should always create one episode and ordered episode events.
+- ✅ re-import of the same host session should always not duplicate episode events.
+- ✅ incremental re-import should always append only newly seen events.
+- ✅ the same host session should always map to the same stored episode.
 
 ## read/validation/unit
 
