@@ -7,10 +7,12 @@ import subprocess
 import pytest
 from sqlalchemy import select, text
 
+from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.contracts.requests import MemoryCreateRequest
 from app.core.use_cases.create_memory import execute_create_memory
 from app.periphery.db.engine import get_engine
 from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from app.periphery.db.models.episodes import episode_events, episodes
 from app.periphery.db.models.memories import memory_embeddings
 from app.periphery.db.models.registry import target_metadata
 from app.periphery.db.session import get_session_factory
@@ -49,6 +51,25 @@ def test_create_persists_memory_embedding_row() -> None:
     provider = SentenceTransformersEmbeddingProvider(model="all-MiniLM-L6-v2")
 
     with PostgresUnitOfWork(get_session_factory(engine)) as uow:
+        uow.episodes.create_episode(
+            Episode(
+                id="repo-integration-episode",
+                repo_id="repo-integration",
+                host_app="codex",
+                thread_id="codex:repo-integration-evidence",
+                status=EpisodeStatus.ACTIVE,
+            )
+        )
+        uow.episodes.append_event(
+            EpisodeEvent(
+                id="integration://evidence/1",
+                episode_id="repo-integration-episode",
+                seq=1,
+                host_event_key="integration://evidence/1",
+                source=EpisodeEventSource.USER,
+                content='{"content_text":"integration evidence"}',
+            )
+        )
         result = execute_create_memory(
             request,
             uow,
@@ -59,9 +80,17 @@ def test_create_persists_memory_embedding_row() -> None:
     assert result.status == "ok"
     memory_id = result.data["memory_id"]
     with engine.connect() as conn:
+        evidence_row = conn.execute(
+            select(episodes.c.id).where(episodes.c.id == "repo-integration-episode")
+        ).first()
+        event_row = conn.execute(
+            select(episode_events.c.id).where(episode_events.c.id == "integration://evidence/1")
+        ).first()
         row = conn.execute(
             select(memory_embeddings.c.model, memory_embeddings.c.dim).where(memory_embeddings.c.memory_id == memory_id)
         ).mappings().first()
+    assert evidence_row is not None
+    assert event_row is not None
     assert row is not None
     assert row["model"] == "all-MiniLM-L6-v2"
     assert row["dim"] == 384

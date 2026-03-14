@@ -151,3 +151,78 @@ def test_create_rejects_invisible_association_target(
 
     assert result["status"] == "error"
     assert any(error["code"] == "integrity_error" for error in result["errors"])
+
+
+def test_create_rejects_missing_episode_event_evidence(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+) -> None:
+    """create should always reject evidence refs that do not resolve to stored episode events."""
+
+    payload = {
+        "memory": {
+            "text": "Problem with missing evidence.",
+            "scope": "repo",
+            "kind": "problem",
+            "evidence_refs": ["missing-event-id"],
+        },
+    }
+
+    result = handle_create(
+        payload,
+        uow_factory=uow_factory,
+        embedding_provider_factory=lambda: None,
+        embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
+    )
+
+    assert result["status"] == "error"
+    assert any(
+        error["code"] == "not_found" and error["field"] == "memory.evidence_refs.0"
+        for error in result["errors"]
+    )
+
+
+def test_create_rejects_episode_event_evidence_from_another_repo(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_episode: Callable[..., object],
+    seed_episode_event: Callable[..., object],
+) -> None:
+    """create should always reject evidence refs that belong to another repo's episode."""
+
+    episode = seed_episode(
+        episode_id="repo-b-evidence-episode",
+        repo_id="repo-b",
+        host_app="codex",
+        thread_id="codex:repo-b-evidence",
+    )
+    seed_episode_event(
+        event_id="repo-b-event-1",
+        episode_id=episode.id,
+        seq=1,
+        content='{"content_text":"repo-b event"}',
+    )
+
+    payload = {
+        "memory": {
+            "text": "Problem with hidden evidence.",
+            "scope": "repo",
+            "kind": "problem",
+            "evidence_refs": ["repo-b-event-1"],
+        },
+    }
+
+    result = handle_create(
+        payload,
+        uow_factory=uow_factory,
+        embedding_provider_factory=lambda: None,
+        embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
+    )
+
+    assert result["status"] == "error"
+    assert any(
+        error["code"] == "integrity_error" and error["field"] == "memory.evidence_refs.0"
+        for error in result["errors"]
+    )

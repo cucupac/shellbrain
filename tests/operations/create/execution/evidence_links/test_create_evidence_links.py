@@ -47,6 +47,7 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
 
     refs = fetch_rows(evidence_refs, evidence_refs.c.repo_id == "repo-a")
     assert {row["ref"] for row in refs} == {"session://1", "session://2"}
+    assert {row["episode_event_id"] for row in refs} == {"session://1", "session://2"}
 
 
 def test_create_association_links_attach_edge_evidence(

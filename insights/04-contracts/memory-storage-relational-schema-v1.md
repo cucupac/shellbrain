@@ -186,10 +186,12 @@ CREATE TABLE evidence_refs (
   id TEXT PRIMARY KEY,
   repo_id TEXT NOT NULL,
   ref TEXT NOT NULL,
+  episode_event_id TEXT REFERENCES episode_events(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX uq_evidence_repo_ref ON evidence_refs(repo_id, ref);
+CREATE UNIQUE INDEX uq_evidence_repo_episode_event ON evidence_refs(repo_id, episode_event_id);
 
 CREATE TABLE memory_evidence (
   memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,

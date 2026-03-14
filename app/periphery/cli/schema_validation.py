@@ -6,6 +6,7 @@ from pydantic import Field, ValidationError, field_validator
 
 from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import (
+    EpisodeEventsRequest,
     MemoryCreateLinks,
     MemoryCreateRequest,
     MemoryReadRequest,
@@ -66,6 +67,12 @@ class AgentCreateRequest(StrictBaseModel):
     memory: AgentCreateBody
 
 
+class AgentEventsRequest(StrictBaseModel):
+    """Agent-facing events payload with transport fields removed."""
+
+    limit: int | None = Field(default=None, ge=1, le=100)
+
+
 class AgentUpdateRequest(StrictBaseModel):
     """Agent-facing update payload with repo/op transport details removed."""
 
@@ -79,10 +86,16 @@ def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
     details: list[ErrorDetail] = []
     for item in exc.errors():
         path = ".".join(str(segment) for segment in item.get("loc", ()))
+        message = item.get("msg", "Schema validation failed")
+        if path in {"memory.evidence_refs", "update.evidence_refs"} and item.get("type") in {
+            "too_short",
+            "missing",
+        }:
+            message = "evidence_refs must include at least one stored episode event id; query events first"
         details.append(
             ErrorDetail(
                 code=ErrorCode.SCHEMA_ERROR,
-                message=item.get("msg", "Schema validation failed"),
+                message=message,
                 field=path or None,
             )
         )
@@ -107,11 +120,31 @@ def validate_read_schema(payload: dict[str, Any]) -> tuple[AgentReadRequest | No
         return None, _format_validation_errors(exc)
 
 
+def validate_events_schema(payload: dict[str, Any]) -> tuple[AgentEventsRequest | None, list[ErrorDetail]]:
+    """Validate and parse agent events payloads into the simplified events contract."""
+
+    try:
+        return AgentEventsRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
 def validate_internal_read_contract(payload: dict[str, Any]) -> tuple[MemoryReadRequest | None, list[ErrorDetail]]:
     """Validate one hydrated read payload against the full internal read contract."""
 
     try:
         return MemoryReadRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_internal_events_contract(
+    payload: dict[str, Any],
+) -> tuple[EpisodeEventsRequest | None, list[ErrorDetail]]:
+    """Validate one hydrated events payload against the full internal events contract."""
+
+    try:
+        return EpisodeEventsRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 

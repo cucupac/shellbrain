@@ -11,12 +11,16 @@ from pathlib import Path
 
 from app.boot.use_cases import get_uow_factory
 from app.core.use_cases.sync_episode import sync_episode_from_host
-from app.periphery.episodes.source_discovery import discover_active_host_session, resolve_host_transcript_source
+from app.periphery.episodes.source_discovery import (
+    SUPPORTED_HOSTS,
+    default_search_roots,
+    discover_active_host_session,
+    resolve_host_transcript_source,
+)
 
 
 POLL_INTERVAL_SECONDS = 5
 IDLE_EXIT_SECONDS = 15 * 60
-SUPPORTED_HOSTS = ("codex", "claude_code")
 
 
 @dataclass
@@ -51,7 +55,7 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
     while True:
         saw_change = False
         for host_app in SUPPORTED_HOSTS:
-            search_roots = _default_search_roots(repo_root=repo_root, host_app=host_app)
+            search_roots = default_search_roots(repo_root=repo_root, host_app=host_app)
             candidate = discover_active_host_session(
                 host_app=host_app,
                 repo_root=repo_root,
@@ -123,19 +127,6 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
             break
 
         time.sleep(POLL_INTERVAL_SECONDS)
-
-
-def _default_search_roots(*, repo_root: Path, host_app: str) -> list[Path]:
-    """Return bounded host search roots for one repo."""
-
-    home = Path.home()
-    if host_app == "codex":
-        return [home / ".codex" / "sessions"]
-    if host_app == "claude_code":
-        return [home]
-    return [repo_root]
-
-
 def _close_episode(*, repo_id: str, host_app: str, host_session_key: str, uow_factory) -> None:
     """Close one active episode when a newer session replaces it."""
 

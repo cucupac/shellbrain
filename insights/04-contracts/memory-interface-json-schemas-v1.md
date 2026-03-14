@@ -126,7 +126,7 @@ This card records the `read` / `create` / `update` interface semantics and exact
 - `memory.links.problem_id`: required when `kind` is `solution` or `failed_tactic`.
 - `memory.links.related_memory_ids`: optional additional associations.
 - `memory.links.associations`: optional explicit formal association links from created memory to existing memories.
-- `memory.evidence_refs`: required evidence references (`minItems = 1`) for all create kinds in v1.
+- `memory.evidence_refs`: required evidence references (`minItems = 1`) for all create kinds in v1; each value is a stored `episode_events.id`.
 
 ## `memory.update.request`
 
@@ -207,7 +207,7 @@ This card records the `read` / `create` / `update` interface semantics and exact
 - `update.to_memory_id`: association-link destination memory ID.
 - `update.relation_type`: association-link relation type (`depends_on` or `associated_with`).
 - `update.rationale`: optional reason string.
-- `update.evidence_refs`: required for `association_link`; optional (recommended) for other update types.
+- `update.evidence_refs`: required for `association_link`; optional (recommended) for other update types. When provided, each value is a stored `episode_events.id`.
 
 ## Simpler v1 profile (recommended)
 
@@ -245,12 +245,19 @@ Hydration rules by operation:
     - `limit` default from policy config,
     - `expand.*` defaults from policy config.
 
-- `create`:
-  - required from agent: `memory.kind`, `memory.text` (and `links.problem_id` when `kind` is `solution` or `failed_tactic`).
+- `events`:
+  - required from agent: nothing.
+  - optional from agent:
+    - `limit` for recent-event count.
   - inferred by adapter:
     - `repo_id` from cwd/repo resolver,
-    - `memory.scope = "repo"` unless explicitly set,
-    - `memory.evidence_refs` auto-attached only when provenance is unambiguous; otherwise request is rejected.
+    - newest repo-matching supported host session.
+
+- `create`:
+  - required from agent: `memory.kind`, `memory.text`, `memory.evidence_refs` (and `links.problem_id` when `kind` is `solution` or `failed_tactic`).
+  - inferred by adapter:
+    - `repo_id` from cwd/repo resolver,
+    - `memory.scope = "repo"` unless explicitly set.
   - association link preference:
     - use typed `memory.links.associations[]` when explicitly linking memories.
     - untyped `memory.links.related_memory_ids` remains available but is not the preferred primary linking path for agent-authored explicit relations.
@@ -258,8 +265,7 @@ Hydration rules by operation:
 - `update`:
   - required from agent: `memory_id`, `update.type`, and type-specific required fields.
   - inferred by adapter:
-    - `repo_id` from cwd/repo resolver,
-    - `update.evidence_refs` auto-attached for `association_link` only when provenance is unambiguous; otherwise request is rejected.
+    - `repo_id` from cwd/repo resolver.
 
 ## Validation Placement
 

@@ -23,6 +23,7 @@ Status: locked schema card with a few open policy-level details.
   - `global_utility`
   - direct dependency/dependent count views
 - No mutable truth score in v1.
+- `evidence_refs.episode_event_id` stores the canonical FK-backed event pointer; `ref` remains as a compatibility mirror.
 
 Source:
 - `insights/04-contracts/memory-storage-relational-schema-v1.md`
@@ -30,6 +31,6 @@ Source:
 ## Not yet locked
 
 - Canonical `episode_events.content` payload shape (data contract, not table existence).
-- Canonical `evidence_refs.ref` pointer string format.
+- Canonical compatibility policy for `evidence_refs.ref` once all writers are event-backed.
 - Final defaults for association strength update function parameters.
 - Final compatibility/migration policy for legacy naming if needed.

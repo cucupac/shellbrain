@@ -9,11 +9,10 @@ Status: partially concrete; matrix card still to be published.
   2. semantic validation
   3. DB integrity validation
 - Create evidence is strict:
-  - `memory.evidence_refs` is required with `minItems >= 1`.
+  - `memory.evidence_refs` is required with `minItems >= 1` and must resolve to stored repo-visible `episode_events.id` values.
 - Ergonomic adapter hydration checks:
   - inferred fields are applied before strict schema validation,
-  - explicit agent-provided fields override inferred defaults,
-  - auto-evidence attachment is permitted only with unambiguous provenance.
+  - explicit agent-provided fields override inferred defaults.
 - Semantic kind checks are required for relational links:
   - `problem_attempts`: problem/attempt kind-role consistency
   - `fact_updates`: fact/fact/change consistency

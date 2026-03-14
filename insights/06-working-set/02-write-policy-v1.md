@@ -15,9 +15,10 @@ Status: locked at high level; final semantic matrix details still pending.
   - accepted create/update requests commit in one transaction or fully abort.
 - Strict create evidence:
   - `evidence_refs >= 1` for all create kinds.
-- Ergonomic adapter evidence hydration:
-  - adapter may auto-attach evidence refs only when provenance is unambiguous,
-  - if provenance is ambiguous, request is rejected for explicit evidence instead of guessing.
+- Explicit evidence workflow:
+  - agents query `events` to inspect the current active episode,
+  - agents choose one or more stored `episode_events.id` values as `evidence_refs`,
+  - adapter does not auto-attach evidence in v1.
 - Deterministic side effects:
   - `create(problem|fact|preference|change)` -> `memories` (+ evidence links)
   - `create(solution|failed_tactic)` -> `memories` + `problem_attempts` (+ evidence links)

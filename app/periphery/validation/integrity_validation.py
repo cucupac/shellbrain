@@ -28,10 +28,53 @@ def _require_memory(uow: IUnitOfWork, *, memory_id: str, field: str) -> tuple[Me
     return memory, []
 
 
+def _validate_evidence_refs(
+    uow: IUnitOfWork,
+    *,
+    repo_id: str,
+    refs: list[str],
+    field_prefix: str,
+) -> list[ErrorDetail]:
+    """Validate that evidence refs resolve to repo-visible episode events."""
+
+    if not refs:
+        return []
+
+    existing_ids = set(uow.episodes.list_existing_event_ids(event_ids=refs))
+    visible_ids = set(uow.episodes.list_visible_event_ids(repo_id=repo_id, event_ids=refs))
+    errors: list[ErrorDetail] = []
+
+    for index, ref in enumerate(refs):
+        field = f"{field_prefix}.{index}"
+        if ref not in existing_ids:
+            errors.append(
+                ErrorDetail(
+                    code=ErrorCode.NOT_FOUND,
+                    message=f"Episode event not found: {ref}",
+                    field=field,
+                )
+            )
+            continue
+        if ref not in visible_ids:
+            errors.append(
+                ErrorDetail(
+                    code=ErrorCode.INTEGRITY_ERROR,
+                    message="Referenced episode event is not visible for this repo_id",
+                    field=field,
+                )
+            )
+    return errors
+
+
 def validate_create_integrity(request: MemoryCreateRequest, uow: IUnitOfWork) -> list[ErrorDetail]:
     """Validate database integrity constraints for create operations."""
 
-    errors: list[ErrorDetail] = []
+    errors = _validate_evidence_refs(
+        uow,
+        repo_id=request.repo_id,
+        refs=list(request.memory.evidence_refs),
+        field_prefix="memory.evidence_refs",
+    )
     links = request.memory.links
     if links.problem_id:
         problem_memory, problem_errors = _require_memory(uow, memory_id=links.problem_id, field="memory.links.problem_id")
@@ -88,6 +131,14 @@ def validate_update_integrity(request: MemoryUpdateRequest, uow: IUnitOfWork) ->
 
     update = request.update
     if isinstance(update, UtilityVoteUpdate):
+        errors.extend(
+            _validate_evidence_refs(
+                uow,
+                repo_id=request.repo_id,
+                refs=list(update.evidence_refs),
+                field_prefix="update.evidence_refs",
+            )
+        )
         problem_memory, problem_errors = _require_memory(uow, memory_id=update.problem_id, field="update.problem_id")
         errors.extend(problem_errors)
         if problem_memory and not _is_visible(problem_memory, request.repo_id):
@@ -108,6 +159,14 @@ def validate_update_integrity(request: MemoryUpdateRequest, uow: IUnitOfWork) ->
             )
 
     if isinstance(update, FactUpdateLinkUpdate):
+        errors.extend(
+            _validate_evidence_refs(
+                uow,
+                repo_id=request.repo_id,
+                refs=list(update.evidence_refs),
+                field_prefix="update.evidence_refs",
+            )
+        )
         old_fact, old_errors = _require_memory(uow, memory_id=update.old_fact_id, field="update.old_fact_id")
         new_fact, new_errors = _require_memory(uow, memory_id=update.new_fact_id, field="update.new_fact_id")
         errors.extend(old_errors)
@@ -154,6 +213,14 @@ def validate_update_integrity(request: MemoryUpdateRequest, uow: IUnitOfWork) ->
             )
 
     if isinstance(update, AssociationLinkUpdate):
+        errors.extend(
+            _validate_evidence_refs(
+                uow,
+                repo_id=request.repo_id,
+                refs=list(update.evidence_refs),
+                field_prefix="update.evidence_refs",
+            )
+        )
         target, target_errors = _require_memory(uow, memory_id=update.to_memory_id, field="update.to_memory_id")
         errors.extend(target_errors)
         if target and not _is_visible(target, request.repo_id):

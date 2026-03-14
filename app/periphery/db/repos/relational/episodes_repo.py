@@ -1,10 +1,11 @@
 """This module defines relational repository operations for episodic provenance tables."""
 
 from datetime import datetime, timezone
+from typing import Sequence
 
 from sqlalchemy import func, select, update
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeStatus, SessionTransfer
+from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus, SessionTransfer
 from app.core.interfaces.repos import IEpisodesRepo
 from app.periphery.db.models.episodes import episode_events, episodes, session_transfers
 
@@ -124,3 +125,64 @@ class EpisodesRepo(IEpisodesRepo):
                 created_at=transfer.created_at or datetime.now(timezone.utc),
             )
         )
+
+    def list_existing_event_ids(self, *, event_ids: Sequence[str]) -> list[str]:
+        """This method returns stored event ids regardless of repo visibility."""
+
+        if not event_ids:
+            return []
+        rows = self._session.execute(
+            select(episode_events.c.id).where(episode_events.c.id.in_(event_ids))
+        ).scalars()
+        return [str(value) for value in rows]
+
+    def list_visible_event_ids(self, *, repo_id: str, event_ids: Sequence[str]) -> list[str]:
+        """This method returns stored event ids visible to one repo."""
+
+        if not event_ids:
+            return []
+        rows = self._session.execute(
+            select(episode_events.c.id)
+            .select_from(episode_events.join(episodes, episode_events.c.episode_id == episodes.c.id))
+            .where(
+                episodes.c.repo_id == repo_id,
+                episode_events.c.id.in_(event_ids),
+            )
+        ).scalars()
+        return [str(value) for value in rows]
+
+    def list_recent_events(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+        limit: int,
+    ) -> list[EpisodeEvent]:
+        """This method returns recent events for one repo-visible episode ordered newest first."""
+
+        rows = (
+            self._session.execute(
+                select(episode_events)
+                .select_from(episode_events.join(episodes, episode_events.c.episode_id == episodes.c.id))
+                .where(
+                    episodes.c.repo_id == repo_id,
+                    episode_events.c.episode_id == episode_id,
+                )
+                .order_by(episode_events.c.seq.desc())
+                .limit(limit)
+            )
+            .mappings()
+            .all()
+        )
+        return [
+            EpisodeEvent(
+                id=row["id"],
+                episode_id=row["episode_id"],
+                seq=row["seq"],
+                host_event_key=row["host_event_key"],
+                source=EpisodeEventSource(row["source"]),
+                content=row["content"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]

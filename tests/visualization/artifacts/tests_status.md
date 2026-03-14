@@ -1,11 +1,11 @@
 # Tests Status
 
-Generated: 2026-03-13 00:49:10 PDT
+Generated: 2026-03-13 19:06:13 PDT
 
 ## Summary
 
-- Total: 140
-- Passed: 140
+- Total: 151
+- Passed: 151
 - Failed: 0
 - Skipped/Not Run: 0
 
@@ -22,6 +22,8 @@ Generated: 2026-03-13 00:49:10 PDT
 - ✅ create should always reject problem references outside repo visibility.
 - ✅ create should always require links.problem_id to reference a problem memory.
 - ✅ create should always reject association targets outside repo visibility.
+- ✅ create should always reject evidence refs that do not resolve to stored episode events.
+- ✅ create should always reject evidence refs that belong to another repo's episode.
 
 ## create/validation/request_shape
 
@@ -97,6 +99,22 @@ Generated: 2026-03-13 00:49:10 PDT
 - ✅ re-import of the same host session should always not duplicate episode events.
 - ✅ incremental re-import should always append only newly seen events.
 - ✅ the same host session should always map to the same stored episode.
+
+## events/validation/request_shape
+
+- ✅ events requests should always accept an optional limit without extra selectors.
+- ✅ events requests should always enforce configured limit bounds.
+- ✅ events requests should always reject unknown fields.
+- ✅ events hydration should always infer repo_id and the default limit.
+
+## events/execution/failure_handling
+
+- ✅ events should always return not_found when no active host session exists for the repo.
+
+## events/execution/high_level_behavior
+
+- ✅ events should always sync the active host session and return recent stored events newest first.
+- ✅ events should always select the most recently updated matching host session across supported hosts.
 
 ## read/validation/unit
 
@@ -212,6 +230,8 @@ Generated: 2026-03-13 00:49:10 PDT
 - ✅ fact_update_link updates should always require visible fact endpoints and memory_id to reference a visible change memory.
 - ✅ fact_update_link updates should always require fact endpoints and a change-memory target.
 - ✅ association_link updates should always require to_memory_id to reference a visible memory.
+- ✅ association_link updates should always reject evidence refs from another repo's episode.
+- ✅ optional update evidence should always resolve to stored episode events when supplied.
 
 ## update/validation/request_shape
 
