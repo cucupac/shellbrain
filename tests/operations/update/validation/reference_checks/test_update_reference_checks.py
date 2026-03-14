@@ -364,6 +364,102 @@ def test_update_association_link_requires_visible_target_memory(
     )
 
 
+def test_update_association_link_rejects_episode_event_evidence_from_another_repo(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+    seed_episode: Callable[..., object],
+    seed_episode_event: Callable[..., object],
+) -> None:
+    """association_link updates should always reject evidence refs from another repo's episode."""
+
+    seed_memory(
+        memory_id="source-memory",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Source memory.",
+    )
+    seed_memory(
+        memory_id="target-memory",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Target memory.",
+    )
+    episode = seed_episode(
+        episode_id="repo-b-evidence-episode",
+        repo_id="repo-b",
+        host_app="codex",
+        thread_id="codex:repo-b-evidence",
+    )
+    seed_episode_event(
+        event_id="repo-b-event-1",
+        episode_id=episode.id,
+        seq=1,
+        content='{"content_text":"repo-b event"}',
+    )
+
+    request = _make_update_request(
+        repo_id="repo-a",
+        memory_id="source-memory",
+        update={
+            "type": "association_link",
+            "to_memory_id": "target-memory",
+            "relation_type": "depends_on",
+            "evidence_refs": ["repo-b-event-1"],
+        },
+    )
+
+    with uow_factory() as uow:
+        errors = validate_update_integrity(request, uow)
+
+    assert any(
+        error.code.value == "integrity_error" and error.field == "update.evidence_refs.0"
+        for error in errors
+    )
+
+
+def test_update_optional_evidence_must_resolve_to_stored_episode_events_when_present(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+) -> None:
+    """optional update evidence should always resolve to stored episode events when supplied."""
+
+    seed_memory(
+        memory_id="target-memory",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Target memory.",
+    )
+    seed_memory(
+        memory_id="problem-1",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.PROBLEM,
+        text_value="Problem memory.",
+    )
+
+    request = _make_update_request(
+        repo_id="repo-a",
+        memory_id="target-memory",
+        update={
+            "type": "utility_vote",
+            "problem_id": "problem-1",
+            "vote": 0.6,
+            "evidence_refs": ["missing-event-id"],
+        },
+    )
+
+    with uow_factory() as uow:
+        errors = validate_update_integrity(request, uow)
+
+    assert any(
+        error.code.value == "not_found" and error.field == "update.evidence_refs.0"
+        for error in errors
+    )
+
+
 def _make_update_request(*, repo_id: str, memory_id: str, update: dict[str, object]) -> MemoryUpdateRequest:
     """Build a valid update request with caller-provided target and update payload."""
 

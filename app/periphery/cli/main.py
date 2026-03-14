@@ -8,7 +8,7 @@ from typing import Any
 from app.boot.create_policy import get_create_hydration_defaults
 from app.boot.read_policy import get_read_hydration_defaults
 from app.boot.use_cases import get_embedding_model, get_embedding_provider_factory, get_uow_factory
-from app.periphery.cli.handlers import handle_create, handle_read, handle_update
+from app.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
 from app.periphery.cli.hydration import (
     infer_repo_id,
 )
@@ -30,7 +30,7 @@ def main() -> int:
     """This function parses CLI arguments and dispatches to operation handlers."""
 
     parser = argparse.ArgumentParser(prog="memory")
-    parser.add_argument("command", choices=["create", "read", "update"])
+    parser.add_argument("command", choices=["create", "read", "update", "events"])
     parser.add_argument("--json", dest="json_text")
     parser.add_argument("--json-file", dest="json_file")
     args = parser.parse_args()
@@ -60,8 +60,15 @@ def main() -> int:
             inferred_repo_id=inferred_repo_id,
             defaults=read_defaults,
         )
-    else:
+    elif args.command == "update":
         result = handle_update(payload, uow_factory=uow_factory, inferred_repo_id=inferred_repo_id)
+    else:
+        result = handle_events(
+            payload,
+            uow_factory=uow_factory,
+            inferred_repo_id=inferred_repo_id,
+            repo_root=Path.cwd().resolve(),
+        )
 
     if result.get("status") == "ok":
         try:

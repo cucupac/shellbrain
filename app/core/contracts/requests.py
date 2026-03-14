@@ -51,6 +51,14 @@ class MemoryReadRequest(StrictBaseModel):
         return value
 
 
+class EpisodeEventsRequest(StrictBaseModel):
+    """This model defines the canonical episode-events request payload."""
+
+    op: Literal["events"] = "events"
+    repo_id: str
+    limit: int = Field(default=20, ge=1, le=100)
+
+
 class MemoryCreateAssociationLink(StrictBaseModel):
     """This model defines a typed explicit association link payload on create."""
 

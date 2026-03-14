@@ -104,6 +104,24 @@ class IEpisodesRepo(ABC):
     def append_transfer(self, transfer: SessionTransfer) -> None:
         """This method appends a cross-session transfer row."""
 
+    @abstractmethod
+    def list_existing_event_ids(self, *, event_ids: Sequence[str]) -> Sequence[str]:
+        """This method returns episode-event ids that exist anywhere in storage."""
+
+    @abstractmethod
+    def list_visible_event_ids(self, *, repo_id: str, event_ids: Sequence[str]) -> Sequence[str]:
+        """This method returns episode-event ids visible within one repo."""
+
+    @abstractmethod
+    def list_recent_events(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+        limit: int,
+    ) -> Sequence[EpisodeEvent]:
+        """This method returns recent events for one visible episode ordered newest first."""
+
 
 class IEvidenceRepo(ABC):
     """This interface defines persistence operations for evidence references and links."""

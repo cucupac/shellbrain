@@ -11,6 +11,8 @@ from app.periphery.episodes.claude_code import (
 )
 from app.periphery.episodes.codex import find_latest_codex_session_for_repo, resolve_codex_transcript_path
 
+SUPPORTED_HOSTS = ("codex", "claude_code")
+
 
 def resolve_host_transcript_source(
     *,
@@ -35,6 +37,17 @@ def resolve_host_transcript_source(
             last_known_path=last_known_path,
         )
     raise ValueError(f"Unsupported host app for episode sync: {host_app}")
+
+
+def default_search_roots(*, repo_root: Path, host_app: str) -> list[Path]:
+    """Return bounded transcript search roots for one supported host."""
+
+    home = Path.home()
+    if host_app == "codex":
+        return [home / ".codex" / "sessions"]
+    if host_app == "claude_code":
+        return [home]
+    return [repo_root]
 
 
 def discover_active_host_session(

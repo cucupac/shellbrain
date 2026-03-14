@@ -10,6 +10,7 @@ class EvidenceRef:
     id: str
     repo_id: str
     ref: str
+    episode_event_id: str | None = None
 
 
 @dataclass(kw_only=True)

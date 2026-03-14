@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import subprocess
 from collections.abc import Callable, Iterator
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import Selectable
 
+from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.entities.memory import Memory, MemoryKind, MemoryScope
 from app.core.interfaces.embeddings import IEmbeddingProvider
 from app.periphery.db.engine import get_engine
@@ -107,6 +109,94 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
         with uow_factory() as uow:
             uow.memories.create(memory)
         return memory
+
+    return _seed
+
+
+@pytest.fixture
+def seed_episode(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., Episode]:
+    """Provide helper for seeding episode rows into integration database."""
+
+    def _seed(
+        *,
+        episode_id: str,
+        repo_id: str,
+        host_app: str,
+        thread_id: str,
+        status: EpisodeStatus = EpisodeStatus.ACTIVE,
+        started_at: datetime | None = None,
+    ) -> Episode:
+        episode = Episode(
+            id=episode_id,
+            repo_id=repo_id,
+            host_app=host_app,
+            thread_id=thread_id,
+            status=status,
+            started_at=started_at or datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+        )
+        with uow_factory() as uow:
+            uow.episodes.create_episode(episode)
+        return episode
+
+    return _seed
+
+
+@pytest.fixture
+def seed_episode_event(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., EpisodeEvent]:
+    """Provide helper for seeding episode-event rows into integration database."""
+
+    def _seed(
+        *,
+        event_id: str,
+        episode_id: str,
+        seq: int,
+        source: EpisodeEventSource | str = EpisodeEventSource.USER,
+        host_event_key: str | None = None,
+        content: str = '{"content_text":"evidence"}',
+        created_at: datetime | None = None,
+    ) -> EpisodeEvent:
+        normalized_source = source if isinstance(source, EpisodeEventSource) else EpisodeEventSource(source)
+        event = EpisodeEvent(
+            id=event_id,
+            episode_id=episode_id,
+            seq=seq,
+            host_event_key=host_event_key or event_id,
+            source=normalized_source,
+            content=content,
+            created_at=created_at or datetime.now(timezone.utc),
+        )
+        with uow_factory() as uow:
+            uow.episodes.append_event(event)
+        return event
+
+    return _seed
+
+
+@pytest.fixture
+def seed_default_evidence_events(
+    seed_episode: Callable[..., Episode],
+    seed_episode_event: Callable[..., EpisodeEvent],
+) -> Callable[..., dict[str, EpisodeEvent]]:
+    """Provide helper for seeding canonical evidence events used by create/update integration tests."""
+
+    def _seed(*, repo_id: str = "repo-a") -> dict[str, EpisodeEvent]:
+        episode = seed_episode(
+            episode_id=f"{repo_id}-episode-evidence",
+            repo_id=repo_id,
+            host_app="codex",
+            thread_id=f"codex:{repo_id}-episode-evidence",
+        )
+        seeded: dict[str, EpisodeEvent] = {}
+        for seq, event_id in enumerate(("session://1", "session://2", "integration://evidence/1"), start=1):
+            seeded[event_id] = seed_episode_event(
+                event_id=event_id,
+                episode_id=episode.id,
+                seq=seq,
+                source=EpisodeEventSource.USER,
+                content=f'{{"content_text":"{event_id}"}}',
+            )
+        return seeded
 
     return _seed
 

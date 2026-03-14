@@ -27,6 +27,13 @@ def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
     thread_id = "019ce136-e14d-7b80-92bc-be07e4330536"
     transcript_root = tmp_path / "codex-root" / ".codex" / "sessions"
     transcript_path = transcript_root / "2026" / "03" / "12" / f"rollout-2026-03-12T01-43-16-{thread_id}.jsonl"
+    session_meta = {
+        "type": "session_meta",
+        "payload": {
+            "id": thread_id,
+            "cwd": str(Path.cwd().resolve()),
+        },
+    }
     entries = [
         {
             "event_id": "codex-user-1",
@@ -61,7 +68,7 @@ def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "text": "1 failed, 127 passed",
         },
     ]
-    _write_jsonl(transcript_path, entries)
+    _write_jsonl(transcript_path, [session_meta, *entries])
     return {
         "host_app": "codex",
         "host_session_key": thread_id,

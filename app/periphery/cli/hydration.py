@@ -57,6 +57,16 @@ def hydrate_create_payload(payload: dict[str, Any], *, inferred_repo_id: str, de
     return merged
 
 
+def hydrate_events_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
+    """This function hydrates events payloads with inferred repo defaults."""
+
+    merged = dict(payload)
+    merged.setdefault("op", "events")
+    merged.setdefault("repo_id", inferred_repo_id)
+    merged.setdefault("limit", 20)
+    return merged
+
+
 def hydrate_update_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
     """This function hydrates update payloads with inferred repo defaults."""
 
