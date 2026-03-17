@@ -1,0 +1,205 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+LEGACY_POSTGRES_DB="${OLD_POSTGRES_DB:-memory}"
+LEGACY_POSTGRES_USER="${OLD_POSTGRES_USER:-memory}"
+LEGACY_POSTGRES_PASSWORD="${OLD_POSTGRES_PASSWORD:-memory}"
+LEGACY_DB_CONTAINER_NAME="${OLD_DB_CONTAINER_NAME:-memory-postgres}"
+
+NEW_POSTGRES_DB="${NEW_POSTGRES_DB:-shellbrain}"
+NEW_POSTGRES_USER="${NEW_POSTGRES_USER:-shellbrain}"
+NEW_POSTGRES_PASSWORD="${NEW_POSTGRES_PASSWORD:-shellbrain}"
+NEW_DB_CONTAINER_NAME="${SHELLBRAIN_DB_CONTAINER_NAME:-shellbrain-postgres}"
+
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+SHELLBRAIN_DB_DATA_DIR="${SHELLBRAIN_DB_DATA_DIR:-./.local/postgres-data}"
+WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-60}"
+
+legacy_container_removed=0
+
+log() {
+  printf '[shellbrain-migrate] %s\n' "$*"
+}
+
+fail() {
+  printf '[shellbrain-migrate] ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+cleanup_on_error() {
+  local exit_code=$?
+  if [[ $exit_code -ne 0 && $legacy_container_removed -eq 1 ]]; then
+    log "Migration failed after removing legacy container. Attempting rollback to ${LEGACY_DB_CONTAINER_NAME}."
+    if start_legacy_container; then
+      log "Rollback restored ${LEGACY_DB_CONTAINER_NAME}."
+    else
+      log "Rollback failed. You can restore the legacy container with:"
+      log "  POSTGRES_DB=${LEGACY_POSTGRES_DB} POSTGRES_USER=${LEGACY_POSTGRES_USER} POSTGRES_PASSWORD=${LEGACY_POSTGRES_PASSWORD} SHELLBRAIN_DB_CONTAINER_NAME=${LEGACY_DB_CONTAINER_NAME} SHELLBRAIN_DB_DATA_DIR=${SHELLBRAIN_DB_DATA_DIR} POSTGRES_PORT=${POSTGRES_PORT} docker compose up -d db"
+    fi
+  fi
+  exit "$exit_code"
+}
+
+trap cleanup_on_error ERR
+
+docker_has_container() {
+  docker ps -a --format '{{.Names}}' | grep -Fxq "$1"
+}
+
+docker_is_running() {
+  docker ps --format '{{.Names}}' | grep -Fxq "$1"
+}
+
+run_compose() {
+  (
+    cd "$ROOT_DIR"
+    env "$@" docker compose up -d db
+  )
+}
+
+start_legacy_container() {
+  if docker_has_container "$LEGACY_DB_CONTAINER_NAME"; then
+    if ! docker_is_running "$LEGACY_DB_CONTAINER_NAME"; then
+      docker start "$LEGACY_DB_CONTAINER_NAME" >/dev/null
+    fi
+  else
+    run_compose \
+      POSTGRES_DB="$LEGACY_POSTGRES_DB" \
+      POSTGRES_USER="$LEGACY_POSTGRES_USER" \
+      POSTGRES_PASSWORD="$LEGACY_POSTGRES_PASSWORD" \
+      SHELLBRAIN_DB_CONTAINER_NAME="$LEGACY_DB_CONTAINER_NAME" \
+      SHELLBRAIN_DB_DATA_DIR="$SHELLBRAIN_DB_DATA_DIR" \
+      POSTGRES_PORT="$POSTGRES_PORT"
+  fi
+  wait_for_postgres "$LEGACY_DB_CONTAINER_NAME" "$LEGACY_POSTGRES_USER" "$LEGACY_POSTGRES_DB"
+}
+
+start_shellbrain_container() {
+  if docker_has_container "$NEW_DB_CONTAINER_NAME" && ! docker_is_running "$NEW_DB_CONTAINER_NAME"; then
+    docker rm -f "$NEW_DB_CONTAINER_NAME" >/dev/null
+  fi
+
+  run_compose \
+    POSTGRES_DB="$NEW_POSTGRES_DB" \
+    POSTGRES_USER="$NEW_POSTGRES_USER" \
+    POSTGRES_PASSWORD="$NEW_POSTGRES_PASSWORD" \
+    SHELLBRAIN_DB_CONTAINER_NAME="$NEW_DB_CONTAINER_NAME" \
+    SHELLBRAIN_DB_DATA_DIR="$SHELLBRAIN_DB_DATA_DIR" \
+    POSTGRES_PORT="$POSTGRES_PORT"
+
+  wait_for_postgres "$NEW_DB_CONTAINER_NAME" "$NEW_POSTGRES_USER" "$NEW_POSTGRES_DB"
+}
+
+wait_for_postgres() {
+  local container_name=$1
+  local user_name=$2
+  local database_name=$3
+  local deadline=$((SECONDS + WAIT_TIMEOUT_SECONDS))
+
+  while (( SECONDS < deadline )); do
+    if docker exec "$container_name" pg_isready -U "$user_name" -d "$database_name" >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 1
+  done
+
+  fail "Timed out waiting for ${container_name} to become ready for ${user_name}/${database_name}."
+}
+
+verify_shellbrain_cluster() {
+  local current_identity
+  current_identity="$(
+    docker exec -e PGPASSWORD="$NEW_POSTGRES_PASSWORD" "$NEW_DB_CONTAINER_NAME" \
+      psql -U "$NEW_POSTGRES_USER" -d "$NEW_POSTGRES_DB" -Atc "SELECT current_user || '|' || current_database();"
+  )"
+  if [[ "$current_identity" != "${NEW_POSTGRES_USER}|${NEW_POSTGRES_DB}" ]]; then
+    fail "Verification failed for ${NEW_DB_CONTAINER_NAME}: expected ${NEW_POSTGRES_USER}|${NEW_POSTGRES_DB}, got ${current_identity}."
+  fi
+}
+
+shellbrain_cluster_ready() {
+  if ! docker_has_container "$NEW_DB_CONTAINER_NAME"; then
+    return 1
+  fi
+  if ! docker_is_running "$NEW_DB_CONTAINER_NAME"; then
+    docker start "$NEW_DB_CONTAINER_NAME" >/dev/null
+  fi
+  if ! docker exec "$NEW_DB_CONTAINER_NAME" pg_isready -U "$NEW_POSTGRES_USER" -d "$NEW_POSTGRES_DB" >/dev/null 2>&1; then
+    return 1
+  fi
+  docker exec -e PGPASSWORD="$NEW_POSTGRES_PASSWORD" "$NEW_DB_CONTAINER_NAME" \
+    psql -U "$NEW_POSTGRES_USER" -d "$NEW_POSTGRES_DB" -Atc "SELECT 1;" >/dev/null 2>&1
+}
+
+create_shellbrain_role_and_database() {
+  log "Ensuring ${NEW_POSTGRES_USER} role and ${NEW_POSTGRES_DB} database exist inside the legacy cluster."
+
+  docker exec -i -e PGPASSWORD="$LEGACY_POSTGRES_PASSWORD" "$LEGACY_DB_CONTAINER_NAME" \
+    psql -v ON_ERROR_STOP=1 \
+      -U "$LEGACY_POSTGRES_USER" \
+      -d postgres \
+      -v legacy_db="$LEGACY_POSTGRES_DB" \
+      -v new_db="$NEW_POSTGRES_DB" \
+      -v new_user="$NEW_POSTGRES_USER" \
+      -v new_password="$NEW_POSTGRES_PASSWORD" <<'SQL'
+SELECT CASE
+  WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'new_user')
+    THEN format('ALTER ROLE %I WITH LOGIN SUPERUSER PASSWORD %L', :'new_user', :'new_password')
+  ELSE format('CREATE ROLE %I LOGIN SUPERUSER PASSWORD %L', :'new_user', :'new_password')
+END
+\gexec
+
+SELECT pg_terminate_backend(pid)
+FROM pg_stat_activity
+WHERE datname IN (:'legacy_db', :'new_db')
+  AND pid <> pg_backend_pid();
+
+SELECT CASE
+  WHEN EXISTS (SELECT 1 FROM pg_database WHERE datname = :'new_db')
+    THEN NULL
+  ELSE format('CREATE DATABASE %I WITH OWNER %I TEMPLATE %I', :'new_db', :'new_user', :'legacy_db')
+END
+\gexec
+SQL
+}
+
+preflight() {
+  command -v docker >/dev/null 2>&1 || fail "docker is required."
+  docker version >/dev/null 2>&1 || fail "docker must be installed and the daemon must be running."
+  docker compose version >/dev/null 2>&1 || fail "docker compose is required."
+}
+
+main() {
+  preflight
+
+  if shellbrain_cluster_ready; then
+    log "${NEW_DB_CONTAINER_NAME} is already running with ${NEW_POSTGRES_USER}/${NEW_POSTGRES_DB}. Nothing to do."
+    return 0
+  fi
+
+  log "Starting legacy local Postgres cluster if needed."
+  start_legacy_container
+
+  create_shellbrain_role_and_database
+
+  if [[ "$LEGACY_DB_CONTAINER_NAME" != "$NEW_DB_CONTAINER_NAME" ]] && docker_has_container "$LEGACY_DB_CONTAINER_NAME"; then
+    log "Removing legacy container ${LEGACY_DB_CONTAINER_NAME}. Data remains on ${SHELLBRAIN_DB_DATA_DIR}."
+    docker rm -f "$LEGACY_DB_CONTAINER_NAME" >/dev/null
+    legacy_container_removed=1
+  fi
+
+  log "Starting ${NEW_DB_CONTAINER_NAME} on the existing data directory."
+  start_shellbrain_container
+  verify_shellbrain_cluster
+
+  legacy_container_removed=0
+  trap - ERR
+
+  log "Local Docker/Postgres migration is complete."
+  log "New DSN: postgresql+psycopg://${NEW_POSTGRES_USER}:${NEW_POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
+  log "Legacy database ${LEGACY_POSTGRES_DB} was preserved inside the cluster as a fallback."
+}
+
+main "$@"

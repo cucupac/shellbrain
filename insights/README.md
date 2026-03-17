@@ -1,6 +1,6 @@
 # Insights Folder
 
-This folder captures evolving design decisions for the memory system.
+This folder captures evolving design decisions for the shellbrain system.
 
 ## Structure
 
@@ -20,7 +20,7 @@ Naming convention:
 
 ## Working Rule For Agents
 
-Always take notes without waiting for explicit user instruction when memory-design ideas evolve.
+Always take notes without waiting for explicit user instruction when shellbrain-design ideas evolve.
 
 Two-layer logging is required:
 - Layer 1 (raw): append to `00-lab/immutable-work-log.md`.

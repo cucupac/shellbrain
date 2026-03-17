@@ -5,7 +5,7 @@ Status: mostly locked.
 ## Locked
 
 - External interface verbs are `create`, `read`, `update`, `events`.
-- `create` writes immutable memory records and evidence/link records.
+- `create` writes immutable shellbrain records and evidence/link records.
 - `read` is retrieval only.
 - `update` covers lifecycle/feedback/linkage (`archive_state`, `utility_vote`, `fact_update_link`, `association_link`).
 - No separate `association.read` operation exists; formal association traversal is integrated into read-policy context-pack expansion.

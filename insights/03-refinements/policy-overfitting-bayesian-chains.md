@@ -2,7 +2,7 @@
 
 Captured from the 2026-02-18 discovery refinement.
 
-## 1) Policy for stale-memory overfitting
+## 1) Policy for stale-shellbrain overfitting
 
 Core policy:
 - **Memories are optional utility, not truth.**
@@ -11,7 +11,7 @@ Core policy:
 Operational behavior:
 - Retrieve memories as candidate tools, not commands.
 - Validate candidates against what the agent sees now.
-- If conflict exists, trust current code and treat memory as stale-or-context-limited.
+- If conflict exists, trust current code and treat shellbrain as stale-or-context-limited.
 - Record what changed and why in update memories after the session.
 
 ## 2) Global utility and Bayesian commonality
@@ -31,8 +31,8 @@ Emerging idea:
 
 Two chain classes are now recognized:
 - Implicit association chain: semantic/vector similarity expansion.
-- Explicit association chain: mandatory deterministic traversal via formal links (for example, memory -> its updates).
+- Explicit association chain: mandatory deterministic traversal via formal links (for example, shellbrain -> its updates).
 
 Key insight:
 - Update memories are not just "more similar neighbors."
-- Update memories are a special linked class that should always be traversed when their base memory is retrieved.
+- Update memories are a special linked class that should always be traversed when their base shellbrain is retrieved.

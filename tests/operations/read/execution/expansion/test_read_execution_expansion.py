@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryReadRequest
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryReadRequest
+from shellbrain.core.use_cases.read_memory import execute_read_memory
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_includes_problem_attempt_links_when_enabled(
@@ -103,7 +103,7 @@ def test_read_applies_association_expansion_flag_and_strength_threshold(
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Deployment anchor memory for association expansion.",
+        text_value="Deployment anchor shellbrain for association expansion.",
     )
     seed_read_memory(
         memory_id="neighbor-strong",
@@ -181,7 +181,7 @@ def test_read_expands_association_neighbors_only_up_to_max_association_depth(
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Depth anchor memory for association traversal.",
+        text_value="Depth anchor shellbrain for association traversal.",
     )
     seed_read_memory(
         memory_id="association-hop-1",
@@ -280,7 +280,7 @@ def _make_read_request(**overrides: object) -> MemoryReadRequest:
 
 
 def _item_ids(result) -> list[str]:
-    """Extract ordered memory IDs from a read operation result."""
+    """Extract ordered shellbrain IDs from a read operation result."""
 
     assert result.status == "ok"
     assert "pack" in result.data

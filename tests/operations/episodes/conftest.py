@@ -56,7 +56,7 @@ def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "tool_name": "exec_command",
             "status": "ok",
             "summary": "ls",
-            "text": "README.md\napp/\ninsights/\n",
+            "text": "README.md\nshellbrain/\ninsights/\n",
         },
         {
             "event_id": "codex-tool-important-1",
@@ -134,7 +134,7 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "type": "user",
             "message": {
                 "role": "user",
-                "content": [{"type": "tool_result", "text": "ls\nREADME.md\napp/\n", "is_error": False}],
+                "content": [{"type": "tool_result", "text": "ls\nREADME.md\nshellbrain/\n", "is_error": False}],
             },
         },
         {

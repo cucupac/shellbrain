@@ -6,7 +6,7 @@ From design conversation 2026-02-14.
 
 **Ontology:** Experiential (linked problems, solutions, and failed tactics), preferences (global + repo with inheritance/override), structural (hierarchical codebase map, built incrementally).
 
-**Creation:** LLM writes formed memories with category tags at write time. No heuristic classifier. For experiential memory, the LLM can extract worked and failed attempts from immutable episode evidence and link both to problems. Structural memory is the exception — built across episodes via read-before-write revision.
+**Creation:** LLM writes formed memories with category tags at write time. No heuristic classifier. For experiential memory, the LLM can extract worked and failed attempts from immutable episode evidence and link both to problems. Structural shellbrain is the exception — built across episodes via read-before-write revision.
 
 **Scoping:** Repo and global. No domain. Repo facts are physically invisible to other repos. Preferences are the only thing that crosses repo boundaries. The system stores observations, not generalizations — generalizing is the LLM's job.
 

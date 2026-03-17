@@ -1,10 +1,10 @@
 # Discovery Log
 
-Chronological, append-only record of how memory-system ideas evolved.
+Chronological, append-only record of how shellbrain-system ideas evolved.
 
 ## Update Rule
 
-When a new memory-design idea is discussed:
+When a new shellbrain-design idea is discussed:
 - First append raw notes to `00-lab/immutable-work-log.md`.
 - Then append a distilled dated entry to `discovery.md` with:
 - What changed.
@@ -38,7 +38,7 @@ Structured reformulation captured in:
 
 Key developments:
 - Retrieval clarified as two-lane recall: semantic association lane + bounded keyword lane, then dedupe/merge.
-- Strong emphasis that codebase state is immediate ground truth and memory is advisory utility.
+- Strong emphasis that codebase state is immediate ground truth and shellbrain is advisory utility.
 - Session-end write flow clarified with duplicate checks, contradiction handling, and optional autonomous storage mode.
 - Problem-solution linkage became explicit: retrieval and expansion operate over linked memories.
 
@@ -55,7 +55,7 @@ Design extension incorporated into structured and core docs:
 
 Key developments:
 - Failed attempts are no longer implicit only in episode text.
-- Experiential memory is now modeled as linked `problems`, `solutions`, and `failed_tactics`.
+- Experiential shellbrain is now modeled as linked `problems`, `solutions`, and `failed_tactics`.
 - Immutable episode logs remain evidence, while normalized linked records power retrieval.
 
 ## 2026-02-18 - Utility vs Truth Framing (User Verbatim Points)
@@ -64,8 +64,8 @@ Verbatim source notes recorded in:
 - `03-refinements/user-three-points-verbatim.md`
 
 Synthesis of the three-point direction:
-- Distinguish instantaneous truth (current code state) from historical memory utility.
-- Track memory usefulness relative to specific problem contexts, not only global vote totals.
+- Distinguish instantaneous truth (current code state) from historical shellbrain utility.
+- Track shellbrain usefulness relative to specific problem contexts, not only global vote totals.
 - Treat changes in utility and changes in truth as separable update streams over immutable history.
 
 ## 2026-02-18 - Policy Concretization: Overfitting, Weak Priors, and Chain Classes
@@ -74,14 +74,14 @@ Detail note added:
 - `03-refinements/policy-overfitting-bayesian-chains.md`
 
 What changed:
-- Adopted a concrete policy against stale-memory overfitting: memory is optional utility, and current workspace/code observation is the instantaneous truth source.
+- Adopted a concrete policy against stale-shellbrain overfitting: shellbrain is optional utility, and current workspace/code observation is the instantaneous truth source.
 - Confirmed global utility can exist as a weak prior and is best treated as computed-after-the-fact rather than primary.
 - Recognized a shared Bayesian flavor between utility and truth updates:
   - utility as a belief updated by context-specific outcomes,
   - truth as a belief in `[0,1]` updated by supporting/contradicting evidence.
 - Clarified "chain idea" now has two distinct forms:
   - implicit association chain via semantic/vector similarity,
-  - explicit association chain via formal deterministic links (for example, base memory -> update memories).
+  - explicit association chain via formal deterministic links (for example, base shellbrain -> update memories).
 
 Why it changed:
 - To keep the system aligned with optionality and avoid rigid deterministic handling that drifts from the original design intent.
@@ -100,7 +100,7 @@ What changed:
 - Updated structure guidance so agents should record notes automatically, without waiting for explicit prompts.
 
 Why it changed:
-- To dogfood the memory design process while designing it.
+- To dogfood the shellbrain design process while designing it.
 - To preserve intermediate reasoning and dead ends, not only polished summaries.
 
 What remains open:
@@ -123,7 +123,7 @@ What remains open:
 ## 2026-02-18 - Ratified Direction: JSON Contracts and Evidence Strictness Split
 
 What changed:
-- Ratified interface direction: use a clean scoped memory API/tool surface with JSON request/response contracts.
+- Ratified interface direction: use a clean scoped shellbrain API/tool surface with JSON request/response contracts.
 - Ratified evidence policy split:
   - truth updates require supporting evidence references,
   - utility updates allow optional evidence.
@@ -144,11 +144,11 @@ What remains open:
 What changed:
 - Ratified interface operation split:
   - `read`: retrieval only.
-  - `write`: creates immutable memory records.
-  - `update`: adjusts dynamic values on existing memory IDs (`truth`, `utility`) in `[0,1]`.
+  - `write`: creates immutable shellbrain records.
+  - `update`: adjusts dynamic values on existing entry IDs (`truth`, `utility`) in `[0,1]`.
 - Ratified interpretation for "update memories":
   - Statements like "X changed in the codebase and invalidates Y" are new memories and therefore use `write` (kind `change`), not `update`.
-- Ratified memory kind set for v1 interface contracts:
+- Ratified shellbrain kind set for v1 interface contracts:
   - `problem`, `solution`, `failed_tactic`, `fact`, `preference`, `change`.
 - Ratified categorization rule:
   - The writing agent provides explicit `scope` and `kind` (no ambiguous `auto` categorization in payloads).
@@ -157,13 +157,13 @@ What changed:
   - It performs schema validation (JSON shape/types/required fields) and semantic validation (domain rules such as evidence requirements).
 
 Why it changed:
-- This split resolves ambiguity between immutable memory creation and mutable value adjustment.
-- It preserves append-only memory history while still allowing current utility/truth projections to evolve.
+- This split resolves ambiguity between immutable shellbrain creation and mutable value adjustment.
+- It preserves append-only shellbrain history while still allowing current utility/truth projections to evolve.
 - It makes agent behavior parseable and auditable without over-constraining reasoning.
 
 What remains open:
 - Exact canonical JSON payload definitions and required-field matrix by operation.
-- Final semantic validation rules by memory kind (for example, required links for `solution` and `failed_tactic`).
+- Final semantic validation rules by shellbrain kind (for example, required links for `solution` and `failed_tactic`).
 
 ## 2026-02-18 - Ratified Card: Exact JSON Schemas for `read` / `write` / `update`
 
@@ -216,7 +216,7 @@ Card added:
 
 What changed:
 - Ratified relational (SQLite) storage for v1, with graph semantics represented through explicit link tables rather than a graph database.
-- Ratified top-level memory kinds as stored immutable records:
+- Ratified top-level shellbrain kinds as stored immutable records:
   - `problem`, `solution`, `failed_tactic`, `fact`, `preference`, `change`.
 - Ratified direct experiential linkage with:
   - `problem_attempts(problem_id, attempt_id, role)` where role is `solution` or `failed_tactic`.
@@ -373,7 +373,7 @@ Card added:
 - `03-refinements/read-policy-context-pack-v1.md`
 
 What changed:
-- Ratified read-policy seed retrieval over all atomic memory kinds:
+- Ratified read-policy seed retrieval over all atomic shellbrain kinds:
   - `problem`, `solution`, `failed_tactic`, `fact`, `change` (and optionally `preference`).
 - Ratified dual-lane seed retrieval with lane-specific thresholds and rank-fusion:
   - semantic lane + keyword lane,
@@ -431,7 +431,7 @@ What changed:
 Why it changed:
 - To concretize prior discussions that global utility should be a weak computed prior rather than a primary retrieval signal.
 - To avoid sparse-data overfitting while still using historical helpfulness when resolving close candidate decisions.
-- To align retrieval behavior with the existing architecture principle that relevance leads and memory utility is advisory.
+- To align retrieval behavior with the existing architecture principle that relevance leads and shellbrain utility is advisory.
 
 Files updated:
 - `insights/03-refinements/read-policy-context-pack-v1.md`
@@ -611,7 +611,7 @@ What changed:
 
 Why it changed:
 - To capture dependency-hierarchy retrieval behavior not covered by keyword, semantic similarity, or fact-update chains alone.
-- To keep the interface clean and stable while adding formal relationship memory as a first-class retrieval signal.
+- To keep the interface clean and stable while adding formal relationship shellbrain as a first-class retrieval signal.
 - To keep the model brain-like (plastic and evidence-informed) without introducing a full graph-database migration.
 
 Files updated:
@@ -696,7 +696,7 @@ What changed:
   - Pydantic v2,
   - pytest.
 - Ratified execution shape:
-  - core memory engine package + thin CLI hydration adapter.
+  - core shellbrain engine package + thin CLI hydration adapter.
 - Added tech stack card to implementation working set and linked via manifest.
 
 Why it changed:
@@ -723,8 +723,8 @@ What remains open:
 
 What changed:
 - Ratified mandatory local durability property for PostgreSQL-backed v1:
-  - memory data must survive container deletion/recreation,
-  - memory data must survive Docker uninstall.
+  - shellbrain data must survive container deletion/recreation,
+  - shellbrain data must survive Docker uninstall.
 - Ratified local storage discipline:
   - PostgreSQL data directory must use a host bind-mounted path (outside container-only filesystem state and outside Docker-managed ephemeral container layers).
 - Ratified portability baseline:
@@ -767,7 +767,7 @@ What changed:
 
 Why it changed:
 - The read path already has enough structure with semantic + keyword retrieval, RRF fusion, expansion scoring, and pack assembly.
-- Adding utility-time nudging would introduce extra tuning surface and stale-memory bias without enough practical benefit.
+- Adding utility-time nudging would introduce extra tuning surface and stale-shellbrain bias without enough practical benefit.
 - The simpler design better matches the project principle that current relevance should lead retrieval behavior.
 
 Files updated:
@@ -790,7 +790,7 @@ What changed:
 - Ratified Codex local transcript source:
   - authoritative transcript is the rollout JSONL under `~/.codex/sessions/YYYY/MM/DD/rollout-<timestamp>-<thread-id>.jsonl`,
   - thread IDs can be resolved through the Codex app/server thread APIs (`thread/list`, `thread/read`) or by searching `~/.codex/sessions` for the thread ID,
-  - deeplinks like `codex://threads/<id>` are useful for human navigation but are not the storage source the memory system should ingest.
+  - deeplinks like `codex://threads/<id>` are useful for human navigation but are not the storage source the shellbrain system should ingest.
 - Ratified Claude Code local transcript source:
   - session metadata is stored under `~/Library/Application Support/Claude/claude-code-sessions/<account>/<org>/local_<session-id>.json`,
   - that metadata contains the `cliSessionId`,
@@ -837,3 +837,24 @@ What remains open:
 - Canonical `evidence_refs.ref` format for pointers into imported host events.
 - Generic adapter logic for finding the active/current host thread or session automatically.
 - Whether ordinary Claude desktop non-Code chats expose a comparable local transcript file.
+
+## 2026-03-13 - Deferred Librarian Model in Favor of Explicit Agent Evidence Selection
+
+What changed:
+- Decided against introducing a local "librarian" model for evidence linking in the current phase.
+- Chose the simpler operational flow instead:
+  - agent queries `events`,
+  - agent selects one or more concrete `episode_event` ids,
+  - agent submits `create` / `update` with explicit `evidence_refs`.
+- Preserved the storage invariant that committed memories must point to concrete episode events, while keeping evidence selection with the working agent rather than a second model loop.
+
+Why it changed:
+- The working agent is already the strongest reasoner in the loop and is capable of selecting supporting events after a lightweight retrieval step.
+- A local model would mainly buy ergonomics, not core capability, while adding another probabilistic decision-maker, more infrastructure, and a harder debugging story when provenance is wrong.
+- A full librarian agent would also require surrounding agent/tool harness engineering; the model alone would not provide command-running or multi-step recovery behavior out of the box.
+- Current open local models appear capable enough for bounded reranking or evidence selection tasks, so this option remains viable later if explicit evidence selection proves too frictionful in practice.
+- For now, the explicit `events` -> `create/update` flow is simpler, more auditable, and a better default until real usage shows the need for additional automation.
+
+What remains open:
+- Whether repeated real-world usage shows enough evidence-selection friction to justify adding a bounded local reranker later.
+- Whether the agent-facing `events` surface needs richer ranking/filtering to make explicit evidence selection faster.

@@ -369,7 +369,7 @@
   .lane-b .lane-badge { background: rgba(6,182,212,0.2); color: var(--change); }
   .lane-title { font-size: 12px; font-weight: 600; color: var(--text-dim); }
 
-  .memory-result {
+  .shellbrain-result {
     display: flex;
     align-items: flex-start;
     gap: 8px;
@@ -382,17 +382,17 @@
     cursor: pointer;
     transition: background 0.15s;
   }
-  .memory-result:hover { background: var(--surface3); }
-  .memory-result.expanded { background: var(--surface3); }
-  .memory-result .dot {
+  .shellbrain-result:hover { background: var(--surface3); }
+  .shellbrain-result.expanded { background: var(--surface3); }
+  .shellbrain-result .dot {
     width: 8px;
     height: 8px;
     border-radius: 50%;
     flex-shrink: 0;
     margin-top: 3px;
   }
-  .memory-result .text { font-size: 12px; color: var(--text); line-height: 1.4; flex: 1; }
-  .memory-result .score {
+  .shellbrain-result .text { font-size: 12px; color: var(--text); line-height: 1.4; flex: 1; }
+  .shellbrain-result .score {
     font-size: 10px;
     font-weight: 600;
     font-family: monospace;
@@ -603,7 +603,7 @@
     font-size: 12px;
   }
   .obs-row:last-child { border-bottom: none; }
-  .obs-memory { flex: 1; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .obs-shellbrain { flex: 1; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .obs-problem { font-size: 10px; color: var(--text-dimmer); padding: 1px 5px; background: var(--surface3); border-radius: 3px; white-space: nowrap; }
   .vote-bar-wrap { width: 80px; background: var(--surface3); border-radius: 3px; height: 6px; flex-shrink: 0; position: relative; }
   .vote-bar { height: 6px; border-radius: 3px; position: absolute; top: 0; }
@@ -947,7 +947,7 @@
       <h1>Memory System Explorer</h1>
       <span class="info-chip">LLM Agent Memory · v1</span>
     </div>
-    <div class="subtitle" style="margin-top:2px">Interactive visualization of the agent memory system design</div>
+    <div class="subtitle" style="margin-top:2px">Interactive visualization of the agent shellbrain system design</div>
   </div>
 </div>
 
@@ -1142,7 +1142,7 @@
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;font-size:12px;color:var(--text-dim)">
         <div style="padding:10px;background:var(--surface2);border-radius:8px;line-height:1.5">
           <div style="font-weight:600;color:var(--text);margin-bottom:4px">Context-Specific</div>
-          Each vote is tied to a specific (memory, problem) pair. "Was this memory helpful for <em>this</em> problem?"
+          Each vote is tied to a specific (memory, problem) pair. "Was this shellbrain helpful for <em>this</em> problem?"
         </div>
         <div style="padding:10px;background:var(--surface2);border-radius:8px;line-height:1.5">
           <div style="font-weight:600;color:var(--text);margin-bottom:4px">Global = Weak Prior</div>
@@ -1275,7 +1275,7 @@
 
 <div class="prompt-bar">
   <div class="prompt-label">Prompt</div>
-  <div class="prompt-text" id="promptText">Click around any view to explore — the prompt will update with relevant context for querying Claude about this memory system design.</div>
+  <div class="prompt-text" id="promptText">Click around any view to explore — the prompt will update with relevant context for querying Claude about this shellbrain system design.</div>
   <button class="copy-btn" onclick="copyPrompt()">Copy</button>
 </div>
 
@@ -2016,7 +2016,7 @@ function renderUtilityView() {
   obsEl.innerHTML = utilityObs.map(o => {
     const votePct = Math.abs(o.vote) * 40;
     return `<div class="obs-row">
-      <div class="obs-memory" title="${o.memoryText}">${o.memoryText.slice(0,30)}…</div>
+      <div class="obs-memory" title="${o.shellbrainText}">${o.shellbrainText.slice(0,30)}…</div>
       <div class="obs-problem">${o.problemText.slice(0,20)}…</div>
       <div class="vote-bar-wrap">
         ${o.vote > 0
@@ -2032,8 +2032,8 @@ function renderUtilityView() {
   // Global utility
   const byMemory = {};
   for (const o of utilityObs) {
-    if (!byMemory[o.memoryId]) byMemory[o.memoryId] = { text: o.memoryText, votes: [] };
-    byMemory[o.memoryId].votes.push(o.vote);
+    if (!byMemory[o.shellbrainId]) byMemory[o.shellbrainId] = { text: o.shellbrainText, votes: [] };
+    byMemory[o.shellbrainId].votes.push(o.vote);
   }
   const global = Object.entries(byMemory).map(([id, d]) => ({
     id, text: d.text,
@@ -2053,7 +2053,7 @@ function renderUtilityView() {
   }).join('');
 
   // Selects
-  const memories = [...new Map(utilityObs.map(o => [o.memoryId, { id: o.memoryId, text: o.memoryText }])).values()];
+  const memories = [...new Map(utilityObs.map(o => [o.shellbrainId, { id: o.shellbrainId, text: o.shellbrainText }])).values()];
   const problems = [...new Map(utilityObs.map(o => [o.problemId, { id: o.problemId, text: o.problemText }])).values()];
   vmSelect.innerHTML = memories.map(m => `<option value="${m.id}|${m.text}">${m.text.slice(0,35)}…</option>`).join('');
   vpSelect.innerHTML = problems.map(p => `<option value="${p.id}|${p.text}">${p.text.slice(0,30)}…</option>`).join('');
@@ -2171,7 +2171,7 @@ const SESSION_STEPS = [
   {
     icon: '↑', color: '#06b6d4',
     title: 'Session End — Fact Update Chain',
-    desc: 'Old fact (JWT_SECRET was hardcoded) is now superseded. Agent writes: change memory + new fact + fact_update_link. The immutable chain is preserved. current_fact_snapshot updated.',
+    desc: 'Old fact (JWT_SECRET was hardcoded) is now superseded. Agent writes: change shellbrain + new fact + fact_update_link. The immutable chain is preserved. current_fact_snapshot updated.',
     ops: [
       '<span class="flow-step-op op-write">write (change)</span>',
       '<span class="flow-step-op op-write">write (fact)</span>',
@@ -2245,14 +2245,14 @@ function updatePrompt() {
   const prompts = {
     graph: selectedNode
       ? `Explain the "${selectedNode.kind}" memory: "${selectedNode.text}" — how does the ${selectedNode.kind === 'problem' ? 'problem-solution-failed_tactic' : 'association'} graph expand from this node during retrieval, and what linked context would be pulled automatically?`
-      : `Explain the experiential memory graph in this LLM agent memory system — how are problems, solutions, and failed tactics linked as first-class records, and why does matching any node pull its full linked context?`,
-    retrieval: `Explain the two-lane retrieval pipeline for this LLM agent memory system: how does Lane A (semantic + ${state.retrievalChips.expand ? '2-hop association walk with decay' : 'no expansion'}) work alongside Lane B (keyword search), why are they merged and deduplicated, and what does a ${state.retrievalMode} read threshold mean for precision vs recall?`,
-    facts: `Explain how fact truth evolves in this memory system: instead of a mutable truth score, facts form immutable update chains (old_fact → change_memory → new_fact). What does the current_fact_snapshot view represent, and why is this design better than a mutable accuracy scalar?`,
+      : `Explain the experiential shellbrain graph in this LLM agent shellbrain system — how are problems, solutions, and failed tactics linked as first-class records, and why does matching any node pull its full linked context?`,
+    retrieval: `Explain the two-lane retrieval pipeline for this LLM agent shellbrain system: how does Lane A (semantic + ${state.retrievalChips.expand ? '2-hop association walk with decay' : 'no expansion'}) work alongside Lane B (keyword search), why are they merged and deduplicated, and what does a ${state.retrievalMode} read threshold mean for precision vs recall?`,
+    facts: `Explain how fact truth evolves in this shellbrain system: instead of a mutable truth score, facts form immutable update chains (old_fact → change_shellbrain → new_fact). What does the current_fact_snapshot view represent, and why is this design better than a mutable accuracy scalar?`,
     utility: `Explain the utility observation system: votes are context-specific per (memory_id, problem_id) pair, not global. How does the global_utility view serve as a weak prior rather than the primary signal, and why is optional evidence acceptable for utility votes but not for truth updates?`,
-    scope: `Explain the physical scope separation in this agent memory system: why are repo boundaries enforced as separate SQLite databases (hard filter) rather than just lower-ranked scores? How does a read operation combine the repo DB and global DB, and what exactly is and isn't accessible?`,
+    scope: `Explain the physical scope separation in this agent shellbrain system: why are repo boundaries enforced as separate SQLite databases (hard filter) rather than just lower-ranked scores? How does a read operation combine the repo DB and global DB, and what exactly is and isn't accessible?`,
     session: sessionStepIndex >= 0
       ? `In the agent session flow, explain step ${sessionStepIndex + 1}: "${SESSION_STEPS[sessionStepIndex].title}" — ${SESSION_STEPS[sessionStepIndex].detail}`
-      : `Walk through a complete agent session in this memory system: ambient read at start → problem encounter → two-lane retrieval → working with code as ground truth → session-end writes of problem/solution/failed_tactic → fact chain update → utility votes.`,
+      : `Walk through a complete agent session in this shellbrain system: ambient read at start → problem encounter → two-lane retrieval → working with code as ground truth → session-end writes of problem/solution/failed_tactic → fact chain update → utility votes.`,
   };
   el.textContent = prompts[state.activeTab] || '';
 }

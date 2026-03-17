@@ -1,1 +1,1 @@
-"""This package contains tests for the memory system architecture."""
+"""This package contains tests for the shellbrain system architecture."""

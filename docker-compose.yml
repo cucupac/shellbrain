@@ -1,20 +1,20 @@
 services:
   db:
     image: pgvector/pgvector:pg16
-    container_name: memory-postgres
+    container_name: ${SHELLBRAIN_DB_CONTAINER_NAME:-shellbrain-postgres}
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-memory}
-      POSTGRES_USER: ${POSTGRES_USER:-memory}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-memory}
+      POSTGRES_DB: ${POSTGRES_DB:-shellbrain}
+      POSTGRES_USER: ${POSTGRES_USER:-shellbrain}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shellbrain}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - type: bind
-        source: ${MEMORY_DB_DATA_DIR:-./.local/postgres-data}
+        source: ${SHELLBRAIN_DB_DATA_DIR:-./.local/postgres-data}
         target: /var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-memory} -d ${POSTGRES_DB:-memory}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shellbrain} -d ${POSTGRES_DB:-shellbrain}"]
       interval: 10s
       timeout: 5s
       retries: 10

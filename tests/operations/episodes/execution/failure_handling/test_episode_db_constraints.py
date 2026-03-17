@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from app.periphery.db.models.episodes import episode_events, episodes
+from shellbrain.periphery.db.models.episodes import episode_events, episodes
 
 
 def test_episode_rows_reject_duplicate_repo_and_thread_pairs(

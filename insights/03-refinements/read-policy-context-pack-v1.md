@@ -11,14 +11,14 @@ Make `read` pack construction concrete without forcing cross-lane raw-score cali
 - Semantic lane: vector retrieval with threshold `tau_sem`.
 - Keyword lane: lexical retrieval with threshold `tau_kw`.
 - Rank: 1-based position in a lane's sorted result list for the current query.
-- `rank_sem(m)`: semantic-lane rank for memory `m` (missing if not retrieved).
-- `rank_kw(m)`: keyword-lane rank for memory `m` (missing if not retrieved).
-- Atomic memory set for seed retrieval: `problem`, `solution`, `failed_tactic`, `fact`, `change` (plus `preference` when included by request filter).
+- `rank_sem(m)`: semantic-lane rank for shellbrain `m` (missing if not retrieved).
+- `rank_kw(m)`: keyword-lane rank for shellbrain `m` (missing if not retrieved).
+- Atomic shellbrain set for seed retrieval: `problem`, `solution`, `failed_tactic`, `fact`, `change` (plus `preference` when included by request filter).
 - Scenario: derived grouping over linked memories (problem-centered abstraction), not an authoritative write primitive.
 
 ## Direct-seed fusion (RRF)
 
-For each memory `m`:
+For each shellbrain `m`:
 
 ```text
 rrf_score(m) =
@@ -37,7 +37,7 @@ Given `limit = N`:
 1. Build candidate seeds:
 - Retrieve top `K_sem` semantic items with `semantic_similarity >= tau_sem`.
 - Retrieve top `K_kw` keyword items with `keyword_score >= tau_kw`.
-- Merge by memory ID and compute `rrf_score`.
+- Merge by shellbrain ID and compute `rrf_score`.
 
 2. Select direct seeds:
 - Sort merged seeds by `rrf_score DESC`.
@@ -79,7 +79,7 @@ implicit_score = rrf_score(s) * edge_similarity * (implicit_decay ^ h)
   - ambient: more association coverage.
 
 6. Dedupe and spill:
-- Dedupe by memory ID.
+- Dedupe by shellbrain ID.
 - If a bucket underfills, spill remaining slots to highest-scoring unselected candidates from other buckets.
 
 7. Lift to scenarios:

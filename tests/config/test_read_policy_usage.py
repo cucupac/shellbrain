@@ -1,13 +1,13 @@
 """Read-policy config usage contracts for runtime default resolution."""
 
-from app.boot.read_policy import resolve_read_payload_defaults
+from shellbrain.boot.read_policy import resolve_read_payload_defaults
 
 
 def test_read_policy_should_always_resolve_missing_read_knobs_from_config(monkeypatch) -> None:
     """read policy should always resolve missing read knobs from config."""
 
     monkeypatch.setattr(
-        "app.boot.read_policy.get_read_settings",
+        "shellbrain.boot.read_policy.get_read_settings",
         lambda: {
             "default_mode": "ambient",
             "include_global": False,
@@ -52,7 +52,7 @@ def test_read_policy_should_always_merge_partial_expand_over_config_defaults(mon
     """read policy should always merge partial expand over config defaults."""
 
     monkeypatch.setattr(
-        "app.boot.read_policy.get_read_settings",
+        "shellbrain.boot.read_policy.get_read_settings",
         lambda: {
             "default_mode": "targeted",
             "include_global": True,

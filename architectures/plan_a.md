@@ -1,17 +1,17 @@
 # Agentic Personal Knowledge Management with OpenClaw, PARA, and QMD
 
-Giving your AI agent durable, structured memory using PARA and atomic facts
+Giving your AI agent durable, structured shellbrain using PARA and atomic facts
 As always, if you don't want to read it, just paste it to your Claw
 The Problem With AI Memory
-Most AI assistants have the memory of a goldfish. Each conversation starts fresh. You repeat yourself constantly — who you work with, what you're building, how you like things done. Some platforms offer "memory" features, but they're shallow: a flat list of facts with no structure, no decay, no hierarchy.
-If you're running a personal AI assistant — something that acts more like a chief of staff than a chatbot — you need real memory architecture. Not a bullet list. A system.
-Here's the three-layer approach I've been using. It's built on Tiago Forte's PARA framework, extended with atomic facts, memory decay, and automated extraction.
+Most AI assistants have the shellbrain of a goldfish. Each conversation starts fresh. You repeat yourself constantly — who you work with, what you're building, how you like things done. Some platforms offer "memory" features, but they're shallow: a flat list of facts with no structure, no decay, no hierarchy.
+If you're running a personal AI assistant — something that acts more like a chief of staff than a chatbot — you need real shellbrain architecture. Not a bullet list. A system.
+Here's the three-layer approach I've been using. It's built on Tiago Forte's PARA framework, extended with atomic facts, shellbrain decay, and automated extraction.
 The Three Layers
-The system separates memory into three distinct layers, each serving a different purpose:
+The system separates shellbrain into three distinct layers, each serving a different purpose:
 Knowledge Graph — Entities and facts about the world, stored as PARA directories with JSON files. Updated continuously as new information arrives.
 Daily Notes — A raw timeline of events in dated markdown files. Written every conversation.
 Tacit Knowledge — User patterns and preferences in a single markdown file. Updated only when new patterns emerge.
-Think of it like human memory: the knowledge graph is your long-term declarative memory (facts you know), daily notes are your episodic memory (what happened when), and tacit knowledge is your procedural memory (how you operate).
+Think of it like human memory: the knowledge graph is your long-term declarative shellbrain (facts you know), daily notes are your episodic shellbrain (what happened when), and tacit knowledge is your procedural shellbrain (how you operate).
 Layer 1: The Knowledge Graph (PARA)
 The core of the system is a directory tree organized using Tiago Forte's PARA method:
 life/
@@ -58,7 +58,7 @@ category — One of relationship, milestone, status, preference, or context. Hel
 status — Either active or superseded. Facts are never deleted.
 supersededBy — When a fact is outdated, it points to the fact that replaced it. This preserves history while keeping the active set clean.
 relatedEntities — Cross-references to other entities in the graph. This is what makes it a graph rather than a collection of isolated notes.
-lastAccessed / accessCount — Used for memory decay (more on this below).
+lastAccessed / accessCount — Used for shellbrain decay (more on this below).
 The No-Deletion Rule
 This is critical: facts are never deleted. When something changes, the old fact is superseded and a new one is created. This means you always have a full history — you can trace how a relationship evolved, when a project's scope changed, or when someone switched roles.
 The supersededBy pointer creates a chain you can follow forward through time.
@@ -79,7 +79,7 @@ Tool preferences and workflows
 Rules and boundaries the agent should follow
 This layer changes slowly. It's updated when the agent notices a new pattern — not on every conversation. It's the closest analog to the kind of "getting to know someone" that happens over months of working together.
 Memory Decay
-Here's where it gets interesting. A naive system treats all facts equally. But human memory doesn't work that way — recent and frequently-accessed information is more available than old, rarely-used facts.
+Here's where it gets interesting. A naive system treats all facts equally. But human shellbrain doesn't work that way — recent and frequently-accessed information is more available than old, rarely-used facts.
 The system implements this through recency weighting on the summary.md files:
 Access Tracking
 Every time a fact is used in a conversation — retrieved via search, referenced in a reply — two things happen:
@@ -108,7 +108,7 @@ Create an entity if it's mentioned 3+ times, has a direct relationship to you, o
 Otherwise, just capture it in daily notes and let it live there
 This prevents the knowledge graph from filling up with one-off mentions while ensuring important entities get proper tracking.
 The Weekly Synthesis
-Once a week, summary.md files are rewritten from active facts. This is where memory decay is applied:
+Once a week, summary.md files are rewritten from active facts. This is where shellbrain decay is applied:
 Load all active facts from items.json
 Sort by recency tier (Hot → Warm → Cold)
 Within each tier, sort by accessCount (descending)
@@ -129,11 +129,11 @@ Full-text search (BM25) — Classic keyword matching with relevance ranking. Fas
 Vector similarity search — Embeds documents into chunks and searches by semantic similarity. Good for finding related information when you don't know the exact phrasing.
 Combined query — Merges both approaches with query expansion and reranking. The default for most retrieval.
 Collections
-QMD organizes files into collections that map directly to the three memory layers:
+QMD organizes files into collections that map directly to the three shellbrain layers:
 # The knowledge graph
 qmd collection add ~/life --name life --mask "**/*.md"
 # Daily notes
-qmd collection add ~/clawd/memory --name memory --mask "**/*.md"
+qmd collection add ~/clawd/shellbrain --name shellbrain --mask "**/*.md"
 # Agent workspace (tacit knowledge, config, tools)
 qmd collection add ~/clawd --name clawd --mask "*.md"
 Each collection is indexed independently and updated with a single command (qmd update). The agent can search across all collections at once or target a specific one.
@@ -162,5 +162,5 @@ Pick one active project and one important person. Create their summary.md and it
 Add daily notes. Just start writing dated markdown files. They don't need to be pretty.
 Automate extraction later. Do it manually for the first week to build intuition for what counts as a "durable fact." Then build the heartbeat.
 Add decay last. You won't need it until you have enough facts for the summaries to feel bloated. That takes a few months.
-The system is deliberately low-tech — markdown files and JSON, backed up to a private git repo. No database, no special tooling, no vendor lock-in. Your AI assistant reads and writes plain files. If you switch assistants tomorrow, your memory comes with you.
-The source of this system draws heavily on Tiago Forte's Building a Second Brain and the PARA method. The memory decay and atomic fact layers are original extensions designed specifically for AI agent memory.
+The system is deliberately low-tech — markdown files and JSON, backed up to a private git repo. No database, no special tooling, no vendor lock-in. Your AI assistant reads and writes plain files. If you switch assistants tomorrow, your shellbrain comes with you.
+The source of this system draws heavily on Tiago Forte's Building a Second Brain and the PARA method. The shellbrain decay and atomic fact layers are original extensions designed specifically for AI agent memory.

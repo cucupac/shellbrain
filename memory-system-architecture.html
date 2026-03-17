@@ -533,7 +533,7 @@ const CONN_COLORS = {
 const ontologyNodes = [
   // Core memories
   { id: 'memories', label: 'memories', subtitle: '6 kinds, immutable', x: 480, y: 40, w: 160, h: 50, layer: 'core', priority: 'essential',
-    desc: 'Core immutable memory records. Each has kind, scope (repo/global), text, create_confidence. Append-only.',
+    desc: 'Core immutable shellbrain records. Each has kind, scope (repo/global), text, create_confidence. Append-only.',
     fields: { id: 'TEXT PK', repo_id: 'TEXT', scope: 'repo|global', kind: '6 enum values', text: 'TEXT', create_confidence: 'REAL [0,1]', archived: 'INTEGER', created_at: 'TIMESTAMP' }},
 
   { id: 'mem-problem', label: 'problem', subtitle: 'kind', x: 60, y: 160, w: 120, h: 42, layer: 'core', priority: 'essential',
@@ -566,8 +566,8 @@ const ontologyNodes = [
   { id: 'assoc-edges', label: 'association_edges', subtitle: 'depends_on | associated_with', x: 60, y: 420, w: 210, h: 50, layer: 'links', priority: 'important',
     desc: 'Typed directed edges between memories. Agent-authored (depends_on, associated_with) or implicit co-activation. Preserves structural relationships across sessions.',
     fields: { from_memory_id: 'FK', to_memory_id: 'FK', relation_type: 'depends_on|associated_with', source_mode: 'agent|implicit|mixed', state: 'tentative|confirmed|deprecated', strength: 'REAL [0,1]' }},
-  { id: 'utility-obs', label: 'utility_observations', subtitle: 'memory × problem → vote', x: 400, y: 420, w: 200, h: 50, layer: 'links', priority: 'deferrable',
-    desc: 'Contextual utility feedback. Records how helpful a memory was for a specific problem. Powers the weak global utility prior.',
+  { id: 'utility-obs', label: 'utility_observations', subtitle: 'shellbrain × problem → vote', x: 400, y: 420, w: 200, h: 50, layer: 'links', priority: 'deferrable',
+    desc: 'Contextual utility feedback. Records how helpful a shellbrain was for a specific problem. Powers the weak global utility prior.',
     fields: { memory_id: 'FK', problem_id: 'FK (kind=problem)', vote: 'REAL [-1,1]' }},
 
   // Evidence — row 4 right
@@ -581,8 +581,8 @@ const ontologyNodes = [
     fields: { edge_id: 'FK → assoc_edges', source: 'agent|implicit|feedback', valence: 'REAL [-1,1]', salience: 'REAL [0,1]' }},
   { id: 'assoc-edge-ev', label: 'association_edge_evidence', subtitle: 'edge ↔ evidence', x: 340, y: 550, w: 210, h: 46, layer: 'evidence', priority: 'deferrable',
     desc: 'Many-to-many link between association edges and evidence references.' },
-  { id: 'memory-evidence', label: 'memory_evidence', subtitle: 'memory ↔ evidence', x: 720, y: 550, w: 170, h: 46, layer: 'evidence', priority: 'essential',
-    desc: 'Many-to-many link. Every created memory must have ≥1 evidence ref.' },
+  { id: 'memory-evidence', label: 'memory_evidence', subtitle: 'shellbrain ↔ evidence', x: 720, y: 550, w: 170, h: 46, layer: 'evidence', priority: 'essential',
+    desc: 'Many-to-many link. Every created shellbrain must have ≥1 evidence ref.' },
 
   // Row 6 — episodic layer + derived views
   { id: 'v-fact-snap', label: 'current_fact_snapshot', subtitle: 'view: latest facts', x: 60, y: 700, w: 190, h: 46, layer: 'derived', priority: 'essential',
@@ -706,7 +706,7 @@ const writeNodes = [
   { id: 'w-tx', label: 'Transaction', subtitle: 'commit or full abort', x: 450, y: 600, w: 150, h: 45, layer: 'pipeline', priority: 'essential',
     desc: 'All side effects execute in one transaction. Any failure rolls back everything.' },
   { id: 'w-create-mem', label: 'create → memories', subtitle: 'all kinds', x: 180, y: 600, w: 160, h: 40, layer: 'core', priority: 'essential',
-    desc: 'Insert immutable memory record + evidence links.' },
+    desc: 'Insert immutable shellbrain record + evidence links.' },
   { id: 'w-create-pa', label: 'create → problem_attempts', subtitle: 'solution|failed_tactic', x: 180, y: 660, w: 190, h: 40, layer: 'links', priority: 'essential',
     desc: 'Additionally links solution/failed_tactic to problem.' },
   { id: 'w-create-assoc', label: 'create → association_edges', subtitle: 'with links.associations[]', x: 180, y: 720, w: 200, h: 40, layer: 'links', priority: 'important',
@@ -714,7 +714,7 @@ const writeNodes = [
   { id: 'w-upd-archive', label: 'update → archived', subtitle: 'archive_state', x: 720, y: 560, w: 170, h: 40, layer: 'core', priority: 'essential',
     desc: 'Toggles memories.archived flag.' },
   { id: 'w-upd-util', label: 'update → utility_observations', subtitle: 'utility_vote', x: 720, y: 620, w: 200, h: 40, layer: 'links', priority: 'deferrable',
-    desc: 'Appends contextual utility observation (memory × problem → vote).' },
+    desc: 'Appends contextual utility observation (shellbrain × problem → vote).' },
   { id: 'w-upd-fact', label: 'update → fact_updates', subtitle: 'fact_update_link', x: 720, y: 680, w: 190, h: 40, layer: 'links', priority: 'essential',
     desc: 'Creates fact-update chain row linking old_fact → change → new_fact.' },
   { id: 'w-upd-assoc', label: 'update → association_edges', subtitle: 'association_link', x: 720, y: 740, w: 200, h: 40, layer: 'links', priority: 'important',

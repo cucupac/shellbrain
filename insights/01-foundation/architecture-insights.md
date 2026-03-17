@@ -8,7 +8,7 @@ Repo and global. Domain is gone.
 
 - Facts and tactics are evidence-grounded in the repo they were observed in. They lose meaning outside that context. They live and die at repo scope.
 - Preferences are about the user, not the code. They travel everywhere. They live at global scope (or repo scope if repo-specific).
-- Domain was "patterns across some repos." That's generalization. Generalization is the LLM's job, not the memory system's job.
+- Domain was "patterns across some repos." That's generalization. Generalization is the LLM's job, not the shellbrain system's job.
 
 ## No cross-repo leakage
 
@@ -18,7 +18,7 @@ The LLM working in repo A needs two things: the user (global preferences) and th
 
 This makes the scoper a WHERE clause, not a scoring component.
 
-## The memory system stores observations, not generalizations
+## The shellbrain system stores observations, not generalizations
 
 The system's job is to remember what it saw, anchored to evidence. The LLM's job is to infer, generalize, and adapt. Forcing the storage layer to generalize (e.g., abstracting a fact for promotion) puts inference in the wrong layer.
 
@@ -36,7 +36,7 @@ Read, write, dispute. Everything else is internal.
 
 - Read: ambient (pack at conversation start) and targeted (search mid-task).
 - Write: record evidence-anchored observations.
-- Dispute: flag a served memory as wrong.
+- Dispute: flag a served shellbrain as wrong.
 
 ## The read pipeline
 
@@ -52,7 +52,7 @@ For experiential retrieval, query across linked problem, solution, and failed-ta
 
 ## Experiential graph shape
 
-Model experiential memory as linked nodes:
+Model experiential shellbrain as linked nodes:
 - Problems
 - Solutions (worked attempts)
 - Failed tactics (did-not-work attempts)

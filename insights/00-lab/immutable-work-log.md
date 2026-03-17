@@ -1,6 +1,6 @@
 # Immutable Work Log
 
-Raw, append-only design notes while iterating on the memory system.
+Raw, append-only design notes while iterating on the shellbrain system.
 
 Rules:
 - Append only; do not rewrite prior entries.
@@ -9,7 +9,7 @@ Rules:
 
 ## 2026-02-18 01:40:38 CST
 
-- Proposed: dogfood the memory design process by auto-recording notes without being asked.
+- Proposed: dogfood the shellbrain design process by auto-recording notes without being asked.
 - Worked: two-layer logging model (`immutable-work-log.md` raw + `discovery.md` abstraction) fits the current workflow.
 - Did not work / risk: relying only on `discovery.md` loses raw context and intermediate reasoning.
 - Open: how often to abstract raw notes into discovery (every turn vs milestone-only).
@@ -38,7 +38,7 @@ Rules:
 - Proposed: utility evidence should be optional; truth evidence should be strict.
 - Worked: reducing strict attribution burden for utility preserves practicality.
 - Did not work / risk: utility updates without evidence can drift or overfit if unconstrained.
-- Proposed interface direction: use a clean scoped memory API with JSON payloads/returns rather than freeform text parsing.
+- Proposed interface direction: use a clean scoped shellbrain API with JSON payloads/returns rather than freeform text parsing.
 - Open: best interaction form for the model layer (tool-style API, CLI wrapper, or both).
 - Files touched: `insights/00-lab/immutable-work-log.md`.
 
@@ -119,7 +119,7 @@ Rules:
 ## 2026-02-19 02:21:32 CST
 
 - Proposed: ratify a concrete Write Policy v1 that bridges interface verbs and relational schema side effects.
-- Worked: locked policy routing and boundaries — `read` uses Read Policy; `create` and `update` use Write Policy; LLM still decides memory judgment (`kind`, `scope`, text, links, evidence refs) while policy enforces deterministic validity/storage.
+- Worked: locked policy routing and boundaries — `read` uses Read Policy; `create` and `update` use Write Policy; LLM still decides shellbrain judgment (`kind`, `scope`, text, links, evidence refs) while policy enforces deterministic validity/storage.
 - Worked: locked write validity as 3 ordered gates: schema validity -> write-policy semantic validity -> DB integrity validity (single atomic transaction or full reject).
 - Worked: locked strict evidence stance for create in v1 (`evidence_refs >= 1` for all create kinds, including `preference`, where evidence may be conversation/user-turn references).
 - Worked: locked deterministic update mapping:
@@ -173,7 +173,7 @@ Rules:
 ## 2026-02-21 20:18:36 CST
 
 - Proposed: ratify v1 read-policy pack construction and ratify write-policy extension for synchronous scenario projection construction.
-- Worked: ratified read-policy seed retrieval over all atomic memory kinds (`problem`, `solution`, `failed_tactic`, `fact`, `change`, optional `preference`) with lane-specific thresholds and RRF fusion.
+- Worked: ratified read-policy seed retrieval over all atomic shellbrain kinds (`problem`, `solution`, `failed_tactic`, `fact`, `change`, optional `preference`) with lane-specific thresholds and RRF fusion.
 - Worked: ratified explicit use of scores for pack assembly only (gating, ranking, spillover, scenario ranking), not as absolute truth semantics.
 - Worked: ratified scenario-aware read layer:
   - derive scenario bundles from matched atomic members,
@@ -320,7 +320,7 @@ Rules:
   - Pydantic v2,
   - pytest.
 - Worked: locked execution shape:
-  - core memory engine package + thin CLI hydration adapter.
+  - core shellbrain engine package + thin CLI hydration adapter.
 - Worked: recorded stack in working-set and ratified register.
 - Did not work / risk: final CLI command naming and output envelope schema still open; background worker strategy beyond in-process jobs still open.
 - Open: finalize CLI command map/output envelope and define criteria for escalating to queue-backed worker model.

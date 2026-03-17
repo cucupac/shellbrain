@@ -4,14 +4,14 @@ Status: aligned with storage v1, ratified naming locks, and ratified associative
 
 This card records the `read` / `create` / `update` interface semantics and exact JSON schemas aligned to:
 - `04-contracts/memory-storage-relational-schema-v1.md`
-- immutable memory records + link tables (including formal association links)
+- immutable shellbrain records + link tables (including formal association links)
 - contextual utility observations
 - no mutable truth score in v1
 
 ## Operation Semantics
 
 - `read`: retrieval only.
-- `create`: creates immutable memory records and immutable link/evidence records.
+- `create`: creates immutable shellbrain records and immutable link/evidence records.
 - `update`: lifecycle/feedback/linkage updates only (no mutable truth score).
 - No separate `association.read` operation exists in v1; association traversal is integrated under `read` policy context-pack assembly.
 - "X changed in the codebase and invalidates Y" is represented by immutable creates:
@@ -56,11 +56,11 @@ This card records the `read` / `create` / `update` interface semantics and exact
 ### `memory.read.request` field meanings
 
 - `op`: must be `read`.
-- `repo_id`: repository identifier that selects repo-local memory DB.
+- `repo_id`: repository identifier that selects repo-local shellbrain DB.
 - `mode`: `ambient` for startup pack; `targeted` for explicit mid-task lookup.
 - `query`: natural-language retrieval query.
 - `include_global`: whether global-scope memories are searched with repo memories.
-- `kinds`: optional include-filter for memory kinds.
+- `kinds`: optional include-filter for shellbrain kinds.
 - `limit`: max records returned before final packing.
 - `expand.semantic_hops`: max similarity-association hops.
 - `expand.include_problem_links`: include linked problem/attempt records.
@@ -119,13 +119,13 @@ This card records the `read` / `create` / `update` interface semantics and exact
 
 - `op`: must be `create`.
 - `repo_id`: repository identifier for storage and evidence namespace.
-- `memory.text`: immutable memory content.
+- `memory.text`: immutable shellbrain content.
 - `memory.scope`: `repo` or `global`.
-- `memory.kind`: memory type written to `memories.kind`.
-- `memory.rationale`: optional explanation for why this memory is being created.
+- `memory.kind`: shellbrain type written to `memories.kind`.
+- `memory.rationale`: optional explanation for why this shellbrain is being created.
 - `memory.links.problem_id`: required when `kind` is `solution` or `failed_tactic`.
 - `memory.links.related_memory_ids`: optional additional associations.
-- `memory.links.associations`: optional explicit formal association links from created memory to existing memories.
+- `memory.links.associations`: optional explicit formal association links from created shellbrain to existing memories.
 - `memory.evidence_refs`: required evidence references (`minItems = 1`) for all create kinds in v1; each value is a stored `episode_events.id`.
 
 ## `memory.update.request`
@@ -204,7 +204,7 @@ This card records the `read` / `create` / `update` interface semantics and exact
 - `update.old_fact_id`: prior fact in a fact-update chain.
 - `update.new_fact_id`: replacement fact in a fact-update chain.
 - `memory_id` with `fact_update_link`: this is the `change_id`.
-- `update.to_memory_id`: association-link destination memory ID.
+- `update.to_memory_id`: association-link destination shellbrain ID.
 - `update.relation_type`: association-link relation type (`depends_on` or `associated_with`).
 - `update.rationale`: optional reason string.
 - `update.evidence_refs`: required for `association_link`; optional (recommended) for other update types. When provided, each value is a stored `episode_events.id`.

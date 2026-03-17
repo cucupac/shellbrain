@@ -21,7 +21,7 @@ This card captures the concrete storage schema aligned to the approved interface
 ```sql
 CREATE EXTENSION IF NOT EXISTS vector;
 
--- 1) Core immutable memory records
+-- 1) Core immutable shellbrain records
 CREATE TABLE memories (
   id TEXT PRIMARY KEY,
   repo_id TEXT NOT NULL,
@@ -108,7 +108,7 @@ CREATE TABLE problem_attempts (
 CREATE INDEX idx_problem_attempts_problem ON problem_attempts(problem_id);
 CREATE INDEX idx_problem_attempts_attempt ON problem_attempts(attempt_id);
 
--- 7) Fact update chain: old fact + change memory -> new fact
+-- 7) Fact update chain: old fact + change shellbrain -> new fact
 CREATE TABLE fact_updates (
   id TEXT PRIMARY KEY,
   old_fact_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
@@ -167,7 +167,7 @@ CREATE INDEX idx_assoc_obs_pair_time ON association_observations(repo_id, from_m
 CREATE INDEX idx_assoc_obs_problem ON association_observations(repo_id, problem_id, created_at);
 CREATE INDEX idx_assoc_obs_episode ON association_observations(repo_id, episode_id, created_at);
 
--- 10) Utility observations by retrieved memory and problem context
+-- 10) Utility observations by retrieved shellbrain and problem context
 CREATE TABLE utility_observations (
   id TEXT PRIMARY KEY,
   memory_id TEXT NOT NULL REFERENCES memories(id) ON DELETE CASCADE,
@@ -177,7 +177,7 @@ CREATE TABLE utility_observations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_utility_obs_memory ON utility_observations(memory_id);
+CREATE INDEX idx_utility_obs_shellbrain ON utility_observations(memory_id);
 CREATE INDEX idx_utility_obs_problem ON utility_observations(problem_id);
 CREATE INDEX idx_utility_obs_created_at ON utility_observations(created_at);
 
@@ -234,7 +234,7 @@ SELECT
 FROM utility_observations
 GROUP BY memory_id;
 
--- Number of memories that each memory directly depends on
+-- Number of memories that each shellbrain directly depends on
 CREATE VIEW direct_dependency_counts AS
 SELECT
   repo_id,
@@ -244,7 +244,7 @@ FROM association_edges
 WHERE relation_type = 'depends_on' AND state != 'deprecated'
 GROUP BY repo_id, from_memory_id;
 
--- Number of direct dependents per memory
+-- Number of direct dependents per shellbrain
 CREATE VIEW direct_dependent_counts AS
 SELECT
   repo_id,
@@ -269,7 +269,7 @@ GROUP BY repo_id, to_memory_id;
   - `from_memory_id != to_memory_id`,
   - relation type in (`depends_on`, `associated_with`).
 - `association_observations` should reference an existing `association_edges.id` when observation corresponds to an upserted edge.
-- `association_observations.problem_id` should reference a `kind = 'problem'` memory when present.
+- `association_observations.problem_id` should reference a `kind = 'problem'` shellbrain when present.
 - `utility_observations.problem_id` should reference a `kind = 'problem'` memory.
 - `episode_events.episode_id` must reference a valid `episodes.id`; `seq` is unique per episode.
 - `session_transfers.from_episode_id` and `session_transfers.to_episode_id` should be different session IDs.

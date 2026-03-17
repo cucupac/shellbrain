@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 
-from app.core.policies.read_policy.expansion import expand_candidates
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.policies.read_policy.expansion import expand_candidates
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_returns_visible_semantic_matches_through_real_semantic_lane_when_lexical_misses(
@@ -18,14 +18,14 @@ def test_read_returns_visible_semantic_matches_through_real_semantic_lane_when_l
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Alpha memory text without query words.",
+        text_value="Alpha shellbrain text without query words.",
     )
     seed_read_memory(
         memory_id="semantic-distractor",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Distractor memory text without query words.",
+        text_value="Distractor shellbrain text without query words.",
     )
     seed_read_embedding(memory_id="semantic-hit", vector=[1.0, 0.0, 0.0, 0.0])
     seed_read_embedding(memory_id="semantic-distractor", vector=[0.0, 1.0, 0.0, 0.0])
@@ -105,7 +105,7 @@ def test_read_expands_semantic_neighbors_through_the_real_semantic_lane_only_up_
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Anchor memory without query overlap.",
+        text_value="Anchor shellbrain without query overlap.",
     )
     seed_read_memory(
         memory_id="neighbor-1",
@@ -172,6 +172,6 @@ def _make_expansion_payload(*, semantic_hops: int) -> dict[str, object]:
 
 
 def _candidate_ids(candidates) -> list[str]:
-    """Extract ordered memory identifiers from semantic candidate rows."""
+    """Extract ordered shellbrain identifiers from semantic candidate rows."""
 
     return [str(candidate["memory_id"]) for candidate in candidates]

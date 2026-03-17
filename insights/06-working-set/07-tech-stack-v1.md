@@ -10,7 +10,7 @@ Status: ratified for implementation start.
 
 ## Application shape
 
-- One core Python package for memory logic (policy + retrieval + persistence orchestration).
+- One core Python package for shellbrain logic (policy + retrieval + persistence orchestration).
 - One CLI adapter that:
   - accepts compact agent payloads,
   - performs contextual hydration,
@@ -29,7 +29,7 @@ Status: ratified for implementation start.
 ## Durability and portability requirements
 
 - Mandatory persistence property:
-  - memory data must survive container deletion and Docker uninstall.
+  - shellbrain data must survive container deletion and Docker uninstall.
 - Local deployment requirement:
   - PostgreSQL data directory must use a host bind mount path (outside Docker-managed volume lifecycle).
 - Portability requirement:

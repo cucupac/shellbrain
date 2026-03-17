@@ -11,8 +11,8 @@ Problem/failure/solution triples. Episodic. Anchored to specific situations.
 - Queried by problem similarity.
 - Stale when codebase changes invalidate them.
 - A tactic without its problem is meaningless. They're linked, not separate cards.
-- Model as linked memory records: `problem`, `solution`, `failed_tactic`.
-- `solution` and `failed_tactic` are distinct memory types even when both come from the same episode.
+- Model as linked shellbrain records: `problem`, `solution`, `failed_tactic`.
+- `solution` and `failed_tactic` are distinct shellbrain types even when both come from the same episode.
 - The immutable episodic log is evidence; experiential records are the normalized retrieval layer.
 
 ### 2. Preferences — "how things should be done"

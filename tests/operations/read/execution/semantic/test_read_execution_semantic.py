@@ -2,10 +2,10 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryReadRequest
-from app.core.interfaces.retrieval import IVectorSearch
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryReadRequest
+from shellbrain.core.interfaces.retrieval import IVectorSearch
+from shellbrain.core.use_cases.read_memory import execute_read_memory
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_returns_semantic_seed_matches_when_lexical_misses(
@@ -22,14 +22,14 @@ def test_read_returns_semantic_seed_matches_when_lexical_misses(
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Alpha memory text without query terms.",
+        text_value="Alpha shellbrain text without query terms.",
     )
     seed_read_memory(
         memory_id="non-match",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Distractor memory text without query terms.",
+        text_value="Distractor shellbrain text without query terms.",
     )
     seed_read_embedding(memory_id="semantic-hit", vector=[1.0, 0.0, 0.0, 0.0])
 
@@ -166,21 +166,21 @@ def test_read_expands_implicit_semantic_neighbors_only_up_to_semantic_hops_depth
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Anchor memory without shared query tokens.",
+        text_value="Anchor shellbrain without shared query tokens.",
     )
     seed_read_memory(
         memory_id="neighbor-1",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="First linked memory without shared query tokens.",
+        text_value="First linked shellbrain without shared query tokens.",
     )
     seed_read_memory(
         memory_id="neighbor-2",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Second linked memory without shared query tokens.",
+        text_value="Second linked shellbrain without shared query tokens.",
     )
     seed_read_embedding(memory_id="anchor", vector=[1.0, 0.0, 0.0, 0.0])
     seed_read_embedding(memory_id="neighbor-1", vector=[0.6, 0.8, 0.0, 0.0])
@@ -510,7 +510,7 @@ def _make_read_request(**overrides: object) -> MemoryReadRequest:
 
 
 def _item_ids(result) -> list[str]:
-    """Extract ordered memory IDs from a read operation result."""
+    """Extract ordered shellbrain IDs from a read operation result."""
 
     assert result.status == "ok"
     assert "pack" in result.data

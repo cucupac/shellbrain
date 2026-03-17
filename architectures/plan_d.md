@@ -4,11 +4,11 @@
 
 Define episode schema: user text, model text, tool outputs, stable IDs, hashes.
 
-Implement append-only episode log at `~/.memory/episodes/`.
+Implement append-only episode log at `~/.shellbrain/episodes/`.
 
 Write serialization (JSON lines or SQLite — pick one, don't abstract).
 
-Build `memory record` CLI command that accepts a raw episode and appends.
+Build `shellbrain record` CLI command that accepts a raw episode and appends.
 
 No cards, no retrieval, no intelligence. Just durable storage that never loses work.
 
@@ -22,7 +22,7 @@ Four kinds: `preference`, `fact`, `negative_result`, `tactic`. No more.
 
 Status enum: `active`, `needs_recheck`, `deprecated`.
 
-Implement card storage at `~/.memory/cards/` (SQLite or flat files, same choice as log).
+Implement card storage at `~/.shellbrain/cards/` (SQLite or flat files, same choice as log).
 
 Build the consolidation LLM call: reads episode, proposes candidate cards with evidence refs.
 
@@ -40,13 +40,13 @@ Generate embeddings for all cards (pick a model, stick with it).
 
 Build similarity index (FAISS, annoy, or even brute-force at low volume).
 
-Implement `memory recall`: query by scope + embedding similarity + recency.
+Implement `shellbrain recall`: query by scope + embedding similarity + recency.
 
 Return ranked candidate set. No packing yet — just candidates.
 
-Implement `memory search`: explicit query, bypasses auto-pack, returns raw matches with citations.
+Implement `shellbrain search`: explicit query, bypasses auto-pack, returns raw matches with citations.
 
-Implement `memory check`: lightweight probe — "is this still true?" against card store.
+Implement `shellbrain check`: lightweight probe — "is this still true?" against card store.
 
 **Done when:** recall returns relevant cards for real task contexts. search works for browsing.
 
@@ -62,11 +62,11 @@ Implement pre-pack hook: runs recall, builds candidate set, LLM judges, injects 
 
 The agent now sees something like: `[memory: 8 cards loaded, 2 constraints, 1 negative result...]`
 
-**Done when:** agent sessions start with relevant, non-redundant memory context injected automatically.
+**Done when:** agent sessions start with relevant, non-redundant shellbrain context injected automatically.
 
 ## Phase 4: Lifecycle + mid-session updates
 
-Implement `memory update`: deprecate, supersede, promote. Requires evidence ref.
+Implement `shellbrain update`: deprecate, supersede, promote. Requires evidence ref.
 
 **Preference/constraint lifecycle:** near-permanent, changed only by explicit user statement.
 
@@ -97,7 +97,7 @@ Redundancy handled by dedup sweep: merge near-duplicates by embedding + lexical 
 
 Budget caps remain as a write-path guardrail. Store grows, retrieval handles relevance.
 
-Wire `memory dedup` CLI for on-demand merge runs.
+Wire `shellbrain dedup` CLI for on-demand merge runs.
 
 **Done when:** stale cards get deprecated by evidence, not vibes. Store stays clean via dedup.
 
@@ -117,7 +117,7 @@ Hard bound: 2 hops max. Relevance is not transitive.
 
 ## Phase 7: Scope + generalization
 
-Per-repo `.memory/` directory: scope ID linking to central store.
+Per-repo `.shellbrain/` directory: scope ID linking to central store.
 
 Repo-specific config overrides (what counts as build success, etc.).
 
@@ -131,7 +131,7 @@ Conservative by default. False generalization is worse than redundant narrow car
 
 ## Phase 8: Hardening + instrumentation
 
-`memory status` CLI: ledger summary, store health, card counts by scope/kind/status.
+`shellbrain status` CLI: ledger summary, store health, card counts by scope/kind/status.
 
 Retrieval quality tracking: did the agent use what was packed? Did the user correct it?
 
@@ -141,7 +141,7 @@ Edge cases: concurrent episodes, corrupted log recovery, embedding model migrati
 
 Documentation: API reference, card kind semantics, lifecycle diagrams.
 
-**Done when:** you can answer "is the memory system helping?" with data, not vibes.
+**Done when:** you can answer "is the shellbrain system helping?" with data, not vibes.
 
 ## What's deliberately deferred
 

@@ -1,19 +1,19 @@
 # Breakthrough Structured
 
-*Goal:* Turn the raw note into a clear journey from "I hit a problem" to "memory gets better over time".
+*Goal:* Turn the raw note into a clear journey from "I hit a problem" to "shellbrain gets better over time".
 
 *Reading rule:* **Settled** items come from existing `insights/` docs, and **Open** items are proposals we still need to decide.
 
 ## Journey 1: Problem Encounter
 
-**Q:** What does the agent do with long-term memory at the interface layer?  
+**Q:** What does the agent do with long-term shellbrain at the interface layer?  
 **A:** The interface supports `query/read`, `write`, and `dispute` so the agent can retrieve, persist, and challenge memory.
 
-**Q:** Why consult memory when a new problem appears?  
+**Q:** Why consult shellbrain when a new problem appears?  
 **A:** Memory helps both solve by analogy (*case-based reasoning*) and narrow the solution search space.
 
-**Q:** What rule applies when memory conflicts with the codebase?  
-**A:** **Settled:** *Current code is ground truth* and memory is advisory because memory can drift.
+**Q:** What rule applies when shellbrain conflicts with the codebase?  
+**A:** **Settled:** *Current code is ground truth* and shellbrain is advisory because shellbrain can drift.
 
 ## Journey 2: Retrieval Plan
 
@@ -41,7 +41,7 @@
 ## Journey 3: Storage Foundation
 
 **Q:** What minimum data is required for this retrieval system?  
-**A:** The database must store memory text and an embedding vector linked to each memory item.
+**A:** The database must store shellbrain text and an embedding vector linked to each shellbrain item.
 
 **Q:** What core system pieces exist at this abstraction level?  
 **A:** The system has an interface (`query/write/dispute`), a recall engine, and a database substrate.
@@ -57,28 +57,28 @@
 
 ## Journey 4: Memory Shape and Scope
 
-**Q:** What memory kinds are explicitly named in the raw note?  
+**Q:** What shellbrain kinds are explicitly named in the raw note?  
 **A:** The note names procedural memory, user preference memory, fact-based memory, and episodic immutable repo history.
 
 **Q:** How does this compare to current ontology docs?  
 **A:** **Open:** Current docs use experiential/preferences/structural (and also preference/fact/tactic language), so naming needs normalization.
 
-**Q:** What should live in global memory in this draft?  
+**Q:** What should live in global shellbrain in this draft?  
 **A:** Abstract user context such as current work focus, coding preferences, and goals is proposed for global scope.
 
 **Q:** What hierarchy assumption appears in the raw note?  
-**A:** The note assumes memory is hierarchical, with abstract preference context above repo-specific operational detail.
+**A:** The note assumes shellbrain is hierarchical, with abstract preference context above repo-specific operational detail.
 
 **Q:** Is extra partitioning for higher-level memories already decided?  
-**A:** **Open:** Separate table or separate DB for higher-level memory is still undecided.
+**A:** **Open:** Separate table or separate DB for higher-level shellbrain is still undecided.
 
 ## Journey 5: Writing and Consolidation
 
-**Q:** When does the agent draft a new memory entry?  
+**Q:** When does the agent draft a new shellbrain entry?  
 **A:** The draft is produced after solving a problem through iterative user-agent work.
 
 **Q:** How does the agent stay adaptive if the conversation changes direction mid-session?  
-**A:** The agent can re-read long-term memory at any time to reload relevant context before continuing.
+**A:** The agent can re-read long-term shellbrain at any time to reload relevant context before continuing.
 
 **Q:** What is the default human-control behavior before writing?  
 **A:** Proposed default behavior is explicit user confirmation of what will be saved and where it will be categorized.
@@ -87,18 +87,18 @@
 **A:** **Open:** Add a configurable auto-store mode so the agent can write autonomously.
 
 **Q:** What pre-write checks are proposed for auto-store?  
-**A:** Re-run original retrieval, test new-memory similarity for duplicates, store if novel, reinforce if redundant, and resolve contradictions.
+**A:** Re-run original retrieval, test new-shellbrain similarity for duplicates, store if novel, reinforce if redundant, and resolve contradictions.
 
 **Q:** How is redundancy handled?  
-**A:** Redundant memory should strengthen an existing memory rather than create a duplicate, with redundancy judged by the LLM.
+**A:** Redundant Shellbrain entries should strengthen an existing entry rather than create a duplicate, with redundancy judged by the LLM.
 
 **Q:** How are contradictions grounded for code-facts?  
-**A:** If a memory contradicts current code facts, the conflicting memory should be weakened because code has priority.
+**A:** If a shellbrain contradicts current code facts, the conflicting shellbrain should be weakened because code has priority.
 
 ## Journey 6: Scoring and Feedback
 
 **Q:** What new mechanism appears once we discuss weakening or strengthening memories?  
-**A:** The design introduces a memory-strength signal.
+**A:** The design introduces a shellbrain-strength signal.
 
 **Q:** Should strength be part of ranking math or only exposed to the LLM for judgment?  
 **A:** **Open:** This is undecided between hard ranking (`similarity + strength`) and advisory metadata.
@@ -121,7 +121,7 @@
 **A:** Memory should explicitly separate *problems* from *solutions* while linking them.
 
 **Q:** What new distinction was added after that?  
-**A:** Failed attempts should be stored as a first-class memory type separate from solutions but still linked to problems.
+**A:** Failed attempts should be stored as a first-class shellbrain type separate from solutions but still linked to problems.
 
 **Q:** Why not keep failed attempts only in the immutable episodic log?  
 **A:** The episodic log is evidence, but retrieval needs normalized memories of what worked and what failed.
@@ -142,7 +142,7 @@
 **A:** Failed tactics should be shown as avoid-or-reconsider signals rather than candidate solutions.
 
 **Q:** Why is this extension a major design gain?  
-**A:** It preserves validated solution memory while adding anti-pattern memory that reduces repeated dead ends.
+**A:** It preserves validated solution shellbrain while adding anti-pattern shellbrain that reduces repeated dead ends.
 
 ## Journey 8: Session-End Capture From Notes
 

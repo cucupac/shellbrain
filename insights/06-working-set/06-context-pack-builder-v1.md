@@ -1,6 +1,6 @@
 # Context Pack Builder v1
 
-Status: structure locked, quota/default tuning still open.
+Status: current v1 slice is locked around atomic-shellbrain pack assembly; scenario lift is deferred.
 
 ## Locked
 
@@ -13,10 +13,12 @@ Status: structure locked, quota/default tuning still open.
   - dedupe + spill,
   - hard final cap.
 - Explicit expansion bucket now includes formal association links (`association_edges`) in addition to `problem_attempts` and `fact_updates`.
-- Scenario lift is included:
-  - derive scenarios from matched members,
-  - rank scenarios from matched-member evidence,
-  - include bounded summaries/members.
+- Current v1 pack output is limited to atomic-shellbrain sections:
+  - `meta`
+  - `direct`
+  - `explicit_related`
+  - `implicit_related`
+- Scenario lift is intentionally not part of the current v1 output surface.
 - Fact update-chain expansion is bounded (parameterized depth).
 - Association-link traversal is bounded and integrated under read-policy expansion (no separate read operation).
 - If read request omits expansion knobs, runtime uses policy-config defaults before pack assembly.
@@ -27,7 +29,7 @@ Source:
 ## Not yet locked
 
 - Final per-mode quotas:
-  - `N_direct`, `N_explicit`, `N_implicit`, `N_scenario`.
+  - `N_direct`, `N_explicit`, `N_implicit`.
 - Final default `max_update_chain_depth`.
 - Final defaults for association traversal and ranking knobs.
-- Final scenario projection schema and constructor trigger boundaries.
+- Future scenario projection schema, constructor trigger boundaries, and any later `N_scenario` defaults if scenario lift is reintroduced.

@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from app.periphery.cli.handlers import handle_events
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.periphery.cli.handlers import handle_events
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_events_errors_clearly_when_no_active_session_exists(

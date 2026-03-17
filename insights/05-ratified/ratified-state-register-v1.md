@@ -46,9 +46,9 @@ Implementation-facing pack:
 - Episodic container naming stays `episodes` (do not rename to `work_sessions`).
 
 ### 3) Memory model and kinds
-- Active atomic memory kinds:
+- Active atomic shellbrain kinds:
   - `problem`, `solution`, `failed_tactic`, `fact`, `preference`, `change`.
-- Experiential memory is explicit linked records, not hidden in episode text only.
+- Experiential shellbrain is explicit linked records, not hidden in episode text only.
 - Failed tactics are first-class memories, not metadata on solutions/facts.
 
 ### 4) Truth and utility stance
@@ -133,7 +133,7 @@ Implementation-facing pack:
 - Portability requirement: logical backup/export path (`pg_dump`/`pg_dumpall`) is part of v1 operational baseline.
 - Data/migrations: SQLAlchemy Core + Alembic.
 - Validation/tests: Pydantic v2 + pytest.
-- Execution shape: core memory engine package + thin CLI hydration adapter.
+- Execution shape: core shellbrain engine package + thin CLI hydration adapter.
 - Background processing: start with in-process/session-end consolidation; escalate to queue worker only if needed.
 
 ## Resolved Drift Calls (Use Newer Direction)

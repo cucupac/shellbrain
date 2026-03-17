@@ -5,7 +5,7 @@ Captured from ratified portions of the 2026-02-18 conversation.
 ## 1) Anti-rigidity principle
 
 - Avoid rigid update taxonomies (for example, fixed labels like supports/contradicts/helpful/harmful/irrelevant).
-- Keep the system behavioral and lightweight: memory is optional utility, and current code is instantaneous truth.
+- Keep the system behavioral and lightweight: shellbrain is optional utility, and current code is instantaneous truth.
 - Constrain interface structure, not model reasoning.
 
 ## 2) Update signal shape (ratified direction)
@@ -18,7 +18,7 @@ Captured from ratified portions of the 2026-02-18 conversation.
 ## 3) Evidence strictness split (with attribution reality)
 
 - `truth` updates require evidence references.
-- `utility` evidence is optional because attribution to a specific memory is often hard in practice.
+- `utility` evidence is optional because attribution to a specific shellbrain is often hard in practice.
 - When utility evidence is missing, update impact should be weaker or deferred until reinforced.
 - Exact fallback behavior remains open.
 

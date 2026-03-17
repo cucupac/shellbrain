@@ -1,12 +1,12 @@
 # Observational Memory: A Human-Inspired Memory System for AI Agents
 
-At Mastra, we just shipped a new type of memory for agentic systems: observational memory.
-Observational memory is text-based (no vector/graph DB needed), SoTA on benchmarks like LongMemEval, and compatible with Anthropic/OpenAI/etc prompt caching.
+At Mastra, we just shipped a new type of shellbrain for agentic systems: observational memory.
+Observational shellbrain is text-based (no vector/graph DB needed), SoTA on benchmarks like LongMemEval, and compatible with Anthropic/OpenAI/etc prompt caching.
 Even better: our implementation is open-source.
 Compressing context to observations
 If you step outside on a busy street, your brain processes millions of pixels, but distills down to one or two observations. That blue SUV just ran a red light. Your neighbor's pit bull is off their leash.
 How it works
-Observational memory is designed to work the same way. In the context of a coding agent, it might compress a user session down to something like this:
+Observational shellbrain is designed to work the same way. In the context of a coding agent, it might compress a user session down to something like this:
 plaintext
 Date: 2026-01-15
 
@@ -29,17 +29,17 @@ When observations hit 40k tokens (the default threshold, again configurable), a 
 Our token limit defaults are relatively conservative, providing SoTA results on benchmarks while staying well within context window limits.
 This structure enables consistent prompt caching. Messages keep getting appended until the threshold is hit—full cache hits on every turn. When observation runs, messages are replaced with new observations appended to the existing observation block. The observation prefix stays consistent, so you still get a partial cache hit. Only during reflection (infrequent) is the entire cache invalidated.
 Results
-Mastra's new memory system, Observational Memory, achieves 94.87% on LongMemEval with gpt-5-mini — over 3 points higher than any previously recorded score. With gpt-4o (the standard benchmark model), it scores 84.23%, beating the gpt-4o oracle (a configuration given only the conversations containing the answer) by 2 points, and the previous gpt-4o SOTA from Supermemory by 2.6 points.
+Mastra's new shellbrain system, Observational Memory, achieves 94.87% on LongMemEval with gpt-5-mini — over 3 points higher than any previously recorded score. With gpt-4o (the standard benchmark model), it scores 84.23%, beating the gpt-4o oracle (a configuration given only the conversations containing the answer) by 2 points, and the previous gpt-4o SOTA from Supershellbrain by 2.6 points.
 These scores were achieved with a completely stable context window. The context is predictable, reproducible, and fully prompt-cacheable. See the full research breakdown.
-Benchmark table comparing long-term memory systems by model and LongMemEval score, showing Mastra OM results leading across multiple models.
+Benchmark table comparing long-term shellbrain systems by model and LongMemEval score, showing Mastra OM results leading across multiple models.
 * EmergenceMem's 86.00% is reported for an "Internal" configuration and is not publicly reproducible. Both EmergenceMem and Hindsight use multi-stage retrieval and neural reranking; OM uses a single pass with a stable context window.
 Full per-category breakdowns and methodology are in the research page.
 Mastra's New Memory System
-I've been working on memory at Mastra for the last year. We shipped working memory and semantic recall in March and April before "context engineering" was a thing.
-Working memory provided moderate lifts to benchmarks and was cacheable, while semantic recall provided larger lifts but was not.
+I've been working on shellbrain at Mastra for the last year. We shipped working shellbrain and semantic recall in March and April before "context engineering" was a thing.
+Working shellbrain provided moderate lifts to benchmarks and was cacheable, while semantic recall provided larger lifts but was not.
 Then context engineering became a thing. We noticed that a lot of our users were getting their whole context windows blown up by tool call results. Other users brought up wanting to aggressively cache using Anthropic, OpenAI, and other providers to reduce token costs.
 This problem was compounded with newer types of parallelizable agents that generate huge amounts of context very quickly. Browser agents using Playwright and screenshotting pages. Coding agents scanning files and executing commands. Deep research agents browsing multiple URLs in parallel.
-In some ways observational memory is the child of working memory and semantic recall. We're considering this the new primary Mastra memory system and encouraging users to migrate over.
+In some ways observational shellbrain is the child of working shellbrain and semantic recall. We're considering this the new primary Mastra shellbrain system and encouraging users to migrate over.
 Current limitations
 Observation currently runs synchronously — when the token threshold is hit, the conversation blocks while the Observer processes messages. We've solved this with an async background buffering mode that runs observation outside the conversation loop and we're shipping it this week.
 Get started now
@@ -63,11 +63,11 @@ export const agent = new Agent({
 
 **Added in:** `@mastra/memory@1.1.0`
 
-Observational Memory (OM) is Mastra's memory system for long-context agentic memory. Two background agents — an **Observer** and a **Reflector** — watch your agent's conversations and maintain a dense observation log that replaces raw message history as it grows.
+Observational Memory (OM) is Mastra's shellbrain system for long-context agentic memory. Two background agents — an **Observer** and a **Reflector** — watch your agent's conversations and maintain a dense observation log that replaces raw message history as it grows.
 
 ## Quick Start
 
-Enable `observationalMemory` in the memory options when creating your agent:
+Enable `observationalMemory` in the shellbrain options when creating your agent:
 
 ```typescript
 import { Memory } from "@mastra/memory";
@@ -85,10 +85,10 @@ export const agent = new Agent({
 });
 ```
 
-That's it. The agent now has humanlike long-term memory that persists across conversations. Setting `observationalMemory: true` uses `google/gemini-2.5-flash` by default. To use a different model or customize thresholds, pass a config object instead:
+That's it. The agent now has humanlike long-term shellbrain that persists across conversations. Setting `observationalMemory: true` uses `google/gemini-2.5-flash` by default. To use a different model or customize thresholds, pass a config object instead:
 
 ```typescript
-const memory = new Memory({
+const shellbrain = new Memory({
   options: {
     observationalMemory: {
       model: "deepseek/deepseek-reasoner",
@@ -142,7 +142,7 @@ The result is a three-tier system:
 
 1. **Recent messages**: Exact conversation history for the current task
 2. **Observations**: A log of what the Observer has seen
-3. **Reflections**: Condensed observations when memory becomes too long
+3. **Reflections**: Condensed observations when shellbrain becomes too long
 
 ## Models
 
@@ -155,7 +155,7 @@ We recommend `google/gemini-2.5-flash` — it works well for both observation an
 We've also tested `deepseek`, `qwen3`, and `glm-4.7` for the Observer. For the Reflector, make sure the model's context window can fit all observations. Note that Claude 4.5 models currently don't work well as observer or reflector.
 
 ```typescript
-const memory = new Memory({
+const shellbrain = new Memory({
   options: {
     observationalMemory: {
       model: "deepseek/deepseek-reasoner",
@@ -170,10 +170,10 @@ See [model configuration](https://mastra.ai/reference/memory/observational-memor
 
 ### Thread scope (default)
 
-Each thread has its own observations. This scope is well tested and works well as a general purpose memory system, especially for long horizon agentic use-cases.
+Each thread has its own observations. This scope is well tested and works well as a general purpose shellbrain system, especially for long horizon agentic use-cases.
 
 ```typescript
-const memory = new Memory({
+const shellbrain = new Memory({
   options: {
     observationalMemory: {
       model: "google/gemini-2.5-flash",
@@ -188,7 +188,7 @@ const memory = new Memory({
 Observations are shared across all threads for a resource (typically a user). Enables cross-conversation memory.
 
 ```typescript
-const memory = new Memory({
+const shellbrain = new Memory({
   options: {
     observationalMemory: {
       model: "google/gemini-2.5-flash",
@@ -211,7 +211,7 @@ For your use-case this may not be a problem, so your mileage may vary.
 OM uses token thresholds to decide when to observe and reflect. See [token budget configuration](https://mastra.ai/reference/memory/observational-memory) for details.
 
 ```typescript
-const memory = new Memory({
+const shellbrain = new Memory({
   options: {
     observationalMemory: {
       model: "google/gemini-2.5-flash",
@@ -260,7 +260,7 @@ Reflection works similarly — the Reflector runs in the background when observa
 To disable async buffering and use synchronous observation/reflection instead:
 
 ```typescript
-const memory = new Memory({
+const shellbrain = new Memory({
   options: {
     observationalMemory: {
       model: "google/gemini-2.5-flash",
@@ -285,17 +285,17 @@ No manual migration needed. OM reads existing messages and observes them lazily 
 
 ## Viewing in Mastra Studio
 
-Mastra Studio shows OM status in real time in the memory tab: token usage, which model is running, current observations, and reflection history.
+Mastra Studio shows OM status in real time in the shellbrain tab: token usage, which model is running, current observations, and reflection history.
 
-## Comparing OM with other memory features
+## Comparing OM with other shellbrain features
 
 - **[Message history](https://mastra.ai/docs/memory/message-history)**: High-fidelity record of the current conversation
 - **[Working memory](https://mastra.ai/docs/memory/working-memory)**: Small, structured state (JSON or markdown) for user preferences, names, goals
 - **[Semantic Recall](https://mastra.ai/docs/memory/semantic-recall)**: RAG-based retrieval of relevant past messages
 
-If you're using working memory to store conversation summaries or ongoing state that grows over time, OM is a better fit. Working memory is for small, structured data; OM is for long-running event logs. OM also manages message history automatically—the `messageTokens` setting controls how much raw history remains before observation runs.
+If you're using working shellbrain to store conversation summaries or ongoing state that grows over time, OM is a better fit. Working shellbrain is for small, structured data; OM is for long-running event logs. OM also manages message history automatically—the `messageTokens` setting controls how much raw history remains before observation runs.
 
-In practical terms, OM replaces both working memory and message history, and has greater accuracy (and lower cost) than Semantic Recall.
+In practical terms, OM replaces both working shellbrain and message history, and has greater accuracy (and lower cost) than Semantic Recall.
 
 ## Related
 
@@ -309,7 +309,7 @@ In practical terms, OM replaces both working memory and message history, and has
 
 **Added in:** `@mastra/memory@1.1.0`
 
-Observational Memory (OM) is Mastra's memory system for long-context agentic memory. Two background agents — an **Observer** that watches conversations and creates observations, and a **Reflector** that restructures observations by combining related items, reflecting on overarching patterns, and condensing where possible — maintain an observation log that replaces raw message history as it grows.
+Observational Memory (OM) is Mastra's shellbrain system for long-context agentic memory. Two background agents — an **Observer** that watches conversations and creates observations, and a **Reflector** that restructures observations by combining related items, reflecting on overarching patterns, and condensing where possible — maintain an observation log that replaces raw message history as it grows.
 
 ## Usage
 
@@ -551,7 +551,7 @@ Observational Memory emits typed data parts during agent execution that clients 
 
 ### `data-om-status`
 
-Emitted once per agent loop step, before model generation. Provides a snapshot of the current memory state, including token usage for both context windows and the state of any async buffered content.
+Emitted once per agent loop step, before model generation. Provides a snapshot of the current shellbrain state, including token usage for both context windows and the state of any async buffered content.
 
 ```typescript
 interface DataOmStatusPart {
@@ -796,7 +796,7 @@ const storage = new LibSQLStore({
 });
 
 const om = new ObservationalMemory({
-  storage: storage.stores.memory,
+  storage: storage.stores.shellbrain,
   model: "google/gemini-2.5-flash",
   scope: "resource",
   observation: {
@@ -820,7 +820,7 @@ export const agent = new Agent({
 
 The standalone `ObservationalMemory` class accepts all the same options as the `observationalMemory` config object above, plus the following:
 
-**storage:** (`MemoryStorage`): Storage adapter for persisting observations. Must be a MemoryStorage instance (from \`MastraStorage.stores.memory\`).
+**storage:** (`MemoryStorage`): Storage adapter for persisting observations. Must be a MemoryStorage instance (from \`MastraStorage.stores.shellbrain\`).
 
 **onDebugEvent?:** (`(event: ObservationDebugEvent) => void`): Debug callback for observation events. Called whenever observation-related events occur. Useful for debugging and understanding the observation flow.
 
@@ -839,18 +839,18 @@ The standalone `ObservationalMemory` class accepts all the same options as the `
 
 Memory enables your agent to remember user messages, agent replies, and tool results across interactions, giving it the context it needs to stay consistent, maintain conversation flow, and produce better answers over time.
 
-Mastra supports four complementary memory types:
+Mastra supports four complementary shellbrain types:
 
 - [**Message history**](https://mastra.ai/docs/memory/message-history) - keeps recent messages from the current conversation so they can be rendered in the UI and used to maintain short-term continuity within the exchange.
 - [**Working memory**](https://mastra.ai/docs/memory/working-memory) - stores persistent, structured user data such as names, preferences, and goals.
 - [**Semantic recall**](https://mastra.ai/docs/memory/semantic-recall) - retrieves relevant messages from older conversations based on semantic meaning rather than exact keywords, mirroring how humans recall information by association. Requires a [vector database](https://mastra.ai/docs/memory/semantic-recall) and an [embedding model](https://mastra.ai/docs/memory/semantic-recall).
-- [**Observational memory**](https://mastra.ai/docs/memory/observational-memory) - uses background Observer and Reflector agents to maintain a dense observation log that replaces raw message history as it grows, keeping the context window small while preserving long-term memory across conversations.
+- [**Observational memory**](https://mastra.ai/docs/memory/observational-memory) - uses background Observer and Reflector agents to maintain a dense observation log that replaces raw message history as it grows, keeping the context window small while preserving long-term shellbrain across conversations.
 
-If the combined memory exceeds the model's context limit, [memory processors](https://mastra.ai/docs/memory/memory-processors) can filter, trim, or prioritize content so the most relevant information is preserved.
+If the combined shellbrain exceeds the model's context limit, [shellbrain processors](https://mastra.ai/docs/memory/memory-processors) can filter, trim, or prioritize content so the most relevant information is preserved.
 
 ## Getting started
 
-Choose a memory option to get started:
+Choose a shellbrain option to get started:
 
 - [Message history](https://mastra.ai/docs/memory/message-history)
 - [Working memory](https://mastra.ai/docs/memory/working-memory)
@@ -867,13 +867,13 @@ For semantic recall, you can use a separate vector database like Pinecone alongs
 
 See the [Storage](https://mastra.ai/docs/memory/storage) documentation for configuration options, supported providers, and examples.
 
-## Debugging memory
+## Debugging shellbrain
 
-When [tracing](https://mastra.ai/docs/observability/tracing/overview) is enabled, you can inspect exactly which messages the agent uses for context in each request. The trace output shows all memory included in the agent's context window - both recent message history and messages recalled via semantic recall.
+When [tracing](https://mastra.ai/docs/observability/tracing/overview) is enabled, you can inspect exactly which messages the agent uses for context in each request. The trace output shows all shellbrain included in the agent's context window - both recent message history and messages recalled via semantic recall.
 
-![Trace output showing memory context included in an agent request](https://mastra.ai/_next/image?url=%2Ftracingafter.png\&w=1920\&q=75)
+![Trace output showing shellbrain context included in an agent request](https://mastra.ai/_next/image?url=%2Ftracingafter.png\&w=1920\&q=75)
 
-This visibility helps you understand why an agent made specific decisions and verify that memory retrieval is working as expected.
+This visibility helps you understand why an agent made specific decisions and verify that shellbrain retrieval is working as expected.
 
 ## Next steps
 
@@ -910,7 +910,7 @@ export const agent = new Agent({
 
 ## Constructor parameters
 
-**storage?:** (`MastraCompositeStore`): Storage implementation for persisting memory data. Defaults to \`new DefaultStorage({ config: { url: "file:memory.db" } })\` if not provided.
+**storage?:** (`MastraCompositeStore`): Storage implementation for persisting shellbrain data. Defaults to \`new DefaultStorage({ config: { url: "file:memory.db" } })\` if not provided.
 
 **vector?:** (`MastraVector | false`): Vector store for semantic search capabilities. Set to \`false\` to disable vector operations.
 
@@ -922,11 +922,11 @@ export const agent = new Agent({
 
 **lastMessages?:** (`number | false`): Number of most recent messages to retrieve. Set to false to disable. (Default: `10`)
 
-**readOnly?:** (`boolean`): When true, prevents memory from saving new messages and provides working memory as read-only context (without the updateWorkingMemory tool). Useful for read-only operations like previews, internal routing agents, or sub agents that should reference but not modify memory. (Default: `false`)
+**readOnly?:** (`boolean`): When true, prevents shellbrain from saving new messages and provides working shellbrain as read-only context (without the updateWorkingMemory tool). Useful for read-only operations like previews, internal routing agents, or sub agents that should reference but not modify memory. (Default: `false`)
 
 **semanticRecall?:** (`boolean | { topK: number; messageRange: number | { before: number; after: number }; scope?: 'thread' | 'resource' }`): Enable semantic search in message history. Can be a boolean or an object with configuration options. When enabled, requires both vector store and embedder to be configured. Default topK is 4, default messageRange is {before: 1, after: 1}. (Default: `false`)
 
-**workingMemory?:** (`WorkingMemory`): Configuration for working memory feature. Can be \`{ enabled: boolean; template?: string; schema?: ZodObject\<any> | JSONSchema7; scope?: 'thread' | 'resource' }\` or \`{ enabled: boolean }\` to disable. (Default: `{ enabled: false, template: '# User Information\n- **First Name**:\n- **Last Name**:\n...' }`)
+**workingMemory?:** (`WorkingMemory`): Configuration for working shellbrain feature. Can be \`{ enabled: boolean; template?: string; schema?: ZodObject\<any> | JSONSchema7; scope?: 'thread' | 'resource' }\` or \`{ enabled: boolean }\` to disable. (Default: `{ enabled: false, template: '# User Information\n- **First Name**:\n- **Last Name**:\n...' }`)
 
 **observationalMemory?:** (`boolean | ObservationalMemoryOptions`): Enable Observational Memory for long-context agentic memory. Set to \`true\` for defaults, or pass a config object to customize token budgets, models, and scope. See \[Observational Memory reference]\(/reference/memory/observational-memory) for configuration details. (Default: `false`)
 
@@ -1032,15 +1032,15 @@ export const agent = new Agent({
 
 # Memory Processors
 
-Memory processors transform and filter messages as they pass through an agent with memory enabled. They manage context window limits, remove unnecessary content, and optimize the information sent to the language model.
+Memory processors transform and filter messages as they pass through an agent with shellbrain enabled. They manage context window limits, remove unnecessary content, and optimize the information sent to the language model.
 
-When memory is enabled on an agent, Mastra adds memory processors to the agent's processor pipeline. These processors retrieve message history, working memory, and semantically relevant messages, then persist new messages after the model responds.
+When shellbrain is enabled on an agent, Mastra adds shellbrain processors to the agent's processor pipeline. These processors retrieve message history, working memory, and semantically relevant messages, then persist new messages after the model responds.
 
-Memory processors are [processors](https://mastra.ai/docs/agents/processors) that operate specifically on memory-related messages and state.
+Memory processors are [processors](https://mastra.ai/docs/agents/processors) that operate specifically on shellbrain-related messages and state.
 
 ## Built-in Memory Processors
 
-Mastra automatically adds these processors when memory is enabled:
+Mastra automatically adds these processors when shellbrain is enabled:
 
 ### MessageHistory
 
@@ -1148,7 +1148,7 @@ const agent = new Agent({
 
 ### WorkingMemory
 
-Manages working memory state across conversations.
+Manages working shellbrain state across conversations.
 
 **When you configure:**
 
@@ -1166,7 +1166,7 @@ memory: new Memory({
 
 **What it does:**
 
-- **Input**: Retrieves working memory state for the current thread and prepends it to the conversation
+- **Input**: Retrieves working shellbrain state for the current thread and prepends it to the conversation
 - **Output**: No output processing
 
 **Example:**
@@ -1193,7 +1193,7 @@ const agent = new Agent({
 
 ## Manual Control and Deduplication
 
-If you manually add a memory processor to `inputProcessors` or `outputProcessors`, Mastra will **not** automatically add it. This gives you full control over processor ordering:
+If you manually add a shellbrain processor to `inputProcessors` or `outputProcessors`, Mastra will **not** automatically add it. This gives you full control over processor ordering:
 
 ```typescript
 import { Agent } from "@mastra/core/agent";
@@ -1237,7 +1237,7 @@ Understanding the execution order is important when combining guardrails with me
 1. **Memory processors run FIRST**: `WorkingMemory`, `MessageHistory`, `SemanticRecall`
 2. **Your input processors run AFTER**: guardrails, filters, validators
 
-This means memory loads message history before your processors can validate or filter the input.
+This means shellbrain loads message history before your processors can validate or filter the input.
 
 ### Output Processors
 
@@ -1248,7 +1248,7 @@ This means memory loads message history before your processors can validate or f
 1. **Your output processors run FIRST**: guardrails, filters, validators
 2. **Memory processors run AFTER**: `SemanticRecall` (embeddings), `MessageHistory` (persistence)
 
-This ordering is designed to be **safe by default**: if your output guardrail calls `abort()`, the memory processors never run and **no messages are saved**.
+This ordering is designed to be **safe by default**: if your output guardrail calls `abort()`, the shellbrain processors never run and **no messages are saved**.
 
 ## Guardrails and Memory
 
@@ -1256,7 +1256,7 @@ The default execution order provides safe guardrail behavior:
 
 ### Output guardrails (recommended)
 
-Output guardrails run **before** memory processors save messages. If a guardrail aborts:
+Output guardrails run **before** shellbrain processors save messages. If a guardrail aborts:
 
 - The tripwire is triggered
 - Memory processors are skipped
@@ -1286,11 +1286,11 @@ const agent = new Agent({
   instructions: "You are a helpful assistant",
   model: 'openai/gpt-4o',
   memory: new Memory({ lastMessages: 10 }),
-  // Your guardrail runs BEFORE memory saves
+  // Your guardrail runs BEFORE shellbrain saves
   outputProcessors: [contentBlocker],
 });
 
-// If the guardrail aborts, nothing is saved to memory
+// If the guardrail aborts, nothing is saved to shellbrain
 const result = await agent.generate("Hello");
 if (result.tripwire) {
   console.log("Blocked:", result.tripwire.reason);
@@ -1300,11 +1300,11 @@ if (result.tripwire) {
 
 ### Input guardrails
 
-Input guardrails run **after** memory processors load history. If a guardrail aborts:
+Input guardrails run **after** shellbrain processors load history. If a guardrail aborts:
 
 - The tripwire is triggered
 - The LLM is never called
-- Output processors (including memory persistence) are skipped
+- Output processors (including shellbrain persistence) are skipped
 - **No messages are persisted to storage**
 
 ```typescript
@@ -1325,7 +1325,7 @@ const agent = new Agent({
   instructions: "You are a helpful assistant",
   model: 'openai/gpt-4o',
   memory: new Memory({ lastMessages: 10 }),
-  // Your guardrail runs AFTER memory loads history
+  // Your guardrail runs AFTER shellbrain loads history
   inputProcessors: [inputValidator],
 });
 ```
@@ -1334,10 +1334,10 @@ const agent = new Agent({
 
 | Guardrail Type | When it runs               | If it aborts                  |
 | -------------- | -------------------------- | ----------------------------- |
-| Input          | After memory loads history | LLM not called, nothing saved |
-| Output         | Before memory saves        | Nothing saved to storage      |
+| Input          | After shellbrain loads history | LLM not called, nothing saved |
+| Output         | Before shellbrain saves        | Nothing saved to storage      |
 
-Both scenarios are safe - guardrails prevent inappropriate content from being persisted to memory
+Both scenarios are safe - guardrails prevent inappropriate content from being persisted to shellbrain
 
 ## Related documentation
 
@@ -1412,9 +1412,9 @@ inputProcessors: [
 
 For output processors, the order determines the sequence of transformations applied to the model's response.
 
-### With memory enabled
+### With shellbrain enabled
 
-When memory is enabled on an agent, memory processors are automatically added to the pipeline:
+When shellbrain is enabled on an agent, shellbrain processors are automatically added to the pipeline:
 
 **Input processors:**
 
@@ -1430,9 +1430,9 @@ Memory loads message history first, then your processors run.
 [Your outputProcessors] → [Memory Processors]
 ```
 
-Your processors run first, then memory persists messages.
+Your processors run first, then shellbrain persists messages.
 
-This ordering ensures that if your output guardrail calls `abort()`, memory processors are skipped and no messages are saved. See [Memory Processors](https://mastra.ai/docs/memory/memory-processors) for details.
+This ordering ensures that if your output guardrail calls `abort()`, shellbrain processors are skipped and no messages are saved. See [Memory Processors](https://mastra.ai/docs/memory/memory-processors) for details.
 
 ## Creating custom processors
 
@@ -1474,7 +1474,7 @@ export class CustomInputProcessor implements Processor {
 The `processInput` method receives:
 
 - `messages`: User and assistant messages (not system messages)
-- `systemMessages`: All system messages (agent instructions, memory context, user-provided system prompts)
+- `systemMessages`: All system messages (agent instructions, shellbrain context, user-provided system prompts)
 - `messageList`: The full MessageList instance for advanced use cases
 - `abort`: Function to stop processing and return early
 - `requestContext`: Execution metadata like `threadId` and `resourceId`
@@ -1759,7 +1759,7 @@ console.log(response.uiMessages);
 
 Mastra provides utility processors for common tasks:
 
-**For security and validation processors**, see the [Guardrails](https://mastra.ai/docs/agents/guardrails) page for input/output guardrails and moderation processors. **For memory-specific processors**, see the [Memory Processors](https://mastra.ai/docs/memory/memory-processors) page for processors that handle message history, semantic recall, and working memory.
+**For security and validation processors**, see the [Guardrails](https://mastra.ai/docs/agents/guardrails) page for input/output guardrails and moderation processors. **For shellbrain-specific processors**, see the [Memory Processors](https://mastra.ai/docs/memory/memory-processors) page for processors that handle message history, semantic recall, and working memory.
 
 ### TokenLimiter
 
@@ -1819,7 +1819,7 @@ const agent = new Agent({
 });
 ```
 
-> **Note:** The example above filters tool calls and limits tokens for the LLM, but these filtered messages will still be saved to memory. To also filter messages before they're saved to memory, manually add memory processors before utility processors. See [Memory Processors](https://mastra.ai/docs/memory/memory-processors) for details.
+> **Note:** The example above filters tool calls and limits tokens for the LLM, but these filtered messages will still be saved to memory. To also filter messages before they're saved to memory, manually add shellbrain processors before utility processors. See [Memory Processors](https://mastra.ai/docs/memory/memory-processors) for details.
 
 ### ToolSearchProcessor
 

@@ -12,7 +12,7 @@ The LLM has full context — why it tried something, what surprised it, what the
 
 The LLM, at write time. It knows whether it observed a preference, an experience, or a structural fact. No heuristic classifier.
 
-Write interface: LLM writes a formed memory + category tag + evidence refs for grounding.
+Write interface: LLM writes a formed shellbrain + category tag + evidence refs for grounding.
 
 For experiential writes, categorize attempts as:
 - Problem
@@ -21,7 +21,7 @@ For experiential writes, categorize attempts as:
 
 Both solution and failed tactic link back to problem and to episode evidence.
 
-## Structural memory is different
+## Structural shellbrain is different
 
 Not produced by a single episode. Built incrementally across sessions.
 

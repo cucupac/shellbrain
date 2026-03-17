@@ -10,7 +10,7 @@ From design conversation 2026-02-14.
 - The repo boundary is physical, not a WHERE clause. Can't accidentally leak.
 - Delete a repo, delete its DB, done.
 
-Within repo DBs, experiential memory should be represented as linked records:
+Within repo DBs, experiential shellbrain should be represented as linked records:
 - `problems`
 - `solutions`
 - `failed_tactics`
