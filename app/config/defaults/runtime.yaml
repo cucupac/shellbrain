@@ -1,9 +1,0 @@
-# This file defines runtime defaults for database connectivity and execution mode.
-database:
-  dsn_env: MEMORY_DB_DSN
-cli:
-  default_mode: targeted
-  include_global: true
-embeddings:
-  provider: sentence_transformers
-  model: all-MiniLM-L6-v2

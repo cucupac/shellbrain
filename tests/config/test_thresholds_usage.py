@@ -1,6 +1,6 @@
 """Threshold-config usage contracts for retrieval boot helpers."""
 
-from app.core.policies.read_policy.seed_retrieval import retrieve_seeds
+from shellbrain.core.policies.read_policy.seed_retrieval import retrieve_seeds
 
 
 class _StubSemanticRetrieval:
@@ -29,7 +29,7 @@ def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thre
     """seed retrieval should always apply configured semantic and keyword thresholds."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.seed_retrieval.get_threshold_settings",
+        "shellbrain.core.policies.read_policy.seed_retrieval.get_threshold_settings",
         lambda: {"semantic_threshold": 0.5, "keyword_threshold": 0.5},
     )
 

@@ -2,10 +2,10 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryUpdateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.periphery.db.uow import PostgresUnitOfWork
-from app.periphery.validation.integrity_validation import validate_update_integrity
+from shellbrain.core.contracts.requests import MemoryUpdateRequest
+from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.periphery.validation.integrity_validation import validate_update_integrity
 
 
 def test_update_requires_visible_target_memory(
@@ -263,7 +263,7 @@ def test_update_fact_update_requires_fact_endpoints_and_change_memory_target(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
 ) -> None:
-    """fact_update_link updates should always require fact endpoints and a change-memory target."""
+    """fact_update_link updates should always require fact endpoints and a change-shellbrain target."""
 
     seed_memory(
         memory_id="target-not-change",

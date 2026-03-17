@@ -1,6 +1,6 @@
 """Schema contracts for read-path requests."""
 
-from app.periphery.cli.schema_validation import validate_read_schema
+from shellbrain.periphery.cli.schema_validation import validate_read_schema
 
 
 def test_read_rejects_unknown_fields() -> None:
@@ -48,7 +48,7 @@ def test_read_requires_non_empty_query() -> None:
 
 
 def test_read_kinds_reject_non_ratified_values() -> None:
-    """read requests should always limit kinds filters to ratified memory kinds."""
+    """read requests should always limit kinds filters to ratified shellbrain kinds."""
 
     payload = {
         "op": "read",

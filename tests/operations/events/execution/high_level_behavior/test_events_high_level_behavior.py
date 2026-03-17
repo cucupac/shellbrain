@@ -6,9 +6,9 @@ from collections.abc import Callable
 import os
 from pathlib import Path
 
-from app.periphery.cli.handlers import handle_events
-from app.periphery.db.models.episodes import episode_events
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.periphery.cli.handlers import handle_events
+from shellbrain.periphery.db.models.episodes import episode_events
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_events_syncs_the_resolved_active_session_and_returns_recent_events_newest_first(

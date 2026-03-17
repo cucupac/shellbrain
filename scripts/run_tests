@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-DEFAULT_DSN="postgresql+psycopg://memory:memory@localhost:5432/memory"
-export MEMORY_DB_DSN_TEST="${MEMORY_DB_DSN_TEST:-$DEFAULT_DSN}"
-export MEMORY_DB_DSN="$MEMORY_DB_DSN_TEST"
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is required because persistence tests run in the default suite." >&2
+  exit 1
+fi
+
+if ! docker version >/dev/null 2>&1; then
+  echo "docker must be installed and the daemon must be running before scripts/run_tests." >&2
+  exit 1
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "docker compose is required because persistence tests run in the default suite." >&2
+  exit 1
+fi
+
+DEFAULT_DSN="postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain"
+export SHELLBRAIN_DB_DSN_TEST="${SHELLBRAIN_DB_DSN_TEST:-$DEFAULT_DSN}"
+export SHELLBRAIN_DB_DSN="$SHELLBRAIN_DB_DSN_TEST"
 export HF_HOME="${HF_HOME:-$PWD/.local/huggingface}"
 mkdir -p "$HF_HOME"
 
@@ -15,7 +30,7 @@ from urllib.parse import urlparse, urlunparse
 import psycopg
 from psycopg import sql
 
-dsn = os.environ["MEMORY_DB_DSN_TEST"].replace("+psycopg", "")
+dsn = os.environ["SHELLBRAIN_DB_DSN_TEST"].replace("+psycopg", "")
 deadline = time.time() + 30
 while True:
     try:
@@ -43,5 +58,5 @@ with psycopg.connect(dsn, autocommit=True) as conn:
     conn.execute("GRANT ALL ON SCHEMA public TO public;")
 PY
 
-alembic upgrade head
+python3 -m shellbrain admin migrate
 python3 -m pytest -q tests

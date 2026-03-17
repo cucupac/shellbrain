@@ -4,12 +4,12 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.contracts.requests import MemoryReadRequest
-from app.core.policies.read_policy.expansion import expand_candidates
-from app.core.policies.read_policy.fusion_rrf import fuse_with_rrf
-from app.core.policies.read_policy.scoring import score_candidates
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryReadRequest
+from shellbrain.core.policies.read_policy.expansion import expand_candidates
+from shellbrain.core.policies.read_policy.fusion_rrf import fuse_with_rrf
+from shellbrain.core.policies.read_policy.scoring import score_candidates
+from shellbrain.core.use_cases.read_memory import execute_read_memory
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds() -> None:
@@ -45,7 +45,7 @@ def test_read_scoring_should_always_rank_a_dual_lane_hit_above_single_lane_hits(
 
 
 def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier() -> None:
-    """read scoring should always break equal RRF scores by memory identifier."""
+    """read scoring should always break equal RRF scores by shellbrain identifier."""
 
     fused = fuse_with_rrf(
         [{"memory_id": "memory-b", "score": 1.0}],
@@ -269,14 +269,14 @@ def test_read_scoring_should_always_return_raw_implicit_metadata_for_downstream_
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Anchor memory for implicit scoring metadata.",
+        text_value="Anchor shellbrain for implicit scoring metadata.",
     )
     seed_read_memory(
         memory_id="neighbor",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="Neighbor memory for implicit scoring metadata.",
+        text_value="Neighbor shellbrain for implicit scoring metadata.",
     )
     seed_read_embedding(memory_id="anchor", vector=[1.0, 0.0, 0.0, 0.0])
     seed_read_embedding(memory_id="neighbor", vector=[0.6, 0.8, 0.0, 0.0])
@@ -308,11 +308,11 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
     """read scoring should always order competing expanded candidates via the scoring stage."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.retrieve_seeds",
+        "shellbrain.core.policies.read_policy.pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "shellbrain.core.policies.read_policy.pipeline.fuse_with_rrf",
         lambda semantic, keyword: [
             {
                 "memory_id": "anchor",
@@ -326,7 +326,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
         ],
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.expand_candidates",
+        "shellbrain.core.policies.read_policy.pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {
@@ -396,7 +396,7 @@ def _candidate_ids(candidates: list[dict[str, object]]) -> list[str]:
 
 
 def _item_ids(result) -> list[str]:
-    """Extract ordered memory identifiers from a read operation result."""
+    """Extract ordered shellbrain identifiers from a read operation result."""
 
     assert result.status == "ok"
     assert "pack" in result.data

@@ -2,14 +2,14 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryCreateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.db.models.associations import association_edge_evidence, association_edges
-from app.periphery.db.models.evidence import evidence_refs
-from app.periphery.db.models.memories import memory_evidence
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryCreateRequest
+from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
+from shellbrain.core.use_cases.create_memory import execute_create_memory
+from shellbrain.periphery.db.models.associations import association_edge_evidence, association_edges
+from shellbrain.periphery.db.models.evidence import evidence_refs
+from shellbrain.periphery.db.models.memories import memory_evidence
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_create_attaches_all_memory_evidence_refs_exactly_once(

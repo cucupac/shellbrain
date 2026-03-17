@@ -1,6 +1,6 @@
 """Read execution contracts for context-pack builder selection rules."""
 
-from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
+from shellbrain.core.policies.read_policy.context_pack_builder import assemble_context_pack
 
 
 def test_context_pack_builder_should_always_fill_targeted_quotas_in_direct_first_order() -> None:
@@ -206,7 +206,7 @@ def _make_scored_candidates(*, direct: int, explicit: int, implicit: int) -> dic
                 f"direct-{index}",
                 1.0 - (index * 0.01),
                 "problem",
-                f"Direct memory {index}.",
+                f"Direct shellbrain {index}.",
                 "direct_match",
             )
             for index in range(1, direct + 1)
@@ -216,7 +216,7 @@ def _make_scored_candidates(*, direct: int, explicit: int, implicit: int) -> dic
                 f"explicit-{index}",
                 0.8 - (index * 0.01),
                 "solution",
-                f"Explicit memory {index}.",
+                f"Explicit shellbrain {index}.",
                 "problem_attempt",
                 anchor_memory_id="direct-1",
             )
@@ -227,7 +227,7 @@ def _make_scored_candidates(*, direct: int, explicit: int, implicit: int) -> dic
                 f"implicit-{index}",
                 0.6 - (index * 0.01),
                 "fact",
-                f"Implicit memory {index}.",
+                f"Implicit shellbrain {index}.",
                 "semantic_neighbor",
                 anchor_memory_id="direct-1",
             )
@@ -263,12 +263,12 @@ def _candidate(
 
 
 def _section_ids(pack: dict[str, object], section: str) -> list[str]:
-    """Extract ordered memory identifiers from a named pack section."""
+    """Extract ordered shellbrain identifiers from a named pack section."""
 
     return [str(item["memory_id"]) for item in pack[section]]
 
 
 def _all_ids(pack: dict[str, object]) -> list[str]:
-    """Extract all ordered memory identifiers from the grouped pack."""
+    """Extract all ordered shellbrain identifiers from the grouped pack."""
 
     return _section_ids(pack, "direct") + _section_ids(pack, "explicit_related") + _section_ids(pack, "implicit_related")

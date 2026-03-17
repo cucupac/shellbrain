@@ -2,12 +2,12 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryCreateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.db.models.associations import association_edges, association_observations
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryCreateRequest
+from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
+from shellbrain.core.use_cases.create_memory import execute_create_memory
+from shellbrain.periphery.db.models.associations import association_edges, association_observations
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_create_association_links_persist_edge_and_observation(

@@ -4,11 +4,11 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.contracts.requests import MemoryCreateRequest
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.cli.handlers import handle_create
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryCreateRequest
+from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
+from shellbrain.core.use_cases.create_memory import execute_create_memory
+from shellbrain.periphery.cli.handlers import handle_create
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 class _FailingEmbeddingProvider(IEmbeddingProvider):
@@ -90,7 +90,7 @@ def test_side_effect_failure_mid_write_rolls_back_all_prior_effects(
             "op": "create",
             "repo_id": "repo-a",
             "memory": {
-                "text": "Create memory with failing embedding side effect.",
+                "text": "Create shellbrain with failing embedding side effect.",
                 "scope": "repo",
                 "kind": "problem",
                 "evidence_refs": ["session://1"],

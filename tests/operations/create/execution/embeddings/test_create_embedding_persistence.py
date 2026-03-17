@@ -3,29 +3,30 @@
 import os
 from pathlib import Path
 import subprocess
+import sys
 
 import pytest
 from sqlalchemy import select, text
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from app.core.contracts.requests import MemoryCreateRequest
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.db.engine import get_engine
-from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
-from app.periphery.db.models.episodes import episode_events, episodes
-from app.periphery.db.models.memories import memory_embeddings
-from app.periphery.db.models.registry import target_metadata
-from app.periphery.db.session import get_session_factory
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
+from shellbrain.core.contracts.requests import MemoryCreateRequest
+from shellbrain.core.use_cases.create_memory import execute_create_memory
+from shellbrain.periphery.db.engine import get_engine
+from shellbrain.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from shellbrain.periphery.db.models.episodes import episode_events, episodes
+from shellbrain.periphery.db.models.memories import memory_embeddings
+from shellbrain.periphery.db.models.registry import target_metadata
+from shellbrain.periphery.db.session import get_session_factory
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 @pytest.mark.real_embedding
 def test_create_persists_memory_embedding_row() -> None:
     """create should always persist a memory_embedding row in PostgreSQL when real embeddings are enabled."""
 
-    dsn = os.getenv("MEMORY_DB_DSN_TEST")
+    dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
     if not dsn:
-        pytest.skip("Set MEMORY_DB_DSN_TEST to run PostgreSQL integration tests.")
+        pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run PostgreSQL integration tests.")
 
     engine = get_engine(dsn)
     _run_alembic_upgrade(dsn)
@@ -97,13 +98,13 @@ def test_create_persists_memory_embedding_row() -> None:
 
 
 def _run_alembic_upgrade(dsn: str) -> None:
-    """This helper applies latest alembic schema before integration assertions."""
+    """This helper applies packaged schema migrations before integration assertions."""
 
     repo_root = Path(__file__).resolve().parents[5]
     env = dict(os.environ)
-    env["MEMORY_DB_DSN"] = dsn
+    env["SHELLBRAIN_DB_DSN"] = dsn
     subprocess.run(
-        ["alembic", "upgrade", "head"],
+        [sys.executable, "-m", "shellbrain.periphery.cli.main", "admin", "migrate"],
         check=True,
         cwd=repo_root,
         env=env,

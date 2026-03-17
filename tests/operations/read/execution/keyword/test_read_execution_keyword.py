@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_keyword_lane_prefers_high_coverage_partial_matches_over_generic_partial_matches(
@@ -188,7 +188,7 @@ def test_keyword_lane_keeps_tie_breaking_deterministic_by_memory_id(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
 ) -> None:
-    """keyword retrieval should always break equal-score ties by memory identifier."""
+    """keyword retrieval should always break equal-score ties by shellbrain identifier."""
 
     seed_read_memory(
         memory_id="memory-a",
@@ -219,6 +219,6 @@ def test_keyword_lane_keeps_tie_breaking_deterministic_by_memory_id(
 
 
 def _candidate_ids(candidates) -> list[str]:
-    """Extract ordered memory identifiers from keyword candidate rows."""
+    """Extract ordered shellbrain identifiers from keyword candidate rows."""
 
     return [str(candidate["memory_id"]) for candidate in candidates]

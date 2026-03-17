@@ -10,12 +10,12 @@ import pytest
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.retrieval import IVectorSearch
-from app.periphery.db.models.associations import association_edges
-from app.periphery.db.models.experiences import fact_updates, problem_attempts
-from app.periphery.db.models.memories import memories, memory_embeddings
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from shellbrain.core.interfaces.retrieval import IVectorSearch
+from shellbrain.periphery.db.models.associations import association_edges
+from shellbrain.periphery.db.models.experiences import fact_updates, problem_attempts
+from shellbrain.periphery.db.models.memories import memories, memory_embeddings
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 from tests.operations._shared.integration_db_fixtures import *  # noqa: F401,F403
 
@@ -60,7 +60,7 @@ def uow_factory(integration_session_factory) -> Callable[[], PostgresUnitOfWork]
 
 @pytest.fixture
 def seed_read_memory(integration_engine: Engine) -> Callable[..., None]:
-    """Insert deterministic memory rows used by read execution tests."""
+    """Insert deterministic shellbrain rows used by read execution tests."""
 
     def _seed(
         *,
@@ -292,7 +292,7 @@ class DeterministicSemanticRetrievalRepo:
         kinds,
         limit: int | None = None,
     ) -> list[dict[str, object]]:
-        """Return semantic neighbors for an anchor memory using the same deterministic scoring."""
+        """Return semantic neighbors for an anchor shellbrain using the same deterministic scoring."""
 
         visible_rows = self._visible_embedding_rows(repo_id=repo_id, include_global=include_global, kinds=kinds)
         anchor_vector = next(

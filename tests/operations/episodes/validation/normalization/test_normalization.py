@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.periphery.episodes.normalization import normalize_host_transcript
+from shellbrain.periphery.episodes.normalization import normalize_host_transcript
 
 
 EXPECTED_EVENT_KEYS = {

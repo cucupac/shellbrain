@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from app.boot.db import get_db_dsn
-from app.config.loader import YamlConfigProvider
+from shellbrain.boot.db import get_db_dsn
+from shellbrain.config.loader import YamlConfigProvider
 
 
 def test_db_boot_should_always_resolve_the_runtime_configured_dsn_env(monkeypatch) -> None:
@@ -15,7 +15,7 @@ def test_db_boot_should_always_resolve_the_runtime_configured_dsn_env(monkeypatc
         def get_runtime(self) -> dict[str, object]:
             return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN"}}
 
-    monkeypatch.setattr("app.boot.db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("shellbrain.boot.db.get_config_provider", lambda: _FakeProvider())
     monkeypatch.setenv("CUSTOM_MEMORY_DSN", "postgresql://configured-dsn")
 
     assert get_db_dsn() == "postgresql://configured-dsn"
@@ -24,10 +24,10 @@ def test_db_boot_should_always_resolve_the_runtime_configured_dsn_env(monkeypatc
 def test_runtime_yaml_should_always_define_database_cli_and_embedding_sections() -> None:
     """runtime yaml should always define database cli and embedding sections."""
 
-    provider = YamlConfigProvider(Path("app/config/defaults"))
+    provider = YamlConfigProvider(Path("shellbrain/config/defaults"))
     runtime = provider.get_runtime()
 
-    assert runtime["database"] == {"dsn_env": "MEMORY_DB_DSN"}
+    assert runtime["database"] == {"dsn_env": "SHELLBRAIN_DB_DSN"}
     assert runtime["cli"] == {"default_mode": "targeted", "include_global": True}
     assert runtime["embeddings"] == {
         "provider": "sentence_transformers",

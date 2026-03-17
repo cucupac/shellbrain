@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.periphery.cli.handlers import handle_update
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from shellbrain.periphery.cli.handlers import handle_update
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_rejected_update_requests_write_nothing(

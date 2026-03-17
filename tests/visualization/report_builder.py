@@ -1,4 +1,4 @@
-"""Pytest plugin that writes a markdown visualization report for categorized tests."""
+"""Pytest plugin that writes a markdown visualization report for the full test suite."""
 
 from __future__ import annotations
 
@@ -9,8 +9,18 @@ from pathlib import Path
 from typing import Any
 
 
-OPERATIONS_ROOT = Path("tests/operations")
+TESTS_ROOT = Path("tests")
 SUBCATEGORY_ORDER = ("validation", "execution")
+MAJOR_CATEGORY_ORDER = ("config", "create", "episodes", "events", "persistence", "read", "update")
+MAJOR_CATEGORY_LABELS = {
+    "config": "Config Tests",
+    "create": "Create Tests",
+    "episodes": "Episodes Tests",
+    "events": "Events Tests",
+    "persistence": "Persistence Tests",
+    "read": "Read Tests",
+    "update": "Update Tests",
+}
 
 ARTIFACT_PATH = Path("tests/visualization/artifacts/tests_status.md")
 
@@ -22,28 +32,27 @@ STATUS_NOT_RUN = "not_run"
 
 @dataclass
 class DiscoveredTest:
-    """Metadata describing a discovered test function and its one-line description."""
+    """Metadata describing one discovered test function and its report category."""
 
     key: str
-    category: str
+    category_parts: tuple[str, ...]
     function_name: str
     description: str
     file_path: str
 
 
 class VisualizationReportPlugin:
-    """Collect pytest outcomes and write a markdown visualization report."""
+    """Collect pytest outcomes and write a markdown report grouped by major test area."""
 
     def __init__(self, root_path: Path) -> None:
         self._root_path = root_path
-        self._categories = self._discover_categories()
         self._discovered = self._discover_tests()
         self._nodeid_to_key: dict[str, str] = {}
         self._status_by_key: dict[str, str] = {}
 
     @property
     def discovered(self) -> list[DiscoveredTest]:
-        """Return all discovered categorized tests in stable order."""
+        """Return all discovered tests in stable report order."""
 
         return self._discovered
 
@@ -91,7 +100,7 @@ class VisualizationReportPlugin:
         ARTIFACT_PATH.write_text(self._render_markdown(), encoding="utf-8")
 
     def _set_status(self, key: str, new_status: str) -> None:
-        """Apply precedence rules while updating a test status."""
+        """Apply precedence rules while updating one test status."""
 
         current = self._status_by_key.get(key)
         if current == STATUS_FAILED:
@@ -104,42 +113,24 @@ class VisualizationReportPlugin:
         self._status_by_key[key] = new_status
 
     def _discover_tests(self) -> list[DiscoveredTest]:
-        """Discover categorized test functions and first-line docstrings from source files."""
+        """Discover all reportable test functions and their one-line docstrings."""
 
-        discovered: list[DiscoveredTest] = []
-        operations_root = (self._root_path / OPERATIONS_ROOT).resolve()
-        if not operations_root.exists():
-            return discovered
-        allowed_categories = set(self._categories)
-
-        for path in sorted(operations_root.rglob("*.py")):
-            if path.name in {"conftest.py", "__init__.py"}:
-                continue
-            category = _category_from_path(path, operations_root)
-            if category is None or category not in allowed_categories:
-                continue
-            discovered.extend(self._extract_test_functions(path, category))
-
-        return discovered
-
-    def _discover_categories(self) -> list[str]:
-        """Discover section categories deterministically from operation folder paths."""
-
-        operations_root = (self._root_path / OPERATIONS_ROOT).resolve()
-        if not operations_root.exists():
+        tests_root = (self._root_path / TESTS_ROOT).resolve()
+        if not tests_root.exists():
             return []
 
-        categories: set[str] = set()
-        for path in sorted(operations_root.rglob("*.py")):
+        discovered: list[DiscoveredTest] = []
+        for path in sorted(tests_root.rglob("*.py")):
             if path.name in {"conftest.py", "__init__.py"}:
                 continue
-            category = _category_from_path(path, operations_root)
-            if category is not None:
-                categories.add(category)
-        return sorted(categories, key=_category_sort_key)
+            category_parts = _category_from_path(path, tests_root)
+            if category_parts is None:
+                continue
+            discovered.extend(self._extract_test_functions(path, category_parts))
+        return discovered
 
-    def _extract_test_functions(self, path: Path, category: str) -> list[DiscoveredTest]:
-        """Extract test functions and one-line docstrings from a Python module."""
+    def _extract_test_functions(self, path: Path, category_parts: tuple[str, ...]) -> list[DiscoveredTest]:
+        """Extract test functions and one-line docstrings from one Python module."""
 
         source = path.read_text(encoding="utf-8")
         tree = ast.parse(source, filename=str(path))
@@ -148,33 +139,34 @@ class VisualizationReportPlugin:
         for node in tree.body:
             if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
                 key = f"{path.relative_to(self._root_path).as_posix()}::{node.name}"
-                description = _first_docstring_line(ast.get_docstring(node))
                 results.append(
                     DiscoveredTest(
                         key=key,
-                        category=category,
+                        category_parts=category_parts,
                         function_name=node.name,
-                        description=description,
+                        description=_first_docstring_line(ast.get_docstring(node)),
                         file_path=path.relative_to(self._root_path).as_posix(),
                     )
                 )
         return results
 
     def _render_markdown(self) -> str:
-        """Render a terse deterministic markdown report grouped by category."""
+        """Render a deterministic markdown report grouped by major test categories."""
 
-        rows = []
-        for discovered in self._discovered:
-            status = self._status_by_key.get(discovered.key, STATUS_NOT_RUN)
-            rows.append((discovered, status))
+        rows = [
+            (discovered, self._status_by_key.get(discovered.key, STATUS_NOT_RUN))
+            for discovered in self._discovered
+        ]
 
         total = len(rows)
         passed = sum(1 for _, status in rows if status == STATUS_PASSED)
         failed = sum(1 for _, status in rows if status == STATUS_FAILED)
-        skipped_or_not_run = sum(
-            1 for _, status in rows if status in (STATUS_SKIPPED, STATUS_NOT_RUN)
-        )
+        skipped_or_not_run = sum(1 for _, status in rows if status in (STATUS_SKIPPED, STATUS_NOT_RUN))
         generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
+
+        grouped_by_major: dict[str, list[tuple[DiscoveredTest, str]]] = {key: [] for key in MAJOR_CATEGORY_ORDER}
+        for row in rows:
+            grouped_by_major.setdefault(row[0].category_parts[0], []).append(row)
 
         lines: list[str] = []
         lines.append("# Tests Status")
@@ -189,19 +181,13 @@ class VisualizationReportPlugin:
         lines.append(f"- Skipped/Not Run: {skipped_or_not_run}")
         lines.append("")
 
-        for category in self._categories:
-            lines.append(f"## {category}")
-            lines.append("")
-            category_rows = [(record, status) for record, status in rows if record.category == category]
+        for major_category in MAJOR_CATEGORY_ORDER:
+            category_rows = grouped_by_major.get(major_category, [])
             if not category_rows:
-                lines.append("No tests discovered.")
-                lines.append("")
                 continue
-
-            for record, status in category_rows:
-                status_text = _status_display(status)
-                description = _escape_markdown(record.description)
-                lines.append(f"- {status_text} {description}")
+            lines.append(f"# {MAJOR_CATEGORY_LABELS[major_category]}")
+            lines.append("")
+            lines.extend(_render_major_category(category_rows))
             lines.append("")
 
         return "\n".join(lines).rstrip() + "\n"
@@ -216,7 +202,7 @@ def pytest_configure(config: Any) -> None:
 
 
 def _build_key_from_item(item: Any, root_path: Path) -> str | None:
-    """Build canonical key from collected pytest item."""
+    """Build canonical discovery key from one collected pytest item."""
 
     try:
         relative_path = Path(str(item.fspath)).resolve().relative_to(root_path).as_posix()
@@ -225,6 +211,62 @@ def _build_key_from_item(item: Any, root_path: Path) -> str | None:
 
     test_name = getattr(item, "originalname", None) or item.name.split("[", 1)[0]
     return f"{relative_path}::{test_name}"
+
+
+def _render_major_category(category_rows: list[tuple[DiscoveredTest, str]]) -> list[str]:
+    """Render one major category block with nested headings."""
+
+    lines: list[str] = []
+    direct_rows: list[tuple[DiscoveredTest, str]] = []
+    first_level_groups: dict[str, list[tuple[DiscoveredTest, str]]] = {}
+
+    for record, status in category_rows:
+        remaining_parts = record.category_parts[1:]
+        if not remaining_parts:
+            direct_rows.append((record, status))
+            continue
+        first_level_groups.setdefault(remaining_parts[0], []).append((record, status))
+
+    if direct_rows:
+        lines.extend(_render_test_bullets(direct_rows))
+        lines.append("")
+
+    for group_name in sorted(first_level_groups, key=_first_level_sort_key):
+        group_rows = first_level_groups[group_name]
+        lines.append(f"## {_humanize_heading(group_name)}")
+        lines.append("")
+
+        nested_direct_rows: list[tuple[DiscoveredTest, str]] = []
+        nested_groups: dict[tuple[str, ...], list[tuple[DiscoveredTest, str]]] = {}
+        for record, status in group_rows:
+            tail = record.category_parts[2:]
+            if not tail:
+                nested_direct_rows.append((record, status))
+                continue
+            nested_groups.setdefault(tail, []).append((record, status))
+
+        if nested_direct_rows:
+            lines.extend(_render_test_bullets(nested_direct_rows))
+            lines.append("")
+
+        for tail in sorted(nested_groups, key=_tail_sort_key):
+            lines.append(f"### {_humanize_parts(tail)}")
+            lines.append("")
+            lines.extend(_render_test_bullets(nested_groups[tail]))
+            lines.append("")
+
+    while lines and lines[-1] == "":
+        lines.pop()
+    return lines
+
+
+def _render_test_bullets(rows: list[tuple[DiscoveredTest, str]]) -> list[str]:
+    """Render one flat bullet list for the provided tests."""
+
+    lines: list[str] = []
+    for record, status in rows:
+        lines.append(f"- {_status_display(status)} {_escape_markdown(record.description)}")
+    return lines
 
 
 def _first_docstring_line(docstring: str | None) -> str:
@@ -254,32 +296,52 @@ def _escape_markdown(value: str) -> str:
     return value.replace("|", "\\|")
 
 
-def _category_from_path(path: Path, operations_root: Path) -> str | None:
-    """Resolve category from a test file path under tests/operations."""
+def _category_from_path(path: Path, tests_root: Path) -> tuple[str, ...] | None:
+    """Resolve report category parts from one test file path."""
 
     try:
-        parts = path.resolve().relative_to(operations_root).parts
+        parts = path.resolve().relative_to(tests_root).parts
     except Exception:
         return None
 
-    if len(parts) < 2:
+    if not parts or any(part.startswith("_") for part in parts):
         return None
-    operation = parts[0]
+    if parts[0] == "visualization":
+        return None
+    if parts[0] == "config":
+        return ("config", *parts[1:-1])
+    if parts[0] != "operations" or len(parts) < 3:
+        return None
+
+    operation = parts[1]
     if operation.startswith("_"):
         return None
-    if len(parts) >= 3 and parts[1] in SUBCATEGORY_ORDER:
-        suffix_parts = [operation, parts[1], *parts[2:-1]]
-        return "/".join(suffix_parts)
-    return operation
+    if len(parts) >= 4 and parts[2] in SUBCATEGORY_ORDER:
+        return (operation, parts[2], *parts[3:-1])
+    return (operation, *parts[2:-1])
 
 
-def _category_sort_key(category: str) -> tuple[object, ...]:
-    """Return a stable sort key that keeps parent sections before nested sections."""
+def _first_level_sort_key(group_name: str) -> tuple[int, str]:
+    """Return deterministic order for first nested headings under one major category."""
 
-    parts = category.split("/")
-    operation = parts[0]
-    remainder = parts[1:]
-    subcategory = remainder[0] if remainder else ""
-    subcategory_index = SUBCATEGORY_ORDER.index(subcategory) if subcategory in SUBCATEGORY_ORDER else len(SUBCATEGORY_ORDER)
-    nested = remainder[1:] if len(remainder) > 1 else []
-    return (operation, subcategory_index, len(nested), tuple(nested))
+    if group_name in SUBCATEGORY_ORDER:
+        return (SUBCATEGORY_ORDER.index(group_name), group_name)
+    return (len(SUBCATEGORY_ORDER), group_name)
+
+
+def _tail_sort_key(parts: tuple[str, ...]) -> tuple[int, tuple[str, ...]]:
+    """Return deterministic order for deeper nested headings."""
+
+    return (len(parts), parts)
+
+
+def _humanize_heading(value: str) -> str:
+    """Convert a slug-like heading token into title case."""
+
+    return value.replace("_", " ").title()
+
+
+def _humanize_parts(parts: tuple[str, ...]) -> str:
+    """Convert one or more heading tokens into a human-readable title."""
+
+    return " / ".join(_humanize_heading(part) for part in parts)

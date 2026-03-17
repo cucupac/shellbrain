@@ -2,11 +2,11 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryUpdateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.update_memory import execute_update_memory
-from app.periphery.db.models.memories import memories
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.contracts.requests import MemoryUpdateRequest
+from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from shellbrain.core.use_cases.update_memory import execute_update_memory
+from shellbrain.periphery.db.models.memories import memories
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_update_archiving_changes_only_archived_flag(
@@ -15,7 +15,7 @@ def test_update_archiving_changes_only_archived_flag(
     count_rows: Callable[[str], int],
     fetch_rows: Callable[..., list[dict[str, object]]],
 ) -> None:
-    """archiving a memory should always change only its archived flag."""
+    """archiving a shellbrain should always change only its archived flag."""
 
     seed_memory(
         memory_id="memory-1",
@@ -54,7 +54,7 @@ def test_update_non_archiving_preserves_original_memory_row(
     count_rows: Callable[[str], int],
     fetch_rows: Callable[..., list[dict[str, object]]],
 ) -> None:
-    """non-archiving updates should always leave the original memory row unchanged."""
+    """non-archiving updates should always leave the original shellbrain row unchanged."""
 
     cases = [
         (
@@ -166,7 +166,7 @@ def _fetch_memory_row(
     fetch_rows: Callable[..., list[dict[str, object]]],
     memory_id: str,
 ) -> dict[str, object]:
-    """Return one memory row as a plain dictionary."""
+    """Return one shellbrain row as a plain dictionary."""
 
     rows = fetch_rows(memories, memories.c.id == memory_id)
     assert len(rows) == 1

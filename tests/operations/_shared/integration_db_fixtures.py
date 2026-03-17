@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from collections.abc import Callable, Iterator
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,13 +15,13 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import Selectable
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from app.core.entities.memory import Memory, MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.periphery.db.engine import get_engine
-from app.periphery.db.models.registry import target_metadata
-from app.periphery.db.session import get_session_factory
-from app.periphery.db.uow import PostgresUnitOfWork
+from shellbrain.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
+from shellbrain.core.entities.memory import Memory, MemoryKind, MemoryScope
+from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
+from shellbrain.periphery.db.engine import get_engine
+from shellbrain.periphery.db.models.registry import target_metadata
+from shellbrain.periphery.db.session import get_session_factory
+from shellbrain.periphery.db.uow import PostgresUnitOfWork
 
 
 class _StubEmbeddingProvider(IEmbeddingProvider):
@@ -35,9 +36,9 @@ class _StubEmbeddingProvider(IEmbeddingProvider):
 def db_dsn() -> str:
     """Resolve integration database DSN from environment."""
 
-    dsn = os.getenv("MEMORY_DB_DSN_TEST")
+    dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
     if not dsn:
-        pytest.skip("Set MEMORY_DB_DSN_TEST to run PostgreSQL integration tests.")
+        pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run PostgreSQL integration tests.")
     return dsn
 
 
@@ -89,7 +90,7 @@ def stub_embedding_provider() -> IEmbeddingProvider:
 
 @pytest.fixture
 def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., Memory]:
-    """Provide helper for seeding memory rows into integration database."""
+    """Provide helper for seeding shellbrain rows into integration database."""
 
     def _seed(
         *,
@@ -227,13 +228,13 @@ def fetch_rows(integration_engine: Engine) -> Callable[[Selectable, object], lis
 
 
 def _run_alembic_upgrade(dsn: str) -> None:
-    """Run alembic upgrade head against integration database."""
+    """Run packaged schema migrations against one integration database."""
 
     repo_root = _find_repo_root()
     env = dict(os.environ)
-    env["MEMORY_DB_DSN"] = dsn
+    env["SHELLBRAIN_DB_DSN"] = dsn
     subprocess.run(
-        ["alembic", "upgrade", "head"],
+        [sys.executable, "-m", "shellbrain.periphery.cli.main", "admin", "migrate"],
         check=True,
         cwd=repo_root,
         env=env,
@@ -241,11 +242,11 @@ def _run_alembic_upgrade(dsn: str) -> None:
 
 
 def _find_repo_root() -> Path:
-    """Resolve repository root by walking upward until alembic.ini is found."""
+    """Resolve repository root by walking upward until the packaging root is found."""
 
     current = Path(__file__).resolve().parent
     while current != current.parent:
-        if (current / "alembic.ini").exists():
+        if (current / "pyproject.toml").exists():
             return current
         current = current.parent
     raise RuntimeError("Could not resolve repository root from execution test fixtures.")

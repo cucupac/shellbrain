@@ -6,11 +6,12 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /workspace
 
 COPY requirements.txt /workspace/requirements.txt
-RUN pip install --no-cache-dir -r /workspace/requirements.txt
-
-COPY app /workspace/app
-COPY alembic /workspace/alembic
+COPY pyproject.toml /workspace/pyproject.toml
+COPY README.md /workspace/README.md
+COPY shellbrain /workspace/shellbrain
 COPY alembic.ini /workspace/alembic.ini
+RUN pip install --no-cache-dir -r /workspace/requirements.txt \
+    && pip install --no-cache-dir --no-deps -e /workspace
 
-ENTRYPOINT ["python", "-m", "app.periphery.cli.main"]
+ENTRYPOINT ["shellbrain"]
 CMD ["--help"]

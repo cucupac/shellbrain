@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=69.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shellbrain"
+version = "0.1.0"
+description = "Repo-scoped Shellbrain CLI with explicit evidence-backed writes."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "SQLAlchemy>=2.0,<3.0",
+  "alembic>=1.13,<2.0",
+  "pydantic>=2.7,<3.0",
+  "PyYAML>=6.0,<7.0",
+  "psycopg[binary]>=3.1,<4.0",
+  "pgvector>=0.3,<1.0",
+  "sentence-transformers>=3.0,<4.0",
+]
+
+[project.scripts]
+shellbrain = "shellbrain.periphery.cli.main:main"
+
+[tool.setuptools.packages.find]
+include = ["shellbrain*"]
+
+[tool.setuptools.package-data]
+shellbrain = [
+  "config/defaults/*.yaml",
+  "migrations/__init__.py",
+  "migrations/env.py",
+  "migrations/versions/*.py",
+]
