@@ -35,16 +35,20 @@ def test_resolve_repo_context_preserves_explicit_repo_id(tmp_path: Path) -> None
 
 
 def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixture[str]) -> None:
-    """top-level help should explain install bootstrap and evidence-backed workflow."""
+    """top-level help should explain the Shellbrain mental model and session protocol."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["--help"])
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "events` before every write" in output
+    assert "case-based memory system" in output
+    assert "Avoid generic prompts like" in output
+    assert "At session end" in output
+    assert "utility_vote" in output
     assert "shellbrain admin migrate" in output
-    assert "Use `--no-sync`" in output
+    assert "--repo-root" in output
+    assert "--no-sync" not in output
     assert "create" in output
     assert "read" in output
     assert "update" in output
@@ -52,43 +56,58 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
 
 
 def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
-    """read help should always include one minimal example."""
+    """read help should teach focused querying and pack structure."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["read", "--help"])
 
     assert excinfo.value.code == 0
-    assert "shellbrain read --json" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "shellbrain read --json" in output
+    assert "Avoid generic prompts" in output
+    assert "explicit_related" in output
+    assert "implicit_related" in output
 
 
 def test_events_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
-    """events help should always include one minimal example."""
+    """events help should explain fresh episodic evidence lookup."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["events", "--help"])
 
     assert excinfo.value.code == 0
-    assert "shellbrain events --json" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "shellbrain events --json" in output
+    assert "inline transcript sync" in output
 
 
 def test_create_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
-    """create help should always include one minimal example."""
+    """create help should explain memory-kind choice and attempt-link rules."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["create", "--help"])
 
     assert excinfo.value.code == 0
-    assert "shellbrain create --json" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "shellbrain create --json" in output
+    assert "failed_tactic" in output
+    assert "memory.links.problem_id" in output
 
 
 def test_update_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
-    """update help should always include one minimal example."""
+    """update help should expose the supported update types."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["update", "--help"])
 
     assert excinfo.value.code == 0
-    assert "shellbrain update --json" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "shellbrain update --json" in output
+    assert "utility_vote" in output
+    assert "-1.0" in output
+    assert "positive = helpful" in output
+    assert "fact_update_link" in output
+    assert "association_link" in output
 
 
 def test_admin_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:

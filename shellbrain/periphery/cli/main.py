@@ -18,23 +18,33 @@ class _HelpFormatter(argparse.RawDescriptionHelpFormatter):
 
 _TOP_LEVEL_HELP = dedent(
     """\
-    Use Shellbrain for repo-scoped recall with explicit evidence.
+    Use Shellbrain as a case-based memory system for agent work.
 
-    Typical workflow:
-      1. `read` when you need prior repo context.
-      2. `events` before every write so you can inspect recent `episode_event` ids.
-      3. `create` or an evidence-bearing `update` with concrete `evidence_refs`. Never invent `evidence_refs`.
+    Mental model:
+      - `read` retrieves durable memories related to the concrete problem or subproblem.
+      - `events` inspects episodic transcript evidence from the active session.
+      - `create` authors durable memories from that evidence.
+      - `update` records utility, truth-evolution links, and explicit associations.
+
+    Protocol:
+      1. Query with the concrete bug, subsystem, decision, or constraint you are working on.
+         Avoid generic prompts like "what should I know about this repo?"
+      2. Re-run `read` whenever the search shifts or you get stuck.
+      3. Before evidence-bearing writes, run `events` and reuse returned ids verbatim as `evidence_refs`.
+      4. At session end, normalize the episode into `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories, then record `utility_vote` updates for memories that helped or misled.
 
     Prerequisites:
-      - Install the package (`pip install -e .` or `pip install git+file:///...`).
-      - Set `SHELLBRAIN_DB_DSN`.
+      - Shellbrain should already be available from a one-time global install.
+      - If it is missing, restore the machine-level install (`pipx install --editable /path/to/shellbrain` or `python3 -m pip install --user --break-system-packages --editable /path/to/shellbrain`).
+      - Export `SHELLBRAIN_DB_DSN` from your shell profile.
       - Run `shellbrain admin migrate` once against the target database.
 
     Examples:
-      shellbrain read --json '{"query":"what deployment issue should I remember?"}'
-      shellbrain events --json '{}'
-      shellbrain create --json '{"memory":{"text":"Prod deploy failed on missing env var","kind":"problem","evidence_refs":["evt-123"]}}'
-      shellbrain update --json '{"memory_id":"mem-123","update":{"type":"association_link","to_memory_id":"mem-456","relation_type":"associated_with","evidence_refs":["evt-123"]}}'
+      shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
+      shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
+      shellbrain events --json '{"limit":10}'
+      shellbrain create --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
+      shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-124"]}}'
       shellbrain admin migrate
 
     Common recovery steps:
@@ -42,9 +52,6 @@ _TOP_LEVEL_HELP = dedent(
       - No active host session found: verify Codex/Claude Code transcript availability, then rerun `events`.
       - Evidence ref rejected: rerun `events` and use the returned `episode_event` ids verbatim.
       - Wrong working tree: rerun with `--repo-root` (and optionally `--repo-id`) for the target repo.
-
-    Successful operational commands start the repo-local episode sync poller by default.
-    Use `--no-sync` to suppress poller startup and `.shellbrain` runtime artifacts.
     """
 )
 
@@ -52,8 +59,18 @@ _CREATE_HELP = dedent(
     """\
     Create one durable Shellbrain entry from explicit evidence.
 
+    Choose the memory kind deliberately:
+      - `problem`: the obstacle or failure mode
+      - `solution`: what worked for a specific problem
+      - `failed_tactic`: what did not work for a specific problem
+      - `fact`: durable truth
+      - `preference`: durable convention
+      - `change`: truth invalidation or revision
+
+    `solution` and `failed_tactic` require `memory.links.problem_id`.
+
     Example:
-      shellbrain create --json '{"memory":{"text":"The staging DB migration needs a lock timeout","kind":"problem","evidence_refs":["evt-123"]}}'
+      shellbrain create --json '{"memory":{"text":"The staging DB migration needs a 30s lock timeout","kind":"fact","evidence_refs":["evt-123"]}}'
     """
 )
 
@@ -61,14 +78,24 @@ _READ_HELP = dedent(
     """\
     Retrieve Shellbrain context without mutating state.
 
+    Use concrete failure modes, subsystem names, decisions, or constraints.
+    Avoid generic prompts like "what should I know about this repo?"
+
+    Returned pack sections:
+      - `direct`
+      - `explicit_related`
+      - `implicit_related`
+
     Example:
-      shellbrain read --json '{"query":"what do we know about the migration lock timeout?"}'
+      shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
     """
 )
 
 _EVENTS_HELP = dedent(
     """\
     Inspect the newest repo-matching host session and return recent `episode_event` ids.
+
+    `events` performs an inline transcript sync before returning normalized episodic evidence.
 
     Example:
       shellbrain events --json '{"limit":10}'
@@ -79,8 +106,14 @@ _UPDATE_HELP = dedent(
     """\
     Update one existing Shellbrain entry.
 
+    Update types:
+      - `archive_state`
+      - `utility_vote` (`-1.0` to `1.0`; negative = unhelpful, `0.0` = neutral, positive = helpful)
+      - `fact_update_link`
+      - `association_link`
+
     Example:
-      shellbrain update --json '{"memory_id":"mem-123","update":{"type":"association_link","to_memory_id":"mem-456","relation_type":"associated_with","evidence_refs":["evt-456"]}}'
+      shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-456"]}}'
     """
 )
 
@@ -227,7 +260,7 @@ def _add_repo_context_arguments(parser: argparse.ArgumentParser, *, suppress_def
     parser.add_argument(
         "--no-sync",
         action="store_true",
-        help="Do not start the repo-local episode sync poller after a successful command.",
+        help=argparse.SUPPRESS,
         **kwargs,
     )
 
