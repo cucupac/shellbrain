@@ -24,13 +24,19 @@ The point is case-based reasoning: query for similar prior problems, plans, cons
 
 ## Bootstrap
 
+In Codex desktop and similar tool shells, first retry through a login shell that sources `~/.zprofile`:
+
+```bash
+zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain && printf "%s\n" "$SHELLBRAIN_DB_DSN"'
+```
+
 Use Shellbrain only after confirming:
 
 - `shellbrain --help` works.
 - `SHELLBRAIN_DB_DSN` is set.
 - `shellbrain admin migrate` has been run against the target database.
 
-Assume Shellbrain comes from a one-time global install. If the CLI is unavailable, stop and ask the operator to restore the machine-level install first. Do not create per-repo installs unless the operator explicitly wants that.
+Assume Shellbrain comes from a one-time global install. If direct calls fail in the current Codex session, keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only if the wrapped check fails should you ask the operator to restore the machine-level install. Do not create per-repo installs unless the operator explicitly wants that.
 
 ## Repo Targeting
 
@@ -181,10 +187,10 @@ Important modeling pattern for changed truth:
 ## Recovery
 
 - `shellbrain: command not found`
-  Ask the operator to restore the one-time global Shellbrain install.
+  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'` first. Only if that still fails should you ask the operator to restore the one-time global Shellbrain install.
 
 - `SHELLBRAIN_DB_DSN is not set`
-  Ask the operator to export the DB DSN from the shell profile, then rerun `shellbrain admin migrate` if the database is fresh.
+  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; printf "%s\n" "$SHELLBRAIN_DB_DSN"'` first. If it is still unset, ask the operator to export the DB DSN from the shell profile, then rerun `shellbrain admin migrate` if the database is fresh.
 
 - No active host session found
   Verify that the user is working in Codex or Claude Code, that transcript files exist, and that `repo_root` matches the repo used in that session.

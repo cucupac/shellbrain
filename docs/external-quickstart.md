@@ -27,6 +27,8 @@ python3 -m pip install --user --break-system-packages --editable /absolute/path/
 export PATH="$(python3 -m site --user-base)/bin:$PATH"
 ```
 
+For Codex Desktop and similar tool shells, put that PATH export and `SHELLBRAIN_DB_DSN` in `~/.zprofile`, not `~/.zshrc`, so non-interactive login shells can see them.
+
 ## Bootstrap
 
 Set this once in your shell profile, then apply migrations:
@@ -34,6 +36,20 @@ Set this once in your shell profile, then apply migrations:
 ```bash
 export SHELLBRAIN_DB_DSN='postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain'
 shellbrain admin migrate
+```
+
+## Codex Startup Pattern
+
+When running Shellbrain from Codex Desktop or a similar tool shell, treat this as the normal startup step:
+
+```bash
+zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
+```
+
+Then use the same wrapper shape for real commands when needed:
+
+```bash
+zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this migration lock timeout before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"
 ```
 
 ## Query First, But Query Precisely

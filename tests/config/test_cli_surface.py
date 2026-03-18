@@ -48,6 +48,7 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "utility_vote" in output
     assert "shellbrain admin migrate" in output
     assert "--repo-root" in output
+    assert "~/.zprofile" in output
     assert "--no-sync" not in output
     assert "create" in output
     assert "read" in output
