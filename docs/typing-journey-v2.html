@@ -6,7 +6,7 @@
   <title>shellbrain</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg: #f5f0e8;
@@ -39,13 +39,14 @@
     /* ─── HERO ─────────────────────────────────── */
 
     .hero {
-      min-height: 100vh;
+      height: 100vh;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       padding: 32px 24px;
       position: relative;
+      overflow: hidden;
       background:
         radial-gradient(ellipse 70% 50% at 50% 40%, rgba(255,255,255,0.45), transparent),
         var(--bg);
@@ -71,7 +72,7 @@
     }
 
     .typing-area {
-      min-height: 7rem;
+      height: 10rem;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -104,6 +105,33 @@
       letter-spacing: 0.08em;
       color: var(--muted-light);
       margin-top: 44px;
+    }
+
+    /* ─── MEMORY STRIP ─────────────────────────── */
+
+    .memory-strip {
+      margin-top: 56px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px 28px;
+    }
+
+    .memory-strip-item {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.08em;
+      text-transform: lowercase;
+      color: var(--muted-light);
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .memory-strip-item.visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .scroll-hint {
@@ -171,6 +199,11 @@
       font-weight: 500;
     }
 
+    .intro-inner em {
+      font-style: italic;
+      font-weight: 300;
+    }
+
     /* ─── CONTENT SECTIONS ─────────────────────── */
 
     .content-section {
@@ -212,6 +245,14 @@
       margin-bottom: 0;
     }
 
+    .section-body strong {
+      font-weight: 500;
+    }
+
+    .section-body em {
+      font-style: italic;
+    }
+
     .section-body .standout {
       font-weight: 400;
       color: var(--text);
@@ -222,15 +263,45 @@
       font-size: 0.95em;
     }
 
-    .reveal {
-      opacity: 0;
-      transform: translateY(18px);
-      transition: opacity 0.7s ease, transform 0.7s ease;
+    .section-body .kicker {
+      font-size: clamp(1.05rem, 1.7vw, 1.18rem);
+      font-weight: 400;
+      margin-top: 0.6em;
     }
 
-    .reveal.visible {
+    /* ─── TYPEWRITER SECTIONS ──────────────────── */
+
+    .typewriter-block {
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .typewriter-block.active,
+    .typewriter-block.done {
       opacity: 1;
-      transform: translateY(0);
+    }
+
+    .typewriter-block .tw-line {
+      overflow: hidden;
+      white-space: normal;
+    }
+
+    .typewriter-block .tw-line .tw-inner {
+      display: inline;
+    }
+
+    .typewriter-block .tw-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 0.85em;
+      margin-left: 1px;
+      vertical-align: -0.08em;
+      background: var(--text);
+      animation: blink 0.9s steps(1, end) infinite;
+    }
+
+    .dark .typewriter-block .tw-cursor {
+      background: #f5f0e8;
     }
 
     /* ─── DARK SECTION ─────────────────────────── */
@@ -248,7 +319,15 @@
       color: rgba(245, 240, 232, 0.78);
     }
 
+    .dark .section-body strong {
+      color: #f5f0e8;
+    }
+
     .dark .section-body .standout {
+      color: #f5f0e8;
+    }
+
+    .dark .section-body .kicker {
       color: #f5f0e8;
     }
 
@@ -311,6 +390,19 @@
       letter-spacing: 0.06em;
     }
 
+    /* ─── REVEAL (for non-typewriter sections) ── */
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     /* ─── ANIMATIONS ───────────────────────────── */
 
     @keyframes blink {
@@ -331,11 +423,15 @@
       }
 
       .typing-area {
-        min-height: 9rem;
+        height: 12rem;
       }
 
       .scroll-hint {
         bottom: 20px;
+      }
+
+      .memory-strip {
+        gap: 8px 20px;
       }
     }
 
@@ -346,6 +442,12 @@
         opacity: 1;
         transform: none;
         transition: none;
+      }
+      .typewriter-block {
+        opacity: 1;
+      }
+      .typewriter-block .tw-cursor {
+        animation: none;
       }
     }
   </style>
@@ -360,6 +462,13 @@
         <p class="typed-text" id="typed" aria-live="polite"></p><span class="caret" aria-hidden="true"></span>
       </div>
       <div class="hero-counter mono" id="counter"></div>
+
+      <div class="memory-strip" id="memoryStrip">
+        <span class="memory-strip-item">procedural memory</span>
+        <span class="memory-strip-item">semantic memory</span>
+        <span class="memory-strip-item">episodic memory</span>
+        <span class="memory-strip-item">associative memory</span>
+      </div>
     </div>
     <div class="scroll-hint" id="scrollHint">
       <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5">
@@ -374,13 +483,13 @@
   <section class="intro">
     <div class="intro-inner reveal" data-reveal>
       <p>
-        shellbrain gives agents long-term memory grounded in what actually happened.
+        <strong>agents have no long-term memory.</strong> every session starts from zero. lessons vanish. mistakes repeat. knowledge never compounds.
       </p>
       <p>
-        it retrieves that memory when the current problem resembles something already seen. over time, the agent solves faster, fails less, and recalls things it would never think to look for.
+        shellbrain fixes this. it gives agents <em>durable, structured memory</em> grounded in what actually happened&mdash;and retrieves it the moment a problem resembles something already seen.
       </p>
       <p>
-        the current repo is ground truth. memories help solve the problem in front of you. they never overrule what the code says now.
+        <strong>the result.</strong> agents that solve faster, fail less, and recall things <em>they would never think to look for.</em>
       </p>
     </div>
   </section>
@@ -389,16 +498,15 @@
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
-    <div class="content-section-inner reveal" data-reveal>
-      <div class="section-eyebrow">Procedural memory</div>
-      <h2 class="section-title">Case-based reasoning.</h2>
-      <div class="section-body">
-        <p>shellbrain remembers every problem you have ever worked on.</p>
-        <p>shellbrain remembers every working solution.</p>
-        <p>shellbrain remembers every failed attempt so it can learn from what did not work.</p>
-        <p>solutions and failed tactics are linked to the problem they belong to.</p>
-        <p>each problem, its solutions, and its failed tactics form a <strong>scenario</strong>. shellbrain remembers all of your scenarios.</p>
-        <p class="standout">the next time a similar problem appears, shellbrain retrieves the relevant scenarios and gives the agent a head start.</p>
+    <div class="content-section-inner">
+      <div class="section-eyebrow">procedural memory</div>
+      <h2 class="section-title">every problem you have ever solved.</h2>
+      <div class="section-body typewriter-block" data-typewriter>
+        <p><strong>shellbrain remembers every problem, every working solution, and every failed attempt.</strong></p>
+        <p>failed tactics matter. <em>knowing what didn't work is half the solution.</em></p>
+        <p>every solution and every failure is linked to the problem it belongs to. without that link, the memory is invalid. shellbrain enforces this.</p>
+        <p>a problem, its solutions, and its failed tactics form a <strong>scenario</strong>. shellbrain remembers all of your scenarios.</p>
+        <p class="kicker">the next time a similar problem appears, shellbrain retrieves the relevant scenarios and gives the agent a head start.</p>
       </div>
     </div>
   </section>
@@ -407,14 +515,14 @@
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
-    <div class="content-section-inner reveal" data-reveal>
-      <div class="section-eyebrow">Semantic memory</div>
-      <h2 class="section-title">Knowledge that evolves.</h2>
-      <div class="section-body">
-        <p>shellbrain remembers facts about the world, your repo, and your code.</p>
-        <p>shellbrain never overwrites facts. when a fact changes, shellbrain stores the change that invalidated it, stores the updated fact, and links all three: old fact → change → new fact.</p>
-        <p class="standout">beliefs are never silently mutated. history is preserved.</p>
-        <p>shellbrain remembers how you like to work. repo conventions, style decisions, what should win when there is ambiguity. these are durable memories, learned from working with you.</p>
+    <div class="content-section-inner">
+      <div class="section-eyebrow">semantic memory</div>
+      <h2 class="section-title">knowledge that never silently mutates.</h2>
+      <div class="section-body typewriter-block" data-typewriter>
+        <p><strong>shellbrain remembers facts</strong> about the world, your repo, and your code.</p>
+        <p><strong>shellbrain never overwrites facts.</strong> when a fact changes, it stores the change that invalidated it, stores the updated fact, and links all three: old fact &rarr; change &rarr; new fact.</p>
+        <p><em>history is always preserved.</em> you can trace any belief back through every revision that shaped it.</p>
+        <p>shellbrain also remembers <strong>how you like to work</strong>&mdash;repo conventions, style decisions, what should win when there is ambiguity. these are durable memories, learned from working with you.</p>
       </div>
     </div>
   </section>
@@ -422,14 +530,14 @@
   <!-- ─── GROUNDED IN EVIDENCE ──────────────────── -->
 
   <section class="content-section dark">
-    <div class="content-section-inner reveal" data-reveal>
-      <div class="section-eyebrow">Episodic memory</div>
-      <h2 class="section-title">Grounded in evidence.</h2>
-      <div class="section-body">
-        <p>shellbrain records every interaction between you and your agent. all dialog. all tool use. every event from every work session.</p>
-        <p>this is episodic memory. it is the foundation everything else is built on.</p>
-        <p>every durable memory must trace back to a real event.</p>
-        <p class="standout">shellbrain would rather have no memory than a memory it cannot justify.</p>
+    <div class="content-section-inner">
+      <div class="section-eyebrow">episodic memory</div>
+      <h2 class="section-title">nothing is invented.</h2>
+      <div class="section-body typewriter-block" data-typewriter>
+        <p><strong>shellbrain records every interaction between you and your agent.</strong> all dialog. all tool use. every event from every work session.</p>
+        <p>this is episodic memory. <em>it is the foundation everything else is built on.</em></p>
+        <p><strong>every durable memory must trace back to a real event.</strong> evidence is never fabricated. if the evidence is ambiguous, shellbrain skips the write entirely.</p>
+        <p class="kicker">shellbrain would rather have <strong>no memory</strong> than a memory it cannot justify.</p>
       </div>
     </div>
   </section>
@@ -437,16 +545,16 @@
   <!-- ─── CREATIVE RECALL ───────────────────────── -->
 
   <section class="content-section">
-    <div class="content-section-inner reveal" data-reveal>
-      <div class="section-eyebrow">Associative memory</div>
-      <h2 class="section-title">Creative recall.</h2>
-      <div class="section-body">
+    <div class="content-section-inner">
+      <div class="section-eyebrow">associative memory</div>
+      <h2 class="section-title">recall that looks like creativity.</h2>
+      <div class="section-body typewriter-block" data-typewriter>
         <p>memories relate to each other. shellbrain captures these relationships in two ways.</p>
-        <p>explicit associations are formal links in a knowledge graph.</p>
-        <p>implicit associations are computed from semantic similarity via vector embeddings.</p>
-        <p>when a problem triggers retrieval, shellbrain does not just return direct matches. it seeds candidates from semantic and keyword search, then expands outward through linked scenarios, fact-update chains, association edges, and semantic neighbors. it scores, deduplicates, and returns a bounded context pack.</p>
-        <p>each result explains why it was included. the pack is capped. retrieval is precise, not exhaustive.</p>
-        <p class="standout">chaining through multiple associative hops surfaces memories the agent would not think to look for. recall starts to look like creativity.</p>
+        <p><strong>explicit associations</strong> are formal links in a knowledge graph&mdash;structural relationships stored as first-class records.</p>
+        <p><strong>implicit associations</strong> are computed from semantic similarity via vector embeddings.</p>
+        <p>when a problem triggers retrieval, shellbrain doesn't just return direct matches. it seeds candidates from semantic and keyword search, then <em>expands outward</em>&mdash;through linked scenarios, fact-update chains, association edges, and semantic neighbors. it scores, deduplicates, and returns a bounded context pack.</p>
+        <p>every result explains why it was included. the pack is capped. <em>retrieval is precise, not exhaustive.</em></p>
+        <p class="kicker">chaining through multiple associative hops surfaces memories the agent would never think to look for. <strong>recall starts to look like creativity.</strong></p>
       </div>
     </div>
   </section>
@@ -455,13 +563,13 @@
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
-    <div class="content-section-inner reveal" data-reveal>
-      <div class="section-eyebrow">Feedback</div>
-      <h2 class="section-title">Utility is per problem.</h2>
-      <div class="section-body">
-        <p>a memory can be critical for one class of problem and useless for another.</p>
-        <p>shellbrain does not assign a single global score. it records utility per problem, a vote in [-1.0, 1.0] for each memory against each problem it was recalled for.</p>
-        <p class="standout">global utility is derived from these observations, not assumed.</p>
+    <div class="content-section-inner">
+      <div class="section-eyebrow">feedback</div>
+      <h2 class="section-title">utility is earned, not assumed.</h2>
+      <div class="section-body typewriter-block" data-typewriter>
+        <p><strong>a memory can be critical for one class of problem and useless for another.</strong></p>
+        <p>shellbrain does not assign a single global score. it records utility <em>per problem</em>&mdash;a vote for each memory against each problem it was recalled for.</p>
+        <p class="kicker"><strong>global utility is derived</strong> from these observations. never assumed.</p>
       </div>
     </div>
   </section>
@@ -471,10 +579,7 @@
 
   <section class="content-section">
     <div class="content-section-inner reveal" data-reveal>
-      <h2 class="section-title">Four operations.</h2>
-      <div class="section-body">
-        <p>that is the entire surface area.</p>
-      </div>
+      <h2 class="section-title">four operations. that's it.</h2>
       <div class="ops-grid">
         <div class="ops-card">
           <h4>read</h4>
@@ -499,11 +604,12 @@
   <!-- ─── FOOTER ────────────────────────────────── -->
   <section class="footer">
     <div class="footer-brand">shellbrain</div>
-    <div class="footer-sub">a knowledge engine for AI agents</div>
+    <div class="footer-sub">knowledge compounds.</div>
   </section>
 
   <!-- ─── SCRIPTS ───────────────────────────────── -->
   <script>
+    // ── Hero typing loop ──────────────────────────
     const scenes = [
       "agents forget.",
       "what if they didn't?",
@@ -544,7 +650,6 @@
 
     function tick() {
       const s = scenes[idx];
-
       if (!deleting && ch < s.length) { ch++; render(); sched(cfg.type); return; }
       if (!deleting && ch === s.length) {
         deleting = true;
@@ -569,19 +674,178 @@
       }
     });
 
-    // Scroll reveal with stagger
+    // ── Memory strip stagger reveal ──────────────
+    const stripItems = document.querySelectorAll(".memory-strip-item");
+    let stripRevealed = false;
+
+    function revealStrip() {
+      if (stripRevealed) return;
+      stripRevealed = true;
+      stripItems.forEach((item, i) => {
+        setTimeout(() => item.classList.add("visible"), 600 + i * 180);
+      });
+    }
+
+    // Reveal strip after the last hero scene starts typing
+    // We observe when the hero typing reaches the last scene
+    const stripCheck = setInterval(() => {
+      if (idx >= scenes.length - 1) {
+        revealStrip();
+        clearInterval(stripCheck);
+      }
+    }, 200);
+
+    // Also reveal on first scroll as fallback
+    window.addEventListener("scroll", () => { revealStrip(); }, { once: true, passive: true });
+
+    // ── Scroll-triggered section typewriter ──────
+    const twBlocks = document.querySelectorAll("[data-typewriter]");
+    const twState = new Map(); // block -> { started, done }
+
+    const CHAR_SPEED = 12;   // ms per character
+    const LINE_PAUSE = 120;  // ms pause between paragraphs
+
+    function typewriterBlock(block) {
+      const state = twState.get(block);
+      if (state && (state.started || state.done)) return;
+      twState.set(block, { started: true, done: false });
+
+      block.classList.add("active");
+
+      const paragraphs = Array.from(block.querySelectorAll("p"));
+      // Save original HTML for each paragraph
+      const originalHTML = paragraphs.map(p => p.innerHTML);
+
+      // Hide all paragraphs initially
+      paragraphs.forEach(p => {
+        p.style.visibility = "hidden";
+        p.style.height = "auto"; // keep layout space
+      });
+
+      // Create cursor element
+      const cursor = document.createElement("span");
+      cursor.className = "tw-cursor";
+      cursor.setAttribute("aria-hidden", "true");
+
+      let pIdx = 0;
+
+      function typeParagraph() {
+        if (pIdx >= paragraphs.length) {
+          // All done
+          cursor.remove();
+          block.classList.remove("active");
+          block.classList.add("done");
+          twState.set(block, { started: true, done: true });
+          return;
+        }
+
+        const p = paragraphs[pIdx];
+        const fullHTML = originalHTML[pIdx];
+        // Get plain text length for typing speed
+        const temp = document.createElement("div");
+        temp.innerHTML = fullHTML;
+        const fullText = temp.textContent || temp.innerText;
+        const totalChars = fullText.length;
+
+        p.style.visibility = "visible";
+        p.innerHTML = "";
+        p.appendChild(cursor);
+
+        let charIdx = 0;
+
+        function typeChar() {
+          if (charIdx >= totalChars) {
+            // Paragraph done - show full HTML
+            p.innerHTML = fullHTML;
+            pIdx++;
+            setTimeout(typeParagraph, LINE_PAUSE);
+            return;
+          }
+
+          charIdx++;
+          // Build partial text by truncating the plain-text representation
+          // For simplicity and correctness with HTML tags, we reveal
+          // character-by-character from the plain text, but render
+          // progressively through the HTML
+          const partialText = fullText.slice(0, charIdx);
+          p.innerHTML = partialText;
+          p.appendChild(cursor);
+
+          // Speed variation: slightly slower on punctuation
+          const lastChar = fullText[charIdx - 1];
+          let delay = CHAR_SPEED;
+          if (lastChar === "." || lastChar === "!" || lastChar === "?") delay = CHAR_SPEED * 8;
+          else if (lastChar === ",") delay = CHAR_SPEED * 4;
+          else if (lastChar === "—" || lastChar === "–") delay = CHAR_SPEED * 3;
+
+          setTimeout(typeChar, delay);
+        }
+
+        typeChar();
+      }
+
+      typeParagraph();
+    }
+
+    // Finish block immediately (for reduced-motion or fast-scrollers)
+    function finishBlock(block) {
+      const state = twState.get(block);
+      if (state && state.done) return;
+      const paragraphs = block.querySelectorAll("p");
+      // Restore original HTML from saved data
+      const saved = block._originalHTML;
+      if (saved) {
+        paragraphs.forEach((p, i) => {
+          if (saved[i]) p.innerHTML = saved[i];
+          p.style.visibility = "visible";
+        });
+      } else {
+        paragraphs.forEach(p => { p.style.visibility = "visible"; });
+      }
+      block.classList.remove("active");
+      block.classList.add("done");
+      twState.set(block, { started: true, done: true });
+      const cursors = block.querySelectorAll(".tw-cursor");
+      cursors.forEach(c => c.remove());
+    }
+
+    // Use IntersectionObserver to trigger typewriter
+    const twObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const block = entry.target;
+          if (prefersReduced) {
+            finishBlock(block);
+          } else {
+            typewriterBlock(block);
+          }
+          twObserver.unobserve(block);
+        }
+      });
+    }, { threshold: 0.15 });
+
+    twBlocks.forEach((block) => {
+      // Save original HTML for each paragraph so we can restore formatting
+      const paras = block.querySelectorAll("p");
+      block._originalHTML = Array.from(paras).map(p => p.innerHTML);
+      twState.set(block, { started: false, done: false });
+      twObserver.observe(block);
+    });
+
+    // ── Standard reveal for non-typewriter blocks ─
     const reveals = document.querySelectorAll("[data-reveal]");
-    const observer = new IntersectionObserver((entries) => {
+    const revealObserver = new IntersectionObserver((entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
           entry.target.classList.add("visible");
-          observer.unobserve(entry.target);
+          revealObserver.unobserve(entry.target);
         }
       });
     }, { threshold: 0.12 });
 
-    reveals.forEach((el) => observer.observe(el));
+    reveals.forEach((el) => revealObserver.observe(el));
 
+    // ── Scroll hint fade ─────────────────────────
     const scrollHint = document.getElementById("scrollHint");
     let hintHidden = false;
     window.addEventListener("scroll", () => {
@@ -591,6 +855,7 @@
         hintHidden = true;
       }
     }, { passive: true });
+
   </script>
 </body>
 </html>
