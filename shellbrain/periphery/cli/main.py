@@ -26,6 +26,10 @@ _TOP_LEVEL_HELP = dedent(
       - `create` authors durable memories from that evidence.
       - `update` records utility, truth-evolution links, and explicit associations.
 
+    Codex shell bootstrap:
+      - In Codex Desktop or similar tool shells, start via `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'`.
+      - Use the same wrapper shape for actual Shellbrain commands when the session depends on machine-level PATH and `SHELLBRAIN_DB_DSN`.
+
     Protocol:
       1. Query with the concrete bug, subsystem, decision, or constraint you are working on.
          Avoid generic prompts like "what should I know about this repo?"
@@ -37,6 +41,7 @@ _TOP_LEVEL_HELP = dedent(
       - Shellbrain should already be available from a one-time global install.
       - If it is missing, restore the machine-level install (`pipx install --editable /path/to/shellbrain` or `python3 -m pip install --user --break-system-packages --editable /path/to/shellbrain`).
       - Export `SHELLBRAIN_DB_DSN` from your shell profile.
+      - In Codex Desktop or similar tool shells, put the PATH export and `SHELLBRAIN_DB_DSN` in `~/.zprofile`, not `~/.zshrc`.
       - Run `shellbrain admin migrate` once against the target database.
 
     Examples:
@@ -48,7 +53,8 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain admin migrate
 
     Common recovery steps:
-      - `SHELLBRAIN_DB_DSN is not set`: export the database DSN before running the CLI.
+      - `shellbrain: command not found` inside Codex: verify you used the `zsh -lc 'source ~/.zprofile ...'` startup pattern before declaring Shellbrain blocked.
+      - `SHELLBRAIN_DB_DSN is not set`: verify the same startup pattern and that the export lives in `~/.zprofile`, then export the database DSN if needed.
       - No active host session found: verify Codex/Claude Code transcript availability, then rerun `events`.
       - Evidence ref rejected: rerun `events` and use the returned `episode_event` ids verbatim.
       - Wrong working tree: rerun with `--repo-root` (and optionally `--repo-id`) for the target repo.

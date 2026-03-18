@@ -32,6 +32,7 @@ def test_docs_and_skill_should_share_the_shellbrain_protocol() -> None:
         "session end",
         "utility_vote",
         "what should I know about this repo?",
+        "~/.zprofile",
     ]
 
     for phrase in required_phrases:
@@ -51,6 +52,7 @@ def test_cli_help_should_share_the_short_protocol() -> None:
         "shellbrain admin migrate",
         "--repo-root",
         "At session end",
+        "~/.zprofile",
     ]
 
     for phrase in required_phrases:

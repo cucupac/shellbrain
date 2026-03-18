@@ -27,8 +27,9 @@ Treat current repo state as ground truth. Treat Shellbrain as advisory long-term
 
 ## Quick Start
 
-1. Check that Shellbrain is available with `shellbrain --help`.
-2. Assume Shellbrain is already available from a one-time global install. If the CLI is missing, ask the operator to restore that machine-level install instead of reinstalling per repo. The operator should also have `SHELLBRAIN_DB_DSN` set and `shellbrain admin migrate` already applied.
+1. In Codex or similar tool shells, bootstrap Shellbrain through a login shell that sources `~/.zprofile`:
+   `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain && printf "%s\n" "$SHELLBRAIN_DB_DSN"'`
+2. Assume Shellbrain is already available from a one-time global install. If direct `shellbrain` calls fail in the current session, keep using the `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only ask the operator to restore the machine-level install if the wrapped check still fails. The operator should also have `SHELLBRAIN_DB_DSN` set and `shellbrain admin migrate` already applied.
 3. Resolve the target repo:
    - Use the current working directory when already inside the repo.
    - Pass `--repo-root /absolute/path/to/repo` when working from somewhere else.
@@ -41,20 +42,22 @@ Treat current repo state as ground truth. Treat Shellbrain as advisory long-term
      `shellbrain read --json '{"query":"What repo constraints or user preferences matter for this task?","kinds":["fact","preference","change"]}'`
    - area-specific facts:
      `shellbrain read --json '{"query":"What facts or changes matter in this subsystem?","kinds":["fact","change","problem","solution"]}'`
-6. Inspect the returned context pack:
+6. When running from Codex, wrap the actual Shellbrain invocations the same way if needed:
+   `zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this failure mode before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"`
+7. Inspect the returned context pack:
    - `direct` = direct matches
    - `explicit_related` = linked memories, including authored associations and problem/fact chains
    - `implicit_related` = semantic neighbors and bounded associative hops
-7. Re-run `read` liberally during the task whenever the search shifts, you hit a new subproblem, or you suspect the right memory will only become relevant mid-journey.
-8. Before `create` or any evidence-bearing `update`, run `shellbrain events --json '{"limit":10}'`.
-9. Reuse returned `data.events[].id` values verbatim as `evidence_refs`.
-10. At session end, normalize the episode into durable memories:
+8. Re-run `read` liberally during the task whenever the search shifts, you hit a new subproblem, or you suspect the right memory will only become relevant mid-journey.
+9. Before `create` or any evidence-bearing `update`, run `shellbrain events --json '{"limit":10}'`.
+10. Reuse returned `data.events[].id` values verbatim as `evidence_refs`.
+11. At session end, normalize the episode into durable memories:
    - store the `problem`
    - store each `failed_tactic`
    - store the `solution`
    - store any durable `fact`, `preference`, or `change`
    - record `utility_vote` updates for memories that helped or misled
-11. Use the exact payload shapes in [references/request-shapes.md](references/request-shapes.md).
+12. Use the exact payload shapes in [references/request-shapes.md](references/request-shapes.md).
 
 ## Memory Kinds
 

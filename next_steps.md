@@ -162,7 +162,43 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
   - decide later whether git-root inference is worth adding
 - Consider making first-run embedding downloads less surprising on the `read` path.
 
-### 8. Agent-Facing Context Pack Metadata
+### 8. Product Ideas Worth Borrowing
+
+- MoltBrain is worth treating as a useful comparison point for operator experience, not as a blueprint for Shellbrain's trust model.
+- Borrow the parts that improve discoverability, observability, and day-to-day usability without giving up Shellbrain's explicit evidence discipline.
+
+Near-term product ideas worth borrowing:
+
+- make the install and bootstrap path feel more like a polished user tool:
+  - prefer a crisp global-install story
+  - consider a `shellbrain doctor` or equivalent environment check
+  - make database/bootstrap state easier to verify at a glance
+- add a proper operator-facing viewer:
+  - browse memories by repo, kind, and recency
+  - inspect evidence links and utility history
+  - inspect what a read returned and why
+  - inspect episodes and episode events without raw SQL
+- add analytics and export surfaces:
+  - session-level usage summaries
+  - memory creation / retrieval / utility trends
+  - lightweight export for backup, analysis, or sharing
+- add curation affordances where they help humans manage the corpus:
+  - favorites / pins for especially important memories
+  - lightweight tags or labels if they improve navigation
+  - manual review surfaces for high-value memories
+
+What not to borrow by default:
+
+- do not make durable memory creation fully automatic
+- do not replace explicit `events -> evidence_refs -> create/update` with summary-only extraction
+- do not blur the distinction between episodic capture and durable semantic / procedural memory
+
+The right borrowing strategy is:
+
+- borrow MoltBrain's product polish and operator visibility
+- keep Shellbrain's evidence-backed, typed, case-based reasoning core intact
+
+### 9. Agent-Facing Context Pack Metadata
 
 - The read result already returns structured JSON with top-level sections:
   - `meta`
@@ -178,7 +214,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
 - Keep `scenarios` explicitly deferred for now.
 - Do not treat scenario lift as part of the current v1 output surface until it is intentionally reintroduced.
 
-### 9. Retrieval Metadata and Usage Signals
+### 10. Retrieval Metadata and Usage Signals
 
 - Add lightweight metadata to every read result so behavior is inspectable without digging through logs.
 - Useful fields to include:
@@ -197,7 +233,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
   - stale-shellbrain hit rate
   - duplicate / near-duplicate retrieval rate
 
-### 10. System Performance Metrics
+### 11. System Performance Metrics
 
 - Define a small metrics set that tells us whether the shellbrain setup is becoming more useful.
 - Candidate metrics:
@@ -213,7 +249,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
 
 ## Later Work
 
-### 11. Episodes and Session Transfer Support
+### 12. Episodes and Session Transfer Support
 
 - `episodes` and `episode_events` are implemented and validated end to end.
 - Remaining work is to operationalize the rest of the episodic model:
@@ -221,7 +257,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
   - add execution tests that prove transfer writes work against PostgreSQL
   - decide how transfer events should participate in agent-facing analytics
 
-### 12. Later: Local Model for Triage / Filtering
+### 13. Later: Local Model for Triage / Filtering
 
 - Consider a smaller local model ahead of the main model for cheap first-pass categorization or filtering.
 - Possible uses:
@@ -231,7 +267,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
   - perform cheap reranking before the higher-cost model sees context
 - Treat this as a later optimization after baseline metadata and metrics exist, so we can measure whether it actually improves quality, latency, or cost.
 
-### 13. Usability: Batch Questions for Memory Reads
+### 14. Usability: Batch Questions for Memory Reads
 
 - Support a single shellbrain-read call that accepts multiple questions at once, instead of forcing the LLM into sequential reads.
 - The goal is to let the model ask for "everything I need to know" in one interaction when it has several sub-questions.
@@ -243,7 +279,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
 - This should reduce extra tool turns and token burn caused by back-to-back shellbrain queries.
 - Design the interface so batching is a first-class usability path, not just a thin wrapper around repeated single-question retrieval.
 
-### 14. Later: Scenario Lift
+### 15. Later: Scenario Lift
 
 - Keep scenario lift out of the current v1 read output.
 - Revisit it later as a separate project once the atomic-shellbrain path, metadata, and operational surface are stable.
@@ -253,7 +289,7 @@ This is worth exploring because a supervisor loop could reduce protocol entropy 
   - constructor trigger boundaries
   - pack quotas and display shape
 
-### 15. V2: Automatic Related-Memory Reinforcement
+### 16. V2: Automatic Related-Memory Reinforcement
 
 - Treat this as v2, not v1.
 - Add a background task that looks at which memories are repeatedly retrieved, cited, or used together.
