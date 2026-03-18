@@ -12,6 +12,7 @@ from shellbrain.core.interfaces.repos import (
     IMemoriesRepo,
     IReadPolicyRepo,
     ISemanticRetrievalRepo,
+    ITelemetryRepo,
     IUtilityRepo,
 )
 from shellbrain.core.interfaces.retrieval import IVectorSearch
@@ -29,6 +30,7 @@ class IUnitOfWork(ABC):
     semantic_retrieval: ISemanticRetrievalRepo
     keyword_retrieval: IKeywordRetrievalRepo
     read_policy: IReadPolicyRepo
+    telemetry: ITelemetryRepo
     vector_search: IVectorSearch | None
 
     @abstractmethod

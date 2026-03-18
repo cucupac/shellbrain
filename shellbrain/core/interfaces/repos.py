@@ -9,6 +9,15 @@ from shellbrain.core.entities.evidence import EvidenceRef
 from shellbrain.core.entities.episodes import Episode, EpisodeEvent, SessionTransfer
 from shellbrain.core.entities.facts import FactUpdate, ProblemAttempt
 from shellbrain.core.entities.memory import Memory
+from shellbrain.core.entities.telemetry import (
+    EpisodeSyncRunRecord,
+    EpisodeSyncToolTypeRecord,
+    OperationInvocationRecord,
+    ReadResultItemRecord,
+    ReadSummaryRecord,
+    WriteEffectItemRecord,
+    WriteSummaryRecord,
+)
 from shellbrain.core.entities.utility import UtilityObservation
 
 
@@ -220,3 +229,39 @@ class IReadPolicyRepo(ABC):
         min_strength: float,
     ) -> Sequence[dict[str, Any]]:
         """This method returns visible association neighbors for an anchor memory."""
+
+
+class ITelemetryRepo(ABC):
+    """This interface defines append-heavy telemetry persistence operations."""
+
+    @abstractmethod
+    def insert_operation_invocation(self, record: OperationInvocationRecord) -> None:
+        """This method appends one command-level telemetry row."""
+
+    @abstractmethod
+    def insert_read_summary(
+        self,
+        summary: ReadSummaryRecord,
+        items: Sequence[ReadResultItemRecord],
+    ) -> None:
+        """This method persists one read summary row and its ordered result items."""
+
+    @abstractmethod
+    def insert_write_summary(
+        self,
+        summary: WriteSummaryRecord,
+        items: Sequence[WriteEffectItemRecord],
+    ) -> None:
+        """This method persists one write summary row and its ordered effect items."""
+
+    @abstractmethod
+    def insert_episode_sync_run(
+        self,
+        run: EpisodeSyncRunRecord,
+        tool_types: Sequence[EpisodeSyncToolTypeRecord],
+    ) -> None:
+        """This method appends one sync-run row and its per-tool aggregates."""
+
+    @abstractmethod
+    def update_operation_polling(self, invocation_id: str, *, attempted: bool, started: bool) -> None:
+        """This method patches the poller-start flags for one existing invocation row."""

@@ -6,6 +6,7 @@ from collections.abc import Iterable, Sequence
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from shellbrain.periphery.episodes.tool_filter import should_keep_tool_result, summarize_tool_result
@@ -52,6 +53,19 @@ def find_latest_claude_code_session_for_repo(
 ) -> dict[str, Any] | None:
     """Return the most recently updated Claude Code session for one repo root."""
 
+    candidates = list_claude_code_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda candidate: candidate["updated_at"])
+
+
+def list_claude_code_sessions_for_repo(
+    *,
+    repo_root: Path,
+    search_roots: Sequence[Path],
+) -> list[dict[str, Any]]:
+    """Return all repo-matching Claude Code sessions under the bounded search roots."""
+
     candidates: list[dict[str, Any]] = []
     resolved_repo_root = repo_root.resolve()
     for root in search_roots:
@@ -79,9 +93,7 @@ def find_latest_claude_code_session_for_repo(
                     "updated_at": transcript_path.stat().st_mtime,
                 }
             )
-    if not candidates:
-        return None
-    return max(candidates, key=lambda candidate: candidate["updated_at"])
+    return candidates
 
 
 def normalize_claude_code_transcript(
@@ -269,12 +281,17 @@ def _normalize_tool_results(
                 occurred_at=str(payload.get("timestamp") or ""),
                 content_kind="tool_result",
                 content_text=summarize_tool_result(
-                    tool_name=tool_name if isinstance(tool_name, str) else None,
+                    tool_name=_normalized_tool_name(tool_name=tool_name, command=command),
                     status="error" if is_error else "ok",
                     text=text,
                     command=command,
                     is_error=is_error,
                 ),
+                extra_fields={
+                    "tool_name": _normalized_tool_name(tool_name=tool_name, command=command),
+                    "status": "error" if is_error else _normalized_tool_status(text=text),
+                    "is_error": is_error,
+                },
             )
         )
     return events
@@ -319,10 +336,11 @@ def _build_event(
     occurred_at: str,
     content_kind: str,
     content_text: str,
+    extra_fields: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Construct one shared normalized Claude Code event payload."""
 
-    return {
+    event = {
         "host_app": "claude_code",
         "host_session_key": host_session_key,
         "host_event_key": host_event_key,
@@ -332,6 +350,31 @@ def _build_event(
         "content_text": content_text,
         "raw_ref": f"claude_code://sessions/{host_session_key}#event={host_event_key}",
     }
+    if extra_fields:
+        event.update(extra_fields)
+    return event
+
+
+def _normalized_tool_name(*, tool_name: object, command: str | None) -> str:
+    """Normalize Claude Code tool identifiers into stable analytics-friendly names."""
+
+    if isinstance(tool_name, str) and tool_name:
+        return "exec_command" if tool_name == "Bash" else tool_name
+    if command is not None:
+        return "exec_command"
+    return "exec_command"
+
+
+def _normalized_tool_status(*, text: str | None) -> str:
+    """Infer a stable ok/error status for Claude tool results without explicit status."""
+
+    lowered = (text or "").lower()
+    if any(token in lowered for token in ("failed", "error", "exception")):
+        return "error"
+    match = re.search(r"process exited with code (\d+)", text or "", re.IGNORECASE)
+    if match is not None and int(match.group(1)) != 0:
+        return "error"
+    return "ok"
 
 
 def _fallback_key(payload: dict[str, Any], raw_line: str, line_number: int) -> str:

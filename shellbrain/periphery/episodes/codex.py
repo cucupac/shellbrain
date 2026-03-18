@@ -6,6 +6,7 @@ from collections.abc import Iterable, Sequence
 import hashlib
 import json
 from pathlib import Path
+import re
 from typing import Any
 
 from shellbrain.periphery.episodes.tool_filter import should_keep_tool_result, summarize_tool_result
@@ -36,12 +37,21 @@ def resolve_codex_transcript_path(
 def find_latest_codex_session_for_repo(*, repo_root: Path, search_roots: Sequence[Path]) -> dict[str, Any] | None:
     """Return the most recently updated Codex session for one repo root."""
 
+    candidates = list_codex_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+    if not candidates:
+        return None
+    return max(candidates, key=lambda candidate: candidate["updated_at"])
+
+
+def list_codex_sessions_for_repo(*, repo_root: Path, search_roots: Sequence[Path]) -> list[dict[str, Any]]:
+    """Return all repo-matching Codex sessions under the bounded search roots."""
+
     candidates: list[dict[str, Any]] = []
     resolved_repo_root = repo_root.resolve()
     for root in search_roots:
         if not root.exists():
             continue
-        for transcript_path in root.rglob("rollout-*.jsonl"):
+        for transcript_path in root.rglob("*.jsonl"):
             metadata = _read_session_meta(transcript_path)
             cwd = metadata.get("cwd")
             session_id = metadata.get("id")
@@ -60,9 +70,7 @@ def find_latest_codex_session_for_repo(*, repo_root: Path, search_roots: Sequenc
                     "updated_at": transcript_path.stat().st_mtime,
                 }
             )
-    if not candidates:
-        return None
-    return max(candidates, key=lambda candidate: candidate["updated_at"])
+    return candidates
 
 
 def normalize_codex_transcript(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
@@ -179,6 +187,11 @@ def _normalize_simple_tool_result(payload: dict[str, Any], *, host_session_key: 
             text=text,
             summary=summary,
         ),
+        extra_fields={
+            "tool_name": _normalized_tool_name(tool_name=tool_name, command=None),
+            "status": _normalized_tool_status(status=status, text=text, summary=summary),
+            "is_error": _normalized_tool_status(status=status, text=text, summary=summary) == "error",
+        },
     )
 
 
@@ -279,6 +292,14 @@ def _normalize_function_call_output(
             text=text,
             command=command,
         ),
+        extra_fields={
+            "tool_name": _normalized_tool_name(
+                tool_name=tool_name if isinstance(tool_name, str) else None,
+                command=command,
+            ),
+            "status": _normalized_tool_status(status=None, text=text, summary=None),
+            "is_error": _normalized_tool_status(status=None, text=text, summary=None) == "error",
+        },
     )
 
 
@@ -341,10 +362,11 @@ def _build_event(
     occurred_at: str,
     content_kind: str,
     content_text: str,
+    extra_fields: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Construct one shared normalized event payload."""
 
-    return {
+    event = {
         "host_app": "codex",
         "host_session_key": host_session_key,
         "host_event_key": host_event_key,
@@ -354,6 +376,34 @@ def _build_event(
         "content_text": content_text,
         "raw_ref": f"codex://threads/{host_session_key}#event={host_event_key}",
     }
+    if extra_fields:
+        event.update(extra_fields)
+    return event
+
+
+def _normalized_tool_name(*, tool_name: str | None, command: str | None) -> str:
+    """Normalize Codex tool identifiers into stable analytics-friendly names."""
+
+    if isinstance(tool_name, str) and tool_name.strip():
+        return tool_name.strip()
+    if command:
+        return "exec_command"
+    return "unknown_tool"
+
+
+def _normalized_tool_status(*, status: str | None, text: str | None, summary: str | None) -> str:
+    """Derive one compact ok/error status for a normalized tool event."""
+
+    if isinstance(status, str) and status.strip():
+        normalized = status.strip().lower()
+        return "error" if normalized in {"error", "failed", "failure"} else "ok"
+    combined = " ".join(part for part in (summary, text) if isinstance(part, str)).lower()
+    if any(token in combined for token in ("failed", "error", "exception")):
+        return "error"
+    match = re.search(r"process exited with code (\d+)", text or "", re.IGNORECASE)
+    if match is not None and int(match.group(1)) != 0:
+        return "error"
+    return "ok"
 
 
 def _fallback_key(payload: dict[str, Any], raw_line: str, line_number: int) -> str:

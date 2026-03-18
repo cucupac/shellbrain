@@ -16,6 +16,7 @@ The report is updated on every test run and includes:
   - `# Events Tests`
   - `# Persistence Tests`
   - `# Read Tests`
+  - `# Telemetry Tests`
   - `# Update Tests`
 - nested headings for validation/execution groupings and deeper folder slices
 - one-line descriptions computed deterministically from test-function docstring first lines
@@ -29,3 +30,4 @@ The report is updated on every test run and includes:
   - `tests/operations/<operation>/validation/**` -> `<operation>/validation`
   - `tests/operations/<operation>/execution/**` -> `<operation>/execution`
   - `tests/operations/<operation>/**` (when no validation/execution split exists) -> `<operation>`
+  - `tests/operations/telemetry/**` -> `# Telemetry Tests`
