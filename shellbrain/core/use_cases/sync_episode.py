@@ -37,6 +37,7 @@ def sync_episode_from_host(
         host_session_key=host_session_key,
         transcript_path=transcript_path,
     )
+    counts = _count_normalized_events(normalized_events)
 
     canonical_thread_id = f"{host_app}:{host_session_key}"
     episode = uow.episodes.get_episode_by_thread(repo_id=repo_id, thread_id=canonical_thread_id)
@@ -83,6 +84,12 @@ def sync_episode_from_host(
         "thread_id": canonical_thread_id,
         "imported_event_count": imported_count,
         "transcript_path": str(transcript_path),
+        "total_event_count": counts["total_event_count"],
+        "user_event_count": counts["user_event_count"],
+        "assistant_event_count": counts["assistant_event_count"],
+        "tool_event_count": counts["tool_event_count"],
+        "system_event_count": counts["system_event_count"],
+        "tool_type_counts": counts["tool_type_counts"],
     }
 
 
@@ -105,3 +112,30 @@ def _earliest_event_timestamp(events: Sequence[dict[str, Any]]) -> datetime | No
     if not timestamps:
         return None
     return min(timestamps)
+
+
+def _count_normalized_events(events: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    """Compute telemetry-friendly source and tool-type counts from normalized events."""
+
+    tool_type_counts: dict[str, int] = {}
+    counts = {
+        "total_event_count": len(events),
+        "user_event_count": 0,
+        "assistant_event_count": 0,
+        "tool_event_count": 0,
+        "system_event_count": 0,
+        "tool_type_counts": tool_type_counts,
+    }
+    for event in events:
+        source = str(event.get("source") or "")
+        if source == "user":
+            counts["user_event_count"] += 1
+        elif source == "assistant":
+            counts["assistant_event_count"] += 1
+        elif source == "tool":
+            counts["tool_event_count"] += 1
+            tool_name = str(event.get("tool_name") or "unknown_tool")
+            tool_type_counts[tool_name] = tool_type_counts.get(tool_name, 0) + 1
+        elif source == "system":
+            counts["system_event_count"] += 1
+    return counts

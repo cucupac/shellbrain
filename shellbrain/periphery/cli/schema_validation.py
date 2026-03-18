@@ -21,10 +21,13 @@ class AgentReadRequest(StrictBaseModel):
 
     op: Literal["read"] = "read"
     repo_id: str | None = None
+    mode: Literal["ambient", "targeted"] | None = None
     query: str = Field(min_length=1)
+    include_global: bool | None = None
     kinds: (
         list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
     ) = None
+    limit: int | None = Field(default=None, ge=1, le=100)
 
     @field_validator("kinds")
     @classmethod

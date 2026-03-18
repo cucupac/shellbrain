@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>shellbrain</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f5f0e8;
+      --text: #16130f;
+      --muted: #8a7f70;
+      --muted-light: #b0a594;
+      --rule: rgba(22, 19, 15, 0.10);
+      --rule-strong: rgba(22, 19, 15, 0.18);
+      --accent: #2a2520;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+    }
+
+    body {
+      font-family: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .mono {
+      font-family: "DM Mono", "SF Mono", "Fira Code", "Consolas", monospace;
+    }
+
+    /* ─── HERO ─────────────────────────────────── */
+
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 32px 24px;
+      position: relative;
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 40%, rgba(255,255,255,0.45), transparent),
+        var(--bg);
+    }
+
+    .hero-inner {
+      width: min(920px, 100%);
+      padding: clamp(32px, 6vw, 72px);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .hero-label {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 36px;
+    }
+
+    .typing-area {
+      min-height: 7rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
+
+    .typed-text {
+      font-family: "Bricolage Grotesque", serif;
+      font-size: clamp(2.1rem, 5.2vw, 4.4rem);
+      font-weight: 500;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      text-wrap: balance;
+      text-align: center;
+    }
+
+    .caret {
+      display: inline-block;
+      width: 3px;
+      height: 0.82em;
+      margin-left: 0.06em;
+      vertical-align: -0.04em;
+      background: var(--text);
+      animation: blink 0.9s steps(1, end) infinite;
+    }
+
+    .hero-counter {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--muted-light);
+      margin-top: 44px;
+    }
+
+    .scroll-hint {
+      position: absolute;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--muted-light);
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      animation: drift 2.4s ease-in-out infinite;
+    }
+
+    .scroll-hint svg {
+      width: 16px;
+      height: 16px;
+      stroke: var(--muted-light);
+    }
+
+    /* ─── DIVIDER ──────────────────────────────── */
+
+    .divider {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+    }
+
+    .divider-line {
+      width: min(800px, 80%);
+      height: 1px;
+      background: var(--rule-strong);
+    }
+
+    /* ─── INTRO ────────────────────────────────── */
+
+    .intro {
+      padding: clamp(72px, 10vw, 130px) 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .intro-inner {
+      width: min(640px, 100%);
+    }
+
+    .intro-inner p {
+      font-size: clamp(1.1rem, 2vw, 1.32rem);
+      line-height: 1.72;
+      color: var(--text);
+      font-weight: 300;
+      margin-bottom: 1.3em;
+    }
+
+    .intro-inner p:last-child {
+      margin-bottom: 0;
+    }
+
+    .intro-inner strong {
+      font-weight: 500;
+    }
+
+    /* ─── CONTENT SECTIONS ─────────────────────── */
+
+    .content-section {
+      padding: clamp(56px, 8vw, 100px) 24px;
+    }
+
+    .content-section-inner {
+      width: min(680px, 100%);
+      margin: 0 auto;
+    }
+
+    .section-eyebrow {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .section-title {
+      font-family: "Bricolage Grotesque", serif;
+      font-size: clamp(1.5rem, 3vw, 2.1rem);
+      font-weight: 600;
+      letter-spacing: -0.025em;
+      line-height: 1.15;
+      margin-bottom: 32px;
+    }
+
+    .section-body p {
+      font-size: clamp(1rem, 1.6vw, 1.1rem);
+      line-height: 1.75;
+      font-weight: 300;
+      margin-bottom: 1em;
+    }
+
+    .section-body p:last-child {
+      margin-bottom: 0;
+    }
+
+    .section-body .standout {
+      font-weight: 400;
+      color: var(--text);
+    }
+
+    .section-body .quiet {
+      color: var(--muted);
+      font-size: 0.95em;
+    }
+
+    .reveal {
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─── DARK SECTION ─────────────────────────── */
+
+    .dark {
+      background: var(--accent);
+      color: #f5f0e8;
+    }
+
+    .dark .section-eyebrow {
+      color: rgba(245, 240, 232, 0.38);
+    }
+
+    .dark .section-body p {
+      color: rgba(245, 240, 232, 0.78);
+    }
+
+    .dark .section-body .standout {
+      color: #f5f0e8;
+    }
+
+    .dark .divider-line {
+      background: rgba(245, 240, 232, 0.12);
+    }
+
+    /* ─── OPERATIONS GRID ──────────────────────── */
+
+    .ops-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+      margin-top: 32px;
+    }
+
+    .ops-card {
+      background: var(--bg);
+      padding: clamp(24px, 3.5vw, 40px);
+    }
+
+    .ops-card h4 {
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      margin-bottom: 10px;
+    }
+
+    .ops-card p {
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+      font-weight: 300;
+      line-height: 1.7;
+      color: var(--muted);
+    }
+
+    /* ─── FOOTER ───────────────────────────────── */
+
+    .footer {
+      padding: clamp(56px, 8vw, 96px) 24px;
+      text-align: center;
+    }
+
+    .footer-brand {
+      font-family: "Bricolage Grotesque", serif;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 600;
+      letter-spacing: -0.03em;
+      margin-bottom: 12px;
+    }
+
+    .footer-sub {
+      font-family: "DM Mono", monospace;
+      font-size: 12px;
+      color: var(--muted);
+      letter-spacing: 0.06em;
+    }
+
+    /* ─── ANIMATIONS ───────────────────────────── */
+
+    @keyframes blink {
+      0%, 48% { opacity: 1; }
+      52%, 100% { opacity: 0; }
+    }
+
+    @keyframes drift {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(5px); }
+    }
+
+    /* ─── RESPONSIVE ───────────────────────────── */
+
+    @media (max-width: 640px) {
+      .ops-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .typing-area {
+        min-height: 9rem;
+      }
+
+      .scroll-hint {
+        bottom: 20px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .caret { animation: none; }
+      .scroll-hint { animation: none; }
+      .reveal {
+        opacity: 1;
+        transform: none;
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ─── HERO ──────────────────────────────────── -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div class="hero-label">shellbrain</div>
+      <div class="typing-area">
+        <p class="typed-text" id="typed" aria-live="polite"></p><span class="caret" aria-hidden="true"></span>
+      </div>
+      <div class="hero-counter mono" id="counter"></div>
+    </div>
+    <div class="scroll-hint" id="scrollHint">
+      <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5">
+        <path d="M8 2v12M3 9l5 5 5-5"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- ─── INTRO ─────────────────────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="intro">
+    <div class="intro-inner reveal" data-reveal>
+      <p>
+        shellbrain gives agents long-term memory grounded in what actually happened.
+      </p>
+      <p>
+        it retrieves that memory when the current problem resembles something already seen. over time, the agent solves faster, fails less, and recalls things it would never think to look for.
+      </p>
+      <p>
+        the current repo is ground truth. memories help solve the problem in front of you. they never overrule what the code says now.
+      </p>
+    </div>
+  </section>
+
+  <!-- ─── CASE-BASED REASONING ──────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="content-section">
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">Procedural memory</div>
+      <h2 class="section-title">Case-based reasoning.</h2>
+      <div class="section-body">
+        <p>shellbrain remembers every problem you have ever worked on.</p>
+        <p>shellbrain remembers every working solution.</p>
+        <p>shellbrain remembers every failed attempt so it can learn from what did not work.</p>
+        <p>solutions and failed tactics are linked to the problem they belong to.</p>
+        <p>each problem, its solutions, and its failed tactics form a <strong>scenario</strong>. shellbrain remembers all of your scenarios.</p>
+        <p class="standout">the next time a similar problem appears, shellbrain retrieves the relevant scenarios and gives the agent a head start.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── KNOWLEDGE THAT EVOLVES ────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="content-section">
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">Semantic memory</div>
+      <h2 class="section-title">Knowledge that evolves.</h2>
+      <div class="section-body">
+        <p>shellbrain remembers facts about the world, your repo, and your code.</p>
+        <p>shellbrain never overwrites facts. when a fact changes, shellbrain stores the change that invalidated it, stores the updated fact, and links all three: old fact → change → new fact.</p>
+        <p class="standout">beliefs are never silently mutated. history is preserved.</p>
+        <p>shellbrain remembers how you like to work. repo conventions, style decisions, what should win when there is ambiguity. these are durable memories, learned from working with you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── GROUNDED IN EVIDENCE ──────────────────── -->
+
+  <section class="content-section dark">
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">Episodic memory</div>
+      <h2 class="section-title">Grounded in evidence.</h2>
+      <div class="section-body">
+        <p>shellbrain records every interaction between you and your agent. all dialog. all tool use. every event from every work session.</p>
+        <p>this is episodic memory. it is the foundation everything else is built on.</p>
+        <p>every durable memory must trace back to a real event.</p>
+        <p class="standout">shellbrain would rather have no memory than a memory it cannot justify.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CREATIVE RECALL ───────────────────────── -->
+
+  <section class="content-section">
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">Associative memory</div>
+      <h2 class="section-title">Creative recall.</h2>
+      <div class="section-body">
+        <p>memories relate to each other. shellbrain captures these relationships in two ways.</p>
+        <p>explicit associations are formal links in a knowledge graph.</p>
+        <p>implicit associations are computed from semantic similarity via vector embeddings.</p>
+        <p>when a problem triggers retrieval, shellbrain does not just return direct matches. it seeds candidates from semantic and keyword search, then expands outward through linked scenarios, fact-update chains, association edges, and semantic neighbors. it scores, deduplicates, and returns a bounded context pack.</p>
+        <p>each result explains why it was included. the pack is capped. retrieval is precise, not exhaustive.</p>
+        <p class="standout">chaining through multiple associative hops surfaces memories the agent would not think to look for. recall starts to look like creativity.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── UTILITY ───────────────────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="content-section">
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">Feedback</div>
+      <h2 class="section-title">Utility is per problem.</h2>
+      <div class="section-body">
+        <p>a memory can be critical for one class of problem and useless for another.</p>
+        <p>shellbrain does not assign a single global score. it records utility per problem, a vote in [-1.0, 1.0] for each memory against each problem it was recalled for.</p>
+        <p class="standout">global utility is derived from these observations, not assumed.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOUR OPERATIONS ───────────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="content-section">
+    <div class="content-section-inner reveal" data-reveal>
+      <h2 class="section-title">Four operations.</h2>
+      <div class="section-body">
+        <p>that is the entire surface area.</p>
+      </div>
+      <div class="ops-grid">
+        <div class="ops-card">
+          <h4>read</h4>
+          <p>retrieve memories related to a concrete problem. does not mutate state.</p>
+        </div>
+        <div class="ops-card">
+          <h4>events</h4>
+          <p>inspect recent evidence from the active session. how the agent knows what just happened.</p>
+        </div>
+        <div class="ops-card">
+          <h4>create</h4>
+          <p>add one durable memory. at least one evidence reference is required.</p>
+        </div>
+        <div class="ops-card">
+          <h4>update</h4>
+          <p>record utility, evolve facts, add associations, or archive.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ────────────────────────────────── -->
+  <section class="footer">
+    <div class="footer-brand">shellbrain</div>
+    <div class="footer-sub">a knowledge engine for AI agents</div>
+  </section>
+
+  <!-- ─── SCRIPTS ───────────────────────────────── -->
+  <script>
+    const scenes = [
+      "agents forget.",
+      "what if they didn't?",
+      "every problem. every failure. every solution.",
+      "every memory answerable to truth.",
+      "every experience compounding into the next.",
+      "until recall looks like creativity.",
+      "shellbrain."
+    ];
+
+    const el = document.getElementById("typed");
+    const counterEl = document.getElementById("counter");
+    const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const cfg = prefersReduced
+      ? { type: 0, erase: 0, hold: 2800, gap: 200 }
+      : { type: 30, erase: 14, hold: 1200, gap: 320 };
+
+    let idx = 0, ch = 0, deleting = false, timer;
+
+    function render() {
+      el.textContent = scenes[idx].slice(0, ch);
+      counterEl.textContent = `${String(idx + 1).padStart(2, "0")} / ${String(scenes.length).padStart(2, "0")}`;
+    }
+
+    function sched(ms) {
+      clearTimeout(timer);
+      timer = setTimeout(tick, ms);
+    }
+
+    function nextScene() {
+      deleting = false;
+      ch = 0;
+      idx = (idx + 1) % scenes.length;
+      render();
+      sched(cfg.gap);
+    }
+
+    function tick() {
+      const s = scenes[idx];
+
+      if (!deleting && ch < s.length) { ch++; render(); sched(cfg.type); return; }
+      if (!deleting && ch === s.length) {
+        deleting = true;
+        if (idx === 0) sched(900);
+        else if (idx === 1) sched(1000);
+        else if (idx === scenes.length - 1) sched(2800);
+        else sched(cfg.hold);
+        return;
+      }
+      if (deleting && ch > 0) { ch--; render(); sched(cfg.erase); return; }
+      nextScene();
+    }
+
+    render();
+    sched(cfg.gap + 500);
+
+    window.addEventListener("keydown", (e) => {
+      if (e.code === "Space" && document.activeElement === document.body) {
+        e.preventDefault();
+        clearTimeout(timer);
+        nextScene();
+      }
+    });
+
+    // Scroll reveal with stagger
+    const reveals = document.querySelectorAll("[data-reveal]");
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("visible");
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.12 });
+
+    reveals.forEach((el) => observer.observe(el));
+
+    const scrollHint = document.getElementById("scrollHint");
+    let hintHidden = false;
+    window.addEventListener("scroll", () => {
+      if (!hintHidden && window.scrollY > 80) {
+        scrollHint.style.opacity = "0";
+        scrollHint.style.transition = "opacity 0.4s ease";
+        hintHidden = true;
+      }
+    }, { passive: true });
+  </script>
+</body>
+</html>

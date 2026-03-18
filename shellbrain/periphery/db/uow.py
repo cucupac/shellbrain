@@ -10,6 +10,7 @@ from shellbrain.periphery.db.repos.relational.evidence_repo import EvidenceRepo
 from shellbrain.periphery.db.repos.relational.experiences_repo import ExperiencesRepo
 from shellbrain.periphery.db.repos.relational.memories_repo import MemoriesRepo
 from shellbrain.periphery.db.repos.relational.read_policy_repo import ReadPolicyRepo
+from shellbrain.periphery.db.repos.relational.telemetry_repo import TelemetryRepo
 from shellbrain.periphery.db.repos.relational.utility_repo import UtilityRepo
 from shellbrain.periphery.db.repos.semantic.keyword_retrieval_repo import KeywordRetrievalRepo
 from shellbrain.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
@@ -47,6 +48,7 @@ class PostgresUnitOfWork(IUnitOfWork):
         self.semantic_retrieval = SemanticRetrievalRepo(self._session)
         self.keyword_retrieval = KeywordRetrievalRepo(self._session)
         self.read_policy = ReadPolicyRepo(self._session)
+        self.telemetry = TelemetryRepo(self._session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

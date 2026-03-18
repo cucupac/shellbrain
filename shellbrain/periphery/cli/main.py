@@ -8,7 +8,14 @@ from pathlib import Path
 import sys
 from textwrap import dedent
 from typing import Any, Sequence
+from uuid import uuid4
 
+from shellbrain.core.entities.telemetry import OperationDispatchTelemetryContext
+from shellbrain.periphery.telemetry import (
+    get_operation_telemetry_context,
+    reset_operation_telemetry_context,
+    set_operation_telemetry_context,
+)
 from shellbrain.periphery.cli.hydration import RepoContext, resolve_repo_context
 
 
@@ -30,11 +37,11 @@ _TOP_LEVEL_HELP = dedent(
       - In Codex Desktop or similar tool shells, start via `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'`.
       - Use the same wrapper shape for actual Shellbrain commands when the session depends on machine-level PATH and `SHELLBRAIN_DB_DSN`.
 
-    Protocol:
+    Typical workflow:
       1. Query with the concrete bug, subsystem, decision, or constraint you are working on.
          Avoid generic prompts like "what should I know about this repo?"
       2. Re-run `read` whenever the search shifts or you get stuck.
-      3. Before evidence-bearing writes, run `events` and reuse returned ids verbatim as `evidence_refs`.
+      3. Run `events` before every write and reuse returned ids verbatim as `evidence_refs`.
       4. At session end, normalize the episode into `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories, then record `utility_vote` updates for memories that helped or misled.
 
     Prerequisites:
@@ -242,11 +249,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
         return 2
 
-    result = _dispatch_operation_command(args.command, payload, repo_context)
-    _print_operation_result(result)
-    if result.get("status") == "ok" and not getattr(args, "no_sync", False):
-        _maybe_start_sync(repo_context)
-    return 0
+    operation_context = OperationDispatchTelemetryContext(
+        invocation_id=str(uuid4()),
+        repo_root=str(repo_context.repo_root),
+        no_sync=bool(getattr(args, "no_sync", False)),
+    )
+    token = set_operation_telemetry_context(operation_context)
+    try:
+        result = _dispatch_operation_command(args.command, payload, repo_context)
+        _print_operation_result(result)
+        if result.get("status") == "ok":
+            if getattr(args, "no_sync", False):
+                _update_operation_polling_status(
+                    invocation_id=operation_context.invocation_id,
+                    attempted=False,
+                    started=False,
+                )
+            else:
+                started = bool(_maybe_start_sync(repo_context))
+                _update_operation_polling_status(
+                    invocation_id=operation_context.invocation_id,
+                    attempted=True,
+                    started=started,
+                )
+        return 0
+    finally:
+        reset_operation_telemetry_context(token)
 
 
 def _add_repo_context_arguments(parser: argparse.ArgumentParser, *, suppress_default: bool = False) -> None:
@@ -296,6 +324,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             embedding_model=get_embedding_model(),
             inferred_repo_id=repo_context.repo_id,
             defaults=get_create_hydration_defaults(),
+            telemetry_context=get_operation_telemetry_context(),
         )
     if command == "read":
         return handle_read(
@@ -303,12 +332,14 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             uow_factory=uow_factory,
             inferred_repo_id=repo_context.repo_id,
             defaults=get_read_hydration_defaults(),
+            telemetry_context=get_operation_telemetry_context(),
         )
     if command == "update":
         return handle_update(
             payload,
             uow_factory=uow_factory,
             inferred_repo_id=repo_context.repo_id,
+            telemetry_context=get_operation_telemetry_context(),
         )
     if command == "events":
         return handle_events(
@@ -316,6 +347,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             uow_factory=uow_factory,
             inferred_repo_id=repo_context.repo_id,
             repo_root=repo_context.repo_root,
+            telemetry_context=get_operation_telemetry_context(),
         )
     raise ValueError(f"Unsupported command: {command}")
 
@@ -341,15 +373,31 @@ def _print_operation_result(result: dict[str, Any]) -> None:
     print(render(result))
 
 
-def _maybe_start_sync(repo_context: RepoContext) -> None:
+def _maybe_start_sync(repo_context: RepoContext) -> bool:
     """Best-effort startup for repo-local episode sync after a successful command."""
 
     try:
         from shellbrain.periphery.episodes.launcher import ensure_episode_sync_started
 
-        ensure_episode_sync_started(repo_id=repo_context.repo_id, repo_root=repo_context.repo_root)
+        return bool(ensure_episode_sync_started(repo_id=repo_context.repo_id, repo_root=repo_context.repo_root))
     except Exception:
-        pass
+        return False
+
+
+def _update_operation_polling_status(*, invocation_id: str, attempted: bool, started: bool) -> None:
+    """Patch poller-start telemetry flags without affecting the visible command result."""
+
+    try:
+        from shellbrain.boot.use_cases import get_uow_factory
+
+        with get_uow_factory()() as uow:
+            uow.telemetry.update_operation_polling(
+                invocation_id,
+                attempted=attempted,
+                started=started,
+            )
+    except Exception:
+        return
 
 
 if __name__ == "__main__":

@@ -8,8 +8,11 @@ from datetime import datetime, timezone
 import json
 import time
 from pathlib import Path
+from time import perf_counter
+from uuid import uuid4
 
 from shellbrain.boot.use_cases import get_uow_factory
+from shellbrain.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
 from shellbrain.core.use_cases.sync_episode import sync_episode_from_host
 from shellbrain.periphery.episodes.source_discovery import (
     SUPPORTED_HOSTS,
@@ -17,6 +20,7 @@ from shellbrain.periphery.episodes.source_discovery import (
     discover_active_host_session,
     resolve_host_transcript_source,
 )
+from shellbrain.periphery.telemetry.sync_summary import build_episode_sync_records
 
 
 POLL_INTERVAL_SECONDS = 5
@@ -94,9 +98,10 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
             if not should_sync:
                 continue
 
+            sync_started_at = perf_counter()
             try:
                 with uow_factory() as uow:
-                    sync_episode_from_host(
+                    sync_result = sync_episode_from_host(
                         repo_id=repo_id,
                         host_app=host_app,
                         host_session_key=str(candidate["host_session_key"]),
@@ -111,14 +116,54 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
                     last_successful_sync_at=_utc_now().isoformat(),
                     last_error=None,
                 )
+                _record_sync_telemetry_best_effort(
+                    uow_factory=uow_factory,
+                    repo_id=repo_id,
+                    host_app=host_app,
+                    host_session_key=str(candidate["host_session_key"]),
+                    thread_id=str(sync_result["thread_id"]),
+                    episode_id=str(sync_result["episode_id"]),
+                    transcript_path=str(sync_result["transcript_path"]),
+                    outcome="ok",
+                    error_stage=None,
+                    error_message=None,
+                    duration_ms=int((perf_counter() - sync_started_at) * 1000),
+                    imported_event_count=int(sync_result["imported_event_count"]),
+                    total_event_count=int(sync_result["total_event_count"]),
+                    user_event_count=int(sync_result["user_event_count"]),
+                    assistant_event_count=int(sync_result["assistant_event_count"]),
+                    tool_event_count=int(sync_result["tool_event_count"]),
+                    system_event_count=int(sync_result["system_event_count"]),
+                    tool_type_counts=dict(sync_result["tool_type_counts"]),
+                )
                 saw_change = True
-            except FileNotFoundError as exc:
+            except Exception as exc:
                 _record_status(
                     repo_root=repo_root,
                     host_app=host_app,
                     host_session_key=str(candidate["host_session_key"]),
                     last_successful_sync_at=None,
                     last_error=str(exc),
+                )
+                _record_sync_telemetry_best_effort(
+                    uow_factory=uow_factory,
+                    repo_id=repo_id,
+                    host_app=host_app,
+                    host_session_key=str(candidate["host_session_key"]),
+                    thread_id=f"{host_app}:{candidate['host_session_key']}",
+                    episode_id=None,
+                    transcript_path=str(transcript_path),
+                    outcome="error",
+                    error_stage="sync",
+                    error_message=str(exc),
+                    duration_ms=int((perf_counter() - sync_started_at) * 1000),
+                    imported_event_count=0,
+                    total_event_count=0,
+                    user_event_count=0,
+                    assistant_event_count=0,
+                    tool_event_count=0,
+                    system_event_count=0,
+                    tool_type_counts={},
                 )
 
         if saw_change:
@@ -196,6 +241,58 @@ def _utc_now() -> datetime:
     """Return a timezone-aware current UTC time."""
 
     return datetime.now(timezone.utc)
+
+
+def _record_sync_telemetry_best_effort(
+    *,
+    uow_factory,
+    repo_id: str,
+    host_app: str,
+    host_session_key: str,
+    thread_id: str,
+    episode_id: str | None,
+    transcript_path: str | None,
+    outcome: str,
+    error_stage: str | None,
+    error_message: str | None,
+    duration_ms: int,
+    imported_event_count: int,
+    total_event_count: int,
+    user_event_count: int,
+    assistant_event_count: int,
+    tool_event_count: int,
+    system_event_count: int,
+    tool_type_counts: dict[str, int],
+) -> None:
+    """Persist one poller sync-run row without affecting the poller loop."""
+
+    try:
+        run, tool_types = build_episode_sync_records(
+            sync_run_id=str(uuid4()),
+            source="poller",
+            invocation_id=None,
+            repo_id=repo_id,
+            host_app=host_app,
+            host_session_key=host_session_key,
+            thread_id=thread_id,
+            episode_id=episode_id,
+            transcript_path=transcript_path,
+            outcome=outcome,
+            error_stage=error_stage,
+            error_message=error_message,
+            duration_ms=duration_ms,
+            imported_event_count=imported_event_count,
+            total_event_count=total_event_count,
+            user_event_count=user_event_count,
+            assistant_event_count=assistant_event_count,
+            tool_event_count=tool_event_count,
+            system_event_count=system_event_count,
+            tool_type_counts=tool_type_counts,
+        )
+        with uow_factory() as uow:
+            record_episode_sync_telemetry(uow=uow, run=run, tool_types=tool_types)
+    except Exception:
+        return
 
 
 if __name__ == "__main__":
