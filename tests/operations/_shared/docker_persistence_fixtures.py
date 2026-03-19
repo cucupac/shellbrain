@@ -116,7 +116,11 @@ class IsolatedDockerPostgres:
 
         self._run_repo_command(
             [_resolve_python_executable(), "-m", "shellbrain.periphery.cli.main", "admin", "migrate"],
-            env_overrides={"SHELLBRAIN_DB_DSN": self.dsn},
+            env_overrides={
+                "SHELLBRAIN_DB_DSN": self.dsn,
+                "SHELLBRAIN_DB_ADMIN_DSN": self.dsn,
+                "SHELLBRAIN_INSTANCE_MODE": "test",
+            },
         )
         self._rebind_runtime()
 

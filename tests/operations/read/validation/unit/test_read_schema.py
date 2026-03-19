@@ -79,8 +79,8 @@ def test_read_kinds_reject_duplicates() -> None:
     assert any((error.field or "").startswith("kinds") for error in errors)
 
 
-def test_read_rejects_config_override_knobs_at_agent_interface() -> None:
-    """read requests should always reject config override knobs at the agent interface."""
+def test_read_rejects_hidden_expansion_override_knobs_at_agent_interface() -> None:
+    """read requests should always reject hidden expansion override knobs at the agent interface."""
 
     payload = {
         "op": "read",
@@ -97,7 +97,4 @@ def test_read_rejects_config_override_knobs_at_agent_interface() -> None:
 
     assert request is None
     fields = {error.field for error in errors}
-    assert "mode" in fields
-    assert "include_global" in fields
-    assert "limit" in fields
     assert "expand" in fields

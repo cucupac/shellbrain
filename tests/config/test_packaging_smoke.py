@@ -90,7 +90,8 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
     """installed-package admin migrate should initialize an empty database from packaged artifacts."""
 
     base_dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
-    if not base_dsn:
+    admin_base_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", base_dsn or "")
+    if not base_dsn or not admin_base_dsn:
         pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
 
     repo_root = _repo_root()
@@ -104,7 +105,8 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
         install_runtime_deps=True,
     )
 
-    package_dsn, admin_dsn, db_name = _create_temp_database(base_dsn)
+    package_dsn, admin_dsn, db_name = _create_temp_database(base_dsn, admin_base_dsn)
+    package_admin_dsn = _replace_database_dsn(admin_base_dsn, db_name)
     try:
         completed = subprocess.run(
             [shellbrain_executable, "admin", "migrate"],
@@ -112,7 +114,12 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
             cwd=external_repo,
             text=True,
             capture_output=True,
-            env={**os.environ, "SHELLBRAIN_DB_DSN": package_dsn},
+            env={
+                **os.environ,
+                "SHELLBRAIN_DB_DSN": package_dsn,
+                "SHELLBRAIN_DB_ADMIN_DSN": package_admin_dsn,
+                "SHELLBRAIN_INSTANCE_MODE": "test",
+            },
         )
 
         with psycopg.connect(package_dsn.replace("+psycopg", "")) as conn:
@@ -126,7 +133,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
 
         assert memories_table is not None
         assert episode_events_table is not None
-        assert alembic_version == "20260319_0007"
+        assert alembic_version == "20260320_0008"
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
         _drop_temp_database(admin_dsn, db_name)
@@ -170,13 +177,14 @@ def _create_isolated_install(
     return python_executable, _venv_shellbrain(venv_dir)
 
 
-def _create_temp_database(base_dsn: str) -> tuple[str, str, str]:
+def _create_temp_database(base_dsn: str, admin_base_dsn: str | None = None) -> tuple[str, str, str]:
     """Create one disposable database alongside the configured test server."""
 
     raw_base_dsn = base_dsn.replace("+psycopg", "")
     parsed = urlparse(raw_base_dsn)
+    admin_parsed = urlparse((admin_base_dsn or base_dsn).replace("+psycopg", ""))
     db_name = f"shellbrain_pkg_{uuid4().hex[:8]}"
-    admin_dsn = urlunparse(parsed._replace(path="/postgres"))
+    admin_dsn = urlunparse(admin_parsed._replace(path="/postgres"))
     package_dsn = urlunparse(parsed._replace(path=f"/{db_name}"))
 
     with psycopg.connect(admin_dsn, autocommit=True) as conn:
@@ -198,6 +206,13 @@ def _drop_temp_database(admin_dsn: str, db_name: str) -> None:
             (db_name,),
         )
         conn.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
+
+
+def _replace_database_dsn(dsn: str, db_name: str) -> str:
+    """Return one DSN string with the database path swapped to a named database."""
+
+    parsed = urlparse(dsn.replace("+psycopg", ""))
+    return urlunparse(parsed._replace(path=f"/{db_name}")).replace("postgresql://", "postgresql+psycopg://", 1)
 
 
 def _repo_root() -> Path:

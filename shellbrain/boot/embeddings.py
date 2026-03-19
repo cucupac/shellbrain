@@ -1,7 +1,9 @@
 """This module defines boot-time wiring for embedding provider construction."""
 
+from shellbrain.boot.home import get_machine_models_dir
 from shellbrain.boot.config import get_config_provider
 from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
+from shellbrain.periphery.admin.machine_state import load_machine_config
 from shellbrain.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
 
 
@@ -41,5 +43,13 @@ def get_embedding_provider() -> IEmbeddingProvider:
     if not isinstance(model, str) or not model:
         raise ValueError("runtime.embeddings.model must be configured")
     if provider == "sentence_transformers":
-        return SentenceTransformersEmbeddingProvider(model=model)
+        machine_config = load_machine_config()
+        cache_folder = str(get_machine_models_dir())
+        if machine_config is not None:
+            cache_folder = machine_config.embeddings.cache_path
+            if machine_config.embeddings.readiness_state != "ready":
+                raise RuntimeError(
+                    "Shellbrain embeddings are not ready. Rerun `shellbrain init` to finish model setup."
+                )
+        return SentenceTransformersEmbeddingProvider(model=model, cache_folder=cache_folder)
     raise ValueError(f"Unsupported embedding provider: {provider}")

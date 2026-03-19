@@ -68,17 +68,20 @@ def test_episode_import_stores_compact_event_content_rather_than_raw_noisy_trans
     event_rows = fetch_rows(episode_events, episode_events.c.episode_id == str(episode_row["id"]))
     decoded = [json.loads(str(row["content"])) for row in event_rows]
 
+    base_fields = {
+        "host_app",
+        "host_session_key",
+        "host_event_key",
+        "source",
+        "occurred_at",
+        "content_kind",
+        "content_text",
+        "raw_ref",
+    }
+    tool_fields = {"tool_name", "status", "is_error"}
+    assert all(base_fields.issubset(set(event)) for event in decoded)
     assert all(
-        set(event) == {
-            "host_app",
-            "host_session_key",
-            "host_event_key",
-            "source",
-            "occurred_at",
-            "content_kind",
-            "content_text",
-            "raw_ref",
-        }
+        set(event) == base_fields if event["content_kind"] != "tool_result" else set(event) == base_fields | tool_fields
         for event in decoded
     )
     assert all("README.md" not in event["content_text"] for event in decoded)

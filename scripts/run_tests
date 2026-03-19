@@ -16,10 +16,18 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
-DEFAULT_DSN="postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain"
-export SHELLBRAIN_DB_DSN_TEST="${SHELLBRAIN_DB_DSN_TEST:-$DEFAULT_DSN}"
-export SHELLBRAIN_DB_DSN="$SHELLBRAIN_DB_DSN_TEST"
+if [[ -z "${SHELLBRAIN_DB_DSN_TEST:-}" ]]; then
+  echo "SHELLBRAIN_DB_DSN_TEST must point at an explicitly disposable test database." >&2
+  exit 1
+fi
+
+export SHELLBRAIN_PROTECTED_LIVE_DSN="${SHELLBRAIN_DB_DSN:-}"
+export SHELLBRAIN_DB_ADMIN_DSN="${SHELLBRAIN_DB_ADMIN_DSN_TEST:-$SHELLBRAIN_DB_DSN_TEST}"
+export SHELLBRAIN_DB_DSN="${SHELLBRAIN_DB_DSN_TEST}"
+export SHELLBRAIN_INSTANCE_MODE="${SHELLBRAIN_INSTANCE_MODE:-test}"
+export SHELLBRAIN_HOME="${SHELLBRAIN_HOME:-$PWD/.shellbrain-home}"
 export HF_HOME="${HF_HOME:-$PWD/.local/huggingface}"
+mkdir -p "$SHELLBRAIN_HOME"
 mkdir -p "$HF_HOME"
 
 python3 - <<'PY'
@@ -29,8 +37,14 @@ from urllib.parse import urlparse, urlunparse
 
 import psycopg
 from psycopg import sql
+from shellbrain.periphery.admin.instance_guard import assert_disposable_test_dsn
 
 dsn = os.environ["SHELLBRAIN_DB_DSN_TEST"].replace("+psycopg", "")
+admin_dsn = os.environ["SHELLBRAIN_DB_ADMIN_DSN"].replace("+psycopg", "")
+assert_disposable_test_dsn(
+    test_dsn=os.environ["SHELLBRAIN_DB_DSN_TEST"],
+    protected_dsn=os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN") or None,
+)
 deadline = time.time() + 30
 while True:
     try:
@@ -43,8 +57,9 @@ while True:
 
 parsed = urlparse(dsn)
 db_name = parsed.path.lstrip("/")
-admin_dsn = urlunparse(parsed._replace(path="/postgres"))
-with psycopg.connect(admin_dsn, autocommit=True) as conn:
+admin_parsed = urlparse(admin_dsn)
+admin_root_dsn = urlunparse(admin_parsed._replace(path="/postgres"))
+with psycopg.connect(admin_root_dsn, autocommit=True) as conn:
     exists = conn.execute(
         "SELECT 1 FROM pg_database WHERE datname = %s",
         (db_name,),
@@ -52,10 +67,10 @@ with psycopg.connect(admin_dsn, autocommit=True) as conn:
     if exists is None:
         conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db_name)))
 
-with psycopg.connect(dsn, autocommit=True) as conn:
+with psycopg.connect(admin_dsn, autocommit=True) as conn:
     conn.execute("DROP SCHEMA IF EXISTS public CASCADE;")
     conn.execute("CREATE SCHEMA public;")
-    conn.execute("GRANT ALL ON SCHEMA public TO public;")
+    conn.execute("GRANT USAGE ON SCHEMA public TO PUBLIC;")
 PY
 
 python3 -m shellbrain admin migrate

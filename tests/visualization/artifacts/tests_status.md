@@ -1,42 +1,54 @@
 # Tests Status
 
-Generated: 2026-03-18 23:40:58 PDT
+Generated: 2026-03-19 01:56:06 PDT
 
 ## Summary
 
-- Total: 242
-- Passed: 83
+- Total: 277
+- Passed: 2
 - Failed: 0
-- Skipped/Not Run: 159
+- Skipped/Not Run: 275
 
 # Config Tests
 
-- ✅ repo context resolution should infer repo_id from the resolved repo_root basename.
-- ✅ repo context resolution should preserve an explicit repo_id override.
-- ✅ top-level help should explain the Shellbrain mental model and session protocol.
-- ✅ read help should teach focused querying and pack structure.
-- ✅ events help should explain fresh episodic evidence lookup.
-- ✅ create help should explain memory-kind choice and attempt-link rules.
-- ✅ update help should expose the supported update types.
-- ✅ admin help should always include one minimal example.
-- ✅ admin migrate help should always include one minimal example.
-- ✅ admin install-claude-hook help should explain the trusted Claude setup step.
-- ✅ admin session-state help should expose inspect, clear, and gc management paths.
-- ✅ repo-targeting flags should work before the operational subcommand.
-- ✅ repo-targeting flags should also work after the operational subcommand.
-- ✅ --no-sync should suppress repo-local poller startup after a successful command.
-- ✅ admin migrate should delegate to the packaged migration runner.
-- ✅ explicit repo-root overrides should fail fast when the directory does not exist.
+- ⚪ not run alembic env should route migrations through the admin DSN when present.
+- ⚪ not run alembic env should still support the single-DSN fallback when no admin DSN exists.
+- ⚪ not run repo context resolution should fall back to one weak-local repo id outside git.
+- ⚪ not run repo context resolution should preserve an explicit repo_id override.
+- ⚪ not run top-level help should explain the Shellbrain mental model and session protocol.
+- ⚪ not run init help should explain the managed bootstrap path and advanced overrides.
+- ⚪ not run read help should teach focused querying and pack structure.
+- ⚪ not run events help should explain fresh episodic evidence lookup.
+- ⚪ not run create help should explain memory-kind choice and attempt-link rules.
+- ⚪ not run update help should expose the supported update types.
+- ⚪ not run admin help should always include one minimal example.
+- ⚪ not run admin migrate help should always include one minimal example.
+- ⚪ not run admin backup help should explain the first-class backup workflow.
+- ⚪ not run admin doctor help should explain the safety report path.
+- ⚪ not run admin install-claude-hook help should explain the trusted Claude setup step.
+- ⚪ not run admin session-state help should expose inspect, clear, and gc management paths.
+- ⚪ not run repo-targeting flags should work before the operational subcommand.
+- ⚪ not run repo-targeting flags should also work after the operational subcommand.
+- ⚪ not run --no-sync should suppress repo-local poller startup after a successful command.
+- ⚪ not run admin migrate should delegate to the packaged migration runner.
+- ⚪ not run unsafe app-role failures should return exit code 1 without a traceback.
+- ⚪ not run admin backup create should print the created manifest as JSON.
+- ⚪ not run admin doctor should print one JSON safety report.
+- ⚪ not run init should print the stable outcome prefix and forward the mapped exit code.
+- ⚪ not run init should disable Claude integration when --no-claude is provided.
+- ⚪ not run explicit repo-root overrides should fail fast when the directory does not exist.
 - ⚪ not run yaml config provider should always expose separate create and update policy sections.
 - ⚪ not run The longer onboarding surfaces should teach the same Shellbrain mental model.
 - ⚪ not run Top-level CLI help should match the condensed taught workflow.
 - ⚪ not run The reusable shellbrain skill should include Codex UI metadata.
 - ✅ editable installs should expose the shellbrain console script outside this repository.
 - ✅ git-url installs should expose the shellbrain console script outside this repository.
-- ✅ installed-package admin migrate should initialize an empty database from packaged artifacts.
+- ⚪ installed-package admin migrate should initialize an empty database from packaged artifacts.
 - ⚪ not run read policy should always resolve missing read knobs from config.
 - ⚪ not run read policy should always merge partial expand over config defaults.
 - ⚪ not run db boot should always resolve the runtime-configured dsn env.
+- ⚪ not run db boot should use the managed machine config before env-based runtime settings.
+- ⚪ not run db boot should direct the user to rerun init when machine config is corrupt.
 - ⚪ not run runtime yaml should always define database cli and embedding sections.
 - ⚪ not run seed retrieval should always apply configured semantic and keyword thresholds.
 - ⚪ not run update policy should always expose its configured gate list.
@@ -110,10 +122,10 @@ Generated: 2026-03-18 23:40:58 PDT
 
 ### Normalization
 
-- ✅ codex parsing should always normalize user and assistant messages into the common event shape.
-- ✅ claude code parsing should always normalize user and assistant messages into the common event shape.
-- ✅ episode parsing should always keep meaningful tool results and drop noisy tool chatter.
-- ✅ episode parsing should always skip unknown transcript lines without failing normalization.
+- ⚪ not run codex parsing should always normalize user and assistant messages into the common event shape.
+- ⚪ not run claude code parsing should always normalize user and assistant messages into the common event shape.
+- ⚪ not run episode parsing should always keep meaningful tool results and drop noisy tool chatter.
+- ⚪ not run episode parsing should always skip unknown transcript lines without failing normalization.
 
 ### Source Discovery
 
@@ -163,8 +175,8 @@ Generated: 2026-03-18 23:40:58 PDT
 
 ### High Level Behavior
 
-- ✅ events should always sync the active host session and return recent stored events newest first.
-- ✅ events should always prefer the trusted caller identity over newer repo-matching host sessions.
+- ⚪ not run events should always sync the active host session and return recent stored events newest first.
+- ⚪ not run events should always prefer the trusted caller identity over newer repo-matching host sessions.
 
 # Guidance Tests
 
@@ -172,19 +184,19 @@ Generated: 2026-03-18 23:40:58 PDT
 
 ### Create Solution
 
-- ✅ create solution should always emit pending_utility_votes guidance when session has unrated retrieved memories.
+- ⚪ not run create solution should always emit pending_utility_votes guidance when session has unrated retrieved memories.
 
 ### Failure Handling
 
-- ✅ guidance failures should always require events when batch utility votes omit evidence and no recent events exist.
+- ⚪ not run guidance failures should always require events when batch utility votes omit evidence and no recent events exist.
 
 ### Reminders
 
-- ✅ guidance reminders should always be rate limited per problem.
+- ⚪ not run guidance reminders should always be rate limited per problem.
 
 ### Update Batch
 
-- ✅ update batch should always apply multiple utility votes and clear pending candidates.
+- ⚪ not run update batch should always apply multiple utility votes and clear pending candidates.
 
 # Identity Tests
 
@@ -192,25 +204,26 @@ Generated: 2026-03-18 23:40:58 PDT
 
 ### Claude Hook
 
-- ✅ claude hook identity should always resolve one trusted main caller from Shellbrain hook env.
-- ✅ claude hook identity should always resolve one trusted subagent caller when agent_key is present.
+- ⚪ not run claude hook identity should always resolve one trusted main caller from Shellbrain hook env.
+- ⚪ not run claude hook identity should always resolve one trusted subagent caller when agent_key is present.
 
 ### Codex Runtime
 
-- ✅ codex runtime identity should always resolve one trusted caller from CODEX_THREAD_ID.
+- ⚪ not run codex runtime identity should always resolve one trusted caller from CODEX_THREAD_ID.
 
 ### Failure Handling
 
-- ✅ identity failure handling should always return host_hook_missing when Claude runtime is detected without trusted Shellbrain identity.
-- ✅ identity failure handling should always return host_identity_drifted when one trusted identity transcript cannot be resolved.
+- ⚪ not run identity failure handling should always return host_hook_missing when Claude runtime is detected without trusted Shellbrain identity.
+- ⚪ not run identity failure handling should always return host_identity_drifted when one trusted identity transcript cannot be resolved.
 
 ### Fallback
 
-- ✅ identity fallback should always mark the discovered events candidate untrusted when no runtime identity exists.
+- ⚪ not run identity fallback should always mark the discovered events candidate untrusted when no runtime identity exists.
 
 ### Hook Install
 
-- ✅ claude hook install should always write one repo-local settings file with Shellbrain identity exports.
+- ⚪ not run claude hook install should always write one repo-local settings file with Shellbrain identity exports.
+- ⚪ not run claude hook install should merge the managed SessionStart entry non-destructively.
 
 # Persistence Tests
 
@@ -218,6 +231,10 @@ Generated: 2026-03-18 23:40:58 PDT
 
 ### Backup Restore
 
+- ⚪ not run admin backup create should always write a verifiable artifact and manifest.
+- ⚪ not run admin backup verify should fail when the artifact content no longer matches the manifest hash.
+- ⚪ not run admin backup restore should never allow in-place restores into protected DB names.
+- ⚪ not run admin backup restore should sanitize unsupported pg_dump session settings before psql.
 - ⚪ not run persistence should recover sentinel shellbrain data through pg_dump and restore into a fresh database.
 
 ### Container Lifecycle
@@ -227,6 +244,24 @@ Generated: 2026-03-18 23:40:58 PDT
 ### Local Migration
 
 - ⚪ not run local migration should preserve legacy data while promoting the cluster to shellbrain naming.
+
+# Protection Tests
+
+## Execution
+
+### Db Targeting
+
+- ⚪ not run instance guard should refuse the exact protected live DSN.
+- ⚪ not run instance guard should refuse production-shaped database names even without a live fingerprint.
+- ⚪ not run instance fingerprinting should classify one DB independently of app/admin role usernames.
+- ⚪ not run destructive guard should refuse databases that are not explicitly stamped disposable.
+- ⚪ not run destructive guard should never allow automation against live instances.
+- ⚪ not run destructive guard should allow explicitly stamped test instances.
+
+### Scripts
+
+- ⚪ not run run_tests should refuse to start unless one disposable test DSN is configured.
+- ⚪ not run run_tests should abort before any DDL when the test DSN points at a protected target.
 
 # Read Tests
 
@@ -242,7 +277,7 @@ Generated: 2026-03-18 23:40:58 PDT
 - ⚪ not run read requests should always require non-empty query text.
 - ⚪ not run read requests should always limit kinds filters to ratified shellbrain kinds.
 - ⚪ not run read requests should always require unique kinds filters.
-- ⚪ not run read requests should always reject config override knobs at the agent interface.
+- ⚪ not run read requests should always reject hidden expansion override knobs at the agent interface.
 
 ## Execution
 
@@ -327,29 +362,54 @@ Generated: 2026-03-18 23:40:58 PDT
 - ⚪ not run read should always fuse live semantic seeds with keyword direct hits without duplicates.
 - ⚪ not run read should always surface query-embedding failure as a structured read error rather than silently dropping the semantic lane.
 
+# Recovery Tests
+
+## Execution
+
+- ⚪ not run init should stop with blocked_config_corrupt when corrupt machine state cannot be rediscovered.
+- ⚪ not run init should create a backup first and report repaired when bootstrap state needs repair.
+- ⚪ not run auto Claude handling should not mutate config when only repo-local Claude files are present.
+- ⚪ not run forced Claude mode should install the hook even without runtime auto-detection.
+
+### Missing Backup Behavior
+
+- ⚪ not run backup verify should fail clearly when no backup manifests exist.
+- ⚪ not run backup restore should fail clearly when no backup manifests exist.
+
+# Resilience Tests
+
+## Execution
+
+### Permission Failures
+
+- ⚪ not run doctor should still produce one report when the app DSN is not configured.
+- ⚪ not run doctor should summarize backup age and both role-safety channels.
+
 # Session State Tests
 
 ## Execution
 
 ### Cleanup
 
-- ✅ session state gc should always remove stale state files after 7 days.
+- ⚪ not run session state save should atomically replace the caller file without leaking temp files.
+- ⚪ not run session state clear should only delete the explicitly named caller file.
+- ⚪ not run session state gc should always remove stale state files after 7 days.
 
 ### Create
 
-- ✅ create problem should always set current_problem_id in trusted session state.
+- ⚪ not run create problem should always set current_problem_id in trusted session state.
 
 ### Events
 
-- ✅ events should always persist trusted caller session state.
+- ⚪ not run events should always persist trusted caller session state.
 
 ### Expiry
 
-- ✅ idle expiry should always reset working-session fields after 24 hours.
+- ⚪ not run idle expiry should always reset working-session fields after 24 hours.
 
 ### Isolation
 
-- ✅ multi agent isolation should always keep distinct session state files per caller_id.
+- ⚪ not run multi agent isolation should always keep distinct session state files per caller_id.
 
 # Telemetry Tests
 
@@ -357,80 +417,80 @@ Generated: 2026-03-18 23:40:58 PDT
 
 ### Event Content
 
-- ✅ episode event content should always include normalized tool telemetry fields when present.
-- ✅ episode event content should always omit tool telemetry fields for non-tool events.
-- ✅ codex and claude code should always normalize equivalent tool results into the same analytics shape.
+- ⚪ not run episode event content should always include normalized tool telemetry fields when present.
+- ⚪ not run episode event content should always omit tool telemetry fields for non-tool events.
+- ⚪ not run codex and claude code should always normalize equivalent tool results into the same analytics shape.
 
 ## Execution
 
 ### Derived Views
 
-- ✅ usage_command_daily should always aggregate daily command outcomes from operation invocations.
-- ✅ usage_memory_retrieval should always aggregate retrieval frequency and last-seen timestamps from read result items.
-- ✅ usage_write_effects should always aggregate write effect types and counts from write effect items.
-- ✅ usage_sync_health should always aggregate sync outcomes and tool-type counts by host.
-- ✅ usage_session_protocol should always aggregate per-thread read, events, and write counts.
-- ✅ usage_session_protocol should always aggregate zero-result reads and ambiguous session selections.
-- ✅ usage_session_protocol should always aggregate writes preceded by events and events followed by no write.
+- ⚪ not run usage_command_daily should always aggregate daily command outcomes from operation invocations.
+- ⚪ not run usage_memory_retrieval should always aggregate retrieval frequency and last-seen timestamps from read result items.
+- ⚪ not run usage_write_effects should always aggregate write effect types and counts from write effect items.
+- ⚪ not run usage_sync_health should always aggregate sync outcomes and tool-type counts by host.
+- ⚪ not run usage_session_protocol should always aggregate per-thread read, events, and write counts.
+- ⚪ not run usage_session_protocol should always aggregate zero-result reads and ambiguous session selections.
+- ⚪ not run usage_session_protocol should always aggregate writes preceded by events and events followed by no write.
 
 ### Episode Sync Runs
 
-- ✅ events should always append one episode sync run for inline transcript sync.
-- ✅ poller sync should always append one episode sync run with source poller.
-- ✅ episode sync runs should always record imported-event count and total event counts by source.
-- ✅ episode sync runs should always record tool-type counts from the normalized episode content.
+- ⚪ not run events should always append one episode sync run for inline transcript sync.
+- ⚪ not run poller sync should always append one episode sync run with source poller.
+- ⚪ not run episode sync runs should always record imported-event count and total event counts by source.
+- ⚪ not run episode sync runs should always record tool-type counts from the normalized episode content.
 
 ### Failure Handling
 
-- ✅ read validation failures should always append one failed operation invocation and no read summary row.
-- ✅ create validation failures should always append one failed operation invocation and no write summary row.
-- ✅ update validation failures should always append one failed operation invocation and no write summary row.
-- ✅ events not_found should always append one failed operation invocation and no episode sync run.
-- ✅ events sync failures should always append one failed operation invocation and one failed episode sync run.
-- ✅ unexpected operational failures should always append one failed operation invocation with internal-error stage.
-- ✅ poller sync failures should always append one failed episode sync run.
+- ⚪ not run read validation failures should always append one failed operation invocation and no read summary row.
+- ⚪ not run create validation failures should always append one failed operation invocation and no write summary row.
+- ⚪ not run update validation failures should always append one failed operation invocation and no write summary row.
+- ⚪ not run events not_found should always append one failed operation invocation and no episode sync run.
+- ⚪ not run events sync failures should always append one failed operation invocation and one failed episode sync run.
+- ⚪ not run unexpected operational failures should always append one failed operation invocation with internal-error stage.
+- ⚪ not run poller sync failures should always append one failed episode sync run.
 
 ### Operation Invocations
 
-- ✅ read should always append one operation invocation row with command, repo_id, outcome, and latency fields.
-- ✅ create should always append one operation invocation row with command, repo_id, outcome, and latency fields.
-- ✅ update should always append one operation invocation row with command, repo_id, outcome, and latency fields.
-- ✅ events should always append one operation invocation row with the resolved host, session, thread, and episode ids.
-- ✅ operational invocations should always record whether no-sync was used.
-- ✅ repo-matching multi-session discovery should always record candidate count and selection_ambiguous when more than one session matches.
+- ⚪ not run read should always append one operation invocation row with command, repo_id, outcome, and latency fields.
+- ⚪ not run create should always append one operation invocation row with command, repo_id, outcome, and latency fields.
+- ⚪ not run update should always append one operation invocation row with command, repo_id, outcome, and latency fields.
+- ⚪ not run events should always append one operation invocation row with the resolved host, session, thread, and episode ids.
+- ⚪ not run operational invocations should always record whether no-sync was used.
+- ⚪ not run repo-matching multi-session discovery should always record candidate count and selection_ambiguous when more than one session matches.
 
 ### Packaging Smoke
 
-- ✅ installed-package admin migrate should initialize the usage telemetry tables and views from packaged artifacts.
+- ⚪ not run installed-package admin migrate should initialize the usage telemetry tables and views from packaged artifacts.
 
 ### Read Summaries
 
-- ✅ read should always append one read summary row with effective request metadata.
-- ✅ read should always append one read result item row per returned memory in display order.
-- ✅ read should always record kind, section, priority, why-included, and anchor metadata for each returned item.
-- ✅ read should always record zero-results true when the context pack is empty.
+- ⚪ not run read should always append one read summary row with effective request metadata.
+- ⚪ not run read should always append one read result item row per returned memory in display order.
+- ⚪ not run read should always record kind, section, priority, why-included, and anchor metadata for each returned item.
+- ⚪ not run read should always record zero-results true when the context pack is empty.
 
 ### Write Summaries
 
-- ✅ create should always append one write summary row with the created memory id, kind, scope, and evidence-ref count.
-- ✅ create should always append one write effect row per planned side effect in plan order.
-- ✅ successful writes should always record planned-effect count for downstream effect aggregation.
-- ✅ update utility_vote should always append one write summary row with update type utility_vote and utility observation count.
-- ✅ update association_link should always append one write summary row with update type association_link and association effect count.
-- ✅ update fact_update_link should always append one write summary row with update type fact_update_link and fact-update count.
-- ✅ update archive_state should always append one write summary row with update type archive_state and archived-memory count.
+- ⚪ not run create should always append one write summary row with the created memory id, kind, scope, and evidence-ref count.
+- ⚪ not run create should always append one write effect row per planned side effect in plan order.
+- ⚪ not run successful writes should always record planned-effect count for downstream effect aggregation.
+- ⚪ not run update utility_vote should always append one write summary row with update type utility_vote and utility observation count.
+- ⚪ not run update association_link should always append one write summary row with update type association_link and association effect count.
+- ⚪ not run update fact_update_link should always append one write summary row with update type fact_update_link and fact-update count.
+- ⚪ not run update archive_state should always append one write summary row with update type archive_state and archived-memory count.
 
 ### Persistence / Backup Restore
 
-- ✅ persistence should recover sentinel usage telemetry rows through pg_dump and restore into a fresh database.
+- ⚪ not run persistence should recover sentinel usage telemetry rows through pg_dump and restore into a fresh database.
 
 ### Persistence / Container Lifecycle
 
-- ✅ persistence should preserve sentinel usage telemetry rows across DB container deletion and recreation.
+- ⚪ not run persistence should preserve sentinel usage telemetry rows across DB container deletion and recreation.
 
 ### Persistence / Local Migration
 
-- ✅ local migration should preserve sentinel usage telemetry while promoting the cluster to shellbrain naming.
+- ⚪ not run local migration should preserve sentinel usage telemetry while promoting the cluster to shellbrain naming.
 
 # Update Tests
 

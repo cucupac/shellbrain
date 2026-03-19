@@ -16,9 +16,12 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-memory_dsn = os.getenv("SHELLBRAIN_DB_DSN")
-if memory_dsn:
-    config.set_main_option("sqlalchemy.url", memory_dsn)
+admin_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN")
+app_dsn = os.getenv("SHELLBRAIN_DB_DSN")
+if admin_dsn:
+    config.set_main_option("sqlalchemy.url", admin_dsn)
+elif app_dsn:
+    config.set_main_option("sqlalchemy.url", app_dsn)
 
 
 def run_migrations_offline() -> None:

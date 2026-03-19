@@ -4,12 +4,21 @@ import os
 from pathlib import Path
 
 from shellbrain.boot.config import get_config_provider
+from shellbrain.periphery.admin.machine_state import try_load_machine_config
 from shellbrain.periphery.db.engine import get_engine
 from shellbrain.periphery.db.session import get_session_factory
 
 
 def get_db_dsn() -> str:
     """This function resolves the database DSN from environment configuration."""
+
+    machine_config, machine_error = try_load_machine_config()
+    if machine_error:
+        raise RuntimeError(
+            "Shellbrain machine config is unreadable. Rerun `shellbrain init` to repair it."
+        )
+    if machine_config is not None:
+        return machine_config.database.app_dsn
 
     runtime = get_config_provider().get_runtime()
     database = runtime.get("database")
@@ -22,6 +31,25 @@ def get_db_dsn() -> str:
     if not dsn:
         raise RuntimeError(f"{dsn_env} is not set")
     return dsn
+
+
+def get_optional_db_dsn() -> str | None:
+    """Resolve the application DSN when present, otherwise return None."""
+
+    machine_config, machine_error = try_load_machine_config()
+    if machine_error:
+        return None
+    if machine_config is not None:
+        return machine_config.database.app_dsn
+
+    runtime = get_config_provider().get_runtime()
+    database = runtime.get("database")
+    if not isinstance(database, dict):
+        return None
+    dsn_env = database.get("dsn_env")
+    if not isinstance(dsn_env, str) or not dsn_env:
+        return None
+    return os.getenv(dsn_env)
 
 
 def get_engine_instance():

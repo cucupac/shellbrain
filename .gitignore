@@ -1,19 +1,23 @@
-# OS / editor noise
+# OS / filesystem noise
 .DS_Store
 .AppleDouble
 .LSOverride
 .Spotlight-V100
 .Trashes
 Thumbs.db
+Desktop.ini
+
+# Editor / IDE state
 .idea/
 .vscode/
+.zed/
 *.swp
 *.swo
 *~
 *.orig
 *.rej
 
-# Python bytecode and caches
+# Python bytecode, test, and type-check caches
 __pycache__/
 *.py[cod]
 *$py.class
@@ -26,58 +30,93 @@ __pycache__/
 .nox/
 .coverage
 .coverage.*
+coverage.xml
 htmlcov/
 .ipynb_checkpoints/
 .python-version
-.cache/
 
-# Virtual environments
+# Virtual environments and local Python tooling
 .venv/
 venv/
 env/
 ENV/
+.envrc
+.direnv/
+.pipx/
 
 # Packaging / build outputs
 build/
 dist/
 site/
 .eggs/
+*.egg
 *.egg-info/
 pip-wheel-metadata/
+wheelhouse/
 
-# Local environment and secrets
+# Local environment files and secrets
 .env
 .env.*
+*.env
+*.env.*
 !.env.example
 *.local
+*.secret
+*.secrets
+*.pem
+*.key
+*.crt
 
 # Logs and temp files
 *.log
 *.pid
+*.pid.lock
 *.seed
 *.out
 *.err
 logs/
+log/
 tmp/
 temp/
 
-# Local runtime state for this repo
-.memory/
-artifacts/
-!tests/visualization/artifacts/
-!tests/visualization/artifacts/*.md
+# Local caches and machine-owned runtime state
+.cache/
+.local/
+.shellbrain/
+.shellbrain-home/
+.hf/
+
+# Databases, dumps, and local persistence
 *.db
 *.db-*
 *.sqlite
 *.sqlite3
+*.sql
+*.sql.gz
+*.dump
+*.tar.gz
 .local/postgres-data/
 postgres-data/
 pgdata/
-*.tar.gz
 
-# Local Directories
+# Project-local generated artifacts
+.memory/
+artifacts/
+!tests/visualization/artifacts/
+!tests/visualization/artifacts/*.md
+
+# Local-only working directories
+architectures/
+insights/
 research/
 writing/
 
-# AI Directories
+# AI / agent host local state
 .claude/
+
+# Frontend / JS noise if introduced later
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

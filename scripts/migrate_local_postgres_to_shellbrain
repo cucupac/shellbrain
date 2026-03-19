@@ -9,8 +9,10 @@ LEGACY_POSTGRES_PASSWORD="${OLD_POSTGRES_PASSWORD:-memory}"
 LEGACY_DB_CONTAINER_NAME="${OLD_DB_CONTAINER_NAME:-memory-postgres}"
 
 NEW_POSTGRES_DB="${NEW_POSTGRES_DB:-shellbrain}"
-NEW_POSTGRES_USER="${NEW_POSTGRES_USER:-shellbrain}"
-NEW_POSTGRES_PASSWORD="${NEW_POSTGRES_PASSWORD:-shellbrain}"
+NEW_POSTGRES_ADMIN_USER="${NEW_POSTGRES_ADMIN_USER:-shellbrain_admin}"
+NEW_POSTGRES_ADMIN_PASSWORD="${NEW_POSTGRES_ADMIN_PASSWORD:-shellbrain_admin}"
+NEW_POSTGRES_APP_USER="${NEW_POSTGRES_APP_USER:-shellbrain_app}"
+NEW_POSTGRES_APP_PASSWORD="${NEW_POSTGRES_APP_PASSWORD:-shellbrain}"
 NEW_DB_CONTAINER_NAME="${SHELLBRAIN_DB_CONTAINER_NAME:-shellbrain-postgres}"
 
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
@@ -82,14 +84,14 @@ start_shellbrain_container() {
   fi
 
   run_compose \
-    POSTGRES_DB="$NEW_POSTGRES_DB" \
-    POSTGRES_USER="$NEW_POSTGRES_USER" \
-    POSTGRES_PASSWORD="$NEW_POSTGRES_PASSWORD" \
-    SHELLBRAIN_DB_CONTAINER_NAME="$NEW_DB_CONTAINER_NAME" \
-    SHELLBRAIN_DB_DATA_DIR="$SHELLBRAIN_DB_DATA_DIR" \
-    POSTGRES_PORT="$POSTGRES_PORT"
+      POSTGRES_DB="$NEW_POSTGRES_DB" \
+      POSTGRES_USER="$NEW_POSTGRES_ADMIN_USER" \
+      POSTGRES_PASSWORD="$NEW_POSTGRES_ADMIN_PASSWORD" \
+      SHELLBRAIN_DB_CONTAINER_NAME="$NEW_DB_CONTAINER_NAME" \
+      SHELLBRAIN_DB_DATA_DIR="$SHELLBRAIN_DB_DATA_DIR" \
+      POSTGRES_PORT="$POSTGRES_PORT"
 
-  wait_for_postgres "$NEW_DB_CONTAINER_NAME" "$NEW_POSTGRES_USER" "$NEW_POSTGRES_DB"
+  wait_for_postgres "$NEW_DB_CONTAINER_NAME" "$NEW_POSTGRES_ADMIN_USER" "$NEW_POSTGRES_DB"
 }
 
 wait_for_postgres() {
@@ -111,11 +113,11 @@ wait_for_postgres() {
 verify_shellbrain_cluster() {
   local current_identity
   current_identity="$(
-    docker exec -e PGPASSWORD="$NEW_POSTGRES_PASSWORD" "$NEW_DB_CONTAINER_NAME" \
-      psql -U "$NEW_POSTGRES_USER" -d "$NEW_POSTGRES_DB" -Atc "SELECT current_user || '|' || current_database();"
+    docker exec -e PGPASSWORD="$NEW_POSTGRES_ADMIN_PASSWORD" "$NEW_DB_CONTAINER_NAME" \
+      psql -U "$NEW_POSTGRES_ADMIN_USER" -d "$NEW_POSTGRES_DB" -Atc "SELECT current_user || '|' || current_database();"
   )"
-  if [[ "$current_identity" != "${NEW_POSTGRES_USER}|${NEW_POSTGRES_DB}" ]]; then
-    fail "Verification failed for ${NEW_DB_CONTAINER_NAME}: expected ${NEW_POSTGRES_USER}|${NEW_POSTGRES_DB}, got ${current_identity}."
+  if [[ "$current_identity" != "${NEW_POSTGRES_ADMIN_USER}|${NEW_POSTGRES_DB}" ]]; then
+    fail "Verification failed for ${NEW_DB_CONTAINER_NAME}: expected ${NEW_POSTGRES_ADMIN_USER}|${NEW_POSTGRES_DB}, got ${current_identity}."
   fi
 }
 
@@ -126,15 +128,15 @@ shellbrain_cluster_ready() {
   if ! docker_is_running "$NEW_DB_CONTAINER_NAME"; then
     docker start "$NEW_DB_CONTAINER_NAME" >/dev/null
   fi
-  if ! docker exec "$NEW_DB_CONTAINER_NAME" pg_isready -U "$NEW_POSTGRES_USER" -d "$NEW_POSTGRES_DB" >/dev/null 2>&1; then
+  if ! docker exec "$NEW_DB_CONTAINER_NAME" pg_isready -U "$NEW_POSTGRES_ADMIN_USER" -d "$NEW_POSTGRES_DB" >/dev/null 2>&1; then
     return 1
   fi
-  docker exec -e PGPASSWORD="$NEW_POSTGRES_PASSWORD" "$NEW_DB_CONTAINER_NAME" \
-    psql -U "$NEW_POSTGRES_USER" -d "$NEW_POSTGRES_DB" -Atc "SELECT 1;" >/dev/null 2>&1
+  docker exec -e PGPASSWORD="$NEW_POSTGRES_ADMIN_PASSWORD" "$NEW_DB_CONTAINER_NAME" \
+    psql -U "$NEW_POSTGRES_ADMIN_USER" -d "$NEW_POSTGRES_DB" -Atc "SELECT 1;" >/dev/null 2>&1
 }
 
 create_shellbrain_role_and_database() {
-  log "Ensuring ${NEW_POSTGRES_USER} role and ${NEW_POSTGRES_DB} database exist inside the legacy cluster."
+  log "Ensuring ${NEW_POSTGRES_ADMIN_USER}/${NEW_POSTGRES_APP_USER} roles and ${NEW_POSTGRES_DB} database exist inside the legacy cluster."
 
   docker exec -i -e PGPASSWORD="$LEGACY_POSTGRES_PASSWORD" "$LEGACY_DB_CONTAINER_NAME" \
     psql -v ON_ERROR_STOP=1 \
@@ -142,12 +144,21 @@ create_shellbrain_role_and_database() {
       -d postgres \
       -v legacy_db="$LEGACY_POSTGRES_DB" \
       -v new_db="$NEW_POSTGRES_DB" \
-      -v new_user="$NEW_POSTGRES_USER" \
-      -v new_password="$NEW_POSTGRES_PASSWORD" <<'SQL'
+      -v admin_user="$NEW_POSTGRES_ADMIN_USER" \
+      -v admin_password="$NEW_POSTGRES_ADMIN_PASSWORD" \
+      -v app_user="$NEW_POSTGRES_APP_USER" \
+      -v app_password="$NEW_POSTGRES_APP_PASSWORD" <<'SQL'
 SELECT CASE
-  WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'new_user')
-    THEN format('ALTER ROLE %I WITH LOGIN SUPERUSER PASSWORD %L', :'new_user', :'new_password')
-  ELSE format('CREATE ROLE %I LOGIN SUPERUSER PASSWORD %L', :'new_user', :'new_password')
+  WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'admin_user')
+    THEN format('ALTER ROLE %I WITH LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD %L', :'admin_user', :'admin_password')
+  ELSE format('CREATE ROLE %I LOGIN SUPERUSER CREATEDB CREATEROLE PASSWORD %L', :'admin_user', :'admin_password')
+END
+\gexec
+
+SELECT CASE
+  WHEN EXISTS (SELECT 1 FROM pg_roles WHERE rolname = :'app_user')
+    THEN format('ALTER ROLE %I WITH LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'app_user', :'app_password')
+  ELSE format('CREATE ROLE %I LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD %L', :'app_user', :'app_password')
 END
 \gexec
 
@@ -159,8 +170,39 @@ WHERE datname IN (:'legacy_db', :'new_db')
 SELECT CASE
   WHEN EXISTS (SELECT 1 FROM pg_database WHERE datname = :'new_db')
     THEN NULL
-  ELSE format('CREATE DATABASE %I WITH OWNER %I TEMPLATE %I', :'new_db', :'new_user', :'legacy_db')
+  ELSE format('CREATE DATABASE %I WITH OWNER %I TEMPLATE %I', :'new_db', :'admin_user', :'legacy_db')
 END
+\gexec
+
+SELECT format('GRANT CONNECT ON DATABASE %I TO %I', :'new_db', :'app_user')
+\gexec
+SQL
+
+  docker exec -i -e PGPASSWORD="$NEW_POSTGRES_ADMIN_PASSWORD" "$LEGACY_DB_CONTAINER_NAME" \
+    psql -v ON_ERROR_STOP=1 \
+      -U "$NEW_POSTGRES_ADMIN_USER" \
+      -d "$NEW_POSTGRES_DB" \
+      -v app_user="$NEW_POSTGRES_APP_USER" <<'SQL'
+REVOKE CREATE ON SCHEMA public FROM PUBLIC;
+SELECT format('REVOKE CREATE ON SCHEMA public FROM %I', :'app_user')
+\gexec
+SELECT format('GRANT USAGE ON SCHEMA public TO %I', :'app_user')
+\gexec
+SELECT format('GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO %I', :'app_user')
+\gexec
+SELECT format('GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO %I', :'app_user')
+\gexec
+SELECT format(
+  'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO %I',
+  current_user,
+  :'app_user'
+)
+\gexec
+SELECT format(
+  'ALTER DEFAULT PRIVILEGES FOR ROLE %I IN SCHEMA public GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO %I',
+  current_user,
+  :'app_user'
+)
 \gexec
 SQL
 }
@@ -175,7 +217,7 @@ main() {
   preflight
 
   if shellbrain_cluster_ready; then
-    log "${NEW_DB_CONTAINER_NAME} is already running with ${NEW_POSTGRES_USER}/${NEW_POSTGRES_DB}. Nothing to do."
+    log "${NEW_DB_CONTAINER_NAME} is already running with ${NEW_POSTGRES_ADMIN_USER}/${NEW_POSTGRES_DB}. Nothing to do."
     return 0
   fi
 
@@ -198,7 +240,8 @@ main() {
   trap - ERR
 
   log "Local Docker/Postgres migration is complete."
-  log "New DSN: postgresql+psycopg://${NEW_POSTGRES_USER}:${NEW_POSTGRES_PASSWORD}@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
+  log "Admin DSN: postgresql+psycopg://${NEW_POSTGRES_ADMIN_USER}:${NEW_POSTGRES_ADMIN_PASSWORD}@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
+  log "App DSN: postgresql+psycopg://${NEW_POSTGRES_APP_USER}:${NEW_POSTGRES_APP_PASSWORD}@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
   log "Legacy database ${LEGACY_POSTGRES_DB} was preserved inside the cluster as a fallback."
 }
 

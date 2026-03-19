@@ -22,6 +22,11 @@ from shellbrain.periphery.db.engine import get_engine
 from shellbrain.periphery.db.models.registry import target_metadata
 from shellbrain.periphery.db.session import get_session_factory
 from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from tests.operations._shared.destructive_guardrail_fixtures import (
+    assert_destructive_test_setup_allowed,
+    assert_test_database_is_disposable,
+    stamp_test_instance,
+)
 
 
 class _StubEmbeddingProvider(IEmbeddingProvider):
@@ -61,11 +66,29 @@ def db_dsn() -> str:
 
 
 @pytest.fixture(scope="session")
+def admin_db_dsn(db_dsn: str) -> str:
+    """Resolve privileged integration database DSN when split-role testing is enabled."""
+
+    return os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST") or os.getenv("SHELLBRAIN_DB_ADMIN_DSN") or db_dsn
+
+
+@pytest.fixture(scope="session")
 def integration_engine(db_dsn: str) -> Iterator[Engine]:
     """Create and migrate integration engine once per test session."""
 
+    assert_test_database_is_disposable(db_dsn)
     engine = get_engine(db_dsn)
     _run_alembic_upgrade(db_dsn)
+    stamp_test_instance(db_dsn)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def integration_admin_engine(admin_db_dsn: str) -> Iterator[Engine]:
+    """Build one privileged engine for destructive integration setup and cleanup."""
+
+    engine = get_engine(admin_db_dsn)
     yield engine
     engine.dispose()
 
@@ -78,13 +101,18 @@ def integration_session_factory(integration_engine: Engine) -> sessionmaker:
 
 
 @pytest.fixture(autouse=True)
-def clear_database(integration_engine: Engine) -> Iterator[None]:
+def clear_database(integration_admin_engine: Engine, db_dsn: str) -> Iterator[None]:
     """Truncate all tables between integration tests."""
 
-    table_names = [table.name for table in reversed(target_metadata.sorted_tables)]
+    assert_destructive_test_setup_allowed(db_dsn)
+    table_names = [
+        table.name
+        for table in reversed(target_metadata.sorted_tables)
+        if table.name != "instance_metadata"
+    ]
     if table_names:
         joined = ", ".join(table_names)
-        with integration_engine.begin() as conn:
+        with integration_admin_engine.begin() as conn:
             conn.execute(text(f"TRUNCATE TABLE {joined} RESTART IDENTITY CASCADE;"))
     yield
 
@@ -253,6 +281,8 @@ def _run_alembic_upgrade(dsn: str) -> None:
     repo_root = _find_repo_root()
     env = dict(os.environ)
     env["SHELLBRAIN_DB_DSN"] = dsn
+    env["SHELLBRAIN_DB_ADMIN_DSN"] = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", dsn)
+    env["SHELLBRAIN_INSTANCE_MODE"] = "test"
     subprocess.run(
         [sys.executable, "-m", "shellbrain.periphery.cli.main", "admin", "migrate"],
         check=True,

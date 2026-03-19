@@ -5,8 +5,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-shellbrain}
-      POSTGRES_USER: ${POSTGRES_USER:-shellbrain}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shellbrain}
+      POSTGRES_USER: ${POSTGRES_USER:-shellbrain_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shellbrain_admin}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
@@ -14,7 +14,7 @@ services:
         source: ${SHELLBRAIN_DB_DATA_DIR:-./.local/postgres-data}
         target: /var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shellbrain} -d ${POSTGRES_DB:-shellbrain}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shellbrain_admin} -d ${POSTGRES_DB:-shellbrain}"]
       interval: 10s
       timeout: 5s
       retries: 10

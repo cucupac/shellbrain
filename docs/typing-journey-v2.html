@@ -729,10 +729,10 @@
       // Save original HTML for each paragraph
       const originalHTML = paragraphs.map(p => p.innerHTML);
 
-      // Hide all paragraphs initially
+      // Lock each paragraph's height, then hide content
       paragraphs.forEach(p => {
+        p.style.minHeight = p.offsetHeight + "px";
         p.style.visibility = "hidden";
-        p.style.height = "auto"; // keep layout space
       });
 
       // Create cursor element
@@ -841,6 +841,9 @@
       // Save original HTML for each paragraph so we can restore formatting
       const paras = block.querySelectorAll("p");
       block._originalHTML = Array.from(paras).map(p => p.innerHTML);
+      // Lock the block's height before typing starts so it doesn't
+      // shift content below it as paragraphs appear
+      block.style.minHeight = block.offsetHeight + "px";
       twState.set(block, { started: false, done: false });
       twObserver.observe(block);
     });

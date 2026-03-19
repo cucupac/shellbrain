@@ -1,6 +1,7 @@
 # This file defines runtime defaults for database connectivity and execution mode.
 database:
   dsn_env: SHELLBRAIN_DB_DSN
+  admin_dsn_env: SHELLBRAIN_DB_ADMIN_DSN
 cli:
   default_mode: targeted
   include_global: true

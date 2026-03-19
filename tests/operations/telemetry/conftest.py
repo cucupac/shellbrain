@@ -6,12 +6,15 @@ import pytest
 from sqlalchemy import text
 
 from shellbrain.periphery.db.models.registry import target_metadata
+from tests.operations._shared.destructive_guardrail_fixtures import assert_destructive_test_setup_allowed
 from tests.operations._shared.docker_persistence_fixtures import *  # noqa: F401,F403
 from tests.operations._shared.integration_db_fixtures import (  # noqa: F401
+    admin_db_dsn,
     clear_host_runtime_identity,
     count_rows,
     db_dsn,
     fetch_rows,
+    integration_admin_engine,
     integration_engine,
     integration_session_factory,
     seed_default_evidence_events,
@@ -26,11 +29,16 @@ from tests.operations.episodes.conftest import claude_code_transcript_fixture, c
 
 
 @pytest.fixture
-def telemetry_db_reset(integration_engine):
+def telemetry_db_reset(integration_admin_engine, db_dsn):
     """Truncate all relational tables before one DB-backed telemetry test."""
 
-    table_names = [table.name for table in reversed(target_metadata.sorted_tables)]
+    assert_destructive_test_setup_allowed(db_dsn)
+    table_names = [
+        table.name
+        for table in reversed(target_metadata.sorted_tables)
+        if table.name != "instance_metadata"
+    ]
     if table_names:
         joined = ", ".join(table_names)
-        with integration_engine.begin() as conn:
+        with integration_admin_engine.begin() as conn:
             conn.execute(text(f"TRUNCATE TABLE {joined} RESTART IDENTITY CASCADE;"))
