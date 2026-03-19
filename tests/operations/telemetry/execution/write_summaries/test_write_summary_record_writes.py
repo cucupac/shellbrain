@@ -154,11 +154,13 @@ def test_successful_writes_should_always_record_planned_effect_count_for_downstr
 def test_update_utility_vote_should_always_append_one_write_summary_row_with_update_type_utility_vote_and_utility_observation_count(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory,
+    seed_default_evidence_events,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
     """update utility_vote should always append one write summary row with update type utility_vote and utility observation count."""
 
+    seed_default_evidence_events(repo_id="repo-a")
     seed_memory(
         memory_id="target-memory",
         repo_id="repo-a",
@@ -181,6 +183,7 @@ def test_update_utility_vote_should_always_append_one_write_summary_row_with_upd
                 "type": "utility_vote",
                 "problem_id": "problem-memory",
                 "vote": 1.0,
+                "evidence_refs": ["session://1"],
             },
         },
         uow_factory=uow_factory,

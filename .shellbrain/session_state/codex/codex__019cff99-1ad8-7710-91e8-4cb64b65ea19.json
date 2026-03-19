@@ -1,0 +1,25 @@
+{
+  "agent_key": null,
+  "caller_id": "codex:019cff99-1ad8-7710-91e8-4cb64b65ea19",
+  "current_problem_id": null,
+  "host_app": "codex",
+  "host_session_key": "019cff99-1ad8-7710-91e8-4cb64b65ea19",
+  "last_events_at": "2026-03-19T07:01:38.671597+00:00",
+  "last_events_episode_id": "c55a2155-6772-4225-9fb3-82706f87ea79",
+  "last_events_event_ids": [
+    "89ec0527-0d79-49a5-8fdc-27b4167263f1",
+    "8aff30e8-b751-4fb6-93bc-604348c8a49c",
+    "cc9e4721-1e2b-49e2-a846-2b38bf77e46a",
+    "881b1919-3393-429a-8026-5d11d89f1280",
+    "8f235fbe-479c-4bcf-94db-323997f7371d",
+    "a84cebf7-7fa8-4965-8b3c-ed8d4e540cb9",
+    "a9ae286c-5015-4141-8585-d9a31b19c3fb",
+    "e569ab11-dfa3-4a24-ab9b-56e15d02e30e",
+    "9992324d-feba-40d0-a694-6873fa4ddc83",
+    "11927dc9-64fd-4422-bce6-ee592a39b566"
+  ],
+  "last_guidance_at": null,
+  "last_guidance_problem_id": null,
+  "last_seen_at": "2026-03-19T07:03:06.023460+00:00",
+  "session_started_at": "2026-03-19T07:01:38.352269+00:00"
+}

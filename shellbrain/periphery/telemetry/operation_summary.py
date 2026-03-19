@@ -6,7 +6,8 @@ from datetime import datetime, timezone
 from typing import Any
 
 from shellbrain.core.contracts.errors import ErrorCode
-from shellbrain.core.contracts.requests import MemoryCreateRequest, MemoryReadRequest, MemoryUpdateRequest
+from shellbrain.core.contracts.requests import MemoryBatchUpdateRequest, MemoryCreateRequest, MemoryReadRequest, MemoryUpdateRequest
+from shellbrain.core.entities.runtime_context import RuntimeContext
 from shellbrain.core.entities.telemetry import (
     OperationInvocationRecord,
     ReadResultItemRecord,
@@ -19,11 +20,9 @@ from shellbrain.core.entities.telemetry import (
 
 def build_operation_invocation_record(
     *,
-    invocation_id: str,
     command: str,
     repo_id: str,
-    repo_root: str,
-    no_sync: bool,
+    runtime_context: RuntimeContext,
     selection_summary: SessionSelectionSummary,
     result: dict[str, Any],
     error_stage: str | None,
@@ -32,12 +31,19 @@ def build_operation_invocation_record(
     """Build the parent invocation row from one finished handler result."""
 
     first_error = _first_error(result)
+    caller_identity = runtime_context.caller_identity
+    guidance_codes = _guidance_codes(result)
     return OperationInvocationRecord(
-        id=invocation_id,
+        id=runtime_context.invocation_id,
         command=command,
         repo_id=repo_id,
-        repo_root=repo_root,
-        no_sync=no_sync,
+        repo_root=runtime_context.repo_root,
+        no_sync=runtime_context.no_sync,
+        caller_id=caller_identity.canonical_id if caller_identity is not None else None,
+        caller_trust_level=caller_identity.trust_level.value if caller_identity is not None else None,
+        identity_failure_code=runtime_context.caller_identity_error.code.value
+        if runtime_context.caller_identity_error is not None
+        else None,
         selected_host_app=selection_summary.selected_host_app,
         selected_host_session_key=selection_summary.selected_host_session_key,
         selected_thread_id=selection_summary.selected_thread_id,
@@ -51,6 +57,7 @@ def build_operation_invocation_record(
         total_latency_ms=total_latency_ms,
         poller_start_attempted=False,
         poller_started=False,
+        guidance_codes=guidance_codes,
         created_at=datetime.now(timezone.utc),
     )
 
@@ -112,7 +119,7 @@ def build_write_summary_records(
     *,
     invocation_id: str,
     command: str,
-    request: MemoryCreateRequest | MemoryUpdateRequest,
+    request: MemoryCreateRequest | MemoryUpdateRequest | MemoryBatchUpdateRequest,
     planned_side_effects: list[dict[str, Any]],
 ) -> tuple[WriteSummaryRecord, list[WriteEffectItemRecord]]:
     """Build one write summary row and one compact effect row per planned side effect."""
@@ -157,6 +164,12 @@ def build_write_summary_records(
         target_kind = request.memory.kind
         update_type = None
         scope = request.memory.scope
+    elif isinstance(request, MemoryBatchUpdateRequest):
+        evidence_ref_count = sum(len(item.update.evidence_refs or []) for item in request.updates)
+        target_memory_id = request.updates[0].update.problem_id
+        target_kind = None
+        update_type = "utility_vote_batch"
+        scope = None
     else:
         evidence_ref_count = len(getattr(request.update, "evidence_refs", []) or [])
         target_memory_id = request.memory_id
@@ -217,6 +230,25 @@ def _first_error(result: dict[str, Any]) -> dict[str, str | None]:
         "code": normalized_code,
         "message": str(message) if message is not None else None,
     }
+
+
+def _guidance_codes(result: dict[str, Any]) -> list[str]:
+    """Return stable guidance codes from one successful result."""
+
+    data = result.get("data")
+    if not isinstance(data, dict):
+        return []
+    guidance = data.get("guidance")
+    if not isinstance(guidance, list):
+        return []
+    codes: list[str] = []
+    for item in guidance:
+        if not isinstance(item, dict):
+            continue
+        code = item.get("code")
+        if isinstance(code, str):
+            codes.append(code)
+    return codes
 
 
 def _target_memory_id_from_create(planned_side_effects: list[dict[str, Any]]) -> str:

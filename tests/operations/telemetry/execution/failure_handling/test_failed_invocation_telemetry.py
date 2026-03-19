@@ -153,7 +153,7 @@ def test_events_sync_failures_should_always_append_one_failed_operation_invocati
     """events sync failures should always append one failed operation invocation and one failed episode sync run."""
 
     monkeypatch.setattr(
-        "shellbrain.periphery.cli.handlers.sync_episode_from_host",
+        "shellbrain.periphery.cli.handlers.normalize_host_transcript",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 

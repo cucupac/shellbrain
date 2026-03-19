@@ -7,16 +7,13 @@ import json
 from pathlib import Path
 import sys
 from textwrap import dedent
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 from uuid import uuid4
 
-from shellbrain.core.entities.telemetry import OperationDispatchTelemetryContext
-from shellbrain.periphery.telemetry import (
-    get_operation_telemetry_context,
-    reset_operation_telemetry_context,
-    set_operation_telemetry_context,
-)
-from shellbrain.periphery.cli.hydration import RepoContext, resolve_repo_context
+from shellbrain.periphery.cli.hydration import resolve_repo_context
+
+if TYPE_CHECKING:
+    from shellbrain.periphery.cli.hydration import RepoContext
 
 
 class _HelpFormatter(argparse.RawDescriptionHelpFormatter):
@@ -139,6 +136,26 @@ _ADMIN_HELP = dedent(
     """
 )
 
+_INSTALL_CLAUDE_HOOK_HELP = dedent(
+    """\
+    Install or update the repo-local Claude Code SessionStart hook used for trusted Shellbrain caller identity.
+
+    Example:
+      shellbrain admin install-claude-hook --repo-root /path/to/repo
+    """
+)
+
+_SESSION_STATE_HELP = dedent(
+    """\
+    Inspect or clean repo-local per-caller Shellbrain session state.
+
+    Examples:
+      shellbrain admin session-state inspect --caller-id codex:thread-123
+      shellbrain admin session-state clear --caller-id codex:thread-123
+      shellbrain admin session-state gc
+    """
+)
+
 _MIGRATE_HELP = dedent(
     """\
     Apply packaged Alembic migrations to the database referenced by `SHELLBRAIN_DB_DSN`.
@@ -227,6 +244,33 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_MIGRATE_HELP,
         formatter_class=_HelpFormatter,
     )
+    install_hook_parser = admin_subparsers.add_parser(
+        "install-claude-hook",
+        help="Install the repo-local Claude hook used for trusted caller identity.",
+        description="Install or update the repo-local Claude Code SessionStart hook used by Shellbrain.",
+        epilog=_INSTALL_CLAUDE_HOOK_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    install_hook_parser.add_argument("--repo-root", help="Target repository root. Defaults to the current working directory.")
+
+    session_state_parser = admin_subparsers.add_parser(
+        "session-state",
+        help="Inspect or clean repo-local per-caller Shellbrain session state.",
+        description="Inspect or clean repo-local per-caller Shellbrain session state.",
+        epilog=_SESSION_STATE_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    session_state_parser.add_argument("--repo-root", help="Target repository root. Defaults to the current working directory.")
+    session_state_subparsers = session_state_parser.add_subparsers(
+        dest="session_state_command",
+        required=True,
+        metavar="session-state-command",
+    )
+    inspect_parser = session_state_subparsers.add_parser("inspect", help="Print one caller state as JSON.")
+    inspect_parser.add_argument("--caller-id", required=True)
+    clear_parser = session_state_subparsers.add_parser("clear", help="Delete one caller state.")
+    clear_parser.add_argument("--caller-id", required=True)
+    session_state_subparsers.add_parser("gc", help="Delete stale caller state files.")
     return parser
 
 
@@ -240,6 +284,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _run_admin_command(args)
 
     try:
+        from shellbrain.core.entities.runtime_context import RuntimeContext
+        from shellbrain.periphery.identity.resolver import resolve_caller_identity
+        from shellbrain.periphery.telemetry import reset_operation_telemetry_context, set_operation_telemetry_context
+
         repo_context = resolve_repo_context(
             repo_root_arg=getattr(args, "repo_root", None),
             repo_id_arg=getattr(args, "repo_id", None),
@@ -249,10 +297,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
         return 2
 
-    operation_context = OperationDispatchTelemetryContext(
+    caller_identity_resolution = resolve_caller_identity()
+    operation_context = RuntimeContext(
         invocation_id=str(uuid4()),
         repo_root=str(repo_context.repo_root),
         no_sync=bool(getattr(args, "no_sync", False)),
+        caller_identity=caller_identity_resolution.caller_identity,
+        caller_identity_error=caller_identity_resolution.error,
     )
     token = set_operation_telemetry_context(operation_context)
     try:
@@ -314,6 +365,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
     from shellbrain.boot.read_policy import get_read_hydration_defaults
     from shellbrain.boot.use_cases import get_embedding_model, get_embedding_provider_factory, get_uow_factory
     from shellbrain.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
+    from shellbrain.periphery.telemetry import get_operation_telemetry_context
 
     uow_factory = get_uow_factory()
     if command == "create":
@@ -325,6 +377,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             inferred_repo_id=repo_context.repo_id,
             defaults=get_create_hydration_defaults(),
             telemetry_context=get_operation_telemetry_context(),
+            repo_root=repo_context.repo_root,
         )
     if command == "read":
         return handle_read(
@@ -333,6 +386,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             inferred_repo_id=repo_context.repo_id,
             defaults=get_read_hydration_defaults(),
             telemetry_context=get_operation_telemetry_context(),
+            repo_root=repo_context.repo_root,
         )
     if command == "update":
         return handle_update(
@@ -340,6 +394,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             uow_factory=uow_factory,
             inferred_repo_id=repo_context.repo_id,
             telemetry_context=get_operation_telemetry_context(),
+            repo_root=repo_context.repo_root,
         )
     if command == "events":
         return handle_events(
@@ -355,14 +410,44 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
 def _run_admin_command(args: argparse.Namespace) -> int:
     """Execute one admin command."""
 
-    if args.admin_command != "migrate":
-        raise ValueError(f"Unsupported admin command: {args.admin_command}")
+    if args.admin_command == "migrate":
+        from shellbrain.boot.migrations import upgrade_database
 
-    from shellbrain.boot.migrations import upgrade_database
+        upgrade_database()
+        print("Applied shellbrain schema migrations to head.")
+        return 0
 
-    upgrade_database()
-    print("Applied shellbrain schema migrations to head.")
-    return 0
+    repo_root = _resolve_admin_repo_root(getattr(args, "repo_root", None))
+    if args.admin_command == "install-claude-hook":
+        from shellbrain.periphery.identity.claude_hook_install import install_claude_hook
+
+        settings_path = install_claude_hook(repo_root=repo_root)
+        print(f"Installed Claude hook at {settings_path}")
+        return 0
+
+    if args.admin_command == "session-state":
+        from shellbrain.periphery.session_state.file_store import FileSessionStateStore
+
+        store = FileSessionStateStore()
+        subcommand = getattr(args, "session_state_command", None)
+        if subcommand == "inspect":
+            state = store.load(repo_root=repo_root, caller_id=args.caller_id)
+            print(json.dumps(None if state is None else state.__dict__, indent=2, sort_keys=True))
+            return 0
+        if subcommand == "clear":
+            store.delete(repo_root=repo_root, caller_id=args.caller_id)
+            print(f"Cleared session state for {args.caller_id}")
+            return 0
+        if subcommand == "gc":
+            from datetime import datetime, timedelta, timezone
+
+            deleted = store.gc(
+                repo_root=repo_root,
+                older_than_iso=(datetime.now(timezone.utc) - timedelta(days=7)).isoformat(),
+            )
+            print(json.dumps({"deleted": deleted}, indent=2, sort_keys=True))
+            return 0
+    raise ValueError(f"Unsupported admin command: {args.admin_command}")
 
 
 def _print_operation_result(result: dict[str, Any]) -> None:
@@ -398,6 +483,17 @@ def _update_operation_polling_status(*, invocation_id: str, attempted: bool, sta
             )
     except Exception:
         return
+
+
+def _resolve_admin_repo_root(repo_root_arg: str | None) -> Path:
+    """Resolve one admin repo root without inferring repo_id."""
+
+    repo_root = Path(repo_root_arg).expanduser().resolve() if repo_root_arg else Path.cwd().resolve()
+    if not repo_root.exists():
+        raise ValueError(f"repo_root does not exist: {repo_root}")
+    if not repo_root.is_dir():
+        raise ValueError(f"repo_root must be a directory: {repo_root}")
+    return repo_root
 
 
 if __name__ == "__main__":

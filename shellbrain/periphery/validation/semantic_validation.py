@@ -4,6 +4,7 @@ from shellbrain.core.contracts.errors import ErrorCode, ErrorDetail
 from shellbrain.core.contracts.requests import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
+    MemoryBatchUpdateRequest,
     MemoryCreateRequest,
     MemoryUpdateRequest,
 )
@@ -48,10 +49,22 @@ def validate_create_semantics(request: MemoryCreateRequest) -> list[ErrorDetail]
     return errors
 
 
-def validate_update_semantics(request: MemoryUpdateRequest) -> list[ErrorDetail]:
+def validate_update_semantics(request: MemoryUpdateRequest | MemoryBatchUpdateRequest) -> list[ErrorDetail]:
     """Validate semantic constraints for update operations."""
 
     errors: list[ErrorDetail] = []
+    if isinstance(request, MemoryBatchUpdateRequest):
+        problem_ids = {item.update.problem_id for item in request.updates}
+        if len(problem_ids) > 1:
+            errors.append(
+                ErrorDetail(
+                    code=ErrorCode.SEMANTIC_ERROR,
+                    message="Batch utility votes must share the same problem_id",
+                    field="updates",
+                )
+            )
+        return errors
+
     update = request.update
     if isinstance(update, AssociationLinkUpdate) and update.to_memory_id == request.memory_id:
         errors.append(

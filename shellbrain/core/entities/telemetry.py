@@ -6,14 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-
-@dataclass(frozen=True)
-class OperationDispatchTelemetryContext:
-    """Per-command context captured in CLI main and consumed by handlers."""
-
-    invocation_id: str
-    repo_root: str
-    no_sync: bool = False
+from shellbrain.core.entities.runtime_context import RuntimeContext as OperationDispatchTelemetryContext
 
 
 @dataclass(frozen=True)
@@ -37,6 +30,9 @@ class OperationInvocationRecord:
     repo_id: str
     repo_root: str
     no_sync: bool
+    caller_id: str | None
+    caller_trust_level: str | None
+    identity_failure_code: str | None
     selected_host_app: str | None
     selected_host_session_key: str | None
     selected_thread_id: str | None
@@ -51,6 +47,7 @@ class OperationInvocationRecord:
     poller_start_attempted: bool
     poller_started: bool
     created_at: datetime
+    guidance_codes: list[str] = field(default_factory=list)
 
 
 @dataclass(frozen=True)

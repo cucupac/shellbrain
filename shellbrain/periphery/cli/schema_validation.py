@@ -6,13 +6,16 @@ from pydantic import Field, ValidationError, field_validator
 
 from shellbrain.core.contracts.errors import ErrorCode, ErrorDetail
 from shellbrain.core.contracts.requests import (
+    BatchUtilityVoteItem,
     EpisodeEventsRequest,
+    MemoryBatchUpdateRequest,
     MemoryCreateLinks,
     MemoryCreateRequest,
     MemoryReadRequest,
     MemoryUpdateRequest,
     StrictBaseModel,
     UpdatePayload,
+    UtilityVoteUpdate,
 )
 
 
@@ -81,6 +84,19 @@ class AgentUpdateRequest(StrictBaseModel):
 
     memory_id: str
     update: UpdatePayload
+
+
+class AgentBatchUpdateItem(StrictBaseModel):
+    """Agent-facing batch utility item with transport fields removed."""
+
+    memory_id: str
+    update: UtilityVoteUpdate
+
+
+class AgentBatchUpdateRequest(StrictBaseModel):
+    """Agent-facing batch utility update payload."""
+
+    updates: list[AgentBatchUpdateItem] = Field(min_length=1)
 
 
 def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
@@ -165,15 +181,21 @@ def validate_update_schema(payload: dict[str, Any]) -> tuple[AgentUpdateRequest 
     """Validate and parse agent update payloads into the simplified update contract."""
 
     try:
+        if "updates" in payload:
+            return AgentBatchUpdateRequest.model_validate(payload), []
         return AgentUpdateRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 
 
-def validate_internal_update_contract(payload: dict[str, Any]) -> tuple[MemoryUpdateRequest | None, list[ErrorDetail]]:
+def validate_internal_update_contract(
+    payload: dict[str, Any],
+) -> tuple[MemoryUpdateRequest | MemoryBatchUpdateRequest | None, list[ErrorDetail]]:
     """Validate one hydrated update payload against the full internal update contract."""
 
     try:
+        if "updates" in payload:
+            return MemoryBatchUpdateRequest.model_validate(payload), []
         return MemoryUpdateRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)

@@ -11,14 +11,29 @@ from typing import Any
 
 TESTS_ROOT = Path("tests")
 SUBCATEGORY_ORDER = ("validation", "execution")
-MAJOR_CATEGORY_ORDER = ("config", "create", "episodes", "events", "persistence", "read", "telemetry", "update")
+MAJOR_CATEGORY_ORDER = (
+    "config",
+    "create",
+    "episodes",
+    "events",
+    "guidance",
+    "identity",
+    "persistence",
+    "read",
+    "session_state",
+    "telemetry",
+    "update",
+)
 MAJOR_CATEGORY_LABELS = {
     "config": "Config Tests",
     "create": "Create Tests",
     "episodes": "Episodes Tests",
     "events": "Events Tests",
+    "guidance": "Guidance Tests",
+    "identity": "Identity Tests",
     "persistence": "Persistence Tests",
     "read": "Read Tests",
+    "session_state": "Session State Tests",
     "telemetry": "Telemetry Tests",
     "update": "Update Tests",
 }

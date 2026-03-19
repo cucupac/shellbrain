@@ -1,46 +1,31 @@
-"""Synchronize one host transcript into the episodic provenance tables."""
+"""Synchronize normalized host transcript events into the episodic provenance tables."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import datetime, timezone
 import json
-from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 from shellbrain.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from shellbrain.core.interfaces.unit_of_work import IUnitOfWork
-from shellbrain.periphery.episodes.normalization import normalize_host_transcript
-from shellbrain.periphery.episodes.source_discovery import resolve_host_transcript_source
 
 
-def sync_episode_from_host(
+def sync_episode(
     *,
     repo_id: str,
     host_app: str,
     host_session_key: str,
+    thread_id: str,
+    transcript_path: str,
+    normalized_events: Sequence[dict[str, Any]],
     uow: IUnitOfWork,
-    search_roots: Sequence[Path],
-    last_known_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Import one host session into episodes and episode events."""
+    """Import one already-normalized host transcript into episodes and episode events."""
 
-    transcript_path = resolve_host_transcript_source(
-        host_app=host_app,
-        host_session_key=host_session_key,
-        search_roots=search_roots,
-        last_known_path=last_known_path,
-    )
-    normalized_events = normalize_host_transcript(
-        host_app=host_app,
-        host_session_key=host_session_key,
-        transcript_path=transcript_path,
-    )
     counts = _count_normalized_events(normalized_events)
-
-    canonical_thread_id = f"{host_app}:{host_session_key}"
-    episode = uow.episodes.get_episode_by_thread(repo_id=repo_id, thread_id=canonical_thread_id)
+    episode = uow.episodes.get_episode_by_thread(repo_id=repo_id, thread_id=thread_id)
     imported_count = 0
 
     if episode is None:
@@ -49,7 +34,7 @@ def sync_episode_from_host(
             id=str(uuid4()),
             repo_id=repo_id,
             host_app=host_app,
-            thread_id=canonical_thread_id,
+            thread_id=thread_id,
             status=EpisodeStatus.ACTIVE,
             started_at=started_at,
             created_at=datetime.now(timezone.utc),
@@ -81,9 +66,9 @@ def sync_episode_from_host(
 
     return {
         "episode_id": episode.id,
-        "thread_id": canonical_thread_id,
+        "thread_id": thread_id,
         "imported_event_count": imported_count,
-        "transcript_path": str(transcript_path),
+        "transcript_path": transcript_path,
         "total_event_count": counts["total_event_count"],
         "user_event_count": counts["user_event_count"],
         "assistant_event_count": counts["assistant_event_count"],
@@ -91,6 +76,42 @@ def sync_episode_from_host(
         "system_event_count": counts["system_event_count"],
         "tool_type_counts": counts["tool_type_counts"],
     }
+
+
+def sync_episode_from_host(
+    *,
+    repo_id: str,
+    host_app: str,
+    host_session_key: str,
+    uow: IUnitOfWork,
+    search_roots,
+    last_known_path=None,
+) -> dict[str, Any]:
+    """Backward-compatible host sync wrapper used by existing callers."""
+
+    from shellbrain.periphery.episodes.normalization import normalize_host_transcript
+    from shellbrain.periphery.episodes.source_discovery import resolve_host_transcript_source
+
+    transcript_path = resolve_host_transcript_source(
+        host_app=host_app,
+        host_session_key=host_session_key,
+        search_roots=search_roots,
+        last_known_path=last_known_path,
+    )
+    normalized_events = normalize_host_transcript(
+        host_app=host_app,
+        host_session_key=host_session_key,
+        transcript_path=transcript_path,
+    )
+    return sync_episode(
+        repo_id=repo_id,
+        host_app=host_app,
+        host_session_key=host_session_key,
+        thread_id=f"{host_app}:{host_session_key}",
+        transcript_path=str(transcript_path),
+        normalized_events=normalized_events,
+        uow=uow,
+    )
 
 
 def _parse_timestamp(value: str) -> datetime:

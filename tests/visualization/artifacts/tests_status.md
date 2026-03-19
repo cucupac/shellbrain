@@ -1,37 +1,39 @@
 # Tests Status
 
-Generated: 2026-03-18 02:11:19 PDT
+Generated: 2026-03-18 23:40:58 PDT
 
 ## Summary
 
-- Total: 223
-- Passed: 42
+- Total: 242
+- Passed: 83
 - Failed: 0
-- Skipped/Not Run: 181
+- Skipped/Not Run: 159
 
 # Config Tests
 
-- ⚪ not run repo context resolution should infer repo_id from the resolved repo_root basename.
-- ⚪ not run repo context resolution should preserve an explicit repo_id override.
-- ⚪ not run top-level help should explain the Shellbrain mental model and session protocol.
-- ⚪ not run read help should teach focused querying and pack structure.
-- ⚪ not run events help should explain fresh episodic evidence lookup.
-- ⚪ not run create help should explain memory-kind choice and attempt-link rules.
-- ⚪ not run update help should expose the supported update types.
-- ⚪ not run admin help should always include one minimal example.
-- ⚪ not run admin migrate help should always include one minimal example.
-- ⚪ not run repo-targeting flags should work before the operational subcommand.
-- ⚪ not run repo-targeting flags should also work after the operational subcommand.
-- ⚪ not run --no-sync should suppress repo-local poller startup after a successful command.
-- ⚪ not run admin migrate should delegate to the packaged migration runner.
-- ⚪ not run explicit repo-root overrides should fail fast when the directory does not exist.
+- ✅ repo context resolution should infer repo_id from the resolved repo_root basename.
+- ✅ repo context resolution should preserve an explicit repo_id override.
+- ✅ top-level help should explain the Shellbrain mental model and session protocol.
+- ✅ read help should teach focused querying and pack structure.
+- ✅ events help should explain fresh episodic evidence lookup.
+- ✅ create help should explain memory-kind choice and attempt-link rules.
+- ✅ update help should expose the supported update types.
+- ✅ admin help should always include one minimal example.
+- ✅ admin migrate help should always include one minimal example.
+- ✅ admin install-claude-hook help should explain the trusted Claude setup step.
+- ✅ admin session-state help should expose inspect, clear, and gc management paths.
+- ✅ repo-targeting flags should work before the operational subcommand.
+- ✅ repo-targeting flags should also work after the operational subcommand.
+- ✅ --no-sync should suppress repo-local poller startup after a successful command.
+- ✅ admin migrate should delegate to the packaged migration runner.
+- ✅ explicit repo-root overrides should fail fast when the directory does not exist.
 - ⚪ not run yaml config provider should always expose separate create and update policy sections.
 - ⚪ not run The longer onboarding surfaces should teach the same Shellbrain mental model.
 - ⚪ not run Top-level CLI help should match the condensed taught workflow.
 - ⚪ not run The reusable shellbrain skill should include Codex UI metadata.
-- ⚪ not run editable installs should expose the shellbrain console script outside this repository.
-- ⚪ not run git-url installs should expose the shellbrain console script outside this repository.
-- ⚪ not run installed-package admin migrate should initialize an empty database from packaged artifacts.
+- ✅ editable installs should expose the shellbrain console script outside this repository.
+- ✅ git-url installs should expose the shellbrain console script outside this repository.
+- ✅ installed-package admin migrate should initialize an empty database from packaged artifacts.
 - ⚪ not run read policy should always resolve missing read knobs from config.
 - ⚪ not run read policy should always merge partial expand over config defaults.
 - ⚪ not run db boot should always resolve the runtime-configured dsn env.
@@ -108,10 +110,10 @@ Generated: 2026-03-18 02:11:19 PDT
 
 ### Normalization
 
-- ⚪ not run codex parsing should always normalize user and assistant messages into the common event shape.
-- ⚪ not run claude code parsing should always normalize user and assistant messages into the common event shape.
-- ⚪ not run episode parsing should always keep meaningful tool results and drop noisy tool chatter.
-- ⚪ not run episode parsing should always skip unknown transcript lines without failing normalization.
+- ✅ codex parsing should always normalize user and assistant messages into the common event shape.
+- ✅ claude code parsing should always normalize user and assistant messages into the common event shape.
+- ✅ episode parsing should always keep meaningful tool results and drop noisy tool chatter.
+- ✅ episode parsing should always skip unknown transcript lines without failing normalization.
 
 ### Source Discovery
 
@@ -161,8 +163,54 @@ Generated: 2026-03-18 02:11:19 PDT
 
 ### High Level Behavior
 
-- ⚪ not run events should always sync the active host session and return recent stored events newest first.
-- ⚪ not run events should always select the most recently updated matching host session across supported hosts.
+- ✅ events should always sync the active host session and return recent stored events newest first.
+- ✅ events should always prefer the trusted caller identity over newer repo-matching host sessions.
+
+# Guidance Tests
+
+## Execution
+
+### Create Solution
+
+- ✅ create solution should always emit pending_utility_votes guidance when session has unrated retrieved memories.
+
+### Failure Handling
+
+- ✅ guidance failures should always require events when batch utility votes omit evidence and no recent events exist.
+
+### Reminders
+
+- ✅ guidance reminders should always be rate limited per problem.
+
+### Update Batch
+
+- ✅ update batch should always apply multiple utility votes and clear pending candidates.
+
+# Identity Tests
+
+## Execution
+
+### Claude Hook
+
+- ✅ claude hook identity should always resolve one trusted main caller from Shellbrain hook env.
+- ✅ claude hook identity should always resolve one trusted subagent caller when agent_key is present.
+
+### Codex Runtime
+
+- ✅ codex runtime identity should always resolve one trusted caller from CODEX_THREAD_ID.
+
+### Failure Handling
+
+- ✅ identity failure handling should always return host_hook_missing when Claude runtime is detected without trusted Shellbrain identity.
+- ✅ identity failure handling should always return host_identity_drifted when one trusted identity transcript cannot be resolved.
+
+### Fallback
+
+- ✅ identity fallback should always mark the discovered events candidate untrusted when no runtime identity exists.
+
+### Hook Install
+
+- ✅ claude hook install should always write one repo-local settings file with Shellbrain identity exports.
 
 # Persistence Tests
 
@@ -279,6 +327,30 @@ Generated: 2026-03-18 02:11:19 PDT
 - ⚪ not run read should always fuse live semantic seeds with keyword direct hits without duplicates.
 - ⚪ not run read should always surface query-embedding failure as a structured read error rather than silently dropping the semantic lane.
 
+# Session State Tests
+
+## Execution
+
+### Cleanup
+
+- ✅ session state gc should always remove stale state files after 7 days.
+
+### Create
+
+- ✅ create problem should always set current_problem_id in trusted session state.
+
+### Events
+
+- ✅ events should always persist trusted caller session state.
+
+### Expiry
+
+- ✅ idle expiry should always reset working-session fields after 24 hours.
+
+### Isolation
+
+- ✅ multi agent isolation should always keep distinct session state files per caller_id.
+
 # Telemetry Tests
 
 ## Validation
@@ -392,6 +464,7 @@ Generated: 2026-03-18 02:11:19 PDT
 
 - ⚪ not run update requests should always reject unrecognized update.type values.
 - ⚪ not run update requests should always reject op/repo_id at the agent interface.
+- ⚪ not run update requests should always accept batch utility-vote payloads.
 
 ## Execution
 
