@@ -23,38 +23,36 @@ It exposes four agent-facing operations:
 
 ## Install Once Per Machine
 
-Treat `shellbrain` as a machine-level CLI, not a per-repo dependency. The normal model is a one-time global install.
+Treat `shellbrain` as a machine-level CLI, not a per-repo dependency. The normal product path is a one-time global install, then `shellbrain init` from any repo you want to register.
 
-Preferred global install with `pipx`:
-
-```bash
-pipx install --editable /absolute/path/to/shellbrain
-```
-
-Fallback user-level editable install:
+Preferred install with `pipx`:
 
 ```bash
-python3 -m pip install --user --break-system-packages --editable /absolute/path/to/shellbrain
+pipx install shellbrain
 ```
 
-If you use the user-level install, ensure your user Python bin is on `PATH`:
+Secondary install path:
 
 ```bash
-export PATH="$(python3 -m site --user-base)/bin:$PATH"
+python3 -m pip install shellbrain
 ```
 
-For Codex Desktop and similar tool shells, put both the PATH export and `SHELLBRAIN_DB_DSN` in `~/.zprofile`, not `~/.zshrc`, so non-interactive login shells can see them.
+Editable installs remain a development/operator path and are intentionally omitted from the normal user-facing flow.
 
 ## Bootstrap
 
-Export `SHELLBRAIN_DB_DSN` from your shell profile, then apply packaged migrations once:
+From the repo you are working in:
 
 ```bash
-export SHELLBRAIN_DB_DSN='postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain'
-shellbrain admin migrate
+shellbrain init
+shellbrain admin doctor
 ```
 
-When running Shellbrain from Codex Desktop or a similar tool shell, treat this as the normal startup pattern:
+`shellbrain init` is the normal bootstrap and repair path. In the managed-local happy path it owns Docker, Postgres provisioning, migrations, grants, embedding prewarm, repo registration, and Claude integration when eligible.
+
+**Claude integration is conservative.** Shellbrain installs the repo-local Claude hook automatically only when the repo looks Claude-managed *and* `init` is running with a real Claude runtime signal. Otherwise it does nothing unless you pass `--host claude`.
+
+When running Shellbrain from Codex Desktop or a similar tool shell, if direct calls fail in the current session, retry through a login shell first:
 
 ```bash
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
@@ -66,26 +64,13 @@ Then use the same wrapper shape for actual invocations if needed:
 zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this migration lock timeout before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"
 ```
 
-## Migrate Existing Local Postgres
-
-If your local Docker-backed Postgres is still the older `memory-postgres` setup, run:
-
-```bash
-bash scripts/migrate_local_postgres_to_shellbrain
-```
-
-This migration is idempotent. It:
-
-- creates the `shellbrain` role inside the existing cluster
-- clones the old `memory` database into a new `shellbrain` database
-- restarts the Docker container as `shellbrain-postgres`
-- keeps the legacy `memory` database in place as a fallback until you choose to remove it
+If `doctor` reports `repair_needed`, rerun `shellbrain init`.
 
 ## Typical Workflow
 
 1. Start with focused retrieval queries about the concrete problem, subsystem, constraint, or decision you are working on. Do not start with vague prompts like "what should I know about this repo?"
 2. Use `read` again during the task whenever the search shifts or a memory might become useful midway through the work.
-3. Before every evidence-bearing write, run `shellbrain events --json '{}'` so you can inspect concrete `episode_event` ids.
+3. Before every evidence-bearing write, run `shellbrain events --json '{"limit":10}'` so you can inspect concrete `episode_event` ids.
 4. At session end, normalize what happened into durable memories:
    - the `problem`
    - each `failed_tactic`
@@ -95,9 +80,37 @@ This migration is idempotent. It:
 
 Never invent `evidence_refs`. If `events` returns nothing useful or the evidence is ambiguous, skip the write and try again later.
 
-Use `--repo-root` when your current working directory is not the repo you want to target. Use `--repo-id` only when you need to override the default `basename(repo_root)` inference.
+Use `--repo-root` when your current working directory is not the repo you want to target.
+
+**Repo identity is remote-first.** Shellbrain prefers the normalized `origin` fetch URL. If `origin` is absent but there is exactly one remote, it uses that. If there are multiple remotes and none is `origin`, `init` stops and asks for `--repo-id`. If there is no usable remote, Shellbrain falls back to a weak-local identity tied to the current path.
+
+## Backups and Recovery
+
+Shellbrain exposes first-class logical backups:
+
+```bash
+shellbrain admin backup create
+shellbrain admin backup list
+shellbrain admin backup verify
+shellbrain admin backup restore --target-db shellbrain_restore_001
+shellbrain admin doctor
+```
+
+Backups default to `$SHELLBRAIN_HOME/backups`, which is `~/.shellbrain/backups` unless `SHELLBRAIN_HOME` is set. The Docker bind-mounted Postgres data dir protects against container loss, but it is not a backup strategy by itself.
+
+## Advanced / Operator Notes
+
+The normal product path should not require users to think about:
+
+- raw DSNs
+- manual `docker compose up`
+- manual `shellbrain admin migrate`
+- editable installs
+- manual Claude hook edits
+
+Those topics belong in the advanced/operator guide: [`docs/external-quickstart.md`](docs/external-quickstart.md)
 
 ## More
 
-- Quickstart: [`docs/external-quickstart.md`](docs/external-quickstart.md)
+- Advanced/operator guide: [`docs/external-quickstart.md`](docs/external-quickstart.md)
 - Session-start skill: [`skills/shellbrain-session-start/SKILL.md`](skills/shellbrain-session-start/SKILL.md)

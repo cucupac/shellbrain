@@ -24,15 +24,13 @@ def test_docs_and_skill_should_share_the_shellbrain_protocol() -> None:
     ]
 
     required_phrases = [
-        "one-time global install",
+        "shellbrain init",
+        "shellbrain admin doctor",
         "durable memories",
         "episodic evidence",
-        "Never invent `evidence_refs`",
         "--repo-root",
-        "session end",
         "utility_vote",
         "what should I know about this repo?",
-        "~/.zprofile",
     ]
 
     for phrase in required_phrases:
@@ -46,13 +44,14 @@ def test_cli_help_should_share_the_short_protocol() -> None:
 
     required_phrases = [
         "case-based memory system",
+        "pipx install shellbrain",
         "Avoid generic prompts like",
         "evidence_refs",
         "utility_vote",
         "shellbrain admin migrate",
+        "shellbrain init",
         "--repo-root",
         "At session end",
-        "~/.zprofile",
     ]
 
     for phrase in required_phrases:

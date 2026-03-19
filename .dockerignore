@@ -1,0 +1,101 @@
+# VCS metadata
+.git
+.gitignore
+.gitattributes
+
+# Editor / IDE state
+.idea/
+.vscode/
+.zed/
+
+# Python caches and test artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.hypothesis/
+.pyre/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Virtual environments and local tooling
+.venv/
+venv/
+env/
+ENV/
+.envrc
+.direnv/
+.pipx/
+
+# Environment files and secrets
+.env
+.env.*
+*.env
+*.env.*
+*.local
+*.secret
+*.secrets
+*.pem
+*.key
+*.crt
+
+# Build outputs
+build/
+dist/
+site/
+.eggs/
+*.egg
+*.egg-info/
+pip-wheel-metadata/
+wheelhouse/
+
+# Logs, temp files, and local caches
+*.log
+*.pid
+*.pid.lock
+*.out
+*.err
+tmp/
+temp/
+.cache/
+.local/
+.hf/
+
+# Local app state and persistence
+.shellbrain/
+.shellbrain-home/
+.memory/
+artifacts/
+postgres-data/
+pgdata/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.sql
+*.sql.gz
+*.dump
+*.tar.gz
+
+# Non-image project content
+tests/
+docs/
+skills/
+research/
+writing/
+architectures/
+insights/
+shellbrain.egg-info/
+
+# Frontend / JS noise if introduced later
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*

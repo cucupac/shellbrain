@@ -60,8 +60,10 @@ def test_local_migration_should_preserve_sentinel_usage_telemetry_while_promotin
         "OLD_POSTGRES_PASSWORD": "memory",
         "OLD_DB_CONTAINER_NAME": legacy_container,
         "NEW_POSTGRES_DB": "shellbrain",
-        "NEW_POSTGRES_USER": "shellbrain",
-        "NEW_POSTGRES_PASSWORD": "shellbrain",
+        "NEW_POSTGRES_ADMIN_USER": "shellbrain_admin",
+        "NEW_POSTGRES_ADMIN_PASSWORD": "shellbrain_admin",
+        "NEW_POSTGRES_APP_USER": "shellbrain_app",
+        "NEW_POSTGRES_APP_PASSWORD": "shellbrain",
         "SHELLBRAIN_DB_CONTAINER_NAME": shellbrain_container,
     }
 
@@ -84,8 +86,8 @@ def test_local_migration_should_preserve_sentinel_usage_telemetry_while_promotin
             text=True,
         )
 
-        _wait_for_container_postgres(shellbrain_container, "shellbrain", "shellbrain")
-        shellbrain_dsn = f"postgresql+psycopg://shellbrain:shellbrain@localhost:{port}/shellbrain"
+        _wait_for_container_postgres(shellbrain_container, "shellbrain_admin", "shellbrain")
+        shellbrain_dsn = f"postgresql+psycopg://shellbrain_app:shellbrain@localhost:{port}/shellbrain"
         assert_usage_telemetry_dataset_via_dsn(shellbrain_dsn, expected)
     finally:
         _cleanup_project(compose_project, legacy_container, shellbrain_container)

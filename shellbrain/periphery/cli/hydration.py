@@ -4,6 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from shellbrain.periphery.admin.repo_state import (
+    load_repo_registration,
+    resolve_git_root,
+    resolve_repo_identity,
+)
+
 
 @dataclass(frozen=True)
 class RepoContext:
@@ -16,7 +22,11 @@ class RepoContext:
 def infer_repo_id(repo_root: Path) -> str:
     """This function infers repo_id from one resolved repository root."""
 
-    return repo_root.name
+    registration = _load_registration_for_root(repo_root)
+    if registration is not None:
+        return registration.repo_id
+    identity = resolve_repo_identity(repo_root=repo_root)
+    return identity.repo_id
 
 
 def resolve_repo_context(*, repo_root_arg: str | None, repo_id_arg: str | None) -> RepoContext:
@@ -29,6 +39,18 @@ def resolve_repo_context(*, repo_root_arg: str | None, repo_id_arg: str | None) 
         raise ValueError(f"repo_root must be a directory: {repo_root}")
     repo_id = repo_id_arg or infer_repo_id(repo_root)
     return RepoContext(repo_root=repo_root, repo_id=repo_id)
+
+
+def _load_registration_for_root(repo_root: Path):
+    """Return a repo registration from the target root or its git root."""
+
+    direct = load_repo_registration(repo_root)
+    if direct is not None:
+        return direct
+    git_root = resolve_git_root(repo_root)
+    if git_root is None or git_root == repo_root:
+        return None
+    return load_repo_registration(git_root)
 
 
 def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]) -> dict[str, Any]:

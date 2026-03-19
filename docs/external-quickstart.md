@@ -1,46 +1,53 @@
-# External Quickstart
+# Advanced Operator Guide
 
-## Goal
+## Normal Product Path
 
-Use Shellbrain from a normal agent session in a different repo.
-
-Assume `shellbrain` is already available as a machine-level CLI from a one-time global install. Do not reinstall it per repo.
-
-Think of Shellbrain as a case-based reasoning system:
-
-- `read` retrieves durable memories that may help with the current problem
-- `events` exposes episodic evidence from the current session
-- `create` and `update` let the agent turn what happened into long-term structured memory
-
-## One-Time Global Install
-
-Preferred:
+The normal Shellbrain path should be:
 
 ```bash
-pipx install --editable /absolute/path/to/shellbrain
+pipx install shellbrain
+cd /path/to/repo
+shellbrain init
+shellbrain admin doctor
 ```
 
-Fallback user-level editable install:
+If that works, stop here. The rest of this document is for advanced operators, legacy environments, or manual recovery.
+
+## When This Guide Matters
+
+Use this guide when:
+
+- `shellbrain admin doctor` says the managed runtime is blocked
+- you are maintaining an older env-var/DSN based install
+- you are doing packaging, editable-install, or recovery work
+- you are preparing for future external-Postgres adoption
+
+## Transition Guidance
+
+Shellbrain now uses one machine-local managed instance reused across repos.
+
+That means:
+
+- normal users should not need raw DSNs
+- normal users should not run Docker commands manually
+- normal users should not run `shellbrain admin migrate` manually
+- normal users should not hand-edit machine config
+- normal users should not need to know where models, backups, or the managed Postgres data dir live
+
+Machine-owned state lives under `$SHELLBRAIN_HOME`, which defaults to `~/.shellbrain`. That root contains machine config, the managed Postgres bind mount, model cache, and backups.
+
+## Legacy / Manual Bootstrap
+
+If you are on a pre-productized build, the older operator path is:
 
 ```bash
-python3 -m pip install --user --break-system-packages --editable /absolute/path/to/shellbrain
-export PATH="$(python3 -m site --user-base)/bin:$PATH"
-```
-
-For Codex Desktop and similar tool shells, put that PATH export and `SHELLBRAIN_DB_DSN` in `~/.zprofile`, not `~/.zshrc`, so non-interactive login shells can see them.
-
-## Bootstrap
-
-Set this once in your shell profile, then apply migrations:
-
-```bash
-export SHELLBRAIN_DB_DSN='postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain'
+export SHELLBRAIN_DB_DSN='postgresql+psycopg://shellbrain_app:shellbrain@localhost:5432/shellbrain'
+export SHELLBRAIN_DB_ADMIN_DSN='postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain'
 shellbrain admin migrate
+shellbrain admin doctor
 ```
 
-## Codex Startup Pattern
-
-When running Shellbrain from Codex Desktop or a similar tool shell, treat this as the normal startup step:
+In Codex Desktop and similar tool shells, use a login shell retry first:
 
 ```bash
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
@@ -52,53 +59,30 @@ Then use the same wrapper shape for real commands when needed:
 zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this migration lock timeout before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"
 ```
 
-## Query First, But Query Precisely
+## Repo Targeting
 
-Shellbrain `read` uses lexical retrieval plus semantic similarity. Query it with the concrete problem, subsystem, constraint, or decision you are working on. Do not start with vague prompts like "what should I know about this repo?"
+- Use the current working directory when already inside the repo.
+- Use `--repo-root /absolute/path/to/repo` when your shell is elsewhere.
+- Treat repo path as operational context.
+- Shellbrain should normally infer durable repo identity from normalized git remote.
+- It prefers `origin`, then a single remaining remote.
+- If multiple remotes exist and none is `origin`, rerun with `--repo-id`.
+- If no usable remote exists, Shellbrain falls back to a weak-local identity tied to the current path.
 
-Good first queries:
+## Query and Session Usage
 
-1. Prior attempts:
+Even in advanced/operator environments, the usage model stays the same: Shellbrain stores durable memories grounded by episodic evidence.
 
-```bash
-shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
-```
-
-2. Constraints and preferences:
-
-```bash
-shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
-```
-
-3. Area-specific facts and changes:
-
-```bash
-shellbrain read --json '{"query":"What facts or recent changes matter around the payments retry worker?","kinds":["fact","change","problem","solution"]}'
-```
-
-The returned pack has:
-
-- `direct`:
-  direct matches
-- `explicit_related`:
-  linked memories
-- `implicit_related`:
-  semantic neighbors and associative hops
-
-Query again whenever the search shifts or a memory might become useful mid-journey.
-
-## Session Protocol
-
-1. Use focused `read` queries to pull relevant prior cases, facts, and preferences.
-2. Solve the problem normally. Shellbrain's background episodic capture keeps transcript evidence up to date.
-3. Before every evidence-bearing write, inspect fresh evidence:
+1. Query first, but query precisely. Do not start with vague prompts like "what should I know about this repo?"
+2. Re-query during the task when the search shifts.
+3. Before evidence-bearing writes, run:
 
 ```bash
 shellbrain events --json '{"limit":10}'
 ```
 
-4. Use returned `episode_event` ids verbatim in `create` or any evidence-bearing `update`.
-5. At session end, normalize what happened into durable memories.
+4. Use returned `episode_event` ids verbatim in `create` or evidence-bearing `update`.
+5. At session end, normalize the work into durable memories.
 
 Examples:
 
@@ -109,71 +93,57 @@ shellbrain create --json '{"memory":{"text":"Retrying the migration without chan
 shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"rationale":"This prior fix led directly to the right timeout change.","evidence_refs":["evt-126"]}}'
 ```
 
-## What To Store
+## Claude Integration
 
-- `problem`:
-  the obstacle or failure mode
-- `solution`:
-  what worked for that problem
-- `failed_tactic`:
-  what did not work for that problem
-- `fact`:
-  durable truth about the repo, environment, or architecture
-- `preference`:
-  durable user or repo convention
-- `change`:
-  something that invalidated prior truth
+- Codex is zero-config.
+- Claude hook installation is repo-local and non-destructive.
+- In `auto` mode, Shellbrain installs the Claude hook only when the repo already looks Claude-managed and `init` is running with a real Claude runtime signal.
+- If that does not happen, rerun `shellbrain init` from Claude Code or pass `--host claude`.
+- Shellbrain merges one managed SessionStart entry into `.claude/settings.local.json` and does not overwrite unrelated hook config.
 
-Use `update` for:
+## Backups and Recovery
 
-- `utility_vote`:
-  whether a memory helped with a specific problem on a `-1.0` to `1.0` scale
-  negative = unhelpful or misleading
-  `0.0` = neutral or unclear
-  positive = helpful
-- `fact_update_link`:
-  connecting old and new facts through a `change`
-- `association_link`:
-  explicit durable relationships between memories
-- `archive_state`:
-  hiding or restoring an existing memory
-
-When truth changed, the semantic-memory pattern is:
-
-1. create a `change`
-2. create the new `fact`
-3. connect old and new facts with `fact_update_link`
-
-## Scope and Hierarchy
-
-- Most memories should stay repo-scoped.
-- Use `scope: "global"` for cross-repo user preferences, coding-style preferences, or project facts that are not tied to one repo.
-
-## Rules
-
-- Never invent `evidence_refs`.
-- Skip the write if evidence is missing or ambiguous.
-- `solution` and `failed_tactic` require `links.problem_id`.
-- `archive_state` does not use `evidence_refs`; the evidence-bearing update types carry them inside the `update` object.
-
-## Repo Targeting
-
-- `--repo-root` targets a repo even when your shell is elsewhere.
-- `--repo-id` overrides the default `basename(repo_root)` inference.
-
-Example:
+Shellbrain exposes first-class logical backups:
 
 ```bash
-shellbrain --repo-root /path/to/other-repo read --json '{"query":"What repo conventions matter here?","kinds":["fact","preference","change"]}'
+shellbrain admin backup create
+shellbrain admin backup list
+shellbrain admin backup verify
+shellbrain admin backup restore --target-db shellbrain_restore_001
+shellbrain admin doctor
 ```
 
-## Codex Skill
+Backups default to `$SHELLBRAIN_HOME/backups`, which is `~/.shellbrain/backups` unless `SHELLBRAIN_HOME` is set. The Docker bind-mounted Postgres data dir protects against container loss, but it is not a backup by itself.
 
-This repo ships a versioned session-start skill at [`skills/shellbrain-session-start/SKILL.md`](../skills/shellbrain-session-start/SKILL.md).
+If repair is needed:
 
-To use it in Codex, copy or symlink the directory into `$CODEX_HOME/skills`:
+1. run `shellbrain admin doctor`
+2. prefer rerunning `shellbrain init`
+3. only drop to manual DSN or Docker repair if the managed runtime is clearly blocked
+
+## Local Migration Helper
+
+If your local Docker-backed Postgres is still the older `memory-postgres` setup, run:
 
 ```bash
-mkdir -p "$CODEX_HOME/skills"
-ln -s /absolute/path/to/shellbrain/skills/shellbrain-session-start "$CODEX_HOME/skills/shellbrain-session-start"
+bash scripts/migrate_local_postgres_to_shellbrain
 ```
+
+That helper is idempotent. It:
+
+- creates `shellbrain_admin` and `shellbrain_app`
+- clones the old `memory` database into `shellbrain`
+- restarts the Docker container as `shellbrain-postgres`
+- keeps the legacy `memory` database in place as a fallback until you remove it
+
+## External Postgres
+
+External Postgres is an advanced/operator path and is intentionally not the Phase 1 happy path.
+
+The future direction is:
+
+- explicit adoption through `shellbrain init --mode external --admin-dsn ... --app-dsn ...`
+- no hand-authored config files
+- fail-closed refusal for non-empty unstamped databases
+
+Until that lands, treat external-DB setups as operator-managed.

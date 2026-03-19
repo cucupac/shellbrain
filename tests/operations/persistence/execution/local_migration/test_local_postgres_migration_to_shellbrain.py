@@ -66,8 +66,10 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         "OLD_POSTGRES_PASSWORD": "memory",
         "OLD_DB_CONTAINER_NAME": legacy_container,
         "NEW_POSTGRES_DB": "shellbrain",
-        "NEW_POSTGRES_USER": "shellbrain",
-        "NEW_POSTGRES_PASSWORD": "shellbrain",
+        "NEW_POSTGRES_ADMIN_USER": "shellbrain_admin",
+        "NEW_POSTGRES_ADMIN_PASSWORD": "shellbrain_admin",
+        "NEW_POSTGRES_APP_USER": "shellbrain_app",
+        "NEW_POSTGRES_APP_PASSWORD": "shellbrain",
         "SHELLBRAIN_DB_CONTAINER_NAME": shellbrain_container,
     }
 
@@ -91,10 +93,10 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         )
         assert "Local Docker/Postgres migration is complete." in completed.stdout
 
-        _wait_for_container_postgres(shellbrain_container, "shellbrain", "shellbrain")
+        _wait_for_container_postgres(shellbrain_container, "shellbrain_admin", "shellbrain")
 
-        shellbrain_dsn = f"postgresql+psycopg://shellbrain:shellbrain@localhost:{port}/shellbrain"
-        shellbrain_legacy_dsn = f"postgresql+psycopg://shellbrain:shellbrain@localhost:{port}/memory"
+        shellbrain_dsn = f"postgresql+psycopg://shellbrain_app:shellbrain@localhost:{port}/shellbrain"
+        shellbrain_legacy_dsn = f"postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:{port}/memory"
 
         assert _fetch_memory_text(shellbrain_dsn, sentinel["memory_id"]) == sentinel["memory_text"]
         assert _fetch_memory_text(shellbrain_legacy_dsn, sentinel["memory_id"]) == sentinel["memory_text"]
@@ -150,7 +152,12 @@ def _run_packaged_migrations(repo_root: Path, dsn: str) -> None:
         [sys.executable, "-m", "shellbrain", "admin", "migrate"],
         check=True,
         cwd=repo_root,
-        env={**os.environ, "SHELLBRAIN_DB_DSN": dsn},
+        env={
+            **os.environ,
+            "SHELLBRAIN_DB_DSN": dsn,
+            "SHELLBRAIN_DB_ADMIN_DSN": dsn,
+            "SHELLBRAIN_INSTANCE_MODE": "test",
+        },
         capture_output=True,
         text=True,
     )

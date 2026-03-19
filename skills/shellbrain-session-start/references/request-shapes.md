@@ -2,6 +2,23 @@
 
 The public CLI expects agent-facing payloads. It hydrates `op` and `repo_id` automatically.
 
+Assume the normal product bootstrap has already happened:
+
+- `shellbrain init` has succeeded for the machine
+- the current repo has been registered
+- `shellbrain admin doctor` reports Shellbrain as ready
+
+If readiness is unclear, inspect with `shellbrain admin doctor` before debugging individual request payloads.
+
+Shellbrain should normally infer durable repo identity from normalized git remote. Use `--repo-root` when your shell is elsewhere; reserve explicit repo-id overrides for rare advanced cases.
+
+More precisely:
+
+- Shellbrain prefers the normalized `origin` fetch URL.
+- If `origin` is absent but exactly one remote exists, it uses that remote.
+- If multiple remotes exist and none is `origin`, rerun `init` with `--repo-id`.
+- If no usable remote exists, Shellbrain falls back to a weak-local identity tied to the current path.
+
 ## Read
 
 Use `read` to retrieve durable memories related to the current problem or subproblem.
@@ -55,6 +72,9 @@ Read returned ids from `data.events[].id`.
 
 `events` inspects normalized episodic evidence. Those ids are the canonical grounding for durable writes.
 
+When caller identity is trusted, `events` reads from the exact caller thread instead of guessing from the repo alone.
+`shellbrain init` normally installs Claude integration only when the repo already looks Claude-managed and `init` is running with a real Claude runtime signal. Use `--host claude` when you need to force repo-local Claude hook installation.
+
 ## Create
 
 Minimal create:
@@ -105,6 +125,12 @@ shellbrain update --json '{"memory_id":"mem-123","update":{"type":"utility_vote"
 ```
 
 Use `utility_vote` after solving a problem to judge whether a retrieved memory was actually useful or misleading in that specific context.
+
+Batch utility votes are also supported:
+
+```bash
+shellbrain update --json '{"updates":[{"memory_id":"mem-123","update":{"type":"utility_vote","problem_id":"mem-problem","vote":1.0,"evidence_refs":["evt-123"]}},{"memory_id":"mem-456","update":{"type":"utility_vote","problem_id":"mem-problem","vote":-0.25,"evidence_refs":["evt-123"]}}]}'
+```
 
 Vote semantics:
 

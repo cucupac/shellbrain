@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import asdict
 from datetime import datetime, timezone
 import json
+import os
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from shellbrain.core.entities.session_state import SessionState
 from shellbrain.core.interfaces.session_state_store import ISessionStateStore
@@ -31,7 +33,11 @@ class FileSessionStateStore(ISessionStateStore):
 
         path = self._path_for(repo_root=repo_root, caller_id=state.caller_id, host_app=state.host_app)
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(asdict(state), indent=2, sort_keys=True), encoding="utf-8")
+        payload = json.dumps(asdict(state), indent=2, sort_keys=True)
+        with NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+            handle.write(payload)
+            temp_path = Path(handle.name)
+        os.replace(temp_path, path)
 
     def delete(self, *, repo_root: Path, caller_id: str) -> None:
         """Delete one caller state when its file exists."""

@@ -24,25 +24,36 @@ The point is case-based reasoning: query for similar prior problems, plans, cons
 
 ## Bootstrap
 
-In Codex desktop and similar tool shells, first retry through a login shell that sources `~/.zprofile`:
+Prefer the product path:
 
 ```bash
-zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain && printf "%s\n" "$SHELLBRAIN_DB_DSN"'
+shellbrain init
+shellbrain admin doctor
 ```
 
-Use Shellbrain only after confirming:
+Use Shellbrain normally after `doctor` shows the machine bootstrap is `ready` and the current repo is registered.
 
-- `shellbrain --help` works.
-- `SHELLBRAIN_DB_DSN` is set.
-- `shellbrain admin migrate` has been run against the target database.
+If `doctor` reports `repair_needed`, rerun `shellbrain init` instead of trying to patch Shellbrain manually.
 
-Assume Shellbrain comes from a one-time global install. If direct calls fail in the current Codex session, keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only if the wrapped check fails should you ask the operator to restore the machine-level install. Do not create per-repo installs unless the operator explicitly wants that.
+In Codex desktop and similar tool shells, if direct `shellbrain` calls fail in the current session, retry through a login shell that sources `~/.zprofile`:
+
+```bash
+zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
+```
+
+Assume Shellbrain comes from a one-time machine install. If direct calls fail in the current Codex session, keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only if the wrapped check fails should you ask the operator to restore the machine-level install.
+
+Drop into the advanced/operator path only when `doctor` says the managed runtime is blocked.
 
 ## Repo Targeting
 
 - Default to the current working directory when it is the repo you are working in.
 - Use `--repo-root /absolute/path/to/repo` when your shell is elsewhere.
-- Use `--repo-id` only when the target repo should not be identified by `basename(repo_root)`.
+- Treat path as operational context, not durable identity.
+- Shellbrain should normally derive durable repo identity from normalized git remote.
+- It prefers `origin`, then a single remaining remote.
+- If multiple remotes exist and none is `origin`, `init` stops and asks for `--repo-id`.
+- If no usable remote exists, Shellbrain falls back to a weak-local identity tied to the current path.
 
 ## Query Playbook
 
@@ -177,23 +188,34 @@ Important modeling pattern for changed truth:
 
 ## Evidence Model
 
-- `events` selects the newest repo-matching active session across supported hosts.
+- `events` syncs the exact trusted caller thread when Shellbrain can identify the host session cleanly.
 - Supported hosts are Codex and Claude Code.
-- Repo matching depends on transcript metadata whose working directory matches the target `repo_root`.
+- Codex caller identity is automatic.
+- Claude trusted identity is normally installed only when the repo looks Claude-managed and `shellbrain init` is running with a real Claude runtime signal.
 - Successful Shellbrain commands keep background episodic capture warm automatically.
 - `events` also performs an inline sync before returning recent stored events.
 - The transcript log is evidence, not the memory itself. Do not store raw transcript chunks as durable memories.
+- Successful responses may include `data.guidance`; treat it as an internal nudge from Shellbrain about pending utility votes or workflow reminders.
 
 ## Recovery
 
 - `shellbrain: command not found`
-  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'` first. Only if that still fails should you ask the operator to restore the one-time global Shellbrain install.
+  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'` first. Only if that still fails should you ask the operator to restore the one-time machine install.
 
-- `SHELLBRAIN_DB_DSN is not set`
-  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; printf "%s\n" "$SHELLBRAIN_DB_DSN"'` first. If it is still unset, ask the operator to export the DB DSN from the shell profile, then rerun `shellbrain admin migrate` if the database is fresh.
+- `shellbrain init` fails or `doctor` shows `repair_needed`
+  Rerun `shellbrain init`. That is the normal repair path.
+
+- `doctor` says the managed runtime is blocked
+  Escalate to the operator path only after `doctor` gives a specific failure. That path may still involve manual DSN, migration, or Docker repair.
 
 - No active host session found
   Verify that the user is working in Codex or Claude Code, that transcript files exist, and that `repo_root` matches the repo used in that session.
+
+- Claude integration missing or untrusted
+  Rerun `shellbrain init` from a real Claude Code session in a repo that already has `.claude/`, or rerun with `--host claude` when you know the current repo should receive Claude integration. Do not hand-edit Claude hook config in the normal path.
+
+- `init` asks for `--repo-id`
+  That means multiple remotes exist and none is `origin`. Pick the durable identity you want and rerun with an explicit repo id.
 
 - Evidence ref rejected or event not visible
   Rerun `shellbrain events` and use the returned ids verbatim. Do not reuse stale ids from memory.

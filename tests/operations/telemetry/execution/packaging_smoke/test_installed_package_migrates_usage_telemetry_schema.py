@@ -13,6 +13,7 @@ from tests.config.test_packaging_smoke import (
     _create_isolated_install,
     _create_temp_database,
     _drop_temp_database,
+    _replace_database_dsn,
     _repo_root,
 )
 
@@ -23,7 +24,8 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
     """installed-package admin migrate should initialize the usage telemetry tables and views from packaged artifacts."""
 
     base_dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
-    if not base_dsn:
+    admin_base_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", base_dsn or "")
+    if not base_dsn or not admin_base_dsn:
         pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
 
     repo_root = _repo_root()
@@ -37,7 +39,8 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         install_runtime_deps=True,
     )
 
-    package_dsn, admin_dsn, db_name = _create_temp_database(base_dsn)
+    package_dsn, admin_dsn, db_name = _create_temp_database(base_dsn, admin_base_dsn)
+    package_admin_dsn = _replace_database_dsn(admin_base_dsn, db_name)
     try:
         subprocess.run(
             [shellbrain_executable, "admin", "migrate"],
@@ -45,7 +48,12 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
             cwd=external_repo,
             text=True,
             capture_output=True,
-            env={**os.environ, "SHELLBRAIN_DB_DSN": package_dsn},
+            env={
+                **os.environ,
+                "SHELLBRAIN_DB_DSN": package_dsn,
+                "SHELLBRAIN_DB_ADMIN_DSN": package_admin_dsn,
+                "SHELLBRAIN_INSTANCE_MODE": "test",
+            },
         )
 
         with psycopg.connect(package_dsn.replace("+psycopg", "")) as conn:
@@ -62,6 +70,6 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert operation_invocations_table is not None
         assert read_summaries_table is not None
         assert usage_command_daily_view is not None
-        assert alembic_version == "20260319_0007"
+        assert alembic_version == "20260320_0008"
     finally:
         _drop_temp_database(admin_dsn, db_name)

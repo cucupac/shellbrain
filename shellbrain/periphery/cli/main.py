@@ -24,41 +24,39 @@ _TOP_LEVEL_HELP = dedent(
     """\
     Use Shellbrain as a case-based memory system for agent work.
 
+    Install and bootstrap:
+      1. `pipx install shellbrain`
+      2. `shellbrain init`
+
     Mental model:
       - `read` retrieves durable memories related to the concrete problem or subproblem.
       - `events` inspects episodic transcript evidence from the active session.
       - `create` authors durable memories from that evidence.
       - `update` records utility, truth-evolution links, and explicit associations.
 
-    Codex shell bootstrap:
-      - In Codex Desktop or similar tool shells, start via `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'`.
-      - Use the same wrapper shape for actual Shellbrain commands when the session depends on machine-level PATH and `SHELLBRAIN_DB_DSN`.
-
     Typical workflow:
+      0. Run `shellbrain init` once per machine, then rerun it whenever Shellbrain says repair is needed.
       1. Query with the concrete bug, subsystem, decision, or constraint you are working on.
          Avoid generic prompts like "what should I know about this repo?"
       2. Re-run `read` whenever the search shifts or you get stuck.
       3. Run `events` before every write and reuse returned ids verbatim as `evidence_refs`.
       4. At session end, normalize the episode into `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories, then record `utility_vote` updates for memories that helped or misled.
 
-    Prerequisites:
-      - Shellbrain should already be available from a one-time global install.
-      - If it is missing, restore the machine-level install (`pipx install --editable /path/to/shellbrain` or `python3 -m pip install --user --break-system-packages --editable /path/to/shellbrain`).
-      - Export `SHELLBRAIN_DB_DSN` from your shell profile.
-      - In Codex Desktop or similar tool shells, put the PATH export and `SHELLBRAIN_DB_DSN` in `~/.zprofile`, not `~/.zshrc`.
-      - Run `shellbrain admin migrate` once against the target database.
-
     Examples:
+      shellbrain init
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
       shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
       shellbrain events --json '{"limit":10}'
       shellbrain create --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
       shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-124"]}}'
       shellbrain admin migrate
+      shellbrain admin backup create
+      shellbrain admin doctor
 
     Common recovery steps:
-      - `shellbrain: command not found` inside Codex: verify you used the `zsh -lc 'source ~/.zprofile ...'` startup pattern before declaring Shellbrain blocked.
-      - `SHELLBRAIN_DB_DSN is not set`: verify the same startup pattern and that the export lives in `~/.zprofile`, then export the database DSN if needed.
+      - `shellbrain: command not found`: reinstall with `pipx install shellbrain`.
+      - `Shellbrain machine config is unreadable`: rerun `shellbrain init` to repair the managed instance.
+      - `Outcome: blocked_dependency`: install Docker or start the Docker daemon, then rerun `shellbrain init`.
       - No active host session found: verify Codex/Claude Code transcript availability, then rerun `events`.
       - Evidence ref rejected: rerun `events` and use the returned `episode_event` ids verbatim.
       - Wrong working tree: rerun with `--repo-root` (and optionally `--repo-id`) for the target repo.
@@ -132,7 +130,50 @@ _ADMIN_HELP = dedent(
     Administrative commands for bootstrapping and maintaining the shellbrain database.
 
     Example:
+      shellbrain init
       shellbrain admin migrate
+    """
+)
+
+_INIT_HELP = dedent(
+    """\
+    Bootstrap or repair the machine-local Shellbrain runtime, then register the current repo.
+
+    Happy path:
+      - `shellbrain init`
+      - Shellbrain provisions or reuses one managed local Postgres instance, prepares embeddings, and registers the repo.
+
+    Advanced:
+      - `--repo-root` targets a different repo root.
+      - `--repo-id` overrides repo identity when multiple remotes exist or a weak local identity is not acceptable.
+      - `--host claude` installs the Claude hook even when not running inside Claude Code.
+
+    Examples:
+      shellbrain init
+      shellbrain init --repo-root /path/to/repo
+      shellbrain init --host claude
+      shellbrain init --skip-model-download
+    """
+)
+
+_BACKUP_HELP = dedent(
+    """\
+    Create, list, verify, and restore Shellbrain logical backups.
+
+    Examples:
+      shellbrain admin backup create
+      shellbrain admin backup list
+      shellbrain admin backup verify
+      shellbrain admin backup restore --target-db shellbrain_restore_001
+    """
+)
+
+_DOCTOR_HELP = dedent(
+    """\
+    Print one safety report for the current Shellbrain database configuration.
+
+    Example:
+      shellbrain admin doctor
     """
 )
 
@@ -158,10 +199,10 @@ _SESSION_STATE_HELP = dedent(
 
 _MIGRATE_HELP = dedent(
     """\
-    Apply packaged Alembic migrations to the database referenced by `SHELLBRAIN_DB_DSN`.
+    Apply packaged Alembic migrations to the database referenced by `SHELLBRAIN_DB_ADMIN_DSN`.
 
     Example:
-      SHELLBRAIN_DB_DSN=postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain shellbrain admin migrate
+      SHELLBRAIN_DB_ADMIN_DSN=postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain shellbrain admin migrate
     """
 )
 
@@ -188,6 +229,31 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(parser)
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="command")
+
+    init_parser = subparsers.add_parser(
+        "init",
+        help="Bootstrap or repair the managed Shellbrain runtime.",
+        description="Bootstrap or repair the machine-local Shellbrain runtime and register the current repo.",
+        epilog=_INIT_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(init_parser, suppress_default=True)
+    init_parser.add_argument(
+        "--host",
+        choices=("auto", "claude", "none"),
+        default="auto",
+        help="Host integration mode. Defaults to auto.",
+    )
+    init_parser.add_argument(
+        "--no-claude",
+        action="store_true",
+        help="Disable Claude integration even if this repo looks Claude-managed.",
+    )
+    init_parser.add_argument(
+        "--skip-model-download",
+        action="store_true",
+        help="Skip embedding model prewarm during init.",
+    )
 
     create_parser = subparsers.add_parser(
         "create",
@@ -240,9 +306,35 @@ def build_parser() -> argparse.ArgumentParser:
     admin_subparsers.add_parser(
         "migrate",
         help="Apply packaged schema migrations to the configured database.",
-        description="Apply packaged Alembic migrations to the database referenced by SHELLBRAIN_DB_DSN.",
+        description="Apply packaged Alembic migrations to the database referenced by SHELLBRAIN_DB_ADMIN_DSN.",
         epilog=_MIGRATE_HELP,
         formatter_class=_HelpFormatter,
+    )
+    backup_parser = admin_subparsers.add_parser(
+        "backup",
+        help="Create, list, verify, and restore Shellbrain logical backups.",
+        description="Create, list, verify, and restore Shellbrain logical backups.",
+        epilog=_BACKUP_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    backup_subparsers = backup_parser.add_subparsers(dest="backup_command", required=True, metavar="backup-command")
+    backup_subparsers.add_parser("create", help="Create one logical backup for the configured database.")
+    backup_subparsers.add_parser("list", help="List available backup manifests.")
+    verify_parser = backup_subparsers.add_parser("verify", help="Verify one backup artifact, defaulting to the newest.")
+    verify_parser.add_argument("--backup-id", help="Optional backup id to verify. Defaults to the newest backup.")
+    restore_parser = backup_subparsers.add_parser("restore", help="Restore one backup into a fresh scratch database.")
+    restore_parser.add_argument("--target-db", required=True, help="Name of the scratch restore database to create.")
+    restore_parser.add_argument("--backup-id", help="Optional backup id to restore. Defaults to the newest backup.")
+    admin_subparsers.add_parser(
+        "doctor",
+        help="Print one Shellbrain safety report for DB role, instance mode, and backups.",
+        description="Print one Shellbrain safety report for DB role, instance mode, and backups.",
+        epilog=_DOCTOR_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    admin_subparsers.choices["doctor"].add_argument(
+        "--repo-root",
+        help="Optional repo root for repo registration and Claude integration diagnostics.",
     )
     install_hook_parser = admin_subparsers.add_parser(
         "install-claude-hook",
@@ -280,6 +372,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
+    if args.command == "init":
+        try:
+            from shellbrain.periphery.admin.init import run_init
+
+            repo_root = _resolve_admin_repo_root(getattr(args, "repo_root", None))
+        except ValueError as exc:
+            parser.error(str(exc))
+            return 2
+        host_mode = "none" if getattr(args, "no_claude", False) else getattr(args, "host", "auto")
+        result = run_init(
+            repo_root=repo_root,
+            repo_id_override=getattr(args, "repo_id", None),
+            host_mode=host_mode,
+            skip_model_download=bool(getattr(args, "skip_model_download", False)),
+        )
+        print(f"Outcome: {result.outcome}")
+        for line in result.lines:
+            print(line)
+        return result.exit_code
+
     if args.command == "admin":
         return _run_admin_command(args)
 
@@ -307,23 +419,28 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     token = set_operation_telemetry_context(operation_context)
     try:
-        result = _dispatch_operation_command(args.command, payload, repo_context)
-        _print_operation_result(result)
-        if result.get("status") == "ok":
-            if getattr(args, "no_sync", False):
-                _update_operation_polling_status(
-                    invocation_id=operation_context.invocation_id,
-                    attempted=False,
-                    started=False,
-                )
-            else:
-                started = bool(_maybe_start_sync(repo_context))
-                _update_operation_polling_status(
-                    invocation_id=operation_context.invocation_id,
-                    attempted=True,
-                    started=started,
-                )
-        return 0
+        try:
+            _warn_or_fail_on_unsafe_app_role()
+            result = _dispatch_operation_command(args.command, payload, repo_context)
+            _print_operation_result(result)
+            if result.get("status") == "ok":
+                if getattr(args, "no_sync", False):
+                    _update_operation_polling_status(
+                        invocation_id=operation_context.invocation_id,
+                        attempted=False,
+                        started=False,
+                    )
+                else:
+                    started = bool(_maybe_start_sync(repo_context))
+                    _update_operation_polling_status(
+                        invocation_id=operation_context.invocation_id,
+                        attempted=True,
+                        started=started,
+                    )
+            return 0
+        except (RuntimeError, ValueError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
     finally:
         reset_operation_telemetry_context(token)
 
@@ -339,7 +456,7 @@ def _add_repo_context_arguments(parser: argparse.ArgumentParser, *, suppress_def
     )
     parser.add_argument(
         "--repo-id",
-        help="Override the inferred repo identifier. Defaults to basename(repo_root).",
+        help="Override the inferred repo identifier. Advanced: use when multiple remotes exist or you need a durable local override.",
         **kwargs,
     )
     parser.add_argument(
@@ -415,6 +532,60 @@ def _run_admin_command(args: argparse.Namespace) -> int:
 
         upgrade_database()
         print("Applied shellbrain schema migrations to head.")
+        return 0
+
+    if args.admin_command == "backup":
+        from shellbrain.boot.db import get_optional_db_dsn
+        from shellbrain.boot.admin_db import get_admin_db_dsn, get_backup_dir, get_backup_mirror_dir
+        from shellbrain.periphery.admin.backup import create_backup, list_backups, verify_backup
+        from shellbrain.periphery.admin.machine_state import try_load_machine_config
+        from shellbrain.periphery.admin.restore import restore_backup
+
+        admin_dsn = get_admin_db_dsn()
+        backup_root = get_backup_dir()
+        mirror_root = get_backup_mirror_dir()
+        managed_backup_kwargs = _managed_backup_kwargs(*try_load_machine_config())
+        subcommand = getattr(args, "backup_command", None)
+        if subcommand == "create":
+            manifest = create_backup(
+                admin_dsn=admin_dsn,
+                backup_root=backup_root,
+                mirror_root=mirror_root,
+                **managed_backup_kwargs,
+            )
+            print(json.dumps(manifest.__dict__, indent=2, sort_keys=True))
+            return 0
+        if subcommand == "list":
+            print(json.dumps([manifest.__dict__ for manifest in list_backups(backup_root=backup_root)], indent=2, sort_keys=True))
+            return 0
+        if subcommand == "verify":
+            manifest = verify_backup(backup_root=backup_root, backup_id=args.backup_id)
+            print(json.dumps(manifest.__dict__, indent=2, sort_keys=True))
+            return 0
+        if subcommand == "restore":
+            manifest = restore_backup(
+                admin_dsn=admin_dsn,
+                backup_root=backup_root,
+                target_db=args.target_db,
+                app_dsn=get_optional_db_dsn(),
+                backup_id=args.backup_id,
+                **_managed_restore_kwargs(managed_backup_kwargs),
+            )
+            print(json.dumps({"restored_backup_id": manifest.backup_id, "target_db": args.target_db}, indent=2, sort_keys=True))
+            return 0
+
+    if args.admin_command == "doctor":
+        from shellbrain.boot.admin_db import get_backup_dir, get_optional_admin_db_dsn
+        from shellbrain.boot.db import get_optional_db_dsn
+        from shellbrain.periphery.admin.doctor import build_doctor_report
+
+        report = build_doctor_report(
+            app_dsn=get_optional_db_dsn(),
+            admin_dsn=get_optional_admin_db_dsn(),
+            backup_root=get_backup_dir(),
+            repo_root=_resolve_admin_repo_root(getattr(args, "repo_root", None)),
+        )
+        print(json.dumps(report, indent=2, sort_keys=True))
         return 0
 
     repo_root = _resolve_admin_repo_root(getattr(args, "repo_root", None))
@@ -494,6 +665,45 @@ def _resolve_admin_repo_root(repo_root_arg: str | None) -> Path:
     if not repo_root.is_dir():
         raise ValueError(f"repo_root must be a directory: {repo_root}")
     return repo_root
+
+
+def _managed_backup_kwargs(machine_config, machine_error: str | None) -> dict[str, Any]:
+    """Return managed-container backup kwargs when machine config is active and readable."""
+
+    if machine_error is not None or machine_config is None or machine_config.runtime_mode != "managed_local":
+        return {}
+    return {
+        "container_name": machine_config.managed.container_name,
+        "container_db_name": machine_config.managed.db_name,
+        "container_admin_user": machine_config.managed.admin_user,
+        "container_admin_password": machine_config.managed.admin_password,
+    }
+
+
+def _managed_restore_kwargs(managed_backup_kwargs: dict[str, Any]) -> dict[str, Any]:
+    """Trim backup kwargs down to the subset restore understands."""
+
+    return {
+        key: value
+        for key, value in managed_backup_kwargs.items()
+        if key in {"container_name", "container_admin_user", "container_admin_password"}
+    }
+
+
+def _warn_or_fail_on_unsafe_app_role() -> None:
+    """Emit one warning, or fail in strict mode, when the app DSN is overprivileged."""
+
+    from shellbrain.boot.admin_db import should_fail_on_unsafe_app_role
+    from shellbrain.boot.db import get_db_dsn
+    from shellbrain.periphery.admin.instance_guard import inspect_role_safety
+
+    warnings = inspect_role_safety(get_db_dsn())
+    if not warnings:
+        return
+    message = "Unsafe Shellbrain app-role configuration:\n- " + "\n- ".join(warnings)
+    if should_fail_on_unsafe_app_role():
+        raise ValueError(message)
+    print(message, file=sys.stderr)
 
 
 if __name__ == "__main__":

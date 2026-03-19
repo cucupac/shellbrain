@@ -17,7 +17,10 @@ The report is updated on every test run and includes:
   - `# Guidance Tests`
   - `# Identity Tests`
   - `# Persistence Tests`
+  - `# Protection Tests`
   - `# Read Tests`
+  - `# Recovery Tests`
+  - `# Resilience Tests`
   - `# Session State Tests`
   - `# Telemetry Tests`
   - `# Update Tests`
@@ -37,3 +40,6 @@ The report is updated on every test run and includes:
   - `tests/operations/identity/**` -> `# Identity Tests`
   - `tests/operations/session_state/**` -> `# Session State Tests`
   - `tests/operations/telemetry/**` -> `# Telemetry Tests`
+  - `tests/operations/protection/**` -> `# Protection Tests`
+  - `tests/operations/recovery/**` -> `# Recovery Tests`
+  - `tests/operations/resilience/**` -> `# Resilience Tests`
