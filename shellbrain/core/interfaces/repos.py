@@ -18,6 +18,7 @@ from shellbrain.core.entities.telemetry import (
     WriteEffectItemRecord,
     WriteSummaryRecord,
 )
+from shellbrain.core.entities.guidance import PendingUtilityCandidate
 from shellbrain.core.entities.utility import UtilityObservation
 
 
@@ -265,3 +266,14 @@ class ITelemetryRepo(ABC):
     @abstractmethod
     def update_operation_polling(self, invocation_id: str, *, attempted: bool, started: bool) -> None:
         """This method patches the poller-start flags for one existing invocation row."""
+
+    @abstractmethod
+    def list_pending_utility_candidates(
+        self,
+        *,
+        repo_id: str,
+        caller_id: str,
+        problem_id: str,
+        since_iso: str,
+    ) -> Sequence[PendingUtilityCandidate]:
+        """This method returns retrieved memories that still lack a utility vote for one problem."""

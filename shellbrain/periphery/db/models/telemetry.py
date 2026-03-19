@@ -14,6 +14,9 @@ operation_invocations = Table(
     Column("repo_id", String, nullable=False),
     Column("repo_root", Text, nullable=False),
     Column("no_sync", Boolean, nullable=False, server_default=text("FALSE")),
+    Column("caller_id", String),
+    Column("caller_trust_level", String),
+    Column("identity_failure_code", String),
     Column("selected_host_app", String),
     Column("selected_host_session_key", String),
     Column("selected_thread_id", String),
@@ -27,6 +30,7 @@ operation_invocations = Table(
     Column("total_latency_ms", Integer, nullable=False),
     Column("poller_start_attempted", Boolean, nullable=False, server_default=text("FALSE")),
     Column("poller_started", Boolean, nullable=False, server_default=text("FALSE")),
+    Column("guidance_codes", JSONB, nullable=False, server_default=text("'[]'::jsonb")),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
 )
 

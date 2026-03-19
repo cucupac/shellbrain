@@ -4,6 +4,7 @@ from shellbrain.core.contracts.errors import ErrorCode, ErrorDetail
 from shellbrain.core.contracts.requests import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
+    MemoryBatchUpdateRequest,
     MemoryCreateAssociationLink,
     MemoryCreateRequest,
     MemoryUpdateRequest,
@@ -114,8 +115,26 @@ def validate_create_integrity(request: MemoryCreateRequest, uow: IUnitOfWork) ->
     return errors
 
 
-def validate_update_integrity(request: MemoryUpdateRequest, uow: IUnitOfWork) -> list[ErrorDetail]:
+def validate_update_integrity(request: MemoryUpdateRequest | MemoryBatchUpdateRequest, uow: IUnitOfWork) -> list[ErrorDetail]:
     """Validate database integrity constraints for update operations."""
+
+    if isinstance(request, MemoryBatchUpdateRequest):
+        errors: list[ErrorDetail] = []
+        for index, item in enumerate(request.updates):
+            single_errors = validate_update_integrity(
+                MemoryUpdateRequest(
+                    repo_id=request.repo_id,
+                    memory_id=item.memory_id,
+                    update=item.update,
+                ),
+                uow,
+            )
+            for error in single_errors:
+                field = error.field
+                if field is not None:
+                    field = f"updates.{index}.{field}"
+                errors.append(ErrorDetail(code=error.code, message=error.message, field=field))
+        return errors
 
     errors: list[ErrorDetail] = []
     target_memory, target_errors = _require_memory(uow, memory_id=request.memory_id, field="memory_id")

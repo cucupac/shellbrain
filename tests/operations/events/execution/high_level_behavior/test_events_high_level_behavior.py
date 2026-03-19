@@ -45,13 +45,15 @@ def test_events_selects_the_most_recent_matching_host_session_across_supported_h
     claude_code_transcript_fixture: dict[str, object],
     uow_factory: Callable[[], PostgresUnitOfWork],
     fetch_rows: Callable[..., list[dict[str, object]]],
+    monkeypatch,
 ) -> None:
-    """events should always select the most recently updated matching host session across supported hosts."""
+    """events should always prefer the trusted caller identity over newer repo-matching host sessions."""
 
     codex_path = Path(str(codex_transcript_fixture["transcript_path"]))
     claude_path = Path(str(claude_code_transcript_fixture["transcript_path"]))
     os.utime(codex_path, (codex_path.stat().st_atime, codex_path.stat().st_mtime - 10))
     os.utime(claude_path, None)
+    monkeypatch.setenv("CODEX_THREAD_ID", str(codex_transcript_fixture["host_session_key"]))
 
     result = handle_events(
         {},
@@ -65,8 +67,8 @@ def test_events_selects_the_most_recent_matching_host_session_across_supported_h
     )
 
     assert result["status"] == "ok"
-    assert result["data"]["host_app"] == "claude_code"
-    assert result["data"]["thread_id"] == claude_code_transcript_fixture["canonical_thread_id"]
+    assert result["data"]["host_app"] == "codex"
+    assert result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
 
     rows = fetch_rows(episode_events)
     assert len(rows) == 3

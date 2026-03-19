@@ -14,8 +14,11 @@ The report is updated on every test run and includes:
   - `# Create Tests`
   - `# Episodes Tests`
   - `# Events Tests`
+  - `# Guidance Tests`
+  - `# Identity Tests`
   - `# Persistence Tests`
   - `# Read Tests`
+  - `# Session State Tests`
   - `# Telemetry Tests`
   - `# Update Tests`
 - nested headings for validation/execution groupings and deeper folder slices
@@ -30,4 +33,7 @@ The report is updated on every test run and includes:
   - `tests/operations/<operation>/validation/**` -> `<operation>/validation`
   - `tests/operations/<operation>/execution/**` -> `<operation>/execution`
   - `tests/operations/<operation>/**` (when no validation/execution split exists) -> `<operation>`
+  - `tests/operations/guidance/**` -> `# Guidance Tests`
+  - `tests/operations/identity/**` -> `# Identity Tests`
+  - `tests/operations/session_state/**` -> `# Session State Tests`
   - `tests/operations/telemetry/**` -> `# Telemetry Tests`

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import datetime, timezone
 
-from sqlalchemy import delete, update
+from sqlalchemy import delete, func, select, update
 
+from shellbrain.core.entities.guidance import PendingUtilityCandidate
 from shellbrain.core.entities.telemetry import (
     EpisodeSyncRunRecord,
     EpisodeSyncToolTypeRecord,
@@ -15,6 +17,7 @@ from shellbrain.core.entities.telemetry import (
     WriteEffectItemRecord,
     WriteSummaryRecord,
 )
+from shellbrain.periphery.db.models.memories import memories
 from shellbrain.core.interfaces.repos import ITelemetryRepo
 from shellbrain.periphery.db.models.telemetry import (
     episode_sync_runs,
@@ -25,6 +28,7 @@ from shellbrain.periphery.db.models.telemetry import (
     write_effect_items,
     write_invocation_summaries,
 )
+from shellbrain.periphery.db.models.utility import utility_observations
 
 
 class TelemetryRepo(ITelemetryRepo):
@@ -94,3 +98,64 @@ class TelemetryRepo(ITelemetryRepo):
                 poller_started=started,
             )
         )
+
+    def list_pending_utility_candidates(
+        self,
+        *,
+        repo_id: str,
+        caller_id: str,
+        problem_id: str,
+        since_iso: str,
+    ) -> list[PendingUtilityCandidate]:
+        """Return retrieved memories that still lack a utility vote for one problem."""
+
+        stmt = (
+            select(
+                read_result_items.c.memory_id,
+                func.max(read_result_items.c.kind).label("kind"),
+                func.count().label("retrieval_count"),
+                func.max(operation_invocations.c.created_at).label("last_seen_at"),
+            )
+            .select_from(
+                read_result_items.join(
+                    operation_invocations,
+                    operation_invocations.c.id == read_result_items.c.invocation_id,
+                )
+                .join(memories, memories.c.id == read_result_items.c.memory_id)
+                .outerjoin(
+                    utility_observations,
+                    (utility_observations.c.memory_id == read_result_items.c.memory_id)
+                    & (utility_observations.c.problem_id == problem_id),
+                )
+            )
+            .where(
+                operation_invocations.c.repo_id == repo_id,
+                operation_invocations.c.command == "read",
+                operation_invocations.c.outcome == "ok",
+                operation_invocations.c.selected_thread_id == caller_id,
+                operation_invocations.c.created_at >= _parse_iso(since_iso),
+                read_result_items.c.memory_id != problem_id,
+                utility_observations.c.id.is_(None),
+            )
+            .group_by(read_result_items.c.memory_id)
+            .order_by(func.count().desc(), func.max(operation_invocations.c.created_at).desc())
+        )
+        rows = self._session.execute(stmt).mappings().all()
+        return [
+            PendingUtilityCandidate(
+                memory_id=str(row["memory_id"]),
+                kind=str(row["kind"]),
+                retrieval_count=int(row["retrieval_count"]),
+                last_seen_at=row["last_seen_at"].isoformat(),
+            )
+            for row in rows
+        ]
+
+
+def _parse_iso(value: str) -> datetime:
+    """Parse one ISO timestamp into a timezone-aware datetime."""
+
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)

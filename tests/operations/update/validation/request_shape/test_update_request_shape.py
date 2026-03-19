@@ -38,3 +38,33 @@ def test_update_rejects_transport_fields_at_agent_interface() -> None:
     fields = {error.field for error in errors}
     assert "op" in fields
     assert "repo_id" in fields
+
+
+def test_update_accepts_batch_utility_vote_payloads() -> None:
+    """update requests should always accept batch utility-vote payloads."""
+
+    payload = {
+        "updates": [
+            {
+                "memory_id": "m-1",
+                "update": {
+                    "type": "utility_vote",
+                    "problem_id": "problem-1",
+                    "vote": 1.0,
+                },
+            },
+            {
+                "memory_id": "m-2",
+                "update": {
+                    "type": "utility_vote",
+                    "problem_id": "problem-1",
+                    "vote": -1.0,
+                },
+            },
+        ]
+    }
+
+    request, errors = validate_update_schema(payload)
+
+    assert errors == []
+    assert request is not None

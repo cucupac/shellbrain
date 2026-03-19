@@ -8,6 +8,7 @@ from sqlalchemy import text
 from shellbrain.periphery.db.models.registry import target_metadata
 from tests.operations._shared.docker_persistence_fixtures import *  # noqa: F401,F403
 from tests.operations._shared.integration_db_fixtures import (  # noqa: F401
+    clear_host_runtime_identity,
     count_rows,
     db_dsn,
     fetch_rows,

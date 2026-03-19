@@ -32,6 +32,24 @@ class _StubEmbeddingProvider(IEmbeddingProvider):
         return [length, length + 0.1, length + 0.2, length + 0.3]
 
 
+@pytest.fixture(autouse=True)
+def clear_host_runtime_identity(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Clear host runtime identity env vars unless a test explicitly sets them."""
+
+    for name in (
+        "CODEX_THREAD_ID",
+        "SHELLBRAIN_HOST_APP",
+        "SHELLBRAIN_HOST_SESSION_KEY",
+        "SHELLBRAIN_AGENT_KEY",
+        "SHELLBRAIN_TRANSCRIPT_PATH",
+        "SHELLBRAIN_CALLER_ID",
+        "CLAUDE_SESSION_ID",
+        "CLAUDE_CODE_REMOTE_SESSION_ID",
+        "CLAUDE_CODE_AGENT_NAME",
+    ):
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture(scope="session")
 def db_dsn() -> str:
     """Resolve integration database DSN from environment."""
@@ -100,11 +118,13 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
         kind: MemoryKind,
         text_value: str,
     ) -> Memory:
+        normalized_scope = scope if isinstance(scope, MemoryScope) else MemoryScope(scope)
+        normalized_kind = kind if isinstance(kind, MemoryKind) else MemoryKind(kind)
         memory = Memory(
             id=memory_id,
             repo_id=repo_id,
-            scope=scope,
-            kind=kind,
+            scope=normalized_scope,
+            kind=normalized_kind,
             text=text_value,
         )
         with uow_factory() as uow:

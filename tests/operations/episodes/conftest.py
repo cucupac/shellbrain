@@ -8,6 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.operations._shared.integration_db_fixtures import (
+    clear_host_runtime_identity,
     clear_database,
     count_rows,
     db_dsn,

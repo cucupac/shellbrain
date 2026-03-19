@@ -131,6 +131,31 @@ def test_admin_migrate_help_should_include_one_example(capsys: pytest.CaptureFix
     assert "Apply packaged Alembic migrations" in capsys.readouterr().out
 
 
+def test_admin_install_claude_hook_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """admin install-claude-hook help should explain the trusted Claude setup step."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["admin", "install-claude-hook", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "SessionStart hook" in output
+    assert "install-claude-hook" in output
+
+
+def test_admin_session_state_help_should_include_management_examples(capsys: pytest.CaptureFixture[str]) -> None:
+    """admin session-state help should expose inspect, clear, and gc management paths."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["admin", "session-state", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "session-state inspect" in output
+    assert "session-state clear" in output
+    assert "session-state gc" in output
+
+
 def test_main_accepts_repo_targeting_flags_before_subcommand(monkeypatch, tmp_path: Path) -> None:
     """repo-targeting flags should work before the operational subcommand."""
 

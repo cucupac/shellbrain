@@ -194,3 +194,18 @@ class MemoryUpdateRequest(StrictBaseModel):
     repo_id: str
     memory_id: str
     update: UpdatePayload
+
+
+class BatchUtilityVoteItem(StrictBaseModel):
+    """One utility-vote update entry inside a batch update request."""
+
+    memory_id: str
+    update: UtilityVoteUpdate
+
+
+class MemoryBatchUpdateRequest(StrictBaseModel):
+    """This model defines the canonical batch utility-update payload."""
+
+    op: Literal["update"] = "update"
+    repo_id: str
+    updates: list[BatchUtilityVoteItem] = Field(min_length=1)
