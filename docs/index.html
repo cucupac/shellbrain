@@ -206,43 +206,42 @@
 
     /* ─── INSTALL BLOCK ───────────────────────── */
 
-    .install-block {
-      padding: 0 24px;
+    .install-line {
+      margin-top: 40px;
       display: flex;
+      align-items: center;
       justify-content: center;
-    }
-
-    .install-inner {
-      width: min(640px, 100%);
-      text-align: center;
-    }
-
-    .install-code {
-      display: inline-block;
-      font-family: "DM Mono", monospace;
-      font-size: clamp(0.85rem, 1.6vw, 1.05rem);
-      letter-spacing: 0.02em;
-      color: var(--text);
-      background: rgba(22, 19, 15, 0.05);
-      border: 1px solid var(--rule-strong);
-      border-radius: 4px;
-      padding: 14px 28px;
+      gap: 10px;
       cursor: pointer;
-      transition: background 0.2s ease;
-      position: relative;
     }
 
-    .install-code:hover {
-      background: rgba(22, 19, 15, 0.09);
+    .install-line:hover .install-cmd {
+      color: var(--text);
     }
 
-    .install-hint {
+    .install-prompt {
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      color: var(--muted-light);
+      user-select: none;
+    }
+
+    .install-cmd {
+      font-family: "DM Mono", monospace;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+      color: var(--muted);
+      transition: color 0.2s ease;
+    }
+
+    .install-copied {
       font-family: "DM Mono", monospace;
       font-size: 10px;
       letter-spacing: 0.1em;
       text-transform: uppercase;
       color: var(--muted-light);
-      margin-top: 10px;
+      margin-top: 6px;
+      height: 14px;
     }
 
     /* ─── CONTENT SECTIONS ─────────────────────── */
@@ -510,21 +509,17 @@
         <span class="memory-strip-item">episodic memory</span>
         <span class="memory-strip-item">associative memory</span>
       </div>
+
+      <div class="install-line" onclick="copyInstall()" title="Click to copy">
+        <span class="install-prompt">$</span>
+        <span class="install-cmd" id="installCmd">curl -L shellbrain.ai/install | bash</span>
+      </div>
+      <div class="install-copied" id="installHint"></div>
     </div>
     <div class="scroll-hint" id="scrollHint">
       <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5">
         <path d="M8 2v12M3 9l5 5 5-5"/>
       </svg>
-    </div>
-  </section>
-
-  <!-- ─── INSTALL ─────────────────────────────── -->
-  <div class="divider"><div class="divider-line"></div></div>
-
-  <section class="install-block" style="padding-top: clamp(48px, 6vw, 72px); padding-bottom: clamp(48px, 6vw, 72px);">
-    <div class="install-inner">
-      <div class="install-code" id="installCode" onclick="copyInstall()" title="Click to copy">curl -L shellbrain.ai/install | bash</div>
-      <div class="install-hint" id="installHint">click to copy</div>
     </div>
   </section>
 
