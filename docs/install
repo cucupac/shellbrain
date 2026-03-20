@@ -4,21 +4,26 @@ set -eo pipefail
 echo "installing shellbrain..."
 echo ""
 
-# Find python
-if command -v python3 &>/dev/null; then
-  PY=python3
-elif command -v python &>/dev/null; then
-  PY=python
-else
-  echo "error: python not found. install python3 first."
-  exit 1
-fi
+# Find python 3.11+ (check versioned binaries first, then fall back to python3/python)
+PY=""
+for candidate in python3.14 python3.13 python3.12 python3.11 python3 python; do
+  if command -v "$candidate" &>/dev/null; then
+    minor=$("$candidate" -c "import sys; print(sys.version_info.minor)" 2>/dev/null) || continue
+    if [ "$minor" -ge 11 ]; then
+      PY="$candidate"
+      break
+    fi
+  fi
+done
 
-# Check python version (shellbrain requires 3.11+)
-PY_VERSION=$($PY -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
-PY_MINOR=$($PY -c "import sys; print(sys.version_info.minor)")
-if [ "$PY_MINOR" -lt 11 ]; then
-  echo "error: python $PY_VERSION found, but shellbrain requires python 3.11+."
+if [ -z "$PY" ]; then
+  # Check if any python exists at all to give a better error
+  if command -v python3 &>/dev/null || command -v python &>/dev/null; then
+    FOUND_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
+    echo "error: python $FOUND_VER found, but shellbrain requires python 3.11+."
+  else
+    echo "error: python not found."
+  fi
   if [[ "$OSTYPE" =~ ^darwin ]]; then
     echo "install it with: brew install python@3.13"
   else
@@ -27,21 +32,49 @@ if [ "$PY_MINOR" -lt 11 ]; then
   exit 1
 fi
 
+PY_VERSION=$($PY -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+echo "using $PY ($PY_VERSION)"
+
 # Install with fallback chain
 $PY -m pip install --user --break-system-packages shellbrain 2>/dev/null \
   || $PY -m pip install --user shellbrain 2>/dev/null \
   || $PY -m pip install shellbrain
 
-# Source profile so shellbrain is on PATH
+# Find the shellbrain binary
+# 1. Try PATH directly (works if already installed or profile has it)
+# 2. Ask pip where it installed scripts
+# 3. Check common locations
+SHELLBRAIN=""
+
+# Source profile first in case PATH is already configured
 case $SHELL in
   */zsh)  [ -f "$HOME/.zprofile" ] && . "$HOME/.zprofile" 2>/dev/null; [ -f "$HOME/.zshrc" ] && . "$HOME/.zshrc" 2>/dev/null ;;
   */bash) [ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" 2>/dev/null; [ -f "$HOME/.bash_profile" ] && . "$HOME/.bash_profile" 2>/dev/null ;;
 esac
 
-# Verify shellbrain is available
-if ! command -v shellbrain &>/dev/null; then
+if command -v shellbrain &>/dev/null; then
+  SHELLBRAIN=shellbrain
+else
+  # pip --user installs scripts here — find it directly
+  USER_BIN=$($PY -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null)
+  if [ -n "$USER_BIN" ] && [ -x "$USER_BIN/shellbrain" ]; then
+    SHELLBRAIN="$USER_BIN/shellbrain"
+  fi
+fi
+
+if [ -z "$SHELLBRAIN" ]; then
+  # Last resort: check common locations
+  for dir in "$HOME/.local/bin" "$HOME/Library/Python/$PY_VERSION/bin" "/usr/local/bin" "/opt/homebrew/bin"; do
+    if [ -x "$dir/shellbrain" ]; then
+      SHELLBRAIN="$dir/shellbrain"
+      break
+    fi
+  done
+fi
+
+if [ -z "$SHELLBRAIN" ]; then
   echo ""
-  echo "shellbrain was installed but is not on PATH."
+  echo "shellbrain was installed but could not be found."
   echo "restart your terminal, then run: shellbrain init"
   exit 0
 fi
@@ -50,7 +83,7 @@ echo ""
 echo "initializing..."
 echo ""
 
-shellbrain init
+$SHELLBRAIN init
 
 echo ""
 echo "shellbrain. knowledge compounds."

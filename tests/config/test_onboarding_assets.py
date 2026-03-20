@@ -68,3 +68,14 @@ def test_shellbrain_skill_should_ship_codex_agent_metadata() -> None:
 
     assert 'display_name: "Shellbrain Session Start"' in openai_yaml
     assert 'default_prompt: "Use $shellbrain-session-start' in openai_yaml
+
+
+def test_install_script_should_locate_the_binary_and_run_init() -> None:
+    """The website installer should not require a manual second command on fresh machines."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    install_script = _read_text(repo_root / "docs" / "install")
+
+    assert "sysconfig.get_path('scripts', 'posix_user')" in install_script
+    assert "$SHELLBRAIN init" in install_script
+    assert "shellbrain was installed but is not on PATH." not in install_script
