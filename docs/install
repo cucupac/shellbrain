@@ -14,6 +14,19 @@ else
   exit 1
 fi
 
+# Check python version (shellbrain requires 3.11+)
+PY_VERSION=$($PY -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
+PY_MINOR=$($PY -c "import sys; print(sys.version_info.minor)")
+if [ "$PY_MINOR" -lt 11 ]; then
+  echo "error: python $PY_VERSION found, but shellbrain requires python 3.11+."
+  if [[ "$OSTYPE" =~ ^darwin ]]; then
+    echo "install it with: brew install python@3.13"
+  else
+    echo "install python 3.11+ and try again."
+  fi
+  exit 1
+fi
+
 # Install with fallback chain
 $PY -m pip install --user --break-system-packages shellbrain 2>/dev/null \
   || $PY -m pip install --user shellbrain 2>/dev/null \
