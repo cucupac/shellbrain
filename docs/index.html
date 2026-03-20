@@ -518,6 +518,16 @@
     </div>
   </section>
 
+  <!-- ─── INSTALL ─────────────────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="install-block" style="padding-top: clamp(48px, 6vw, 72px); padding-bottom: clamp(48px, 6vw, 72px);">
+    <div class="install-inner">
+      <div class="install-code" id="installCode" onclick="copyInstall()" title="Click to copy">curl -L shellbrain.ai/install | bash</div>
+      <div class="install-hint" id="installHint">click to copy</div>
+    </div>
+  </section>
+
   <!-- ─── INTRO ─────────────────────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
 
@@ -534,16 +544,6 @@
       </p>
     </div>
   </section>
-
-  <!-- ─── INSTALL ─────────────────────────────── -->
-  <section class="install-block">
-    <div class="install-inner">
-      <div class="install-code" id="installCode" onclick="copyInstall()" title="Click to copy">pip install shellbrain</div>
-      <div class="install-hint" id="installHint">click to copy</div>
-    </div>
-  </section>
-
-  <div style="height: clamp(56px, 8vw, 100px)"></div>
 
   <!-- ─── CASE-BASED REASONING ──────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
@@ -675,7 +675,7 @@
   <script>
     // ── Install copy ─────────────────────────────
     function copyInstall() {
-      navigator.clipboard.writeText("pip install shellbrain").then(() => {
+      navigator.clipboard.writeText("curl -L shellbrain.ai/install | bash").then(() => {
         const hint = document.getElementById("installHint");
         hint.textContent = "copied";
         setTimeout(() => { hint.textContent = "click to copy"; }, 1600);
