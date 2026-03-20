@@ -11,20 +11,20 @@ jobs:
       db:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_DB: shellbrain
+          POSTGRES_DB: shellbrain_ci_test
           POSTGRES_USER: shellbrain
           POSTGRES_PASSWORD: shellbrain
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U shellbrain -d shellbrain"
+          --health-cmd "pg_isready -U shellbrain -d shellbrain_ci_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
 
     env:
       SHELLBRAIN_DB_DSN: postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain
-      SHELLBRAIN_DB_DSN_TEST: postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain
+      SHELLBRAIN_DB_DSN_TEST: postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain_ci_test
       SHELLBRAIN_HOME: ${{ github.workspace }}/.shellbrain-home
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
 
@@ -106,5 +106,5 @@ jobs:
 
       - name: Run packaging smoke tests
         run: |
-          python -m pip install -r requirements.txt
+          python -m pip install pytest 'psycopg[binary]>=3.1,<4.0'
           python -m pytest -q tests/config/test_packaging_smoke.py

@@ -10,20 +10,20 @@ jobs:
       db:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_DB: shellbrain
+          POSTGRES_DB: shellbrain_real_embedding_test
           POSTGRES_USER: shellbrain
           POSTGRES_PASSWORD: shellbrain
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U shellbrain -d shellbrain"
+          --health-cmd "pg_isready -U shellbrain -d shellbrain_real_embedding_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 10
 
     env:
       SHELLBRAIN_DB_DSN: postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain
-      SHELLBRAIN_DB_DSN_TEST: postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain
+      SHELLBRAIN_DB_DSN_TEST: postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain_real_embedding_test
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
 
     steps:
