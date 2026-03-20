@@ -8,16 +8,16 @@ import sys
 import pytest
 from sqlalchemy import select, text
 
-from shellbrain.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from shellbrain.core.contracts.requests import MemoryCreateRequest
-from shellbrain.core.use_cases.create_memory import execute_create_memory
-from shellbrain.periphery.db.engine import get_engine
-from shellbrain.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
-from shellbrain.periphery.db.models.episodes import episode_events, episodes
-from shellbrain.periphery.db.models.memories import memory_embeddings
-from shellbrain.periphery.db.models.registry import target_metadata
-from shellbrain.periphery.db.session import get_session_factory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
+from app.core.contracts.requests import MemoryCreateRequest
+from app.core.use_cases.create_memory import execute_create_memory
+from app.periphery.db.engine import get_engine
+from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from app.periphery.db.models.episodes import episode_events, episodes
+from app.periphery.db.models.memories import memory_embeddings
+from app.periphery.db.models.registry import target_metadata
+from app.periphery.db.session import get_session_factory
+from app.periphery.db.uow import PostgresUnitOfWork
 from tests.operations._shared.destructive_guardrail_fixtures import (
     assert_destructive_test_setup_allowed,
     assert_test_database_is_disposable,
@@ -125,7 +125,7 @@ def _run_alembic_upgrade(dsn: str) -> None:
     env["SHELLBRAIN_DB_ADMIN_DSN"] = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", dsn)
     env["SHELLBRAIN_INSTANCE_MODE"] = "test"
     subprocess.run(
-        [sys.executable, "-m", "shellbrain.periphery.cli.main", "admin", "migrate"],
+        [sys.executable, "-m", "app.periphery.cli.main", "admin", "migrate"],
         check=True,
         cwd=repo_root,
         env=env,

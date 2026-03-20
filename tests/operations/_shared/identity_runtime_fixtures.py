@@ -31,7 +31,7 @@ def claude_hook_runtime_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     """Provide one trusted Claude runtime identity via Shellbrain hook variables."""
 
     session_id = "46cc92ee-1291-49d2-89e5-ef0ac1603709"
-    transcript_path = tmp_path / ".claude" / "projects" / "-Users-adamcuculich-memory" / f"{session_id}.jsonl"
+    transcript_path = tmp_path / ".claude" / "projects" / "-Users-adamcuculich-shellbrain" / f"{session_id}.jsonl"
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     transcript_path.write_text(
         json.dumps(
@@ -69,7 +69,7 @@ def claude_hook_subagent_runtime_identity(tmp_path: Path, monkeypatch: pytest.Mo
         tmp_path
         / ".claude"
         / "projects"
-        / "-Users-adamcuculich-memory"
+        / "-Users-adamcuculich-shellbrain"
         / session_id
         / "subagents"
         / f"{agent_id}.jsonl"

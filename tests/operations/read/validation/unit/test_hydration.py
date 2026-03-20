@@ -1,6 +1,6 @@
 """Hydration contracts for read-path requests."""
 
-from shellbrain.periphery.cli.hydration import hydrate_read_payload
+from app.periphery.cli.hydration import hydrate_read_payload
 
 
 def test_read_hydration_infers_missing_defaults() -> None:

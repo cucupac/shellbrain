@@ -1,8 +1,8 @@
 """Read execution contracts for context-pack YAML-backed defaults."""
 
-from shellbrain.boot.config import get_config_provider
-from shellbrain.boot.retrieval import get_retrieval_defaults
-from shellbrain.core.policies.read_policy.context_pack_builder import assemble_context_pack
+from app.boot.config import get_config_provider
+from app.boot.retrieval import get_retrieval_defaults
+from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
 
 
 def test_read_context_pack_config_should_always_define_mode_specific_limits_in_read_policy_yaml() -> None:

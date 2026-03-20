@@ -4,9 +4,9 @@ from collections.abc import Callable
 
 import pytest
 
-from shellbrain.core.contracts.requests import MemoryReadRequest
-from shellbrain.core.use_cases.read_memory import execute_read_memory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryReadRequest
+from app.core.use_cases.read_memory import execute_read_memory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_context_pack_should_always_return_grouped_sections_under_data_pack(
@@ -119,11 +119,11 @@ def _execute_stubbed_read(
     """Execute one read call with deterministic scored candidates for JSON-shape tests."""
 
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.policies.read_policy.pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
         lambda semantic, keyword: [
             {
                 "memory_id": "direct-1",
@@ -136,7 +136,7 @@ def _execute_stubbed_read(
         ],
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.policies.read_policy.pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {
@@ -162,7 +162,7 @@ def _execute_stubbed_read(
         },
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.score_candidates",
+        "app.core.policies.read_policy.pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
 

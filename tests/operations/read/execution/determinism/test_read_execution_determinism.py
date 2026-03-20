@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from shellbrain.core.contracts.requests import MemoryReadRequest
-from shellbrain.core.use_cases.read_memory import execute_read_memory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryReadRequest
+from app.core.use_cases.read_memory import execute_read_memory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_deduplicates_memories_reached_by_multiple_paths(

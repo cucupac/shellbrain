@@ -5,9 +5,9 @@ from __future__ import annotations
 from contextlib import nullcontext
 from pathlib import Path
 
-from shellbrain.periphery.admin import init as init_module
-from shellbrain.periphery.admin.machine_state import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
-from shellbrain.periphery.admin.repo_state import RepoRegistration
+from app.periphery.admin import init as init_module
+from app.periphery.admin.machine_state import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
+from app.periphery.admin.repo_state import RepoRegistration
 
 
 def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path: Path, monkeypatch) -> None:
@@ -25,7 +25,7 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path:
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, "corrupt toml"))
     monkeypatch.setattr(init_module, "backup_corrupt_machine_config", lambda: preserved)
     monkeypatch.setattr(init_module, "_recover_machine_config_from_docker", lambda: None)
-    monkeypatch.setattr("shellbrain.periphery.admin.init.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
+    monkeypatch.setattr("app.periphery.admin.init.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -91,8 +91,42 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     assert any("Repo: github.com/example/repo" == line for line in result.lines)
 
 
-def test_handle_claude_integration_should_noop_with_repo_signal_only(tmp_path: Path, monkeypatch) -> None:
-    """auto Claude handling should not mutate config when only repo-local Claude files are present."""
+def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: Path, monkeypatch) -> None:
+    """blocked conflicts should not leave machine state stranded in provisioning."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    initial_config = _machine_config(bootstrap_state="provisioning", last_error=None)
+    marked: list[str] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_container",
+        lambda config: (_ for _ in ()).throw(init_module.InitConflictError("managed port already claimed")),
+    )
+    monkeypatch.setattr(init_module, "_mark_repair_needed", lambda message: marked.append(message))
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        host_mode="auto",
+        skip_model_download=False,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
+    assert result.lines == ["managed port already claimed"]
+    assert marked == ["managed port already claimed"]
+
+
+def test_handle_claude_integration_should_install_with_repo_signal_only(tmp_path: Path, monkeypatch) -> None:
+    """auto Claude handling should install when the repo already looks Claude-managed."""
 
     repo_root = tmp_path / "claude-repo"
     (repo_root / ".claude").mkdir(parents=True)
@@ -106,12 +140,19 @@ def test_handle_claude_integration_should_noop_with_repo_signal_only(tmp_path: P
         machine_instance_id="inst-1",
         claude_status="not_checked",
     )
+    installed: list[Path] = []
 
     monkeypatch.setattr(init_module, "detect_claude_runtime_without_hook", lambda: False)
+    monkeypatch.setattr(
+        init_module,
+        "install_claude_hook",
+        lambda *, repo_root: installed.append(repo_root) or repo_root / ".claude" / "settings.local.json",
+    )
 
     note = init_module._handle_claude_integration(repo_root=repo_root, registration=registration, host_mode="auto")
 
-    assert note == "Claude repo detected but no active Claude runtime was found. Rerun from Claude Code or pass --host claude to install the Shellbrain hook."
+    assert installed == [repo_root]
+    assert note == f"Installed Claude hook at {repo_root / '.claude' / 'settings.local.json'}"
 
 
 def test_handle_claude_integration_should_install_when_forced(tmp_path: Path, monkeypatch) -> None:
@@ -142,6 +183,51 @@ def test_handle_claude_integration_should_install_when_forced(tmp_path: Path, mo
 
     assert installed == [repo_root]
     assert note == f"Installed Claude hook at {repo_root / '.claude' / 'settings.local.json'}"
+
+
+def test_reconcile_database_should_inline_role_password_literals(monkeypatch) -> None:
+    """role creation should not use server-side bind params inside CREATE/ALTER ROLE."""
+
+    config = _machine_config(bootstrap_state="provisioning")
+    postgres_cursor = _FakeCursor(fetch_results=[(1,)])
+    admin_cursor = _FakeCursor(fetch_results=[None])
+    connections = [_FakeConnection(postgres_cursor), _FakeConnection(admin_cursor)]
+
+    monkeypatch.setattr(init_module.psycopg, "connect", lambda *args, **kwargs: connections.pop(0))
+    monkeypatch.setattr(init_module, "reconcile_app_role_privileges", lambda **kwargs: None)
+    monkeypatch.setattr(init_module, "ensure_instance_metadata", lambda *args, **kwargs: None)
+
+    changed = init_module._reconcile_database(config)
+
+    assert changed is True
+    create_role_call = admin_cursor.calls[1]
+    assert create_role_call[1] is None
+
+
+def test_select_managed_port_should_skip_ports_claimed_by_created_containers(monkeypatch) -> None:
+    """created containers should reserve their declared host ports for future init runs."""
+
+    class _Socket:
+        def setsockopt(self, *args, **kwargs):
+            return None
+
+        def bind(self, address):
+            host, port = address
+            if port != 55433:
+                raise OSError("port unavailable")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(init_module, "_managed_claimed_host_ports", lambda: {55432})
+    monkeypatch.setattr(init_module.socket, "socket", lambda *args, **kwargs: _Socket())
+
+    selected = init_module._select_managed_port()
+
+    assert selected == 55433
 
 
 def _machine_config(*, bootstrap_state: str, readiness_state: str = "pending", last_error: str | None = "repair me") -> MachineConfig:
@@ -182,3 +268,41 @@ def _machine_config(*, bootstrap_state: str, readiness_state: str = "pending", l
             last_error=last_error,
         ),
     )
+
+
+class _FakeCursor:
+    """Minimal cursor stub for init unit tests."""
+
+    def __init__(self, *, fetch_results: list[object | None]) -> None:
+        self._fetch_results = list(fetch_results)
+        self.calls: list[tuple[object, object | None]] = []
+
+    def execute(self, query, params=None) -> None:
+        self.calls.append((query, params))
+
+    def fetchone(self):
+        if self._fetch_results:
+            return self._fetch_results.pop(0)
+        return None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False
+
+
+class _FakeConnection:
+    """Minimal connection stub for init unit tests."""
+
+    def __init__(self, cursor: _FakeCursor) -> None:
+        self._cursor = cursor
+
+    def cursor(self) -> _FakeCursor:
+        return self._cursor
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> bool:
+        return False

@@ -18,15 +18,15 @@ import psycopg
 import pytest
 from sqlalchemy import select
 
-from shellbrain.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
-from shellbrain.periphery.cli.handlers import handle_create
-from shellbrain.periphery.db.engine import get_engine
-from shellbrain.periphery.db.models.evidence import evidence_refs
-from shellbrain.periphery.db.models.episodes import episode_events, episodes
-from shellbrain.periphery.db.models.memories import memories, memory_embeddings, memory_evidence
-from shellbrain.periphery.db.session import get_session_factory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
+from app.core.interfaces.embeddings import IEmbeddingProvider
+from app.periphery.cli.handlers import handle_create
+from app.periphery.db.engine import get_engine
+from app.periphery.db.models.evidence import evidence_refs
+from app.periphery.db.models.episodes import episode_events, episodes
+from app.periphery.db.models.memories import memories, memory_embeddings, memory_evidence
+from app.periphery.db.session import get_session_factory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 _READY_TIMEOUT_SECONDS = 60
@@ -115,7 +115,7 @@ class IsolatedDockerPostgres:
         """Apply packaged schema migrations against the isolated database."""
 
         self._run_repo_command(
-            [_resolve_python_executable(), "-m", "shellbrain.periphery.cli.main", "admin", "migrate"],
+            [_resolve_python_executable(), "-m", "app.periphery.cli.main", "admin", "migrate"],
             env_overrides={
                 "SHELLBRAIN_DB_DSN": self.dsn,
                 "SHELLBRAIN_DB_ADMIN_DSN": self.dsn,

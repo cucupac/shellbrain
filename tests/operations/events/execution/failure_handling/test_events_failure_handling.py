@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from shellbrain.periphery.cli.handlers import handle_events
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.periphery.cli.handlers import handle_events
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_events_errors_clearly_when_no_active_session_exists(
@@ -18,7 +18,7 @@ def test_events_errors_clearly_when_no_active_session_exists(
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": [tmp_path / "missing-codex-root"],

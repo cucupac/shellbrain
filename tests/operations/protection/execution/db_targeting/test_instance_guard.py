@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from shellbrain.periphery.admin.instance_guard import (
+from app.periphery.admin.instance_guard import (
     InstanceMetadataRecord,
     LIVE,
     TEST,
@@ -49,7 +49,7 @@ def test_instance_guard_fingerprint_should_ignore_role_username() -> None:
 def test_destructive_guard_should_fail_closed_when_metadata_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     """destructive guard should refuse databases that are not explicitly stamped disposable."""
 
-    monkeypatch.setattr("shellbrain.periphery.admin.instance_guard.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr("app.periphery.admin.instance_guard.fetch_instance_metadata", lambda dsn: None)
 
     with pytest.raises(RuntimeError, match="instance metadata is missing"):
         assert_destructive_allowed("postgresql+psycopg://tester:pw@localhost:5432/test_db")
@@ -59,7 +59,7 @@ def test_destructive_guard_should_refuse_live_instances(monkeypatch: pytest.Monk
     """destructive guard should never allow automation against live instances."""
 
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.instance_guard.fetch_instance_metadata",
+        "app.periphery.admin.instance_guard.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode=LIVE,
@@ -77,7 +77,7 @@ def test_destructive_guard_should_allow_test_instances(monkeypatch: pytest.Monke
     """destructive guard should allow explicitly stamped test instances."""
 
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.instance_guard.fetch_instance_metadata",
+        "app.periphery.admin.instance_guard.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-test",
             instance_mode=TEST,

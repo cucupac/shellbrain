@@ -4,12 +4,12 @@ from collections.abc import Callable
 
 import pytest
 
-from shellbrain.core.contracts.requests import MemoryReadRequest
-from shellbrain.core.policies.read_policy.expansion import expand_candidates
-from shellbrain.core.policies.read_policy.fusion_rrf import fuse_with_rrf
-from shellbrain.core.policies.read_policy.scoring import score_candidates
-from shellbrain.core.use_cases.read_memory import execute_read_memory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryReadRequest
+from app.core.policies.read_policy.expansion import expand_candidates
+from app.core.policies.read_policy.fusion_rrf import fuse_with_rrf
+from app.core.policies.read_policy.scoring import score_candidates
+from app.core.use_cases.read_memory import execute_read_memory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds() -> None:
@@ -308,11 +308,11 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
     """read scoring should always order competing expanded candidates via the scoring stage."""
 
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.policies.read_policy.pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
         lambda semantic, keyword: [
             {
                 "memory_id": "anchor",
@@ -326,7 +326,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
         ],
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.policies.read_policy.pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {

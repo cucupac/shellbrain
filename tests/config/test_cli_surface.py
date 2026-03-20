@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.periphery.cli import main as cli_main
-from shellbrain.periphery.cli.hydration import resolve_repo_context
+from app.periphery.cli import main as cli_main
+from app.periphery.cli.hydration import resolve_repo_context
 
 
 def test_resolve_repo_context_infers_repo_id_from_explicit_repo_root(tmp_path: Path) -> None:
@@ -311,7 +311,7 @@ def test_admin_migrate_should_invoke_packaged_migration_runner(
 
     calls: list[str] = []
 
-    monkeypatch.setattr("shellbrain.boot.migrations.upgrade_database", lambda: calls.append("migrated"))
+    monkeypatch.setattr("app.boot.migrations.upgrade_database", lambda: calls.append("migrated"))
 
     exit_code = cli_main.main(["admin", "migrate"])
 
@@ -354,13 +354,13 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 ) -> None:
     """admin backup create should print the created manifest as JSON."""
 
-    from shellbrain.periphery.admin.backup import BackupManifest
+    from app.periphery.admin.backup import BackupManifest
 
-    monkeypatch.setattr("shellbrain.boot.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin:pw@localhost:5432/test_admin")
-    monkeypatch.setattr("shellbrain.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
-    monkeypatch.setattr("shellbrain.boot.admin_db.get_backup_mirror_dir", lambda: None)
+    monkeypatch.setattr("app.boot.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin:pw@localhost:5432/test_admin")
+    monkeypatch.setattr("app.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
+    monkeypatch.setattr("app.boot.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.create_backup",
+        "app.periphery.admin.backup.create_backup",
         lambda **kwargs: BackupManifest(
             backup_id="b-1",
             instance_id="i-1",
@@ -387,11 +387,11 @@ def test_admin_doctor_should_print_structured_report(
 ) -> None:
     """admin doctor should print one JSON safety report."""
 
-    monkeypatch.setattr("shellbrain.boot.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app:pw@localhost:5432/test_app")
-    monkeypatch.setattr("shellbrain.boot.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin:pw@localhost:5432/test_admin")
-    monkeypatch.setattr("shellbrain.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
+    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app:pw@localhost:5432/test_app")
+    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin:pw@localhost:5432/test_admin")
+    monkeypatch.setattr("app.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.doctor.build_doctor_report",
+        "app.periphery.admin.doctor.build_doctor_report",
         lambda **kwargs: {"instance": {"instance_mode": "live"}, "backup_count": 1},
     )
 
@@ -408,13 +408,13 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 ) -> None:
     """init should print the stable outcome prefix and forward the mapped exit code."""
 
-    from shellbrain.periphery.admin.init import InitResult
+    from app.periphery.admin.init import InitResult
 
     repo_root = tmp_path / "init-repo"
     repo_root.mkdir()
 
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.init.run_init",
+        "app.periphery.admin.init.run_init",
         lambda **kwargs: InitResult(
             outcome="repaired",
             lines=["Managed instance: shellbrain-postgres-test", "Repo: example/repo"],
@@ -432,7 +432,7 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 def test_init_should_map_no_claude_to_host_none(monkeypatch, tmp_path: Path) -> None:
     """init should disable Claude integration when --no-claude is provided."""
 
-    from shellbrain.periphery.admin.init import InitResult
+    from app.periphery.admin.init import InitResult
 
     repo_root = tmp_path / "init-no-claude"
     repo_root.mkdir()
@@ -442,7 +442,7 @@ def test_init_should_map_no_claude_to_host_none(monkeypatch, tmp_path: Path) -> 
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("shellbrain.periphery.admin.init.run_init", _fake_run_init)
+    monkeypatch.setattr("app.periphery.admin.init.run_init", _fake_run_init)
 
     exit_code = cli_main.main(["init", "--repo-root", str(repo_root), "--host", "claude", "--no-claude"])
 

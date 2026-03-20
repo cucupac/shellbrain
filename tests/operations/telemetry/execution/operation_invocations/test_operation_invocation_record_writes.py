@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.core.entities.memory import MemoryKind, MemoryScope
-import shellbrain.periphery.cli.main as cli_main
-from shellbrain.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.entities.memory import MemoryKind, MemoryScope
+import app.periphery.cli.main as cli_main
+from app.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
+from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -147,7 +147,7 @@ def test_events_should_always_append_one_operation_invocation_row_with_the_resol
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": list(codex_transcript_fixture["search_roots"]),
@@ -184,7 +184,7 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
     repo_root = tmp_path / "telemetry-no-sync-repo"
     repo_root.mkdir()
     _stub_read_pipeline(monkeypatch, zero_results=False)
-    monkeypatch.setattr("shellbrain.boot.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.boot.use_cases.get_uow_factory", lambda: uow_factory)
     monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
     monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: None)
 
@@ -256,11 +256,11 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     """Patch the read pipeline to return deterministic candidate sets."""
 
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.policies.read_policy.pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
         lambda semantic, keyword: []
         if zero_results
         else [
@@ -275,7 +275,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         ],
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.policies.read_policy.pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {"explicit": [], "implicit": []}
         if zero_results
         else {
@@ -294,6 +294,6 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         },
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.score_candidates",
+        "app.core.policies.read_policy.pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )

@@ -1,13 +1,13 @@
 # Tests Status
 
-Generated: 2026-03-19 01:56:06 PDT
+Generated: 2026-03-19 14:30:51 PDT
 
 ## Summary
 
-- Total: 277
-- Passed: 2
+- Total: 283
+- Passed: 0
 - Failed: 0
-- Skipped/Not Run: 275
+- Skipped/Not Run: 283
 
 # Config Tests
 
@@ -37,19 +37,22 @@ Generated: 2026-03-19 01:56:06 PDT
 - ⚪ not run init should print the stable outcome prefix and forward the mapped exit code.
 - ⚪ not run init should disable Claude integration when --no-claude is provided.
 - ⚪ not run explicit repo-root overrides should fail fast when the directory does not exist.
+- ⚪ not run The shared destructive guard should always create and verify one backup.
 - ⚪ not run yaml config provider should always expose separate create and update policy sections.
 - ⚪ not run The longer onboarding surfaces should teach the same Shellbrain mental model.
 - ⚪ not run Top-level CLI help should match the condensed taught workflow.
 - ⚪ not run The reusable shellbrain skill should include Codex UI metadata.
-- ✅ editable installs should expose the shellbrain console script outside this repository.
-- ✅ git-url installs should expose the shellbrain console script outside this repository.
-- ⚪ installed-package admin migrate should initialize an empty database from packaged artifacts.
+- ⚪ not run editable installs should expose the shellbrain console script outside this repository.
+- ⚪ not run git-url installs should expose the shellbrain console script outside this repository.
+- ⚪ not run installed-package admin migrate should initialize an empty database from packaged artifacts.
 - ⚪ not run read policy should always resolve missing read knobs from config.
 - ⚪ not run read policy should always merge partial expand over config defaults.
 - ⚪ not run db boot should always resolve the runtime-configured dsn env.
 - ⚪ not run db boot should use the managed machine config before env-based runtime settings.
 - ⚪ not run db boot should direct the user to rerun init when machine config is corrupt.
 - ⚪ not run runtime yaml should always define database cli and embedding sections.
+- ⚪ not run Unsafe app-role checks should fail closed unless explicitly relaxed.
+- ⚪ not run Unsafe app-role checks may be downgraded explicitly for controlled debugging.
 - ⚪ not run seed retrieval should always apply configured semantic and keyword thresholds.
 - ⚪ not run update policy should always expose its configured gate list.
 
@@ -171,12 +174,12 @@ Generated: 2026-03-19 01:56:06 PDT
 
 ### Failure Handling
 
-- ⚪ not run events should always return not_found when no active host session exists for the repo.
+- ⚪ events should always return not_found when no active host session exists for the repo.
 
 ### High Level Behavior
 
-- ⚪ not run events should always sync the active host session and return recent stored events newest first.
-- ⚪ not run events should always prefer the trusted caller identity over newer repo-matching host sessions.
+- ⚪ events should always sync the active host session and return recent stored events newest first.
+- ⚪ events should always prefer the trusted caller identity over newer repo-matching host sessions.
 
 # Guidance Tests
 
@@ -368,8 +371,11 @@ Generated: 2026-03-19 01:56:06 PDT
 
 - ⚪ not run init should stop with blocked_config_corrupt when corrupt machine state cannot be rediscovered.
 - ⚪ not run init should create a backup first and report repaired when bootstrap state needs repair.
+- ⚪ not run blocked conflicts should not leave machine state stranded in provisioning.
 - ⚪ not run auto Claude handling should not mutate config when only repo-local Claude files are present.
 - ⚪ not run forced Claude mode should install the hook even without runtime auto-detection.
+- ⚪ not run role creation should not use server-side bind params inside CREATE/ALTER ROLE.
+- ⚪ not run created containers should reserve their declared host ports for future init runs.
 
 ### Missing Backup Behavior
 
@@ -435,29 +441,29 @@ Generated: 2026-03-19 01:56:06 PDT
 
 ### Episode Sync Runs
 
-- ⚪ not run events should always append one episode sync run for inline transcript sync.
-- ⚪ not run poller sync should always append one episode sync run with source poller.
-- ⚪ not run episode sync runs should always record imported-event count and total event counts by source.
-- ⚪ not run episode sync runs should always record tool-type counts from the normalized episode content.
+- ⚪ events should always append one episode sync run for inline transcript sync.
+- ⚪ poller sync should always append one episode sync run with source poller.
+- ⚪ episode sync runs should always record imported-event count and total event counts by source.
+- ⚪ episode sync runs should always record tool-type counts from the normalized episode content.
 
 ### Failure Handling
 
-- ⚪ not run read validation failures should always append one failed operation invocation and no read summary row.
-- ⚪ not run create validation failures should always append one failed operation invocation and no write summary row.
-- ⚪ not run update validation failures should always append one failed operation invocation and no write summary row.
-- ⚪ not run events not_found should always append one failed operation invocation and no episode sync run.
-- ⚪ not run events sync failures should always append one failed operation invocation and one failed episode sync run.
-- ⚪ not run unexpected operational failures should always append one failed operation invocation with internal-error stage.
-- ⚪ not run poller sync failures should always append one failed episode sync run.
+- ⚪ read validation failures should always append one failed operation invocation and no read summary row.
+- ⚪ create validation failures should always append one failed operation invocation and no write summary row.
+- ⚪ update validation failures should always append one failed operation invocation and no write summary row.
+- ⚪ events not_found should always append one failed operation invocation and no episode sync run.
+- ⚪ events sync failures should always append one failed operation invocation and one failed episode sync run.
+- ⚪ unexpected operational failures should always append one failed operation invocation with internal-error stage.
+- ⚪ poller sync failures should always append one failed episode sync run.
 
 ### Operation Invocations
 
-- ⚪ not run read should always append one operation invocation row with command, repo_id, outcome, and latency fields.
-- ⚪ not run create should always append one operation invocation row with command, repo_id, outcome, and latency fields.
-- ⚪ not run update should always append one operation invocation row with command, repo_id, outcome, and latency fields.
-- ⚪ not run events should always append one operation invocation row with the resolved host, session, thread, and episode ids.
-- ⚪ not run operational invocations should always record whether no-sync was used.
-- ⚪ not run repo-matching multi-session discovery should always record candidate count and selection_ambiguous when more than one session matches.
+- ⚪ read should always append one operation invocation row with command, repo_id, outcome, and latency fields.
+- ⚪ create should always append one operation invocation row with command, repo_id, outcome, and latency fields.
+- ⚪ update should always append one operation invocation row with command, repo_id, outcome, and latency fields.
+- ⚪ events should always append one operation invocation row with the resolved host, session, thread, and episode ids.
+- ⚪ operational invocations should always record whether no-sync was used.
+- ⚪ repo-matching multi-session discovery should always record candidate count and selection_ambiguous when more than one session matches.
 
 ### Packaging Smoke
 

@@ -2,13 +2,13 @@
 
 from collections.abc import Callable
 
-from shellbrain.core.contracts.requests import MemoryCreateRequest
-from shellbrain.core.entities.memory import MemoryKind, MemoryScope
-from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
-from shellbrain.core.use_cases.create_memory import execute_create_memory
-from shellbrain.periphery.db.models.experiences import problem_attempts
-from shellbrain.periphery.db.models.memories import memories
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryCreateRequest
+from app.core.entities.memory import MemoryKind, MemoryScope
+from app.core.interfaces.embeddings import IEmbeddingProvider
+from app.core.use_cases.create_memory import execute_create_memory
+from app.periphery.db.models.experiences import problem_attempts
+from app.periphery.db.models.memories import memories
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_create_problem_persists_memory_without_problem_attempt(

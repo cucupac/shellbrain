@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from shellbrain.core.entities.memory import MemoryKind, MemoryScope
+from app.core.entities.memory import MemoryKind, MemoryScope
 import pytest
-from shellbrain.periphery.cli.handlers import handle_create, handle_update
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.periphery.cli.handlers import handle_create, handle_update
+from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 

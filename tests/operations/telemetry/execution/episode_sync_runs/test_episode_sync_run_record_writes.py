@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.periphery.cli.handlers import handle_events
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
-from shellbrain.periphery.episodes.poller import run_episode_poller
+from app.periphery.cli.handlers import handle_events
+from app.periphery.db.uow import PostgresUnitOfWork
+from app.periphery.episodes.poller import run_episode_poller
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -25,7 +25,7 @@ def test_events_should_always_append_one_episode_sync_run_for_inline_transcript_
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": list(codex_transcript_fixture["search_roots"]),
@@ -39,7 +39,7 @@ def test_events_should_always_append_one_episode_sync_run_for_inline_transcript_
 
     assert len(rows) == 1
     assert rows[0]["source"] == "events_inline"
-    assert rows[0]["repo_id"] == "memory"
+    assert rows[0]["repo_id"] == "shellbrain"
 
 
 def test_poller_sync_should_always_append_one_episode_sync_run_with_source_poller(
@@ -51,22 +51,22 @@ def test_poller_sync_should_always_append_one_episode_sync_run_with_source_polle
 ) -> None:
     """poller sync should always append one episode sync run with source poller."""
 
-    monkeypatch.setattr("shellbrain.periphery.episodes.poller.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr("shellbrain.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
-    monkeypatch.setattr("shellbrain.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr("app.periphery.episodes.poller.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
+    monkeypatch.setattr("app.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
     monkeypatch.setattr(
-        "shellbrain.periphery.episodes.poller.default_search_roots",
+        "app.periphery.episodes.poller.default_search_roots",
         lambda *, repo_root, host_app: list(codex_transcript_fixture["search_roots"]) if host_app == "codex" else [],
     )
 
-    run_episode_poller(repo_id="memory", repo_root=Path.cwd().resolve())
+    run_episode_poller(repo_id="shellbrain", repo_root=Path.cwd().resolve())
 
     assert_relation_exists("episode_sync_runs")
     rows = fetch_relation_rows("episode_sync_runs", order_by="created_at DESC, id DESC")
 
     assert len(rows) == 1
     assert rows[0]["source"] == "poller"
-    assert rows[0]["repo_id"] == "memory"
+    assert rows[0]["repo_id"] == "shellbrain"
 
 
 def test_episode_sync_runs_should_always_record_imported_event_count_and_total_event_counts_by_source(
@@ -80,7 +80,7 @@ def test_episode_sync_runs_should_always_record_imported_event_count_and_total_e
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": list(codex_transcript_fixture["search_roots"]),
@@ -112,7 +112,7 @@ def test_episode_sync_runs_should_always_record_tool_type_counts_from_the_normal
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": list(codex_transcript_fixture["search_roots"]),

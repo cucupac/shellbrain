@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shellbrain.periphery.cli import main as cli_main
+from app.periphery.cli import main as cli_main
 
 
 def _read_text(path: Path) -> str:

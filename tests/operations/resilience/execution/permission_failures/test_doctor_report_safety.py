@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from shellbrain.periphery.admin.backup import BackupManifest
-from shellbrain.periphery.admin.doctor import build_doctor_report
-from shellbrain.periphery.admin.instance_guard import InstanceMetadataRecord
+from app.periphery.admin.backup import BackupManifest
+from app.periphery.admin.doctor import build_doctor_report
+from app.periphery.admin.instance_guard import InstanceMetadataRecord
 
 
 def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Path) -> None:
     """doctor should still produce one report when the app DSN is not configured."""
 
-    monkeypatch.setattr("shellbrain.periphery.admin.doctor.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("shellbrain.periphery.admin.doctor.inspect_role_safety", lambda dsn: ["warn"] if dsn else [])
+    monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
+    monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: ["warn"] if dsn else [])
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.doctor.fetch_instance_metadata",
+        "app.periphery.admin.doctor.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode="live",
@@ -44,7 +44,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
     """doctor should summarize backup age and both role-safety channels."""
 
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.doctor.list_backups",
+        "app.periphery.admin.doctor.list_backups",
         lambda backup_root: [
             BackupManifest(
                 backup_id="b-1",
@@ -61,7 +61,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
         ],
     )
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.doctor.fetch_instance_metadata",
+        "app.periphery.admin.doctor.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode="live",
@@ -71,10 +71,10 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
         ),
     )
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.doctor.inspect_role_safety",
+        "app.periphery.admin.doctor.inspect_role_safety",
         lambda dsn: ["unsafe"] if "app" in dsn else ["admin-ok"],
     )
-    monkeypatch.setattr("shellbrain.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
 
     report = build_doctor_report(
         app_dsn="postgresql+psycopg://shellbrain_app:shellbrain@localhost:5432/shellbrain_live",

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.periphery.admin.backup import restore_backup, verify_backup
+from app.periphery.admin.backup import restore_backup, verify_backup
 
 
 def test_backup_verify_should_fail_when_no_backups_exist(tmp_path: Path) -> None:

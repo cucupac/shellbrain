@@ -8,7 +8,7 @@ WORKDIR /workspace
 COPY requirements.txt /workspace/requirements.txt
 COPY pyproject.toml /workspace/pyproject.toml
 COPY README.md /workspace/README.md
-COPY shellbrain /workspace/shellbrain
+COPY app /workspace/app
 COPY alembic.ini /workspace/alembic.ini
 RUN pip install --no-cache-dir -r /workspace/requirements.txt \
     && pip install --no-cache-dir --no-deps -e /workspace

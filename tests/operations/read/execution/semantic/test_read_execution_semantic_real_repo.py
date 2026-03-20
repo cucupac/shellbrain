@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 
-from shellbrain.core.policies.read_policy.expansion import expand_candidates
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.policies.read_policy.expansion import expand_candidates
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_returns_visible_semantic_matches_through_real_semantic_lane_when_lexical_misses(

@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-from shellbrain.periphery.cli.handlers import handle_read
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.periphery.cli.handlers import handle_read
+from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -149,11 +149,11 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     """Patch the read pipeline to return deterministic summary rows."""
 
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.policies.read_policy.pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
         lambda semantic, keyword: []
         if zero_results
         else [
@@ -168,7 +168,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         ],
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.policies.read_policy.pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {"explicit": [], "implicit": []}
         if zero_results
         else {
@@ -196,7 +196,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         },
     )
     monkeypatch.setattr(
-        "shellbrain.core.policies.read_policy.pipeline.score_candidates",
+        "app.core.policies.read_policy.pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
 

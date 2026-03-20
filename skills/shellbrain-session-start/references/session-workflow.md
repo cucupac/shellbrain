@@ -24,7 +24,15 @@ The point is case-based reasoning: query for similar prior problems, plans, cons
 
 ## Bootstrap
 
-Prefer the product path:
+Treat `shellbrain init` as first-time bootstrap plus repair, not as a routine start-of-session command.
+
+Normal session rhythm:
+
+- if Shellbrain already works in this repo, go straight to `read`
+- if readiness is unclear, run `shellbrain admin doctor`
+- if Shellbrain has never been bootstrapped on this machine, this repo has never been registered, or `doctor` says `repair_needed`, run `shellbrain init`
+
+Bootstrap and repair path:
 
 ```bash
 shellbrain init
@@ -41,7 +49,7 @@ In Codex desktop and similar tool shells, if direct `shellbrain` calls fail in t
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
 ```
 
-Assume Shellbrain comes from a one-time machine install. If direct calls fail in the current Codex session, keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only if the wrapped check fails should you ask the operator to restore the machine-level install.
+Assume Shellbrain comes from a one-time machine install. Do not rerun `init` just because a new agent starts. If direct calls fail in the current Codex session, keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only if the wrapped check fails should you ask the operator to restore the machine-level install.
 
 Drop into the advanced/operator path only when `doctor` says the managed runtime is blocked.
 
@@ -198,6 +206,9 @@ Important modeling pattern for changed truth:
 - Successful responses may include `data.guidance`; treat it as an internal nudge from Shellbrain about pending utility votes or workflow reminders.
 
 ## Recovery
+
+- New agent session, but Shellbrain was already set up
+  Do not rerun `init`. Start with `read`. Use `doctor` only if readiness is unclear.
 
 - `shellbrain: command not found`
   Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'` first. Only if that still fails should you ask the operator to restore the one-time machine install.

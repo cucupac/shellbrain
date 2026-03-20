@@ -1,7 +1,7 @@
 """Request-shape contracts for create-path requests."""
 
-from shellbrain.periphery.cli.hydration import hydrate_create_payload
-from shellbrain.periphery.cli.schema_validation import validate_create_schema
+from app.periphery.cli.hydration import hydrate_create_payload
+from app.periphery.cli.schema_validation import validate_create_schema
 
 
 def test_create_rejects_unknown_fields() -> None:

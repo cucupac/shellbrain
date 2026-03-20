@@ -5,9 +5,9 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from shellbrain.periphery.db.models.episodes import episode_events, episodes, session_transfers
-from shellbrain.periphery.db.models.experiences import fact_updates, problem_attempts
-from shellbrain.periphery.db.models.memories import memories
+from app.periphery.db.models.episodes import episode_events, episodes, session_transfers
+from app.periphery.db.models.experiences import fact_updates, problem_attempts
+from app.periphery.db.models.memories import memories
 
 
 def test_problem_attempt_rows_reject_identical_problem_and_attempt_ids(

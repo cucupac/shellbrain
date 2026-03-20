@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.periphery.admin.backup import BackupManifest, create_backup, list_backups, restore_backup, verify_backup
-from shellbrain.periphery.admin.instance_guard import InstanceMetadataRecord
+from app.periphery.admin.backup import BackupManifest, create_backup, list_backups, restore_backup, verify_backup
+from app.periphery.admin.instance_guard import InstanceMetadataRecord
 
 
 def test_admin_backup_create_should_write_manifest_and_optional_mirror(
@@ -25,7 +25,7 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
 
     monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.fetch_instance_metadata",
+        "app.periphery.admin.backup.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode="live",
@@ -34,9 +34,9 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
             notes=None,
         ),
     )
-    monkeypatch.setattr("shellbrain.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.fingerprint_summary",
+        "app.periphery.admin.backup.fingerprint_summary",
         lambda dsn: {
             "fingerprint": "fp-live",
             "host": "localhost",
@@ -46,7 +46,7 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
         },
     )
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.subprocess.Popen",
+        "app.periphery.admin.backup.subprocess.Popen",
         lambda *args, **kwargs: _FakePopen(stdout=b"CREATE TABLE sentinel();\n", stderr=b"", returncode=0),
     )
 
@@ -77,7 +77,7 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
 
     monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.fetch_instance_metadata",
+        "app.periphery.admin.backup.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode="live",
@@ -86,9 +86,9 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
             notes=None,
         ),
     )
-    monkeypatch.setattr("shellbrain.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.fingerprint_summary",
+        "app.periphery.admin.backup.fingerprint_summary",
         lambda dsn: {
             "fingerprint": "fp-live",
             "host": "localhost",
@@ -98,7 +98,7 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
         },
     )
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.backup.subprocess.Popen",
+        "app.periphery.admin.backup.subprocess.Popen",
         lambda *args, **kwargs: _FakePopen(stdout=b"SELECT 1;\n", stderr=b"", returncode=0),
     )
 
@@ -156,11 +156,11 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/psql" if name == "psql" else None)
-    monkeypatch.setattr("shellbrain.periphery.admin.backup.verify_backup", lambda **kwargs: BackupManifest(**manifest))
-    monkeypatch.setattr("shellbrain.periphery.admin.backup._create_empty_database", lambda **kwargs: None)
-    monkeypatch.setattr("shellbrain.periphery.admin.instance_guard.ensure_instance_metadata", lambda *args, **kwargs: None)
+    monkeypatch.setattr("app.periphery.admin.backup.verify_backup", lambda **kwargs: BackupManifest(**manifest))
+    monkeypatch.setattr("app.periphery.admin.backup._create_empty_database", lambda **kwargs: None)
+    monkeypatch.setattr("app.periphery.admin.instance_guard.ensure_instance_metadata", lambda *args, **kwargs: None)
     monkeypatch.setattr(
-        "shellbrain.periphery.admin.privileges.reconcile_app_role_privileges",
+        "app.periphery.admin.privileges.reconcile_app_role_privileges",
         lambda **kwargs: captured.setdefault("reconciled", kwargs),
     )
 
@@ -168,7 +168,7 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
         captured["input"] = input
         return type("_Completed", (), {"returncode": 0, "stderr": b""})()
 
-    monkeypatch.setattr("shellbrain.periphery.admin.backup.subprocess.run", _fake_run)
+    monkeypatch.setattr("app.periphery.admin.backup.subprocess.run", _fake_run)
 
     restored = restore_backup(
         admin_dsn="postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live",
