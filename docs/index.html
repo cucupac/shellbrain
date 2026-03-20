@@ -208,11 +208,18 @@
 
     .install-line {
       margin-top: 40px;
-      display: flex;
+      display: inline-flex;
       align-items: center;
-      justify-content: center;
       gap: 10px;
       cursor: pointer;
+      border: 1px solid var(--rule-strong);
+      border-radius: 4px;
+      padding: 10px 20px;
+      transition: background 0.2s ease;
+    }
+
+    .install-line:hover {
+      background: rgba(22, 19, 15, 0.04);
     }
 
     .install-line:hover .install-cmd {
@@ -685,7 +692,7 @@
       "every memory answerable to truth.",
       "every experience compounding into the next.",
       "until recall looks like creativity.",
-      "app."
+      "shellbrain."
     ];
 
     const el = document.getElementById("typed");
