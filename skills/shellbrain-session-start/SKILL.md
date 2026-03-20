@@ -27,42 +27,45 @@ Treat current repo state as ground truth. Treat Shellbrain as advisory long-term
 
 ## Quick Start
 
-1. Prefer the product path: from the target repo, run `shellbrain init`.
-2. Then inspect readiness with `shellbrain admin doctor`.
-3. If `doctor` reports `repair_needed`, rerun `shellbrain init` instead of trying to repair Shellbrain manually.
-4. In Codex or similar tool shells, if direct `shellbrain` calls fail in the current session, retry through a login shell that sources `~/.zprofile`:
+`shellbrain init` is first-time bootstrap and repair. It is not a per-session ritual.
+
+1. If Shellbrain has never been bootstrapped on this machine, the current repo has never been registered, or the user says Shellbrain setup is broken, run `shellbrain init`.
+2. Otherwise, do not rerun `init` just because a new agent session started. Start with focused `read` queries right away.
+3. If readiness is unclear, inspect with `shellbrain admin doctor` instead of rerunning `init` by reflex.
+4. If `doctor` reports `repair_needed`, rerun `shellbrain init` instead of trying to repair Shellbrain manually.
+5. In Codex or similar tool shells, if direct `shellbrain` calls fail in the current session, retry through a login shell that sources `~/.zprofile`:
    `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'`
-5. Only drop to the advanced/operator notes in [references/session-workflow.md](references/session-workflow.md) if `doctor` says the managed runtime is blocked.
-6. Resolve the target repo:
+6. Only drop to the advanced/operator notes in [references/session-workflow.md](references/session-workflow.md) if `doctor` says the managed runtime is blocked.
+7. Resolve the target repo:
    - Use the current working directory when already inside the repo.
    - Pass `--repo-root /absolute/path/to/repo` when working from somewhere else.
    - Treat repo path as operational context; Shellbrain should normally derive durable repo identity from normalized git remote, not from `basename(repo_root)`.
    - Shellbrain prefers `origin`, then a single remaining remote. If multiple remotes exist and none is `origin`, pass `--repo-id`.
    - If there is no usable remote, Shellbrain falls back to a weak-local identity tied to the current path.
-7. Start with focused `read` queries about the concrete problem, subsystem, decision, or constraint you are working on. Do not start with vague prompts like "what should I know about this repo?"
-8. Use a startup read bundle:
+8. Start with focused `read` queries about the concrete problem, subsystem, decision, or constraint you are working on. Do not start with vague prompts like "what should I know about this repo?"
+9. Use a startup read bundle:
    - prior attempts:
      `shellbrain read --json '{"query":"Have we seen this failure mode before?","kinds":["problem","solution","failed_tactic"]}'`
    - constraints and preferences:
      `shellbrain read --json '{"query":"What repo constraints or user preferences matter for this task?","kinds":["fact","preference","change"]}'`
    - area-specific facts:
      `shellbrain read --json '{"query":"What facts or changes matter in this subsystem?","kinds":["fact","change","problem","solution"]}'`
-9. When running from Codex, wrap the actual Shellbrain invocations the same way if needed:
+10. When running from Codex, wrap the actual Shellbrain invocations the same way if needed:
    `zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this failure mode before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"`
-10. Inspect the returned context pack:
+11. Inspect the returned context pack:
    - `direct` = direct matches
    - `explicit_related` = linked memories, including authored associations and problem/fact chains
    - `implicit_related` = semantic neighbors and bounded associative hops
-11. Re-run `read` liberally during the task whenever the search shifts, you hit a new subproblem, or you suspect the right memory will only become relevant mid-journey.
-12. Before `create` or any evidence-bearing `update`, run `shellbrain events --json '{"limit":10}'`.
-13. Reuse returned `data.events[].id` values verbatim as `evidence_refs`.
-14. At session end, normalize the episode into durable memories:
+12. Re-run `read` liberally during the task whenever the search shifts, you hit a new subproblem, or you suspect the right memory will only become relevant mid-journey.
+13. Before `create` or any evidence-bearing `update`, run `shellbrain events --json '{"limit":10}'`.
+14. Reuse returned `data.events[].id` values verbatim as `evidence_refs`.
+15. At session end, normalize the episode into durable memories:
    - store the `problem`
    - store each `failed_tactic`
    - store the `solution`
    - store any durable `fact`, `preference`, or `change`
    - record `utility_vote` updates for memories that helped or misled
-15. Use the exact payload shapes in [references/request-shapes.md](references/request-shapes.md).
+16. Use the exact payload shapes in [references/request-shapes.md](references/request-shapes.md).
 
 Trusted session note:
 
@@ -114,7 +117,8 @@ Use explicit associations when two memories are similar or one depends on the ot
 - Skip the write if `events` returns nothing useful or the evidence is ambiguous.
 - Prefer `scope: "repo"` unless the knowledge is intentionally cross-repo. Use `scope: "global"` for cross-repo user preferences, coding conventions, or project-wide facts.
 - Store durable, reusable knowledge. Do not store transient chatter, raw logs, or short-lived status.
-- `shellbrain init` is the normal bootstrap and repair path. `shellbrain admin doctor` is the normal inspect path.
+- `shellbrain init` is the normal first-time bootstrap and repair path, not the default way to start every agent session.
+- `shellbrain admin doctor` is the inspect path when readiness is unclear.
 - Background episodic capture runs automatically. `events` still performs an inline sync before it returns fresh transcript evidence.
 - Use `read` again before writing when you need to check whether a memory already exists or whether an `update` is more appropriate than a new `create`.
 

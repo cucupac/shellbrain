@@ -1,7 +1,7 @@
 """Session idle-expiry contracts."""
 
-from shellbrain.core.entities.session_state import SessionState
-from shellbrain.core.use_cases.manage_session_state import SessionStateManager
+from app.core.entities.session_state import SessionState
+from app.core.use_cases.manage_session_state import SessionStateManager
 
 
 def test_idle_expiry_should_reset_working_session_fields_after_24_hours(old_timestamp: str) -> None:

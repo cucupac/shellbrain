@@ -4,11 +4,11 @@ from collections.abc import Callable
 
 import pytest
 
-from shellbrain.core.contracts.requests import MemoryCreateRequest
-from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
-from shellbrain.core.use_cases.create_memory import execute_create_memory
-from shellbrain.periphery.cli.handlers import handle_create
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryCreateRequest
+from app.core.interfaces.embeddings import IEmbeddingProvider
+from app.core.use_cases.create_memory import execute_create_memory
+from app.periphery.cli.handlers import handle_create
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 class _FailingEmbeddingProvider(IEmbeddingProvider):

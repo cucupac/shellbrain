@@ -15,7 +15,7 @@ def test_pg_dump_restore_recovers_memories(isolated_db_factory) -> None:
     source.run_migrations()
     expected = source.seed_sentinel_dataset()
 
-    dump_path = source.dump_db(Path(source.dump_dir) / "shellbrain.sql")
+    dump_path = source.dump_db(Path(source.dump_dir) / "app.sql")
 
     target = isolated_db_factory("backup-target")
     target.start_isolated_db()

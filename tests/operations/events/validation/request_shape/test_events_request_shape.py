@@ -1,7 +1,7 @@
 """Request-shape contracts for the events operation."""
 
-from shellbrain.periphery.cli.hydration import hydrate_events_payload
-from shellbrain.periphery.cli.schema_validation import validate_events_schema
+from app.periphery.cli.hydration import hydrate_events_payload
+from app.periphery.cli.schema_validation import validate_events_schema
 
 
 def test_events_accepts_optional_limit() -> None:

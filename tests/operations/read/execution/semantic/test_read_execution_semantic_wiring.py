@@ -5,12 +5,12 @@ from typing import Any
 
 import pytest
 
-from shellbrain.core.contracts.errors import ErrorCode
-from shellbrain.core.contracts.requests import MemoryReadRequest
-from shellbrain.core.use_cases.read_memory import execute_read_memory
-from shellbrain.periphery.cli.handlers import handle_read
-from shellbrain.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.errors import ErrorCode
+from app.core.contracts.requests import MemoryReadRequest
+from app.core.use_cases.read_memory import execute_read_memory
+from app.periphery.cli.handlers import handle_read
+from app.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_returns_semantic_direct_matches_through_live_query_embedding_seam_when_lexical_misses(
@@ -133,7 +133,7 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
         _ = (args, kwargs)
         raise RuntimeError("query embedding failed")
 
-    monkeypatch.setattr("shellbrain.core.use_cases.read_memory.build_context_pack", _build_context_pack_raising)
+    monkeypatch.setattr("app.core.use_cases.read_memory.build_context_pack", _build_context_pack_raising)
 
     result = handle_read(
         {"query": "latent semantic regression"},

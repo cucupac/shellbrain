@@ -14,12 +14,12 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from shellbrain.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from shellbrain.core.interfaces.embeddings import IEmbeddingProvider
-from shellbrain.periphery.cli.handlers import handle_create
-from shellbrain.periphery.db.engine import get_engine
-from shellbrain.periphery.db.session import get_session_factory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
+from app.core.interfaces.embeddings import IEmbeddingProvider
+from app.periphery.cli.handlers import handle_create
+from app.periphery.db.engine import get_engine
+from app.periphery.db.session import get_session_factory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 class _StubEmbeddingProvider(IEmbeddingProvider):

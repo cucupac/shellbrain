@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from shellbrain.periphery.identity.resolver import discover_untrusted_events_candidate
+from app.periphery.identity.resolver import discover_untrusted_events_candidate
 
 
 def test_identity_fallback_should_mark_the_discovered_events_candidate_untrusted_when_no_runtime_identity_exists(

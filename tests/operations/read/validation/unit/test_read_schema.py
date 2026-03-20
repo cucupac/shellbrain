@@ -1,6 +1,6 @@
 """Schema contracts for read-path requests."""
 
-from shellbrain.periphery.cli.schema_validation import validate_read_schema
+from app.periphery.cli.schema_validation import validate_read_schema
 
 
 def test_read_rejects_unknown_fields() -> None:

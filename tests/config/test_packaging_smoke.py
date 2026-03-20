@@ -257,5 +257,5 @@ def _venv_shellbrain(venv_dir: Path) -> Path:
     """Resolve the shellbrain console script inside one virtualenv."""
 
     if os.name == "nt":
-        return venv_dir / "Scripts" / "shellbrain.exe"
+        return venv_dir / "Scripts" / "app.exe"
     return venv_dir / "bin" / "shellbrain"

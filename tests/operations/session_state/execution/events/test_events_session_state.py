@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from shellbrain.periphery.cli.handlers import handle_events
-from shellbrain.periphery.session_state.file_store import FileSessionStateStore
+from app.periphery.cli.handlers import handle_events
+from app.periphery.session_state.file_store import FileSessionStateStore
 
 
 def test_events_should_persist_trusted_caller_session_state(

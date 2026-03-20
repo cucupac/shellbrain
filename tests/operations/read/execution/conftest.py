@@ -10,12 +10,12 @@ import pytest
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
-from shellbrain.core.entities.memory import MemoryKind, MemoryScope
-from shellbrain.core.interfaces.retrieval import IVectorSearch
-from shellbrain.periphery.db.models.associations import association_edges
-from shellbrain.periphery.db.models.experiences import fact_updates, problem_attempts
-from shellbrain.periphery.db.models.memories import memories, memory_embeddings
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.entities.memory import MemoryKind, MemoryScope
+from app.core.interfaces.retrieval import IVectorSearch
+from app.periphery.db.models.associations import association_edges
+from app.periphery.db.models.experiences import fact_updates, problem_attempts
+from app.periphery.db.models.memories import memories, memory_embeddings
+from app.periphery.db.uow import PostgresUnitOfWork
 
 from tests.operations._shared.integration_db_fixtures import *  # noqa: F401,F403
 

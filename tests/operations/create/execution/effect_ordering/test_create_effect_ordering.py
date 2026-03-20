@@ -1,6 +1,6 @@
 """Effect-ordering contracts for create execution."""
 
-from shellbrain.core.policies.create_policy.pipeline import build_create_plan
+from app.core.policies.create_policy.pipeline import build_create_plan
 
 
 def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type() -> None:

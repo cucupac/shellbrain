@@ -8,7 +8,7 @@ Assume the normal product bootstrap has already happened:
 - the current repo has been registered
 - `shellbrain admin doctor` reports Shellbrain as ready
 
-If readiness is unclear, inspect with `shellbrain admin doctor` before debugging individual request payloads.
+Do not rerun `shellbrain init` at the start of an ordinary agent session. If readiness is unclear, inspect with `shellbrain admin doctor` before debugging individual request payloads.
 
 Shellbrain should normally infer durable repo identity from normalized git remote. Use `--repo-root` when your shell is elsewhere; reserve explicit repo-id overrides for rare advanced cases.
 

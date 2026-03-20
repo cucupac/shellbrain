@@ -37,7 +37,7 @@ from urllib.parse import urlparse, urlunparse
 
 import psycopg
 from psycopg import sql
-from shellbrain.periphery.admin.instance_guard import assert_disposable_test_dsn
+from app.periphery.admin.instance_guard import assert_disposable_test_dsn
 
 dsn = os.environ["SHELLBRAIN_DB_DSN_TEST"].replace("+psycopg", "")
 admin_dsn = os.environ["SHELLBRAIN_DB_ADMIN_DSN"].replace("+psycopg", "")

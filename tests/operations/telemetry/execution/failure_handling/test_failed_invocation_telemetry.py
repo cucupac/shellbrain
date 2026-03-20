@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
-from shellbrain.periphery.episodes.poller import run_episode_poller
+from app.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
+from app.periphery.db.uow import PostgresUnitOfWork
+from app.periphery.episodes.poller import run_episode_poller
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -121,7 +121,7 @@ def test_events_not_found_should_always_append_one_failed_operation_invocation_a
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": [tmp_path / "missing-codex-root"],
@@ -153,14 +153,14 @@ def test_events_sync_failures_should_always_append_one_failed_operation_invocati
     """events sync failures should always append one failed operation invocation and one failed episode sync run."""
 
     monkeypatch.setattr(
-        "shellbrain.periphery.cli.handlers.normalize_host_transcript",
+        "app.periphery.cli.handlers.normalize_host_transcript",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 
     result = handle_events(
         {},
         uow_factory=uow_factory,
-        inferred_repo_id="memory",
+        inferred_repo_id="shellbrain",
         repo_root=Path.cwd().resolve(),
         search_roots_by_host={
             "codex": list(codex_transcript_fixture["search_roots"]),
@@ -191,7 +191,7 @@ def test_unexpected_operational_failures_should_always_append_one_failed_operati
     """unexpected operational failures should always append one failed operation invocation with internal-error stage."""
 
     monkeypatch.setattr(
-        "shellbrain.periphery.cli.handlers.execute_read_memory",
+        "app.periphery.cli.handlers.execute_read_memory",
         lambda request, uow: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 
@@ -223,19 +223,19 @@ def test_poller_sync_failures_should_always_append_one_failed_episode_sync_run(
 ) -> None:
     """poller sync failures should always append one failed episode sync run."""
 
-    monkeypatch.setattr("shellbrain.periphery.episodes.poller.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr("shellbrain.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
-    monkeypatch.setattr("shellbrain.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr("app.periphery.episodes.poller.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
+    monkeypatch.setattr("app.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
     monkeypatch.setattr(
-        "shellbrain.periphery.episodes.poller.default_search_roots",
+        "app.periphery.episodes.poller.default_search_roots",
         lambda *, repo_root, host_app: list(codex_transcript_fixture["search_roots"]) if host_app == "codex" else [],
     )
     monkeypatch.setattr(
-        "shellbrain.periphery.episodes.poller.sync_episode_from_host",
+        "app.periphery.episodes.poller.sync_episode_from_host",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 
-    run_episode_poller(repo_id="memory", repo_root=Path.cwd().resolve())
+    run_episode_poller(repo_id="shellbrain", repo_root=Path.cwd().resolve())
 
     assert_relation_exists("episode_sync_runs")
     rows = fetch_relation_rows("episode_sync_runs")

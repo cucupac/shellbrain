@@ -3,7 +3,7 @@
 import json
 from pathlib import Path
 
-from shellbrain.periphery.identity.claude_hook_install import install_claude_hook
+from app.periphery.identity.claude_hook_install import install_claude_hook
 
 
 def test_claude_hook_install_should_write_one_repo_local_settings_file_with_shellbrain_identity_exports(tmp_path: Path) -> None:

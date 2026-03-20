@@ -59,7 +59,7 @@ def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "tool_name": "exec_command",
             "status": "ok",
             "summary": "ls",
-            "text": "README.md\nshellbrain/\ninsights/\n",
+            "text": "README.md\napp/\ninsights/\n",
         },
         {
             "event_id": "codex-tool-important-1",
@@ -104,13 +104,13 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             {
                 "sessionId": local_session_id,
                 "cliSessionId": cli_session_id,
-                "cwd": "/Users/example/memory",
+                "cwd": "/Users/example/shellbrain",
             }
         ),
         encoding="utf-8",
     )
 
-    transcript_root = tmp_path / ".claude" / "projects" / "-Users-example-memory"
+    transcript_root = tmp_path / ".claude" / "projects" / "-Users-example-shellbrain"
     transcript_path = transcript_root / f"{cli_session_id}.jsonl"
     entries = [
         {
@@ -137,7 +137,7 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "type": "user",
             "message": {
                 "role": "user",
-                "content": [{"type": "tool_result", "text": "ls\nREADME.md\nshellbrain/\n", "is_error": False}],
+                "content": [{"type": "tool_result", "text": "ls\nREADME.md\napp/\n", "is_error": False}],
             },
         },
         {

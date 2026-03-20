@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from shellbrain.periphery.session_state.file_store import FileSessionStateStore
+from app.periphery.session_state.file_store import FileSessionStateStore
 
 
 def test_session_state_gc_should_remove_stale_state_files_after_7_days(

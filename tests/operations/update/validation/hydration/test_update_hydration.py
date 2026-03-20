@@ -1,6 +1,6 @@
 """Hydration contracts for update-path requests."""
 
-from shellbrain.periphery.cli.hydration import hydrate_update_payload
+from app.periphery.cli.hydration import hydrate_update_payload
 
 
 def test_update_hydration_infers_missing_repo_id() -> None:

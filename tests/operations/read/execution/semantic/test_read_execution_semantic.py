@@ -2,10 +2,10 @@
 
 from collections.abc import Callable
 
-from shellbrain.core.contracts.requests import MemoryReadRequest
-from shellbrain.core.interfaces.retrieval import IVectorSearch
-from shellbrain.core.use_cases.read_memory import execute_read_memory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryReadRequest
+from app.core.interfaces.retrieval import IVectorSearch
+from app.core.use_cases.read_memory import execute_read_memory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_read_returns_semantic_seed_matches_when_lexical_misses(

@@ -19,13 +19,13 @@ dependencies = [
 ]
 
 [project.scripts]
-shellbrain = "shellbrain.periphery.cli.main:main"
+shellbrain = "app.periphery.cli.main:main"
 
 [tool.setuptools.packages.find]
-include = ["shellbrain*"]
+include = ["app*"]
 
 [tool.setuptools.package-data]
-shellbrain = [
+app = [
   "config/defaults/*.yaml",
   "migrations/__init__.py",
   "migrations/env.py",

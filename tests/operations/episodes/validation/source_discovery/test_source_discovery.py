@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from shellbrain.periphery.episodes.source_discovery import resolve_host_transcript_source
+from app.periphery.episodes.source_discovery import resolve_host_transcript_source
 
 
 def test_codex_source_resolution_finds_rollout_transcript_from_thread_id(

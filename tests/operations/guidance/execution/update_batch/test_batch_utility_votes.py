@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from shellbrain.periphery.cli.handlers import handle_events, handle_update
+from app.periphery.cli.handlers import handle_events, handle_update
 
 
 def test_update_batch_should_apply_multiple_utility_votes_and_clear_pending_candidates(
@@ -41,6 +41,6 @@ def test_update_batch_should_apply_multiple_utility_votes_and_clear_pending_cand
     )
 
     assert result["status"] == "ok"
-    rows = fetch_rows(__import__("shellbrain.periphery.db.models.utility", fromlist=["utility_observations"]).utility_observations)
+    rows = fetch_rows(__import__("app.periphery.db.models.utility", fromlist=["utility_observations"]).utility_observations)
     assert len(rows) == 2
     assert result["data"]["applied_count"] == 2

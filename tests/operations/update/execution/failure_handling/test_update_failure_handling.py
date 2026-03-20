@@ -4,10 +4,10 @@ from collections.abc import Callable
 
 import pytest
 
-from shellbrain.core.contracts.requests import MemoryUpdateRequest
-from shellbrain.core.entities.memory import MemoryKind, MemoryScope
-from shellbrain.core.use_cases.update_memory import execute_update_memory
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.contracts.requests import MemoryUpdateRequest
+from app.core.entities.memory import MemoryKind, MemoryScope
+from app.core.use_cases.update_memory import execute_update_memory
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_update_failure_rolls_back_every_partial_write(

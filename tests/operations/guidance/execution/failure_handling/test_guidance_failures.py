@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from shellbrain.periphery.cli.handlers import handle_update
+from app.periphery.cli.handlers import handle_update
 
 
 def test_guidance_failures_should_require_events_when_batch_utility_votes_omit_evidence_and_no_recent_events_exist(

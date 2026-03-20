@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_keyword_lane_prefers_high_coverage_partial_matches_over_generic_partial_matches(

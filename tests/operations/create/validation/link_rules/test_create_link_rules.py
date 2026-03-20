@@ -1,7 +1,7 @@
 """Link-rule contracts for create-path requests."""
 
-from shellbrain.core.contracts.requests import MemoryCreateRequest
-from shellbrain.periphery.validation.semantic_validation import validate_create_semantics
+from app.core.contracts.requests import MemoryCreateRequest
+from app.periphery.validation.semantic_validation import validate_create_semantics
 
 
 def test_solution_requires_problem_id() -> None:

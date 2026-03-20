@@ -1,7 +1,7 @@
 """Guidance reminder contracts."""
 
-from shellbrain.core.entities.guidance import GuidanceDecision
-from shellbrain.core.use_cases.build_guidance import should_emit_guidance_reminder
+from app.core.entities.guidance import GuidanceDecision
+from app.core.use_cases.build_guidance import should_emit_guidance_reminder
 
 
 def test_guidance_reminders_should_be_rate_limited_per_problem() -> None:

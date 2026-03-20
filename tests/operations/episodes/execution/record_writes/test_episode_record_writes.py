@@ -6,9 +6,9 @@ from collections.abc import Callable
 import json
 from pathlib import Path
 
-from shellbrain.core.use_cases.sync_episode import sync_episode_from_host
-from shellbrain.periphery.db.models.episodes import episode_events, episodes
-from shellbrain.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.sync_episode import sync_episode_from_host
+from app.periphery.db.models.episodes import episode_events, episodes
+from app.periphery.db.uow import PostgresUnitOfWork
 
 
 def test_first_episode_import_creates_one_episode_and_ordered_episode_events(
