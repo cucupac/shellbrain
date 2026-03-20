@@ -110,6 +110,60 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
         verify_backup(backup_root=backup_root, backup_id=manifest.backup_id)
 
 
+def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """managed-container backup env should preserve PATH while injecting PGPASSWORD."""
+
+    backup_root = tmp_path / "backups"
+    admin_dsn = "postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live"
+    captured: dict[str, object] = {}
+
+    monkeypatch.setenv("PATH", "/usr/local/bin:/usr/bin")
+    monkeypatch.setattr(
+        "app.periphery.admin.backup.fetch_instance_metadata",
+        lambda dsn: InstanceMetadataRecord(
+            instance_id="inst-live",
+            instance_mode="live",
+            created_at=datetime.now(timezone.utc).isoformat(),
+            created_by="tests",
+            notes=None,
+        ),
+    )
+    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr(
+        "app.periphery.admin.backup.fingerprint_summary",
+        lambda dsn: {
+            "fingerprint": "fp-live",
+            "host": "localhost",
+            "port": "5432",
+            "database": "shellbrain_live",
+            "user": "shellbrain_admin",
+        },
+    )
+
+    def _fake_popen(*args, **kwargs):
+        captured["env"] = kwargs.get("env")
+        return _FakePopen(stdout=b"SELECT 1;\n", stderr=b"", returncode=0)
+
+    monkeypatch.setattr("app.periphery.admin.backup.subprocess.Popen", _fake_popen)
+
+    create_backup(
+        admin_dsn=admin_dsn,
+        backup_root=backup_root,
+        container_name="shellbrain-postgres-test",
+        container_db_name="shellbrain",
+        container_admin_user="shellbrain_admin",
+        container_admin_password="secret-password",
+    )
+
+    env = captured["env"]
+    assert isinstance(env, dict)
+    assert env["PGPASSWORD"] == "secret-password"
+    assert env["PATH"] == "/usr/local/bin:/usr/bin"
+
+
 def test_admin_backup_restore_should_refuse_protected_target_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """admin backup restore should never allow in-place restores into protected DB names."""
 

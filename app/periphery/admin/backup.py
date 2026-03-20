@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 import gzip
 import hashlib
 import json
+import os
 from pathlib import Path
 import re
 import shutil
@@ -301,7 +302,9 @@ def _backup_env(*, container_admin_password: str | None) -> dict[str, str] | Non
 
     if container_admin_password is None:
         return None
-    return {"PGPASSWORD": container_admin_password}
+    env = os.environ.copy()
+    env["PGPASSWORD"] = container_admin_password
+    return env
 
 
 def _create_empty_database(*, admin_dsn: str, target_db: str) -> None:

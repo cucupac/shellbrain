@@ -73,5 +73,5 @@ with psycopg.connect(admin_dsn, autocommit=True) as conn:
     conn.execute("GRANT USAGE ON SCHEMA public TO PUBLIC;")
 PY
 
-python3 -m shellbrain admin migrate
+python3 -m app admin migrate
 python3 -m pytest -q tests
