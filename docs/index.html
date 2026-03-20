@@ -204,6 +204,47 @@
       font-weight: 300;
     }
 
+    /* ─── INSTALL BLOCK ───────────────────────── */
+
+    .install-block {
+      padding: 0 24px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .install-inner {
+      width: min(640px, 100%);
+      text-align: center;
+    }
+
+    .install-code {
+      display: inline-block;
+      font-family: "DM Mono", monospace;
+      font-size: clamp(0.85rem, 1.6vw, 1.05rem);
+      letter-spacing: 0.02em;
+      color: var(--text);
+      background: rgba(22, 19, 15, 0.05);
+      border: 1px solid var(--rule-strong);
+      border-radius: 4px;
+      padding: 14px 28px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      position: relative;
+    }
+
+    .install-code:hover {
+      background: rgba(22, 19, 15, 0.09);
+    }
+
+    .install-hint {
+      font-family: "DM Mono", monospace;
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-light);
+      margin-top: 10px;
+    }
+
     /* ─── CONTENT SECTIONS ─────────────────────── */
 
     .content-section {
@@ -494,6 +535,16 @@
     </div>
   </section>
 
+  <!-- ─── INSTALL ─────────────────────────────── -->
+  <section class="install-block">
+    <div class="install-inner reveal" data-reveal>
+      <div class="install-code" id="installCode" onclick="copyInstall()" title="Click to copy">pip install shellbrain</div>
+      <div class="install-hint" id="installHint">click to copy</div>
+    </div>
+  </section>
+
+  <div style="height: clamp(56px, 8vw, 100px)"></div>
+
   <!-- ─── CASE-BASED REASONING ──────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
 
@@ -622,6 +673,15 @@
 
   <!-- ─── SCRIPTS ───────────────────────────────── -->
   <script>
+    // ── Install copy ─────────────────────────────
+    function copyInstall() {
+      navigator.clipboard.writeText("pip install shellbrain").then(() => {
+        const hint = document.getElementById("installHint");
+        hint.textContent = "copied";
+        setTimeout(() => { hint.textContent = "click to copy"; }, 1600);
+      });
+    }
+
     // ── Hero typing loop ──────────────────────────
     const scenes = [
       "agents forget.",
