@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shellbrain"
-version = "0.1.1"
+version = "0.2.0"
 description = "Repo-scoped Shellbrain CLI with explicit evidence-backed writes."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -30,4 +30,7 @@ app = [
   "migrations/__init__.py",
   "migrations/env.py",
   "migrations/versions/*.py",
+  "onboarding_assets/**/*.md",
+  "onboarding_assets/**/*.yaml",
+  "onboarding_assets/**/*.svg",
 ]

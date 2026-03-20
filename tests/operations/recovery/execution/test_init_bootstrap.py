@@ -30,8 +30,9 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path:
     result = init_module.run_init(
         repo_root=repo_root,
         repo_id_override=None,
-        host_mode="auto",
+        register_repo_now=True,
         skip_model_download=False,
+        skip_host_assets=True,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT
@@ -76,13 +77,13 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: False)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
     monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (registration, True))
-    monkeypatch.setattr(init_module, "_handle_claude_integration", lambda **kwargs: None)
 
     result = init_module.run_init(
         repo_root=repo_root,
         repo_id_override=None,
-        host_mode="auto",
+        register_repo_now=True,
         skip_model_download=False,
+        skip_host_assets=True,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_REPAIRED
@@ -116,8 +117,9 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: P
     result = init_module.run_init(
         repo_root=repo_root,
         repo_id_override=None,
-        host_mode="auto",
+        register_repo_now=True,
         skip_model_download=False,
+        skip_host_assets=True,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
@@ -125,64 +127,39 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: P
     assert marked == ["managed port already claimed"]
 
 
-def test_handle_claude_integration_should_install_with_repo_signal_only(tmp_path: Path, monkeypatch) -> None:
-    """auto Claude handling should install when the repo already looks Claude-managed."""
+def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path, monkeypatch) -> None:
+    """plain init should succeed outside a repo and defer repo registration until first use."""
 
-    repo_root = tmp_path / "claude-repo"
-    (repo_root / ".claude").mkdir(parents=True)
-    registration = RepoRegistration(
-        repo_state_version=1,
-        repo_id="github.com/example/repo",
-        identity_strength="git_remote",
-        git_root=str(repo_root),
-        source_remote="origin",
-        registered_at="2026-03-19T00:00:00+00:00",
-        machine_instance_id="inst-1",
-        claude_status="not_checked",
-    )
-    installed: list[Path] = []
-
-    monkeypatch.setattr(init_module, "detect_claude_runtime_without_hook", lambda: False)
-    monkeypatch.setattr(
-        init_module,
-        "install_claude_hook",
-        lambda *, repo_root: installed.append(repo_root) or repo_root / ".claude" / "settings.local.json",
-    )
-
-    note = init_module._handle_claude_integration(repo_root=repo_root, registration=registration, host_mode="auto")
-
-    assert installed == [repo_root]
-    assert note == f"Installed Claude hook at {repo_root / '.claude' / 'settings.local.json'}"
-
-
-def test_handle_claude_integration_should_install_when_forced(tmp_path: Path, monkeypatch) -> None:
-    """forced Claude mode should install the hook even without runtime auto-detection."""
-
-    repo_root = tmp_path / "claude-repo"
+    repo_root = tmp_path / "not-a-repo"
     repo_root.mkdir()
-    registration = RepoRegistration(
-        repo_state_version=1,
-        repo_id="github.com/example/repo",
-        identity_strength="git_remote",
-        git_root=str(repo_root),
-        source_remote="origin",
-        registered_at="2026-03-19T00:00:00+00:00",
-        machine_instance_id="inst-1",
-        claude_status="not_checked",
+    home_root = tmp_path / "home"
+    initial_config = _machine_config(bootstrap_state="provisioning")
+    ready_config = _machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    register_calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
+    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: False)
+    monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
+    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: register_calls.append(kwargs))
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=False,
+        skip_model_download=False,
+        skip_host_assets=True,
     )
-    installed: list[Path] = []
 
-    monkeypatch.setattr(init_module, "detect_claude_runtime_without_hook", lambda: False)
-    monkeypatch.setattr(
-        init_module,
-        "install_claude_hook",
-        lambda *, repo_root: installed.append(repo_root) or repo_root / ".claude" / "settings.local.json",
-    )
-
-    note = init_module._handle_claude_integration(repo_root=repo_root, registration=registration, host_mode="claude")
-
-    assert installed == [repo_root]
-    assert note == f"Installed Claude hook at {repo_root / '.claude' / 'settings.local.json'}"
+    assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
+    assert register_calls == []
+    assert "Repo registration: deferred until first Shellbrain use inside a repo." in result.lines
 
 
 def test_reconcile_database_should_inline_role_password_literals(monkeypatch) -> None:

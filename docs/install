@@ -82,7 +82,6 @@ fi
 echo ""
 echo "initializing..."
 echo ""
-
 $SHELLBRAIN init
 
 echo ""

@@ -57,6 +57,14 @@ def repo_registration_path(repo_root: Path) -> Path:
     return repo_runtime_dir(repo_root) / "repo_registration.toml"
 
 
+def resolve_registration_root(repo_root: Path) -> Path:
+    """Return the canonical directory where repo registration should live."""
+
+    target = Path(repo_root).resolve()
+    git_root = resolve_git_root(target)
+    return git_root or target
+
+
 def load_repo_registration(repo_root: Path) -> RepoRegistration | None:
     """Load one repo registration when present."""
 
@@ -79,6 +87,19 @@ def load_repo_registration(repo_root: Path) -> RepoRegistration | None:
         claude_settings_path=_optional_str(payload.get("claude_settings_path")),
         claude_note=_optional_str(payload.get("claude_note")),
     )
+
+
+def load_repo_registration_for_target(repo_root: Path) -> RepoRegistration | None:
+    """Load one repo registration from the canonical target root."""
+
+    target = Path(repo_root).resolve()
+    registration_root = resolve_registration_root(target)
+    registration = load_repo_registration(registration_root)
+    if registration is not None:
+        return registration
+    if registration_root != target:
+        return None
+    return load_repo_registration(target)
 
 
 def save_repo_registration(registration: RepoRegistration, repo_root: Path) -> Path:
@@ -115,6 +136,7 @@ def register_repo(
     """Resolve and persist one repo registration."""
 
     identity = resolve_repo_identity(repo_root=repo_root, explicit_repo_id=explicit_repo_id)
+    registration_root = Path(identity.git_root).resolve() if identity.git_root is not None else Path(repo_root).resolve()
     registration = RepoRegistration(
         repo_state_version=REPO_STATE_VERSION,
         repo_id=identity.repo_id,
@@ -127,8 +149,48 @@ def register_repo(
         claude_settings_path=claude_settings_path,
         claude_note=claude_note,
     )
-    save_repo_registration(registration, repo_root)
+    save_repo_registration(registration, registration_root)
     return registration
+
+
+def register_repo_for_target(
+    *,
+    repo_root: Path,
+    machine_instance_id: str,
+    explicit_repo_id: str | None = None,
+) -> tuple[RepoRegistration, bool]:
+    """Register one target repo idempotently and return whether the file changed."""
+
+    target = Path(repo_root).resolve()
+    identity = resolve_repo_identity(repo_root=target, explicit_repo_id=explicit_repo_id)
+    registration_root = Path(identity.git_root).resolve() if identity.git_root is not None else target
+    existing = load_repo_registration(registration_root)
+    claude_status = existing.claude_status if existing is not None else "not_checked"
+    claude_settings_path = existing.claude_settings_path if existing is not None else None
+    claude_note = existing.claude_note if existing is not None else None
+    if existing is not None and _registration_matches(
+        existing=existing,
+        identity=identity,
+        machine_instance_id=machine_instance_id,
+        claude_status=claude_status,
+        claude_settings_path=claude_settings_path,
+        claude_note=claude_note,
+    ):
+        return existing, False
+    registration = RepoRegistration(
+        repo_state_version=REPO_STATE_VERSION,
+        repo_id=identity.repo_id,
+        identity_strength=identity.identity_strength,
+        git_root=identity.git_root,
+        source_remote=identity.source_remote,
+        registered_at=datetime.now(timezone.utc).isoformat(),
+        machine_instance_id=machine_instance_id,
+        claude_status=claude_status,
+        claude_settings_path=claude_settings_path,
+        claude_note=claude_note,
+    )
+    save_repo_registration(registration, registration_root)
+    return registration, True
 
 
 def resolve_repo_identity(*, repo_root: Path, explicit_repo_id: str | None = None) -> RepoIdentity:
@@ -264,3 +326,27 @@ def _weak_local_hash(path: Path) -> str:
 
     digest = hashlib.sha256(str(path.resolve()).encode("utf-8")).hexdigest()
     return digest[:12]
+
+
+def _registration_matches(
+    *,
+    existing: RepoRegistration,
+    identity: RepoIdentity,
+    machine_instance_id: str,
+    claude_status: str,
+    claude_settings_path: str | None,
+    claude_note: str | None,
+) -> bool:
+    """Return whether one existing registration already matches the desired state."""
+
+    return (
+        existing.repo_state_version == REPO_STATE_VERSION
+        and existing.repo_id == identity.repo_id
+        and existing.identity_strength == identity.identity_strength
+        and existing.git_root == identity.git_root
+        and existing.source_remote == identity.source_remote
+        and existing.machine_instance_id == machine_instance_id
+        and existing.claude_status == claude_status
+        and existing.claude_settings_path == claude_settings_path
+        and existing.claude_note == claude_note
+    )

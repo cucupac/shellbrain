@@ -1,0 +1,6 @@
+interface:
+  display_name: "Shellbrain Session Start"
+  short_description: "Start repo work with shellbrain"
+  icon_small: "./assets/shellbrain-small.svg"
+  icon_large: "./assets/shellbrain-large.svg"
+  default_prompt: "Use $shellbrain-session-start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings."

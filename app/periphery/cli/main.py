@@ -25,8 +25,9 @@ _TOP_LEVEL_HELP = dedent(
     Use Shellbrain as a case-based memory system for agent work.
 
     Install and bootstrap:
-      1. `pipx install shellbrain`
-      2. `shellbrain init`
+      1. `curl -L shellbrain.ai/install | bash`
+      2. The installer runs `shellbrain init` for machine bootstrap.
+      3. Repos auto-register on first Shellbrain use inside a git repo.
 
     Mental model:
       - `read` retrieves durable memories related to the concrete problem or subproblem.
@@ -35,7 +36,7 @@ _TOP_LEVEL_HELP = dedent(
       - `update` records utility, truth-evolution links, and explicit associations.
 
     Typical workflow:
-      0. Run `shellbrain init` once per machine, then rerun it whenever Shellbrain says repair is needed.
+      0. `shellbrain init` is the one-time machine bootstrap and repair command. The website installer already runs it for you.
       1. Query with the concrete bug, subsystem, decision, or constraint you are working on.
          Avoid generic prompts like "what should I know about this repo?"
       2. Re-run `read` whenever the search shifts or you get stuck.
@@ -54,7 +55,7 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain admin doctor
 
     Common recovery steps:
-      - `shellbrain: command not found`: reinstall with `pipx install shellbrain`.
+      - `shellbrain: command not found`: reinstall with `pipx install shellbrain` or rerun the website installer.
       - `Shellbrain machine config is unreadable`: rerun `shellbrain init` to repair the managed instance.
       - `Outcome: blocked_dependency`: install Docker or start the Docker daemon, then rerun `shellbrain init`.
       - No active host session found: verify Codex/Claude Code transcript availability, then rerun `events`.
@@ -137,21 +138,20 @@ _ADMIN_HELP = dedent(
 
 _INIT_HELP = dedent(
     """\
-    Bootstrap or repair the machine-local Shellbrain runtime, then register the current repo.
+    Bootstrap or repair the machine-local Shellbrain runtime.
 
     Happy path:
       - `shellbrain init`
-      - Shellbrain provisions or reuses one managed local Postgres instance, prepares embeddings, and registers the repo.
+      - Shellbrain provisions or reuses one managed local Postgres instance, prepares embeddings, installs host integrations, and registers a repo only when one is obvious.
 
     Advanced:
       - `--repo-root` targets a different repo root.
       - `--repo-id` overrides repo identity when multiple remotes exist or a weak local identity is not acceptable.
-      - `--host claude` installs the Claude hook even when not running inside Claude Code.
 
     Examples:
       shellbrain init
       shellbrain init --repo-root /path/to/repo
-      shellbrain init --host claude
+      shellbrain init --no-host-assets
       shellbrain init --skip-model-download
     """
 )
@@ -179,10 +179,21 @@ _DOCTOR_HELP = dedent(
 
 _INSTALL_CLAUDE_HOOK_HELP = dedent(
     """\
-    Install or update the repo-local Claude Code SessionStart hook used for trusted Shellbrain caller identity.
+    Install or update the repo-local Claude Code SessionStart hook used as an explicit repo-local override.
 
     Example:
       shellbrain admin install-claude-hook --repo-root /path/to/repo
+    """
+)
+
+_INSTALL_HOST_ASSETS_HELP = dedent(
+    """\
+    Install or update Shellbrain-managed Codex and Claude host integrations.
+
+    Examples:
+      shellbrain admin install-host-assets --host auto
+      shellbrain admin install-host-assets --host codex
+      shellbrain admin install-host-assets --host claude --force
     """
 )
 
@@ -233,26 +244,20 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser = subparsers.add_parser(
         "init",
         help="Bootstrap or repair the managed Shellbrain runtime.",
-        description="Bootstrap or repair the machine-local Shellbrain runtime and register the current repo.",
+        description="Bootstrap or repair the machine-local Shellbrain runtime and default host integrations.",
         epilog=_INIT_HELP,
         formatter_class=_HelpFormatter,
     )
     _add_repo_context_arguments(init_parser, suppress_default=True)
     init_parser.add_argument(
-        "--host",
-        choices=("auto", "claude", "none"),
-        default="auto",
-        help="Host integration mode. Defaults to auto.",
-    )
-    init_parser.add_argument(
-        "--no-claude",
-        action="store_true",
-        help="Disable Claude integration even if this repo looks Claude-managed.",
-    )
-    init_parser.add_argument(
         "--skip-model-download",
         action="store_true",
         help="Skip embedding model prewarm during init.",
+    )
+    init_parser.add_argument(
+        "--no-host-assets",
+        action="store_true",
+        help="Skip Codex skill, Claude skill, and Claude global hook installation during init.",
     )
 
     create_parser = subparsers.add_parser(
@@ -344,6 +349,24 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
     install_hook_parser.add_argument("--repo-root", help="Target repository root. Defaults to the current working directory.")
+    install_host_assets_parser = admin_subparsers.add_parser(
+        "install-host-assets",
+        help="Install Shellbrain-managed Codex and Claude host integrations.",
+        description="Install or update Shellbrain-managed Codex and Claude host integrations.",
+        epilog=_INSTALL_HOST_ASSETS_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    install_host_assets_parser.add_argument(
+        "--host",
+        choices=("auto", "codex", "claude", "all"),
+        default="auto",
+        help="Host asset install mode. Defaults to auto.",
+    )
+    install_host_assets_parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Replace conflicting unmanaged installs.",
+    )
 
     session_state_parser = admin_subparsers.add_parser(
         "session-state",
@@ -380,12 +403,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         except ValueError as exc:
             parser.error(str(exc))
             return 2
-        host_mode = "none" if getattr(args, "no_claude", False) else getattr(args, "host", "auto")
         result = run_init(
             repo_root=repo_root,
             repo_id_override=getattr(args, "repo_id", None),
-            host_mode=host_mode,
+            register_repo_now=_should_register_repo_during_init(
+                repo_root=repo_root,
+                repo_root_arg=getattr(args, "repo_root", None),
+                repo_id_arg=getattr(args, "repo_id", None),
+            ),
             skip_model_download=bool(getattr(args, "skip_model_download", False)),
+            skip_host_assets=bool(getattr(args, "no_host_assets", False)),
         )
         print(f"Outcome: {result.outcome}")
         for line in result.lines:
@@ -421,6 +448,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     try:
         try:
             _warn_or_fail_on_unsafe_app_role()
+            _ensure_repo_registration_for_operation(
+                repo_context=repo_context,
+                repo_id_override=getattr(args, "repo_id", None),
+            )
             result = _dispatch_operation_command(args.command, payload, repo_context)
             _print_operation_result(result)
             if result.get("status") == "ok":
@@ -595,6 +626,13 @@ def _run_admin_command(args: argparse.Namespace) -> int:
         settings_path = install_claude_hook(repo_root=repo_root)
         print(f"Installed Claude hook at {settings_path}")
         return 0
+    if args.admin_command == "install-host-assets":
+        from app.periphery.onboarding.host_assets import install_host_assets
+
+        result = install_host_assets(host_mode=args.host, force=bool(args.force))
+        for line in result.lines:
+            print(line)
+        return 0
 
     if args.admin_command == "session-state":
         from app.periphery.session_state.file_store import FileSessionStateStore
@@ -665,6 +703,39 @@ def _resolve_admin_repo_root(repo_root_arg: str | None) -> Path:
     if not repo_root.is_dir():
         raise ValueError(f"repo_root must be a directory: {repo_root}")
     return repo_root
+
+
+def _should_register_repo_during_init(*, repo_root: Path, repo_root_arg: str | None, repo_id_arg: str | None) -> bool:
+    """Return whether init should register one repo immediately."""
+
+    from app.periphery.admin.repo_state import load_repo_registration_for_target, resolve_git_root
+
+    if repo_root_arg is not None or repo_id_arg is not None:
+        return True
+    if resolve_git_root(repo_root) is not None:
+        return True
+    return load_repo_registration_for_target(repo_root) is not None
+
+
+def _ensure_repo_registration_for_operation(*, repo_context: RepoContext, repo_id_override: str | None) -> None:
+    """Best-effort auto-registration of one repo before a real Shellbrain operation."""
+
+    if repo_context.registration_root is None:
+        return
+    try:
+        from app.periphery.admin.machine_state import try_load_machine_config
+        from app.periphery.admin.repo_state import register_repo_for_target
+
+        machine_config, machine_error = try_load_machine_config()
+        if machine_error is not None or machine_config is None:
+            return
+        register_repo_for_target(
+            repo_root=repo_context.registration_root,
+            machine_instance_id=machine_config.machine_instance_id,
+            explicit_repo_id=repo_id_override,
+        )
+    except Exception:
+        return
 
 
 def _managed_backup_kwargs(machine_config, machine_error: str | None) -> dict[str, Any]:

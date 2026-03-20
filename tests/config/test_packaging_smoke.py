@@ -86,6 +86,82 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
     assert "events" in completed.stdout
 
 
+def test_editable_install_should_package_onboarding_assets_in_a_clean_room(tmp_path: Path) -> None:
+    """editable installs should expose packaged onboarding assets through importlib.resources."""
+
+    repo_root = _repo_root()
+    external_repo = tmp_path / "external-assets-repo"
+    external_repo.mkdir()
+    python_executable, _ = _create_isolated_install(
+        tmp_path=tmp_path,
+        name="assets-install",
+        install_spec=str(repo_root),
+        editable=True,
+        install_runtime_deps=False,
+    )
+
+    completed = subprocess.run(
+        [
+            str(python_executable),
+            "-c",
+            (
+                "from importlib import resources; "
+                "root = resources.files('app.onboarding_assets'); "
+                "print(root.joinpath('codex', 'shellbrain-session-start', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('claude', 'skills', 'shellbrain-session-start', 'SKILL.md').read_text().splitlines()[0])"
+            ),
+        ],
+        check=True,
+        cwd=external_repo,
+        text=True,
+        capture_output=True,
+        env=os.environ.copy(),
+    )
+
+    assert 'display_name: "Shellbrain Session Start"' in completed.stdout
+    assert "# Shellbrain Session Start" in completed.stdout
+
+
+def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(tmp_path: Path) -> None:
+    """git-url installs should also carry the packaged onboarding assets."""
+
+    if shutil.which("git") is None:
+        pytest.skip("git is required for git+file install smoke tests")
+
+    repo_root = _repo_root()
+    git_snapshot = _prepare_git_snapshot(tmp_path, repo_root)
+    external_repo = tmp_path / "external-assets-git-repo"
+    external_repo.mkdir()
+    python_executable, _ = _create_isolated_install(
+        tmp_path=tmp_path,
+        name="assets-git-install",
+        install_spec=f"git+file://{git_snapshot}",
+        editable=False,
+        install_runtime_deps=False,
+    )
+
+    completed = subprocess.run(
+        [
+            str(python_executable),
+            "-c",
+            (
+                "from importlib import resources; "
+                "root = resources.files('app.onboarding_assets'); "
+                "print(root.joinpath('codex', 'shellbrain-session-start', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('claude', 'skills', 'shellbrain-session-start', 'SKILL.md').read_text().splitlines()[0])"
+            ),
+        ],
+        check=True,
+        cwd=external_repo,
+        text=True,
+        capture_output=True,
+        env=os.environ.copy(),
+    )
+
+    assert 'display_name: "Shellbrain Session Start"' in completed.stdout
+    assert "# Shellbrain Session Start" in completed.stdout
+
+
 def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_path: Path) -> None:
     """installed-package admin migrate should initialize an empty database from packaged artifacts."""
 

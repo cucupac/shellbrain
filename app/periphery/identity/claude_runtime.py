@@ -46,6 +46,17 @@ def detect_claude_runtime_without_hook() -> bool:
     )
 
 
+def detect_claude_runtime_signal() -> bool:
+    """Return whether one real Claude runtime signal is present in the current environment."""
+
+    if os.getenv("SHELLBRAIN_HOST_APP") == "claude_code":
+        return True
+    return any(
+        os.getenv(name)
+        for name in ("CLAUDE_SESSION_ID", "CLAUDE_CODE_REMOTE_SESSION_ID", "CLAUDE_CODE_AGENT_NAME")
+    )
+
+
 def resolve_trusted_claude_transcript_path() -> Path | None:
     """Return the trusted Claude transcript path injected by the Shellbrain hook when present."""
 
