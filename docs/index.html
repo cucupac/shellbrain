@@ -520,7 +520,7 @@
 
       <div class="install-line" onclick="copyInstall()" title="Click to copy">
         <span class="install-prompt">$</span>
-        <span class="install-cmd" id="installCmd">curl -L shellbrain.ai/install | bash && shellbrain init</span>
+        <span class="install-cmd" id="installCmd">curl -L shellbrain.ai/install | bash</span>
       </div>
       <div class="install-copied" id="installHint"></div>
     </div>
@@ -678,7 +678,7 @@
   <script>
     // ── Install copy ─────────────────────────────
     function copyInstall() {
-      navigator.clipboard.writeText("curl -L shellbrain.ai/install | bash && shellbrain init").then(() => {
+      navigator.clipboard.writeText("curl -L shellbrain.ai/install | bash").then(() => {
         const hint = document.getElementById("installHint");
         hint.textContent = "copied";
         setTimeout(() => { hint.textContent = "click to copy"; }, 1600);

@@ -2,6 +2,7 @@
 set -eo pipefail
 
 echo "installing shellbrain..."
+echo ""
 
 # Find python
 if command -v python3 &>/dev/null; then
@@ -18,13 +19,25 @@ $PY -m pip install --user --break-system-packages shellbrain 2>/dev/null \
   || $PY -m pip install --user shellbrain 2>/dev/null \
   || $PY -m pip install shellbrain
 
-echo ""
-echo "installed. initializing..."
-
 # Source profile so shellbrain is on PATH
 case $SHELL in
   */zsh)  [ -f "$HOME/.zprofile" ] && . "$HOME/.zprofile" 2>/dev/null; [ -f "$HOME/.zshrc" ] && . "$HOME/.zshrc" 2>/dev/null ;;
   */bash) [ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" 2>/dev/null; [ -f "$HOME/.bash_profile" ] && . "$HOME/.bash_profile" 2>/dev/null ;;
 esac
 
+# Verify shellbrain is available
+if ! command -v shellbrain &>/dev/null; then
+  echo ""
+  echo "shellbrain was installed but is not on PATH."
+  echo "restart your terminal, then run: shellbrain init"
+  exit 0
+fi
+
+echo ""
+echo "initializing..."
+echo ""
+
 shellbrain init
+
+echo ""
+echo "done."
