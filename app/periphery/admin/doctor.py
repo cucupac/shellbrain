@@ -14,7 +14,8 @@ from app.boot.home import get_shellbrain_home
 from app.periphery.admin.backup import list_backups
 from app.periphery.admin.instance_guard import fetch_instance_metadata, inspect_role_safety
 from app.periphery.admin.machine_state import MachineConfig, try_load_machine_config
-from app.periphery.admin.repo_state import IDENTITY_STRENGTH_WEAK_LOCAL, load_repo_registration, resolve_git_root
+from app.periphery.admin.repo_state import IDENTITY_STRENGTH_WEAK_LOCAL, load_repo_registration_for_target, resolve_git_root
+from app.periphery.onboarding.host_assets import inspect_host_assets
 
 _LOW_DISK_WARNING_BYTES = 2 * 1024 * 1024 * 1024
 
@@ -46,6 +47,7 @@ def build_doctor_report(
     home_root = get_shellbrain_home()
     disk = shutil.disk_usage(home_root if home_root.exists() else home_root.parent)
     repo_report = _build_repo_report(repo_root=repo_root)
+    host_integrations = inspect_host_assets()
 
     report: dict[str, Any] = {
         "checked_at": checked_at.isoformat(),
@@ -72,6 +74,11 @@ def build_doctor_report(
         "backup_age_seconds": backup_age_seconds,
         "disk_free_bytes": disk.free,
         "disk_warning": None if disk.free >= _LOW_DISK_WARNING_BYTES else "Low free disk space under Shellbrain home.",
+        "host_integrations": {
+            "codex_skill": host_integrations.codex_skill,
+            "claude_skill": host_integrations.claude_skill,
+            "claude_global_hook": host_integrations.claude_global_hook,
+        },
         "repo": repo_report,
     }
     if repo_report and repo_report.get("identity_strength") == IDENTITY_STRENGTH_WEAK_LOCAL:
@@ -86,8 +93,7 @@ def _build_repo_report(*, repo_root: Path | None) -> dict[str, Any] | None:
         return None
     target = Path(repo_root).expanduser().resolve()
     git_root = resolve_git_root(target)
-    registration_root = git_root or target
-    registration = load_repo_registration(registration_root)
+    registration = load_repo_registration_for_target(target)
     if registration is None and git_root is None and not (target / ".shellbrain").exists():
         return None
     return {

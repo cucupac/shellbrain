@@ -52,10 +52,10 @@ from app.periphery.admin.privileges import reconcile_app_role_privileges
 from app.periphery.admin.repo_state import (
     IDENTITY_STRENGTH_WEAK_LOCAL,
     RepoRegistration,
-    load_repo_registration,
-    register_repo,
+    load_repo_registration_for_target,
+    register_repo_for_target,
 )
-from app.periphery.identity.claude_hook_install import install_claude_hook
+from app.periphery.onboarding.host_assets import install_host_assets
 
 
 INIT_OUTCOME_INITIALIZED = "initialized"
@@ -120,8 +120,9 @@ def run_init(
     *,
     repo_root: Path,
     repo_id_override: str | None,
-    host_mode: str,
+    register_repo_now: bool,
     skip_model_download: bool,
+    skip_host_assets: bool,
 ) -> InitResult:
     """Bootstrap or repair the managed Shellbrain environment."""
 
@@ -132,7 +133,7 @@ def run_init(
     mutated_repo = False
     config_corruption_recovered = False
     repair_performed = False
-    existing_registration = load_repo_registration(repo_root)
+    existing_registration = load_repo_registration_for_target(repo_root)
 
     try:
         with _acquire_init_lock():
@@ -224,29 +225,25 @@ def run_init(
                 last_error=None,
             )
             save_machine_config(machine_config)
-            registration, repo_changed = _register_repo(
-                repo_root=repo_root,
-                repo_id_override=repo_id_override,
-                machine_instance_id=machine_config.machine_instance_id,
-            )
-            mutated_repo = mutated_repo or repo_changed
-
-            claude_note = _handle_claude_integration(
-                repo_root=repo_root,
-                registration=registration,
-                host_mode=host_mode,
-            )
-            if claude_note:
-                notes.append(claude_note)
-                registration = register_repo(
+            registration = None
+            if register_repo_now:
+                registration, repo_changed = _register_repo(
                     repo_root=repo_root,
+                    repo_id_override=repo_id_override,
                     machine_instance_id=machine_config.machine_instance_id,
-                    explicit_repo_id=registration.repo_id if registration.identity_strength == "explicit" else None,
-                    claude_status=_claude_status_for_note(claude_note),
-                    claude_settings_path=str(repo_root / ".claude" / "settings.local.json") if "Installed Claude hook" in claude_note else registration.claude_settings_path,
-                    claude_note=claude_note,
                 )
-                mutated_repo = True
+                mutated_repo = mutated_repo or repo_changed
+
+            if skip_host_assets:
+                notes.extend(
+                    [
+                        "Codex skill: skipped (--no-host-assets)",
+                        "Claude skill: skipped (--no-host-assets)",
+                        "Claude global hook: skipped (--no-host-assets)",
+                    ]
+                )
+            else:
+                notes.extend(install_host_assets(host_mode="auto", force=False).lines)
 
             machine_config = update_bootstrap_state(
                 machine_config,
@@ -733,38 +730,11 @@ def _register_repo(
 ) -> tuple[RepoRegistration, bool]:
     """Register the current repo against the active machine instance."""
 
-    existing = load_repo_registration(repo_root)
-    registration = register_repo(
+    return register_repo_for_target(
         repo_root=repo_root,
         machine_instance_id=machine_instance_id,
         explicit_repo_id=repo_id_override,
-        claude_status=existing.claude_status if existing is not None else "not_checked",
-        claude_settings_path=existing.claude_settings_path if existing is not None else None,
-        claude_note=existing.claude_note if existing is not None else None,
     )
-    return registration, existing != registration
-
-
-def _handle_claude_integration(*, repo_root: Path, registration: RepoRegistration, host_mode: str) -> str | None:
-    """Install the Claude hook when eligible, otherwise explain why it was skipped."""
-
-    repo_signal = (repo_root / ".claude").exists() or (repo_root / ".claude" / "settings.local.json").exists()
-    if host_mode == "none" or host_mode == "auto" and not repo_signal:
-        return None
-    if host_mode == "claude" or (host_mode == "auto" and repo_signal):
-        settings_path = install_claude_hook(repo_root=repo_root)
-        return f"Installed Claude hook at {settings_path}"
-    return None
-
-
-def _claude_status_for_note(note: str) -> str:
-    """Return repo-local Claude status for one init note."""
-
-    if note.startswith("Installed Claude hook"):
-        return "installed"
-    if note.startswith("Claude repo detected"):
-        return "eligible_repo_only"
-    return "not_applicable"
 
 
 def _determine_outcome(
@@ -790,20 +760,28 @@ def _render_success_lines(
     *,
     outcome: str,
     config: MachineConfig,
-    registration: RepoRegistration,
+    registration: RepoRegistration | None,
     notes: list[str],
 ) -> list[str]:
     """Render the init success summary lines without the outcome prefix."""
 
     lines = [
         f"Managed instance: {config.managed.container_name} ({config.managed.host}:{config.managed.port})",
-        f"Repo: {registration.repo_id}",
         f"Embeddings: {config.embeddings.readiness_state}",
         f"Backups: {config.backups.root}",
-        f"Next: shellbrain read --json '{{\"query\":\"What prior Shellbrain context matters for this task?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}}'",
     ]
-    if registration.identity_strength == IDENTITY_STRENGTH_WEAK_LOCAL:
-        lines.insert(1, "Repo identity is weak-local and will change if this directory moves. Use --repo-id for a durable override.")
+    if registration is None:
+        lines.append("Repo registration: deferred until first Shellbrain use inside a repo.")
+        lines.append(
+            "Next: from inside a repo, run shellbrain read --json '{\"query\":\"What prior Shellbrain context matters for this task?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}'"
+        )
+    else:
+        lines.insert(1, f"Repo: {registration.repo_id}")
+        if registration.identity_strength == IDENTITY_STRENGTH_WEAK_LOCAL:
+            lines.insert(2, "Repo identity is weak-local and will change if this directory moves. Use --repo-id for a durable override.")
+        lines.append(
+            "Next: shellbrain read --json '{\"query\":\"What prior Shellbrain context matters for this task?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}'"
+        )
     lines.extend(notes)
     return lines
 

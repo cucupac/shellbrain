@@ -5,8 +5,17 @@
 The normal Shellbrain path should be:
 
 ```bash
+curl -L shellbrain.ai/install | bash
+```
+
+The installer already runs `shellbrain init` for you.
+
+That bootstrap step is machine-level. It prepares the managed runtime, installs host integrations, and leaves repo registration to first use inside a repo.
+
+Manual install path:
+
+```bash
 pipx install shellbrain
-cd /path/to/repo
 shellbrain init
 shellbrain admin doctor
 ```
@@ -93,13 +102,26 @@ shellbrain create --json '{"memory":{"text":"Retrying the migration without chan
 shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"rationale":"This prior fix led directly to the right timeout change.","evidence_refs":["evt-126"]}}'
 ```
 
-## Claude Integration
+## Host Integration
 
-- Codex is zero-config.
-- Claude hook installation is repo-local and non-destructive.
-- In `auto` mode, Shellbrain installs the Claude hook only when the repo already looks Claude-managed and `init` is running with a real Claude runtime signal.
-- If that does not happen, rerun `shellbrain init` from Claude Code or pass `--host claude`.
-- Shellbrain merges one managed SessionStart entry into `.claude/settings.local.json` and does not overwrite unrelated hook config.
+- `shellbrain init` installs the personal Codex skill in `${CODEX_HOME:-~/.codex}/skills`.
+- `shellbrain init` installs the personal Claude skill in `~/.claude/skills`.
+- `shellbrain init` installs the Claude global SessionStart hook in `~/.claude/settings.json`.
+- Shellbrain creates `~/.claude/settings.json` if needed and merges one managed hook entry without overwriting unrelated settings.
+- Repo-local Claude hook install is now an explicit override/repair path, not the default integration.
+- Manual host asset repair path:
+
+```bash
+shellbrain admin install-host-assets --host auto
+shellbrain admin install-claude-hook --repo-root /path/to/repo
+```
+
+## Repo Registration
+
+- Repo registration is no longer part of the initial machine bootstrap requirement.
+- On first real `read`, `events`, `create`, or `update` inside a git repo, Shellbrain auto-registers that repo at the git root.
+- If you run Shellbrain outside a git repo, it does not auto-register arbitrary directories like `~`.
+- Use `--repo-root` and `--repo-id` when you need to target or override repo identity explicitly.
 
 ## Backups and Recovery
 

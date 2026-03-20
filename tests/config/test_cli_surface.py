@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from app.periphery.cli import main as cli_main
-from app.periphery.cli.hydration import resolve_repo_context
+from app.periphery.cli.hydration import RepoContext, resolve_repo_context
 
 
 def test_resolve_repo_context_infers_repo_id_from_explicit_repo_root(tmp_path: Path) -> None:
@@ -20,6 +20,7 @@ def test_resolve_repo_context_infers_repo_id_from_explicit_repo_root(tmp_path: P
 
     assert context.repo_root == repo_root.resolve()
     assert context.repo_id.startswith("external-repo::")
+    assert context.registration_root == repo_root.resolve()
 
 
 def test_resolve_repo_context_preserves_explicit_repo_id(tmp_path: Path) -> None:
@@ -32,6 +33,34 @@ def test_resolve_repo_context_preserves_explicit_repo_id(tmp_path: Path) -> None
 
     assert context.repo_root == repo_root.resolve()
     assert context.repo_id == "repo-override"
+    assert context.registration_root == repo_root.resolve()
+
+
+def test_resolve_repo_context_should_not_auto_register_plain_non_git_cwd(monkeypatch, tmp_path: Path) -> None:
+    """plain non-git working directories should not become auto-registration targets."""
+
+    monkeypatch.chdir(tmp_path)
+
+    context = resolve_repo_context(repo_root_arg=None, repo_id_arg=None)
+
+    assert context.repo_root == tmp_path.resolve()
+    assert context.registration_root is None
+
+
+def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(monkeypatch, tmp_path: Path) -> None:
+    """subdirectory invocations should target the git root for registration."""
+
+    repo_root = tmp_path / "repo"
+    subdir = repo_root / "subdir"
+    subdir.mkdir(parents=True)
+    monkeypatch.chdir(subdir)
+    monkeypatch.setattr("app.periphery.cli.hydration.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
+    monkeypatch.setattr("app.periphery.admin.repo_state.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
+
+    context = resolve_repo_context(repo_root_arg=None, repo_id_arg=None)
+
+    assert context.repo_root == subdir.resolve()
+    assert context.registration_root == repo_root.resolve()
 
 
 def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixture[str]) -> None:
@@ -49,7 +78,7 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "shellbrain admin migrate" in output
     assert "shellbrain admin backup create" in output
     assert "shellbrain admin doctor" in output
-    assert "pipx install shellbrain" in output
+    assert "curl -L shellbrain.ai/install | bash" in output
     assert "shellbrain init" in output
     assert "--repo-root" in output
     assert "--no-sync" not in output
@@ -68,7 +97,8 @@ def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixtu
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "Bootstrap or repair" in output
-    assert "shellbrain init --host claude" in output
+    assert "registers a repo only when one is obvious" in output
+    assert "--no-host-assets" in output
     assert "--skip-model-download" in output
     assert "--repo-id" in output
 
@@ -181,8 +211,38 @@ def test_admin_install_claude_hook_help_should_include_one_example(capsys: pytes
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "SessionStart hook" in output
+    assert "repo-local" in output
     assert "install-claude-hook" in output
+
+
+def test_admin_install_host_assets_help_should_include_examples(capsys: pytest.CaptureFixture[str]) -> None:
+    """admin install-host-assets help should explain the personal host-asset repair path."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["admin", "install-host-assets", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "Codex and Claude host integrations" in output
+    assert "--host" in output
+    assert "--force" in output
+
+
+def test_admin_install_host_assets_should_dispatch_to_installer(
+    monkeypatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """admin install-host-assets should print the installer result lines."""
+
+    monkeypatch.setattr(
+        "app.periphery.onboarding.host_assets.install_host_assets",
+        lambda **kwargs: type("Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]})(),
+    )
+
+    exit_code = cli_main.main(["admin", "install-host-assets", "--host", "codex"])
+
+    assert exit_code == 0
+    assert "Codex skill: installed at /tmp/codex" in capsys.readouterr().out
 
 
 def test_admin_session_state_help_should_include_management_examples(capsys: pytest.CaptureFixture[str]) -> None:
@@ -235,6 +295,7 @@ def test_main_accepts_repo_targeting_flags_before_subcommand(monkeypatch, tmp_pa
     resolved_context = captured["repo_context"]
     assert resolved_context.repo_root == repo_root.resolve()
     assert resolved_context.repo_id == "repo-before"
+    assert resolved_context.registration_root == repo_root.resolve()
     assert sync_calls == [resolved_context]
 
 
@@ -274,6 +335,7 @@ def test_main_accepts_repo_targeting_flags_after_subcommand(monkeypatch, tmp_pat
     resolved_context = captured["repo_context"]
     assert resolved_context.repo_root == repo_root.resolve()
     assert resolved_context.repo_id == "repo-after"
+    assert resolved_context.registration_root == repo_root.resolve()
 
 
 def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> None:
@@ -429,12 +491,12 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
     assert "Managed instance: shellbrain-postgres-test" in output
 
 
-def test_init_should_map_no_claude_to_host_none(monkeypatch, tmp_path: Path) -> None:
-    """init should disable Claude integration when --no-claude is provided."""
+def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatch, tmp_path: Path) -> None:
+    """init should register immediately when one explicit repo root is provided."""
 
     from app.periphery.admin.init import InitResult
 
-    repo_root = tmp_path / "init-no-claude"
+    repo_root = tmp_path / "init-explicit-repo"
     repo_root.mkdir()
     captured: dict[str, object] = {}
 
@@ -444,10 +506,83 @@ def test_init_should_map_no_claude_to_host_none(monkeypatch, tmp_path: Path) -> 
 
     monkeypatch.setattr("app.periphery.admin.init.run_init", _fake_run_init)
 
-    exit_code = cli_main.main(["init", "--repo-root", str(repo_root), "--host", "claude", "--no-claude"])
+    exit_code = cli_main.main(["init", "--repo-root", str(repo_root)])
 
     assert exit_code == 0
-    assert captured["host_mode"] == "none"
+    assert captured["register_repo_now"] is True
+
+
+def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None:
+    """init should forward the no-host-assets flag into the init runner."""
+
+    from app.periphery.admin.init import InitResult
+
+    repo_root = tmp_path / "init-no-host-assets"
+    repo_root.mkdir()
+    captured: dict[str, object] = {}
+
+    def _fake_run_init(**kwargs):
+        captured.update(kwargs)
+        return InitResult(outcome="noop", lines=[])
+
+    monkeypatch.setattr("app.periphery.admin.init.run_init", _fake_run_init)
+
+    exit_code = cli_main.main(["init", "--repo-root", str(repo_root), "--no-host-assets"])
+
+    assert exit_code == 0
+    assert captured["skip_host_assets"] is True
+
+
+def test_ensure_repo_registration_for_operation_should_register_when_machine_state_is_ready(monkeypatch, tmp_path: Path) -> None:
+    """operational commands should auto-register one repo before dispatch when possible."""
+
+    registration_root = tmp_path / "repo"
+    registration_root.mkdir()
+    calls: list[dict[str, object]] = []
+
+    monkeypatch.setattr(
+        "app.periphery.admin.machine_state.try_load_machine_config",
+        lambda: (type("Config", (), {"machine_instance_id": "inst-1"})(), None),
+    )
+    monkeypatch.setattr(
+        "app.periphery.admin.repo_state.register_repo_for_target",
+        lambda **kwargs: calls.append(kwargs) or (None, True),
+    )
+
+    cli_main._ensure_repo_registration_for_operation(
+        repo_context=RepoContext(
+            repo_root=registration_root,
+            repo_id="repo-id",
+            registration_root=registration_root,
+        ),
+        repo_id_override="repo-id",
+    )
+
+    assert calls == [
+        {
+            "repo_root": registration_root,
+            "machine_instance_id": "inst-1",
+            "explicit_repo_id": "repo-id",
+        }
+    ]
+
+
+def test_ensure_repo_registration_for_operation_should_skip_when_no_registration_target_exists(monkeypatch) -> None:
+    """operational commands should not auto-register arbitrary non-git directories by default."""
+
+    monkeypatch.setattr(
+        "app.periphery.admin.repo_state.register_repo_for_target",
+        lambda **kwargs: (_ for _ in ()).throw(AssertionError("register_repo_for_target should not be called")),
+    )
+
+    cli_main._ensure_repo_registration_for_operation(
+        repo_context=RepoContext(
+            repo_root=Path("/tmp/non-repo"),
+            repo_id="repo-id",
+            registration_root=None,
+        ),
+        repo_id_override=None,
+    )
 
 
 def test_missing_repo_root_should_fail_fast(capsys: pytest.CaptureFixture[str]) -> None:

@@ -14,6 +14,19 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
 
     monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
     monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: ["warn"] if dsn else [])
+    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr(
+        "app.periphery.admin.doctor.inspect_host_assets",
+        lambda: type(
+            "HostInspection",
+            (),
+            {
+                "codex_skill": {"installed": True},
+                "claude_skill": {"installed": True},
+                "claude_global_hook": {"installed": True, "managed": True},
+            },
+        )(),
+    )
     monkeypatch.setattr(
         "app.periphery.admin.doctor.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
@@ -38,6 +51,7 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
     assert report["admin_role_warnings"] == ["warn"]
     assert report["config_status"] in {"absent", "ok", "corrupt"}
     assert report["effective_config"]["admin_dsn"] == "postgresql://<redacted>@localhost:5432/shellbrain_live"
+    assert report["host_integrations"]["claude_global_hook"]["managed"] is True
 
 
 def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: Path) -> None:
@@ -74,6 +88,19 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
         "app.periphery.admin.doctor.inspect_role_safety",
         lambda dsn: ["unsafe"] if "app" in dsn else ["admin-ok"],
     )
+    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr(
+        "app.periphery.admin.doctor.inspect_host_assets",
+        lambda: type(
+            "HostInspection",
+            (),
+            {
+                "codex_skill": {"installed": False},
+                "claude_skill": {"installed": True},
+                "claude_global_hook": {"installed": True, "managed": True},
+            },
+        )(),
+    )
     monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
 
     report = build_doctor_report(
@@ -88,3 +115,4 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
     assert report["latest_backup"]["backup_id"] == "b-1"
     assert isinstance(report["backup_age_seconds"], int)
     assert "disk_free_bytes" in report
+    assert report["host_integrations"]["claude_skill"]["installed"] is True

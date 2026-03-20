@@ -5,9 +5,10 @@ from pathlib import Path
 from typing import Any
 
 from app.periphery.admin.repo_state import (
-    load_repo_registration,
+    load_repo_registration_for_target,
     resolve_git_root,
     resolve_repo_identity,
+    resolve_registration_root,
 )
 
 
@@ -17,6 +18,7 @@ class RepoContext:
 
     repo_root: Path
     repo_id: str
+    registration_root: Path | None
 
 
 def infer_repo_id(repo_root: Path) -> str:
@@ -38,19 +40,32 @@ def resolve_repo_context(*, repo_root_arg: str | None, repo_id_arg: str | None) 
     if not repo_root.is_dir():
         raise ValueError(f"repo_root must be a directory: {repo_root}")
     repo_id = repo_id_arg or infer_repo_id(repo_root)
-    return RepoContext(repo_root=repo_root, repo_id=repo_id)
+    registration_root = determine_registration_root(
+        repo_root=repo_root,
+        explicit_repo_root=repo_root_arg is not None,
+        explicit_repo_id=repo_id_arg is not None,
+    )
+    return RepoContext(repo_root=repo_root, repo_id=repo_id, registration_root=registration_root)
+
+
+def determine_registration_root(*, repo_root: Path, explicit_repo_root: bool, explicit_repo_id: bool) -> Path | None:
+    """Return the root that should auto-register on first real use, when any."""
+
+    target = Path(repo_root).resolve()
+    if load_repo_registration_for_target(target) is not None:
+        return resolve_registration_root(target)
+    git_root = resolve_git_root(target)
+    if git_root is not None:
+        return git_root
+    if explicit_repo_root or explicit_repo_id:
+        return target
+    return None
 
 
 def _load_registration_for_root(repo_root: Path):
     """Return a repo registration from the target root or its git root."""
 
-    direct = load_repo_registration(repo_root)
-    if direct is not None:
-        return direct
-    git_root = resolve_git_root(repo_root)
-    if git_root is None or git_root == repo_root:
-        return None
-    return load_repo_registration(git_root)
+    return load_repo_registration_for_target(repo_root)
 
 
 def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]) -> dict[str, Any]:
