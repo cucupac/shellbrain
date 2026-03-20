@@ -21,8 +21,9 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          python -m pip install --upgrade pip build
+          python -m pip install --upgrade pip build twine
           python -m build
+          python -m twine check dist/*
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4
@@ -34,6 +35,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: pypi
+      url: https://pypi.org/project/shellbrain/
     permissions:
       id-token: write
 
