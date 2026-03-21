@@ -8,11 +8,18 @@ from app.core.interfaces.embeddings import IEmbeddingProvider
 class SentenceTransformersEmbeddingProvider(IEmbeddingProvider):
     """This class generates embeddings with a local sentence-transformers model."""
 
-    def __init__(self, *, model: str, cache_folder: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        model: str,
+        cache_folder: str | None = None,
+        local_files_only: bool = False,
+    ) -> None:
         """This method stores sentence-transformers model configuration for lazy loading."""
 
         self._model_name = model
         self._cache_folder = cache_folder
+        self._local_files_only = local_files_only
         self._model = None
 
     def _get_model(self):
@@ -22,7 +29,11 @@ class SentenceTransformersEmbeddingProvider(IEmbeddingProvider):
             return self._model
         try:
             from sentence_transformers import SentenceTransformer
-            self._model = SentenceTransformer(self._model_name, cache_folder=self._cache_folder)
+            self._model = SentenceTransformer(
+                self._model_name,
+                cache_folder=self._cache_folder,
+                local_files_only=self._local_files_only,
+            )
         except Exception as exc:
             raise RuntimeError("sentence-transformers is unavailable for local embedding generation") from exc
         return self._model
