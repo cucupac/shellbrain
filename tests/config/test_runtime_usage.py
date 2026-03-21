@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+from app.boot.embeddings import get_embedding_provider
 from app.boot.admin_db import should_fail_on_unsafe_app_role
 from app.boot.db import get_db_dsn
 from app.config.loader import YamlConfigProvider
@@ -86,6 +87,71 @@ def test_db_boot_should_fail_cleanly_when_machine_config_is_corrupt(monkeypatch)
         assert "rerun `shellbrain init`" in str(exc).lower()
     else:  # pragma: no cover - defensive guard
         raise AssertionError("Expected get_db_dsn() to fail when machine config is corrupt.")
+
+
+def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(monkeypatch) -> None:
+    """Embedding boot should avoid remote cache refreshes after init has prewarmed the model."""
+
+    class _FakeProvider:
+        """Record the embedding provider constructor arguments."""
+
+        def __init__(self, *, model: str, cache_folder: str, local_files_only: bool) -> None:
+            self.model = model
+            self.cache_folder = cache_folder
+            self.local_files_only = local_files_only
+
+    class _FakeConfigProvider:
+        """Stub config provider for runtime embedding settings."""
+
+        def get_runtime(self) -> dict[str, object]:
+            return {"embeddings": {"provider": "sentence_transformers", "model": "all-MiniLM-L6-v2"}}
+
+    machine_config = MachineConfig(
+        config_version=1,
+        bootstrap_version=1,
+        runtime_mode="managed_local",
+        bootstrap_state="ready",
+        current_step=None,
+        last_error=None,
+        database=DatabaseState(
+            app_dsn="postgresql+psycopg://machine-app@localhost:55432/shellbrain",
+            admin_dsn="postgresql+psycopg://machine-admin@localhost:55432/shellbrain",
+        ),
+        managed=ManagedInstanceState(
+            instance_id="inst-1",
+            container_name="shellbrain-postgres",
+            image="pgvector/pgvector:pg16",
+            host="127.0.0.1",
+            port=55432,
+            db_name="shellbrain",
+            data_dir="/tmp/shellbrain-data",
+            admin_user="shellbrain_admin",
+            admin_password="admin-secret",
+            app_user="shellbrain_app",
+            app_password="app-secret",
+        ),
+        backups=BackupState(root="/tmp/shellbrain-backups"),
+        embeddings=EmbeddingRuntimeState(
+            provider="sentence_transformers",
+            model="all-MiniLM-L6-v2",
+            model_revision=None,
+            backend_version="1.0.0",
+            cache_path="/tmp/shellbrain-models",
+            readiness_state="ready",
+            last_error=None,
+        ),
+    )
+
+    monkeypatch.setattr("app.boot.embeddings.get_config_provider", lambda: _FakeConfigProvider())
+    monkeypatch.setattr("app.boot.embeddings.load_machine_config", lambda: machine_config)
+    monkeypatch.setattr("app.boot.embeddings.SentenceTransformersEmbeddingProvider", _FakeProvider)
+
+    provider = get_embedding_provider()
+
+    assert isinstance(provider, _FakeProvider)
+    assert provider.model == "all-MiniLM-L6-v2"
+    assert provider.cache_folder == "/tmp/shellbrain-models"
+    assert provider.local_files_only is True
 
 
 def test_runtime_yaml_should_always_define_database_cli_and_embedding_sections() -> None:

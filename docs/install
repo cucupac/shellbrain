@@ -41,25 +41,17 @@ $PY -m pip install --user --break-system-packages shellbrain 2>/dev/null \
   || $PY -m pip install shellbrain
 
 # Find the shellbrain binary
-# 1. Try PATH directly (works if already installed or profile has it)
-# 2. Ask pip where it installed scripts
+# 1. Ask Python where user scripts live
+# 2. Try PATH directly
 # 3. Check common locations
 SHELLBRAIN=""
+USER_BIN=$($PY -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null)
 
-# Source profile first in case PATH is already configured
-case $SHELL in
-  */zsh)  [ -f "$HOME/.zprofile" ] && . "$HOME/.zprofile" 2>/dev/null; [ -f "$HOME/.zshrc" ] && . "$HOME/.zshrc" 2>/dev/null ;;
-  */bash) [ -f "$HOME/.bashrc" ] && . "$HOME/.bashrc" 2>/dev/null; [ -f "$HOME/.bash_profile" ] && . "$HOME/.bash_profile" 2>/dev/null ;;
-esac
-
-if command -v shellbrain &>/dev/null; then
+# pip --user installs scripts here — prefer the exact binary we just installed
+if [ -n "$USER_BIN" ] && [ -x "$USER_BIN/shellbrain" ]; then
+  SHELLBRAIN="$USER_BIN/shellbrain"
+elif command -v shellbrain &>/dev/null; then
   SHELLBRAIN=shellbrain
-else
-  # pip --user installs scripts here — find it directly
-  USER_BIN=$($PY -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null)
-  if [ -n "$USER_BIN" ] && [ -x "$USER_BIN/shellbrain" ]; then
-    SHELLBRAIN="$USER_BIN/shellbrain"
-  fi
 fi
 
 if [ -z "$SHELLBRAIN" ]; then

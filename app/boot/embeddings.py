@@ -45,11 +45,17 @@ def get_embedding_provider() -> IEmbeddingProvider:
     if provider == "sentence_transformers":
         machine_config = load_machine_config()
         cache_folder = str(get_machine_models_dir())
+        local_files_only = False
         if machine_config is not None:
             cache_folder = machine_config.embeddings.cache_path
             if machine_config.embeddings.readiness_state != "ready":
                 raise RuntimeError(
                     "Shellbrain embeddings are not ready. Rerun `shellbrain init` to finish model setup."
                 )
-        return SentenceTransformersEmbeddingProvider(model=model, cache_folder=cache_folder)
+            local_files_only = True
+        return SentenceTransformersEmbeddingProvider(
+            model=model,
+            cache_folder=cache_folder,
+            local_files_only=local_files_only,
+        )
     raise ValueError(f"Unsupported embedding provider: {provider}")
