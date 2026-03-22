@@ -357,6 +357,50 @@ pre,
   border-bottom: 1px solid rgba(245, 240, 232, 0.26);
 }
 
+.journey {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: clamp(28px, 6vw, 56px) 0 0;
+  border-top: 1px solid var(--rule);
+}
+
+.journey-link {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.journey-link:hover {
+  color: var(--text);
+}
+
+.journey-link--next {
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+.journey-dir {
+  font-family: "DM Mono", monospace;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+}
+
+.journey-title {
+  font-family: "Bricolage Grotesque", serif;
+  font-size: clamp(1.1rem, 2vw, 1.35rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
 .footer {
   padding: 58px 0 30px;
   text-align: center;

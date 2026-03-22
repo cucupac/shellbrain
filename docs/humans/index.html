@@ -49,43 +49,19 @@
           </div>
           <pre id="install-cmd">curl -L shellbrain.ai/install | bash</pre>
         </div>
-        <div class="card-grid" style="margin-top: 20px;">
-          <article class="card">
-            <h3>upgrade later</h3>
-            <p>if shellbrain is already installed, this is the cleanest upgrade path. it upgrades the package and reruns init for you.</p>
-            <div class="panel" style="margin-top: 14px;">
-              <div class="panel-head">
-                <span class="panel-label">command</span>
-                <button
-                  type="button"
-                  class="copy-button"
-                  data-copy-source="#upgrade-cli"
-                  data-copy-label="copy"
-                  data-copy-success="copied"
-                  data-copy-failed="copy failed"
-                >copy</button>
-              </div>
-              <pre id="upgrade-cli">shellbrain upgrade</pre>
-            </div>
-          </article>
-          <article class="card">
-            <h3>upgrade via curl</h3>
-            <p>same hosted path, but explicit. useful when you want the website command directly.</p>
-            <div class="panel" style="margin-top: 14px;">
-              <div class="panel-head">
-                <span class="panel-label">command</span>
-                <button
-                  type="button"
-                  class="copy-button"
-                  data-copy-source="#upgrade-curl"
-                  data-copy-label="copy"
-                  data-copy-success="copied"
-                  data-copy-failed="copy failed"
-                >copy</button>
-              </div>
-              <pre id="upgrade-curl">curl -L shellbrain.ai/upgrade | bash</pre>
-            </div>
-          </article>
+        <div class="panel" style="margin-top: 16px;">
+          <div class="panel-head">
+            <span class="panel-label">upgrade</span>
+            <button
+              type="button"
+              class="copy-button"
+              data-copy-source="#upgrade-cmd"
+              data-copy-label="copy"
+              data-copy-success="copied"
+              data-copy-failed="copy failed"
+            >copy</button>
+          </div>
+          <pre id="upgrade-cmd">shellbrain upgrade</pre>
         </div>
       </section>
 
@@ -153,6 +129,13 @@
           </p>
         </div>
       </section>
+      <nav class="journey" aria-label="Journey">
+        <span></span>
+        <a href="/agents/" class="journey-link journey-link--next">
+          <span class="journey-dir">next</span>
+          <span class="journey-title">for agents</span>
+        </a>
+      </nav>
     </main>
 
     <footer class="footer">
