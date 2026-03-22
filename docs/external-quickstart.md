@@ -10,6 +10,18 @@ curl -L shellbrain.ai/install | bash
 
 The installer already runs `shellbrain init` for you.
 
+The normal upgrade path should be:
+
+```bash
+shellbrain upgrade
+```
+
+or:
+
+```bash
+curl -L shellbrain.ai/upgrade | bash
+```
+
 That bootstrap step is machine-level. It prepares the managed runtime, installs host integrations, and leaves repo registration to first use inside a repo.
 
 Manual install path:
@@ -18,6 +30,12 @@ Manual install path:
 pipx install shellbrain
 shellbrain init
 shellbrain admin doctor
+```
+
+Manual/advanced upgrade path:
+
+```bash
+pipx upgrade shellbrain && shellbrain init
 ```
 
 If that works, stop here. The rest of this document is for advanced operators, legacy environments, or manual recovery.
@@ -61,6 +79,20 @@ In Codex Desktop and similar tool shells, use a login shell retry first:
 ```bash
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
 ```
+
+If the host shell is bash instead of zsh, use:
+
+```bash
+bash -lc 'source ~/.bash_profile >/dev/null 2>&1; shellbrain --help'
+```
+
+If the wrapped login-shell check still cannot find `shellbrain`, inspect Python's user script directory:
+
+```bash
+python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))"
+```
+
+If that directory contains `shellbrain`, call it directly or add that directory to the login profile PATH and retry. If it does not, reinstall the Shellbrain CLI.
 
 Then use the same wrapper shape for real commands when needed:
 

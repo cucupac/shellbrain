@@ -33,39 +33,44 @@ Treat current repo state as ground truth. Treat Shellbrain as advisory long-term
 2. Otherwise, do not rerun `init` just because a new agent session started. Start with focused `read` queries right away.
 3. If readiness is unclear, inspect with `shellbrain admin doctor` instead of rerunning `init` by reflex.
 4. If `doctor` reports `repair_needed`, rerun `shellbrain init` instead of trying to repair Shellbrain manually.
-5. In Codex or similar tool shells, if direct `shellbrain` calls fail in the current session, retry through a login shell that sources `~/.zprofile`:
+5. In Codex or similar tool shells, if direct `shellbrain` calls fail in the current session, retry through a login shell that sources the user's login profile:
    `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'`
-6. Only drop to the advanced/operator notes in [references/session-workflow.md](references/session-workflow.md) if `doctor` says the managed runtime is blocked.
-7. Resolve the target repo:
+   If the host shell is bash instead of zsh, use:
+   `bash -lc 'source ~/.bash_profile >/dev/null 2>&1; shellbrain --help'`
+6. If the wrapped login-shell check still cannot find `shellbrain`, inspect Python's user script directory:
+   `python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))"`
+   If `shellbrain` exists there, call it directly or add that directory to the login profile PATH and retry. If it does not, reinstall the Shellbrain CLI.
+7. Only drop to the advanced/operator notes in [references/session-workflow.md](references/session-workflow.md) if `doctor` says the managed runtime is blocked.
+8. Resolve the target repo:
    - Use the current working directory when already inside the repo.
    - Pass `--repo-root /absolute/path/to/repo` when working from somewhere else.
    - Treat repo path as operational context; Shellbrain should normally derive durable repo identity from normalized git remote, not from `basename(repo_root)`.
    - Shellbrain prefers `origin`, then a single remaining remote. If multiple remotes exist and none is `origin`, pass `--repo-id`.
    - If there is no usable remote, Shellbrain falls back to a weak-local identity tied to the current path.
-8. Start with focused `read` queries about the concrete problem, subsystem, decision, or constraint you are working on. Do not start with vague prompts like "what should I know about this repo?"
-9. Use a startup read bundle:
+9. Start with focused `read` queries about the concrete problem, subsystem, decision, or constraint you are working on. Do not start with vague prompts like "what should I know about this repo?"
+10. Use a startup read bundle:
    - prior attempts:
      `shellbrain read --json '{"query":"Have we seen this failure mode before?","kinds":["problem","solution","failed_tactic"]}'`
    - constraints and preferences:
      `shellbrain read --json '{"query":"What repo constraints or user preferences matter for this task?","kinds":["fact","preference","change"]}'`
    - area-specific facts:
      `shellbrain read --json '{"query":"What facts or changes matter in this subsystem?","kinds":["fact","change","problem","solution"]}'`
-10. When running from Codex, wrap the actual Shellbrain invocations the same way if needed:
+11. When running from Codex, wrap the actual Shellbrain invocations the same way if needed:
    `zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this failure mode before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"`
-11. Inspect the returned context pack:
+12. Inspect the returned context pack:
    - `direct` = direct matches
    - `explicit_related` = linked memories, including authored associations and problem/fact chains
    - `implicit_related` = semantic neighbors and bounded associative hops
-12. Re-run `read` liberally during the task whenever the search shifts, you hit a new subproblem, or you suspect the right memory will only become relevant mid-journey.
-13. Before `create` or any evidence-bearing `update`, run `shellbrain events --json '{"limit":10}'`.
-14. Reuse returned `data.events[].id` values verbatim as `evidence_refs`.
-15. At session end, normalize the episode into durable memories:
+13. Re-run `read` liberally during the task whenever the search shifts, you hit a new subproblem, or you suspect the right memory will only become relevant mid-journey.
+14. Before `create` or any evidence-bearing `update`, run `shellbrain events --json '{"limit":10}'`.
+15. Reuse returned `data.events[].id` values verbatim as `evidence_refs`.
+16. At session end, normalize the episode into durable memories:
    - store the `problem`
    - store each `failed_tactic`
    - store the `solution`
    - store any durable `fact`, `preference`, or `change`
    - record `utility_vote` updates for memories that helped or misled
-16. Use the exact payload shapes in [references/request-shapes.md](references/request-shapes.md).
+17. Use the exact payload shapes in [references/request-shapes.md](references/request-shapes.md).
 
 Trusted session note:
 
@@ -126,3 +131,4 @@ Use explicit associations when two memories are similar or one depends on the ot
 
 - Read [references/session-workflow.md](references/session-workflow.md) for the full session cadence, query playbook, and evidence model.
 - Read [references/request-shapes.md](references/request-shapes.md) for valid JSON payloads, response-shape notes, and command examples.
+- If you get stuck or need to understand how shellbrain works at a deeper level, read the docs at https://shellbrain.ai/agents — the sitemap there links to pages on memory types, recall, and the full system.

@@ -1,64 +1,74 @@
 # Building a Brain
 
-`shellbrain` is a machine-level CLI that gives agent sessions repo-scoped long-term memory.
+**Shellbrain gives agent sessions repo-scoped long-term memory.**
+It stores what happened, what worked, what failed, and what the human prefers — then retrieves the relevant pieces the moment a similar problem surfaces. *Every session compounds into the next.*
 
-It stores durable memories like `problem`, `solution`, `fact`, and `preference`, grounded by transcript-derived evidence from the active host session.
+---
 
 ## Install
-
-Primary install path:
 
 ```bash
 curl -L shellbrain.ai/install | bash
 ```
 
-The installer already runs `shellbrain init` for you.
+**One command. Machine is ready immediately.** The installer provisions the local runtime, installs the Codex and Claude skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you. Repos register themselves on first use.
 
-That makes the machine ready immediately, installs the Codex and Claude integrations, and lets repos register themselves later on first real Shellbrain use.
+---
 
-Manual install path:
-
-```bash
-pipx install shellbrain
-shellbrain init
-```
-
-## What Install Does
-
-- installs the `shellbrain` CLI once per machine
-- provisions or reuses the managed local runtime on first `init`
-- installs the personal Codex skill
-- installs the personal Claude skill
-- installs the Claude global SessionStart hook in `~/.claude/settings.json`
-- auto-registers repos later on first use inside a repo
-
-If readiness is unclear after install, run:
+## Upgrade
 
 ```bash
-shellbrain admin doctor
+shellbrain upgrade
 ```
 
-If `doctor` reports `repair_needed`, rerun:
+**Upgrades the package and reruns init.** Skills, hooks, and the managed runtime all refresh in one pass.
 
-```bash
-shellbrain init
-```
+The install script also works as an upgrade path — `curl -L shellbrain.ai/upgrade | bash` if you prefer. Manual alternative: `pipx upgrade shellbrain && shellbrain init`.
 
-## First Useful Command
+---
 
-From inside a repo, start with a concrete retrieval query:
+## Use it
 
-```bash
-shellbrain read --json '{"query":"Have we seen this failure mode before?","kinds":["problem","solution","failed_tactic"]}'
-```
+**You use shellbrain by launching a skill in your agent.**
 
-If direct calls fail in a tool shell, retry through a login shell first:
+**Codex:** `Use $shellbrain-session-start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.`
+
+**Claude Code:** `Use Shellbrain Session Start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.`
+
+The agent handles everything from there — reading prior context, gathering evidence, writing durable memories at session end. *You don't manage any of this directly.*
+
+---
+
+## Four operations
+
+**`read`** retrieves durable memories related to a concrete problem. Re-run whenever the search shifts.
+
+**`events`** syncs the active transcript. Returns episode event ids to cite as evidence. Run before every write.
+
+**`create`** writes one durable memory. At least one evidence reference required.
+
+**`update`** records utility votes, truth-evolution links, explicit associations, or archive state.
+
+The rhythm: `read` first, `events` before writes, `create`/`update` at session end. *Do not rerun `shellbrain init` every session.*
+
+---
+
+## Repair
+
+**`shellbrain admin doctor`** is the inspect path when something feels wrong.
+
+**`shellbrain init`** is the repair path if doctor says `repair_needed`. The installer already ran it once — you only rerun it to fix things.
+
+If `shellbrain` isn't found in a tool shell, retry through a login shell:
 
 ```bash
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
 ```
 
-## More
+---
 
-- Advanced/operator guide: [`docs/external-quickstart.md`](docs/external-quickstart.md)
-- Codex session-start skill: [`skills/shellbrain-session-start/SKILL.md`](skills/shellbrain-session-start/SKILL.md)
+## Docs
+
+- [shellbrain.ai/humans](https://shellbrain.ai/humans/) — install, upgrade, getting started
+- [shellbrain.ai/agents](https://shellbrain.ai/agents/) — how agents use shellbrain, with a sitemap to every page
+- [shellbrain.ai/recall](https://shellbrain.ai/recall/) — how the read pipeline works

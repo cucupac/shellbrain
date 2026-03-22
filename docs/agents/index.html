@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>shellbrain / agents</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../site.css">
+  <script src="../site.js" defer></script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <a class="brand" href="/">shellbrain</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="/humans/">humans</a>
+        <a href="/agents/">agents</a>
+        <a href="/recall/">recall</a>
+        <a href="/memory/procedural/">procedural</a>
+        <a href="/memory/semantic/">semantic</a>
+        <a href="/memory/episodic/">episodic</a>
+        <a href="/memory/associative/">associative</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-top">
+          <div class="eyebrow">for agents</div>
+          <button type="button" class="copy-page" data-copy-page>copy page</button>
+        </div>
+        <h1 class="title">long-term memory for your session.</h1>
+        <p class="lead">
+          <strong>shellbrain is a case-based memory system scoped to a repo.</strong> it stores what happened, what worked, what failed, and what the human prefers&mdash;then retrieves the relevant pieces the moment a similar problem surfaces. <em>your job is to query it, use it, and write back what you learn.</em>
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">four operations. that's it.</h2>
+          <div class="ops-grid">
+            <div class="ops-card">
+              <h3>read</h3>
+              <p>retrieve memories related to a concrete problem. re-run whenever the problem shifts.</p>
+            </div>
+            <div class="ops-card">
+              <h3>events</h3>
+              <p>sync the active session transcript. returns episode event ids to cite as evidence. run before every write.</p>
+            </div>
+            <div class="ops-card">
+              <h3>create</h3>
+              <p>write one durable memory. at least one evidence reference required.</p>
+            </div>
+            <div class="ops-card">
+              <h3>update</h3>
+              <p>evolve existing memories. utility votes, fact revisions, association links, or archive.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">what to store.</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>problems, solutions, failed tactics</h3>
+              <p><strong>procedural memory.</strong> the obstacle, what fixed it, what didn't. solutions and failed tactics must link back to their problem. <em>without that link, the write is rejected.</em></p>
+            </article>
+            <article class="card">
+              <h3>facts, preferences, changes</h3>
+              <p><strong>semantic memory.</strong> durable truths about the repo, conventions about how work should be done, and the events that invalidated prior truth. facts are never overwritten&mdash;they are revised through an immutable chain.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">link memories in a knowledge graph.</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>association links</h3>
+              <p><strong>you can formally link any two memories with a typed, directed edge.</strong> each edge has a relation type&mdash;depends on or associated with&mdash;plus optional confidence and salience scores between zero and one. <em>these are durable, first-class records in the graph.</em></p>
+            </article>
+            <article class="card">
+              <h3>how recall uses them</h3>
+              <p><strong>during read, shellbrain walks your explicit links up to two hops deep.</strong> linked memories surface in the explicitly related section of the context pack alongside problem-attempt and fact-revision chains. <em>the stronger and more salient the edge, the higher it ranks.</em></p>
+            </article>
+            <article class="card">
+              <h3>when to link</h3>
+              <p><strong>link memories when the relationship matters for future retrieval.</strong> a solution that depends on a specific fact. a preference that relates to an architectural decision. link at create time or add links later via update. <em>every link requires evidence.</em></p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">vote on what helped.</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>utility votes</h3>
+              <p><strong>after solving a problem, vote on whether each retrieved memory actually helped.</strong> the scale is a real number from negative one to one. positive means helpful. negative means misleading. zero means neutral. <em>votes are always scoped to a specific problem.</em></p>
+            </article>
+            <article class="card">
+              <h3>why it matters</h3>
+              <p><strong>votes accumulate across sessions and agents.</strong> memories that consistently help rank higher in future retrieval. memories that consistently mislead sink. <em>utility is earned from real feedback, not assumed.</em></p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">session rhythm.</h2>
+          <p class="section-copy">
+            <strong>start with focused read queries about the concrete problem you are working on.</strong> not vague prompts. name the failure mode, the subsystem, the constraint.
+          </p>
+          <p class="section-copy" style="margin-top: 14px;">
+            <strong>re-run read whenever the search shifts</strong> or you hit a new subproblem. run events before every write. reuse the returned episode event ids as evidence references. <em>never invent evidence. if it's ambiguous, skip the write.</em>
+          </p>
+          <p class="section-copy" style="margin-top: 14px;">
+            <strong>at session end, normalize what happened into durable memories.</strong> store the problem. store each failed tactic. store the solution. store any facts, preferences, or changes that emerged. link related memories. record utility votes for memories that helped or misled.
+          </p>
+        </div>
+      </section>
+
+      <section class="section callout">
+        <div class="section-inner">
+          <h2 class="section-title">advisory, not authoritative.</h2>
+          <p class="section-copy">
+            <strong>current repo state is always ground truth.</strong> shellbrain is long-term memory that answers one question: <em>have i seen anything like this before, and what was useful?</em> run <code>shellbrain --help</code> to see exact syntax for every operation.
+          </p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">explore.</h2>
+          <div class="panel" style="margin-top: 22px;">
+            <div class="panel-head">
+              <span class="panel-label">sitemap</span>
+            </div>
+            <pre>
+memory
+  procedural  → <a href="/memory/procedural/">shellbrain.ai/memory/procedural</a>
+  semantic    → <a href="/memory/semantic/">shellbrain.ai/memory/semantic</a>
+  episodic    → <a href="/memory/episodic/">shellbrain.ai/memory/episodic</a>
+  associative → <a href="/memory/associative/">shellbrain.ai/memory/associative</a>
+
+recall        → <a href="/recall/">shellbrain.ai/recall</a>
+for agents    → <a href="/agents/">shellbrain.ai/agents</a>
+for humans    → <a href="/humans/">shellbrain.ai/humans</a>
+home          → <a href="/">shellbrain.ai</a>
+</pre>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">shellbrain</div>
+      <div class="footer-sub">knowledge compounds.</div>
+    </footer>
+  </div>
+</body>
+</html>

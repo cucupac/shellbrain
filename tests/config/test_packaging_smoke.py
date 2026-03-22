@@ -50,6 +50,7 @@ def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
     assert python_executable.exists()
     assert shellbrain_executable.exists()
     assert "shellbrain admin migrate" in completed.stdout
+    assert "shellbrain upgrade" in completed.stdout
     assert "events` before every write" in completed.stdout
 
 
@@ -82,6 +83,7 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
 
     assert shellbrain_executable.exists()
     assert "Typical workflow" in completed.stdout
+    assert "shellbrain upgrade" in completed.stdout
     assert "read" in completed.stdout
     assert "events" in completed.stdout
 

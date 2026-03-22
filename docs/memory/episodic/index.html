@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>shellbrain / memory / episodic</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../site.css">
+  <script src="../../site.js" defer></script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <a class="brand" href="/">shellbrain</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="/humans/">humans</a>
+        <a href="/agents/">agents</a>
+        <a href="/recall/">recall</a>
+        <a href="/memory/procedural/">procedural</a>
+        <a href="/memory/semantic/">semantic</a>
+        <a href="/memory/episodic/">episodic</a>
+        <a href="/memory/associative/">associative</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-top">
+          <div class="eyebrow">episodic memory</div>
+          <button type="button" class="copy-page" data-copy-page>copy page</button>
+        </div>
+        <h1 class="title">grounded in truth.</h1>
+        <p class="lead">
+          <strong>episodic memory is the evidence layer.</strong> it records what actually happened in each session&mdash;dialog, tool calls, every event&mdash;so that durable writes can trace back to something real. <em>every memory must be justified. nothing is fabricated.</em>
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">how it works.</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>events syncs the transcript</h3>
+              <p><strong>events imports the active session into episode records.</strong> it resolves the trusted caller identity, normalizes the transcript, and returns recent episode event ids the agent can cite.</p>
+            </article>
+            <article class="card">
+              <h3>evidence references</h3>
+              <p><strong>durable writes require evidence references that point to specific episode events.</strong> the link is a direct foreign key to the exact session moment. <em>no reference, no write.</em></p>
+            </article>
+            <article class="card">
+              <h3>no fabrication</h3>
+              <p><strong>if the evidence is ambiguous, shellbrain skips the write.</strong> three-layer validation&mdash;schema, semantic, integrity&mdash;ensures every cited event actually exists and is visible within the repo.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section callout">
+        <div class="section-inner">
+          <h2 class="section-title">the foundation.</h2>
+          <p class="section-copy">
+            <strong>episodic memory is what makes the rest of the system trustworthy.</strong> procedural scenarios, semantic facts, associative links&mdash;all of them point back to the transcript evidence that produced them. <em>shellbrain would rather have no memory than a memory it cannot justify.</em>
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">shellbrain</div>
+      <div class="footer-sub">knowledge compounds.</div>
+    </footer>
+  </div>
+</body>
+</html>

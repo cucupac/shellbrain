@@ -79,6 +79,9 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "shellbrain admin backup create" in output
     assert "shellbrain admin doctor" in output
     assert "curl -L shellbrain.ai/install | bash" in output
+    assert "curl -L shellbrain.ai/upgrade | bash" in output
+    assert "shellbrain upgrade" in output
+    assert "pipx upgrade shellbrain && shellbrain init" in output
     assert "shellbrain init" in output
     assert "--repo-root" in output
     assert "--no-sync" not in output
@@ -86,6 +89,7 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "read" in output
     assert "update" in output
     assert "events" in output
+    assert "upgrade" in output
 
 
 def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixture[str]) -> None:
@@ -101,6 +105,19 @@ def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixtu
     assert "--no-host-assets" in output
     assert "--skip-model-download" in output
     assert "--repo-id" in output
+
+
+def test_upgrade_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """upgrade help should teach the hosted upgrader and manual fallback."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["upgrade", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "hosted upgrade script" in output
+    assert "shellbrain.ai/upgrade" in output
+    assert "pipx upgrade shellbrain && shellbrain init" in output
 
 
 def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
@@ -363,6 +380,16 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
 
     assert exit_code == 0
     assert sync_calls == []
+
+
+def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:
+    """upgrade should delegate to the hosted upgrader and propagate its exit code."""
+
+    monkeypatch.setattr("app.periphery.admin.upgrade.run_upgrade", lambda: 23)
+
+    exit_code = cli_main.main(["upgrade"])
+
+    assert exit_code == 23
 
 
 def test_admin_migrate_should_invoke_packaged_migration_runner(

@@ -7,39 +7,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="site.css">
   <style>
-    :root {
-      --bg: #f5f0e8;
-      --text: #16130f;
-      --muted: #8a7f70;
-      --muted-light: #b0a594;
-      --rule: rgba(22, 19, 15, 0.10);
-      --rule-strong: rgba(22, 19, 15, 0.18);
-      --accent: #2a2520;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* landing page overrides and extensions */
 
     html {
-      scroll-behavior: smooth;
       overflow-x: hidden;
     }
 
     body {
-      font-family: "DM Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-      color: var(--text);
       background: var(--bg);
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .mono {
-      font-family: "DM Mono", "SF Mono", "Fira Code", "Consolas", monospace;
     }
 
     /* ─── HERO ─────────────────────────────────── */
 
     .hero {
       height: 100vh;
+      max-width: none;
+      margin: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -274,9 +259,6 @@
     }
 
     .section-title {
-      font-family: "Bricolage Grotesque", serif;
-      font-size: clamp(1.5rem, 3vw, 2.1rem);
-      font-weight: 600;
       letter-spacing: -0.025em;
       line-height: 1.15;
       margin-bottom: 32px;
@@ -416,25 +398,47 @@
       color: var(--muted);
     }
 
-    /* ─── FOOTER ───────────────────────────────── */
+    /* ─── DOCS LINK ───────────────────────────── */
+
+    .docs-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 28px;
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted-light);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .docs-link:hover {
+      color: var(--text);
+    }
+
+    .docs-link svg {
+      width: 12px;
+      height: 12px;
+      stroke: currentColor;
+    }
+
+    /* ─── FOOTER (landing page overrides) ────── */
 
     .footer {
       padding: clamp(56px, 8vw, 96px) 24px;
-      text-align: center;
     }
 
     .footer-brand {
-      font-family: "Bricolage Grotesque", serif;
       font-size: clamp(2rem, 4vw, 3rem);
-      font-weight: 600;
       letter-spacing: -0.03em;
       margin-bottom: 12px;
     }
 
     .footer-sub {
       font-family: "DM Mono", monospace;
-      font-size: 12px;
-      color: var(--muted);
       letter-spacing: 0.06em;
     }
 
@@ -523,6 +527,11 @@
         <span class="install-cmd" id="installCmd">curl -L shellbrain.ai/install | bash</span>
       </div>
       <div class="install-copied" id="installHint"></div>
+
+      <a class="docs-link" href="/humans/">
+        docs
+        <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>
+      </a>
     </div>
     <div class="scroll-hint" id="scrollHint">
       <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5">
@@ -554,7 +563,7 @@
   <section class="content-section">
     <div class="content-section-inner">
       <div class="section-eyebrow">procedural memory</div>
-      <h2 class="section-title">every problem you have ever solved.</h2>
+      <h2 class="section-title">every problem you've ever solved.</h2>
       <div class="section-body typewriter-block" data-typewriter>
         <p><strong>shellbrain remembers every problem, every working solution, and every failed attempt.</strong></p>
         <p>failed tactics matter. <em>knowing what didn't work is half the solution.</em></p>

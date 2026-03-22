@@ -75,6 +75,7 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     monkeypatch.setattr(init_module, "_backup_before_repair", lambda config: backup_calls.append(config.machine_instance_id))
     monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: False)
+    monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: True)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
     monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (registration, True))
 
@@ -146,6 +147,7 @@ def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: False)
+    monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
     monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: register_calls.append(kwargs))
 
@@ -160,6 +162,45 @@ def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path
     assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
     assert register_calls == []
     assert "Repo registration: deferred until first Shellbrain use inside a repo." in result.lines
+
+
+def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_path: Path, monkeypatch) -> None:
+    """init should migrate the Shellbrain schema before continuing to embeddings."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    initial_config = _machine_config(bootstrap_state="provisioning")
+    ready_config = _machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    call_order: list[str] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
+    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: call_order.append("reconcile") or False)
+    monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: call_order.append("migrate") or True)
+    monkeypatch.setattr(
+        init_module,
+        "_prewarm_embeddings",
+        lambda config, skip_model_download: (call_order.append("embeddings") or True, ready_config),
+    )
+    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (_ for _ in ()).throw(AssertionError("unexpected repo registration")))
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=False,
+        skip_model_download=False,
+        skip_host_assets=True,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
+    assert call_order == ["reconcile", "migrate", "embeddings"]
 
 
 def test_reconcile_database_should_inline_role_password_literals(monkeypatch) -> None:

@@ -26,8 +26,14 @@ _TOP_LEVEL_HELP = dedent(
 
     Install and bootstrap:
       1. `curl -L shellbrain.ai/install | bash`
-      2. The installer runs `shellbrain init` for machine bootstrap.
-      3. Repos auto-register on first Shellbrain use inside a git repo.
+      2. Upgrade later with `shellbrain upgrade` or `curl -L shellbrain.ai/upgrade | bash`
+      3. Manual/advanced upgrade path: `pipx upgrade shellbrain && shellbrain init`
+      4. The installer/upgrade flow runs `shellbrain init` for machine bootstrap and repair.
+      5. Repos auto-register on first Shellbrain use inside a git repo.
+
+    After install:
+      - Start a repo session in Codex or Claude Code (see shellbrain.ai/humans).
+      - If readiness is unclear, run `shellbrain admin doctor`.
 
     Mental model:
       - `read` retrieves durable memories related to the concrete problem or subproblem.
@@ -45,6 +51,7 @@ _TOP_LEVEL_HELP = dedent(
 
     Examples:
       shellbrain init
+      shellbrain upgrade
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
       shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
       shellbrain events --json '{"limit":10}'
@@ -54,8 +61,12 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain admin backup create
       shellbrain admin doctor
 
+    Docs:
+      https://shellbrain.ai/agents — how agents use shellbrain
+      https://shellbrain.ai/humans — install, upgrade, and getting started
+
     Common recovery steps:
-      - `shellbrain: command not found`: reinstall with `pipx install shellbrain` or rerun the website installer.
+      - `shellbrain: command not found`: rerun `curl -L shellbrain.ai/install | bash`.
       - `Shellbrain machine config is unreadable`: rerun `shellbrain init` to repair the managed instance.
       - `Outcome: blocked_dependency`: install Docker or start the Docker daemon, then rerun `shellbrain init`.
       - No active host session found: verify Codex/Claude Code transcript availability, then rerun `events`.
@@ -133,6 +144,23 @@ _ADMIN_HELP = dedent(
     Example:
       shellbrain init
       shellbrain admin migrate
+    """
+)
+
+_UPGRADE_HELP = dedent(
+    """\
+    Upgrade the installed Shellbrain package through the hosted upgrade script.
+
+    This is the official product-path upgrader for website installs.
+    It upgrades the package and reruns `shellbrain init` to refresh the managed runtime,
+    Codex skill, Claude skill, and Claude hook.
+
+    Manual/advanced path:
+      pipx upgrade shellbrain && shellbrain init
+
+    Examples:
+      shellbrain upgrade
+      curl -L shellbrain.ai/upgrade | bash
     """
 )
 
@@ -258,6 +286,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-host-assets",
         action="store_true",
         help="Skip Codex skill, Claude skill, and Claude global hook installation during init.",
+    )
+
+    subparsers.add_parser(
+        "upgrade",
+        help="Upgrade Shellbrain and rerun init through the hosted upgrader.",
+        description="Upgrade Shellbrain through the hosted upgrade script and rerun init.",
+        epilog=_UPGRADE_HELP,
+        formatter_class=_HelpFormatter,
     )
 
     create_parser = subparsers.add_parser(
@@ -418,6 +454,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         for line in result.lines:
             print(line)
         return result.exit_code
+
+    if args.command == "upgrade":
+        from app.periphery.admin.upgrade import run_upgrade
+
+        return run_upgrade()
 
     if args.command == "admin":
         return _run_admin_command(args)

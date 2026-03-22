@@ -20,8 +20,11 @@ def test_readme_should_teach_the_installer_first_happy_path() -> None:
     readme = _read_text(repo_root / "README.md")
 
     assert "curl -L shellbrain.ai/install | bash" in readme
+    assert "shellbrain upgrade" in readme
+    assert "curl -L shellbrain.ai/upgrade | bash" in readme
     assert "The installer already runs `shellbrain init` for you." in readme
     assert "pipx install shellbrain" in readme
+    assert "pipx upgrade shellbrain && shellbrain init" in readme
     assert "shellbrain read --json" in readme
     assert "utility_vote" not in readme
     assert "what should I know about this repo?" not in readme
@@ -46,6 +49,8 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
         "--repo-root",
         "utility_vote",
         "what should I know about this repo?",
+        "sysconfig.get_path('scripts', 'posix_user')",
+        "~/.bash_profile",
     ]
 
     for phrase in required_phrases:
@@ -60,9 +65,12 @@ def test_cli_help_should_share_the_short_protocol() -> None:
     required_phrases = [
         "case-based memory system",
         "curl -L shellbrain.ai/install | bash",
+        "curl -L shellbrain.ai/upgrade | bash",
         "Avoid generic prompts like",
         "evidence_refs",
         "utility_vote",
+        "shellbrain upgrade",
+        "pipx upgrade shellbrain && shellbrain init",
         "shellbrain admin migrate",
         "shellbrain init",
         "--repo-root",
@@ -112,6 +120,23 @@ def test_install_script_should_locate_binary_and_always_run_init() -> None:
     install_script = _read_text(repo_root / "docs" / "install")
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in install_script
+    assert "--upgrade" in install_script
     assert "$SHELLBRAIN init" in install_script
+    assert "ensure_user_bin_on_login_path" in install_script
+    assert 'cli path: ensured in $PATH_PROFILE' in install_script
     assert "git rev-parse --is-inside-work-tree" not in install_script
     assert "shellbrain was installed but is not on PATH." not in install_script
+
+
+def test_upgrade_script_should_locate_binary_and_always_run_init() -> None:
+    """The website upgrader should always rerun shellbrain init after package upgrade."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    upgrade_script = _read_text(repo_root / "docs" / "upgrade")
+
+    assert "sysconfig.get_path('scripts', 'posix_user')" in upgrade_script
+    assert "--upgrade" in upgrade_script
+    assert "$SHELLBRAIN init" in upgrade_script
+    assert "ensure_user_bin_on_login_path" in upgrade_script
+    assert 'cli path: ensured in $PATH_PROFILE' in upgrade_script
+    assert "shellbrain was upgraded but could not be found." in upgrade_script

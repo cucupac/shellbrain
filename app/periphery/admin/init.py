@@ -207,6 +207,16 @@ def run_init(
             machine_config = update_bootstrap_state(
                 machine_config,
                 bootstrap_state=BOOTSTRAP_STATE_PROVISIONING,
+                current_step="schema_migrate",
+                last_error=None,
+            )
+            save_machine_config(machine_config)
+            schema_changed = _apply_schema_migrations(machine_config)
+            mutated_machine = mutated_machine or schema_changed
+
+            machine_config = update_bootstrap_state(
+                machine_config,
+                bootstrap_state=BOOTSTRAP_STATE_PROVISIONING,
                 current_step="embeddings",
                 last_error=None,
             )
@@ -634,6 +644,32 @@ def _reconcile_database(config: MachineConfig) -> bool:
         notes="Managed local Shellbrain instance",
     )
     return changed
+
+
+def _apply_schema_migrations(config: MachineConfig) -> bool:
+    """Apply packaged schema migrations to the managed Shellbrain database."""
+
+    from app.boot.migrations import upgrade_database
+
+    before_revision = _fetch_schema_revision(config.database.admin_dsn)
+    upgrade_database()
+    after_revision = _fetch_schema_revision(config.database.admin_dsn)
+    return before_revision != after_revision
+
+
+def _fetch_schema_revision(dsn: str) -> str | None:
+    """Best-effort read of the current alembic revision."""
+
+    try:
+        with psycopg.connect(dsn.replace("+psycopg", "")) as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT version_num FROM alembic_version")
+                row = cur.fetchone()
+    except psycopg.Error:
+        return None
+    if row is None or row[0] is None:
+        return None
+    return str(row[0])
 
 
 def _prewarm_embeddings(config: MachineConfig, *, skip_model_download: bool) -> tuple[bool, MachineConfig]:

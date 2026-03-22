@@ -38,10 +38,9 @@ ensure_user_bin_on_login_path() {
   PATH_PROFILE="$profile"
 }
 
-echo "installing shellbrain..."
+echo "upgrading shellbrain..."
 echo ""
 
-# Find python 3.11+ (check versioned binaries first, then fall back to python3/python)
 PY=""
 for candidate in python3.14 python3.13 python3.12 python3.11 python3 python; do
   if command -v "$candidate" &>/dev/null; then
@@ -54,7 +53,6 @@ for candidate in python3.14 python3.13 python3.12 python3.11 python3 python; do
 done
 
 if [ -z "$PY" ]; then
-  # Check if any python exists at all to give a better error
   if command -v python3 &>/dev/null || command -v python &>/dev/null; then
     FOUND_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
     echo "error: python $FOUND_VER found, but shellbrain requires python 3.11+."
@@ -72,19 +70,13 @@ fi
 PY_VERSION=$($PY -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 echo "using $PY ($PY_VERSION)"
 
-# Install with fallback chain
 $PY -m pip install --user --upgrade --break-system-packages shellbrain 2>/dev/null \
   || $PY -m pip install --user --upgrade shellbrain 2>/dev/null \
   || $PY -m pip install --upgrade shellbrain
 
-# Find the shellbrain binary
-# 1. Ask Python where user scripts live
-# 2. Try PATH directly
-# 3. Check common locations
 SHELLBRAIN=""
 USER_BIN=$($PY -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null)
 
-# pip --user installs scripts here — prefer the exact binary we just installed
 if [ -n "$USER_BIN" ] && [ -x "$USER_BIN/shellbrain" ]; then
   SHELLBRAIN="$USER_BIN/shellbrain"
 elif command -v shellbrain &>/dev/null; then
@@ -92,7 +84,6 @@ elif command -v shellbrain &>/dev/null; then
 fi
 
 if [ -z "$SHELLBRAIN" ]; then
-  # Last resort: check common locations
   for dir in "$HOME/.local/bin" "$HOME/Library/Python/$PY_VERSION/bin" "/usr/local/bin" "/opt/homebrew/bin"; do
     if [ -x "$dir/shellbrain" ]; then
       SHELLBRAIN="$dir/shellbrain"
@@ -103,7 +94,7 @@ fi
 
 if [ -z "$SHELLBRAIN" ]; then
   echo ""
-  echo "shellbrain was installed but could not be found."
+  echo "shellbrain was upgraded but could not be found."
   echo "restart your terminal, then run: shellbrain init"
   exit 0
 fi
@@ -113,7 +104,7 @@ if [ -n "$USER_BIN" ] && [ -d "$USER_BIN" ]; then
 fi
 
 echo ""
-echo "initializing..."
+echo "re-initializing..."
 echo ""
 $SHELLBRAIN init
 

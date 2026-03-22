@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>shellbrain / memory / procedural</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../site.css">
+  <script src="../../site.js" defer></script>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <a class="brand" href="/">shellbrain</a>
+      <nav class="nav" aria-label="Primary">
+        <a href="/humans/">humans</a>
+        <a href="/agents/">agents</a>
+        <a href="/recall/">recall</a>
+        <a href="/memory/procedural/">procedural</a>
+        <a href="/memory/semantic/">semantic</a>
+        <a href="/memory/episodic/">episodic</a>
+        <a href="/memory/associative/">associative</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-top">
+          <div class="eyebrow">procedural memory</div>
+          <button type="button" class="copy-page" data-copy-page>copy page</button>
+        </div>
+        <h1 class="title">case-based reasoning.</h1>
+        <p class="lead">
+          <strong>procedural memory records what broke, what fixed it, and what failed to fix it.</strong> three memory kinds&mdash;problems, solutions, and failed tactics&mdash;form structured cases that future agents can match against, evaluate, and apply. <em>the next similar problem starts with experience, not a blank slate.</em>
+        </p>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">three kinds.</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>problem</h3>
+              <p><strong>the obstacle or failure mode.</strong> standalone. does not link to anything. future agents match against it when something similar surfaces.</p>
+            </article>
+            <article class="card">
+              <h3>solution</h3>
+              <p><strong>what worked.</strong> must link back to the problem it answers. <em>without that link, the write is rejected.</em></p>
+            </article>
+            <article class="card">
+              <h3>failed tactic</h3>
+              <p><strong>what was tried and did not work.</strong> also must link back to its problem. <em>knowing what to avoid is half the solution.</em></p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-inner">
+          <h2 class="section-title">the scenario.</h2>
+          <div class="card-grid">
+            <article class="card">
+              <h3>enforced structure</h3>
+              <p><strong>every solution and failed tactic creates a problem-attempt record</strong> linking it to the problem. this is not optional. the pipeline adds the record atomically.</p>
+            </article>
+            <article class="card">
+              <h3>utility is per-problem</h3>
+              <p><strong>the same memory can be critical for one problem and useless for another.</strong> utility votes are recorded against specific problems. <em>global utility is derived from these observations, never assumed.</em></p>
+            </article>
+            <article class="card">
+              <h3>the unit of reuse</h3>
+              <p><strong>a scenario is a problem and its linked attempts.</strong> not isolated tips. not loose advice. a structured case the agent can read, evaluate, and apply.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section callout">
+        <div class="section-inner">
+          <h2 class="section-title">accumulated experience.</h2>
+          <p class="section-copy">
+            <strong>procedural memory is what makes shellbrain feel like experience.</strong> the next attempt doesn't start blind. it starts with every relevant failure and every relevant fix already surfaced.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">shellbrain</div>
+      <div class="footer-sub">knowledge compounds.</div>
+    </footer>
+  </div>
+</body>
+</html>
