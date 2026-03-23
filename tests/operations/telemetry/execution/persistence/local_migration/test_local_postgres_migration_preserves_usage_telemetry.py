@@ -74,7 +74,7 @@ def test_local_migration_should_preserve_sentinel_usage_telemetry_while_promotin
 
         legacy_dsn = f"postgresql+psycopg://memory:memory@localhost:{port}/memory"
         _wait_for_host_postgres(legacy_dsn)
-        _run_packaged_migrations(repo_root, legacy_dsn)
+        _run_packaged_migrations(repo_root, legacy_dsn, backup_dir=tmp_path / "backups")
         expected = seed_usage_telemetry_dataset_via_dsn(legacy_dsn)
 
         subprocess.run(

@@ -80,7 +80,7 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
 
         legacy_dsn = f"postgresql+psycopg://memory:memory@localhost:{port}/memory"
         _wait_for_host_postgres(legacy_dsn)
-        _run_packaged_migrations(repo_root, legacy_dsn)
+        _run_packaged_migrations(repo_root, legacy_dsn, backup_dir=tmp_path / "backups")
         sentinel = _seed_sentinel_dataset(legacy_dsn)
 
         completed = subprocess.run(
@@ -145,17 +145,22 @@ def _wait_for_container_postgres(container_name: str, user_name: str, database_n
     raise AssertionError(f"Timed out waiting for {container_name} to become ready.")
 
 
-def _run_packaged_migrations(repo_root: Path, dsn: str) -> None:
+def _run_packaged_migrations(repo_root: Path, dsn: str, *, backup_dir: Path) -> None:
     """Apply packaged migrations to one explicit DSN."""
 
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    shellbrain_home = backup_dir.parent / ".shellbrain-home"
+    shellbrain_home.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "shellbrain", "admin", "migrate"],
+        [sys.executable, "-m", "app.periphery.cli.main", "admin", "migrate"],
         check=True,
         cwd=repo_root,
         env={
             **os.environ,
             "SHELLBRAIN_DB_DSN": dsn,
             "SHELLBRAIN_DB_ADMIN_DSN": dsn,
+            "SHELLBRAIN_BACKUP_DIR": str(backup_dir),
+            "SHELLBRAIN_HOME": str(shellbrain_home),
             "SHELLBRAIN_INSTANCE_MODE": "test",
         },
         capture_output=True,

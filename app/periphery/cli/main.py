@@ -807,12 +807,17 @@ def _warn_or_fail_on_unsafe_app_role() -> None:
 
     from app.boot.admin_db import should_fail_on_unsafe_app_role
     from app.boot.db import get_db_dsn
-    from app.periphery.admin.instance_guard import inspect_role_safety
+    from app.periphery.admin.instance_guard import SCRATCH, TEST, fetch_instance_metadata, inspect_role_safety
 
-    warnings = inspect_role_safety(get_db_dsn())
+    dsn = get_db_dsn()
+    warnings = inspect_role_safety(dsn)
     if not warnings:
         return
     message = "Unsafe Shellbrain app-role configuration:\n- " + "\n- ".join(warnings)
+    metadata = fetch_instance_metadata(dsn)
+    if metadata is not None and metadata.instance_mode in {TEST, SCRATCH}:
+        print(message, file=sys.stderr)
+        return
     if should_fail_on_unsafe_app_role():
         raise ValueError(message)
     print(message, file=sys.stderr)

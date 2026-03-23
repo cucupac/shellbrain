@@ -42,15 +42,15 @@
           <h2 class="section-title">explicit associations.</h2>
           <div class="card-grid">
             <article class="card">
-              <h3>authored links in a directed graph</h3>
+              <h3>authored links in a directed graph.</h3>
               <p><strong>explicit associations are formal, durable edges between memories.</strong> each edge has a relation type, a state, and a strength. these are first-class records&mdash;deliberately created, not computed.</p>
             </article>
             <article class="card">
-              <h3>strength is earned</h3>
+              <h3>strength is earned.</h3>
               <p><strong>each edge accumulates observations over time.</strong> valence, salience, and optional problem context build strength gradually. <em>associations are reinforced by repeated evidence, not assigned once.</em></p>
             </article>
             <article class="card">
-              <h3>how recall uses them</h3>
+              <h3>how recall uses them.</h3>
               <p><strong>recall walks explicit association edges up to two levels deep</strong> with a minimum strength threshold. these candidates land in the explicit related section alongside problem-attempt and fact-revision links.</p>
             </article>
           </div>
@@ -62,15 +62,15 @@
           <h2 class="section-title">implicit associations.</h2>
           <div class="card-grid">
             <article class="card">
-              <h3>computed from semantic similarity</h3>
+              <h3>computed from semantic similarity.</h3>
               <p><strong>implicit associations are not stored&mdash;they are recalculated during recall.</strong> vector embeddings determine which memories are conceptually close, regardless of whether anyone explicitly linked them.</p>
             </article>
             <article class="card">
-              <h3>bounded traversal</h3>
+              <h3>bounded traversal.</h3>
               <p><strong>recall walks semantic neighbors up to two hops</strong> via breadth-first traversal. <em>not unlimited exploration. bounded depth, bounded breadth.</em></p>
             </article>
             <article class="card">
-              <h3>scored by decay</h3>
+              <h3>scored by decay.</h3>
               <p><strong>explicit neighbors: anchor score times relation strength, divided by depth. implicit neighbors: anchor score times similarity, divided by hop.</strong> everything further from the direct match scores lower. <em>distance costs.</em></p>
             </article>
           </div>

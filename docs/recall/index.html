@@ -42,15 +42,15 @@
           <h2 class="section-title">two search lanes.</h2>
           <div class="card-grid">
             <article class="card">
-              <h3>keyword search</h3>
+              <h3>keyword search.</h3>
               <p><strong>BM25 full-text retrieval.</strong> finds memories that share the exact terms in your query. precise when you know the vocabulary&mdash;function names, error messages, specific subsystems.</p>
             </article>
             <article class="card">
-              <h3>semantic search</h3>
+              <h3>semantic search.</h3>
               <p><strong>vector embedding similarity.</strong> finds memories that are conceptually close even when they use different words. catches what keyword search would miss.</p>
             </article>
             <article class="card">
-              <h3>reciprocal rank fusion</h3>
+              <h3>reciprocal rank fusion.</h3>
               <p><strong>both lanes produce ranked lists. fusion merges them into one scored set.</strong> a memory that ranks well in both lanes scores highest. <em>neither lane alone is sufficient. together they cover precision and recall.</em></p>
             </article>
           </div>
@@ -62,15 +62,15 @@
           <h2 class="section-title">the pipeline.</h2>
           <div class="card-grid">
             <article class="card">
-              <h3>seed</h3>
+              <h3>seed.</h3>
               <p><strong>keyword and semantic search each produce a ranked list.</strong> reciprocal rank fusion merges them into one scored set of direct candidates.</p>
             </article>
             <article class="card">
-              <h3>expand</h3>
+              <h3>expand.</h3>
               <p><strong>each direct candidate grows outward.</strong> explicit expansion walks problem-attempt chains, fact-revision chains, and association edges. implicit expansion walks semantic neighbors. <em>bounded depth. bounded breadth.</em></p>
             </article>
             <article class="card">
-              <h3>score and pack</h3>
+              <h3>score and pack.</h3>
               <p><strong>everything decays with distance.</strong> the further a memory is from the direct match, the lower it scores. the pipeline fills each section to its quota, deduplicates globally, and returns a bounded context pack. <em>capped, explainable, precise.</em></p>
             </article>
           </div>
@@ -82,15 +82,15 @@
           <h2 class="section-title">the context pack.</h2>
           <div class="card-grid">
             <article class="card">
-              <h3>direct</h3>
+              <h3>direct.</h3>
               <p><strong>memories that matched the query most directly.</strong> seeded from both keyword and semantic search, fused by reciprocal rank.</p>
             </article>
             <article class="card">
-              <h3>explicitly related</h3>
+              <h3>explicitly related.</h3>
               <p><strong>memories reached through authored links.</strong> problem-attempt chains, fact-revision chains, and explicit association edges. <em>structural knowledge, not guesswork.</em></p>
             </article>
             <article class="card">
-              <h3>implicitly related</h3>
+              <h3>implicitly related.</h3>
               <p><strong>memories reached through semantic neighbor hops.</strong> bounded breadth-first traversal, scored by similarity decay. <em>how recall expands past the first obvious match.</em></p>
             </article>
           </div>

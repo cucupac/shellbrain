@@ -437,6 +437,35 @@ def test_operational_command_should_fail_cleanly_when_app_role_is_unsafe(
     assert "unsafe role" in capsys.readouterr().err
 
 
+def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances(
+    monkeypatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Disposable test instances should not hard-fail operational commands for unsafe roles."""
+
+    from app.periphery.admin.instance_guard import InstanceMetadataRecord
+
+    monkeypatch.setattr("app.boot.db.get_db_dsn", lambda: "postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain_ci_test")
+    monkeypatch.setattr(
+        "app.periphery.admin.instance_guard.inspect_role_safety",
+        lambda dsn: ["Current DSN role is superuser-capable."] if dsn else [],
+    )
+    monkeypatch.setattr(
+        "app.periphery.admin.instance_guard.fetch_instance_metadata",
+        lambda dsn: InstanceMetadataRecord(
+            instance_id="instance-1",
+            instance_mode="test",
+            created_at="2026-03-22T00:00:00+00:00",
+            created_by="tests",
+            notes=None,
+        ),
+    )
+
+    cli_main._warn_or_fail_on_unsafe_app_role()
+
+    assert "Unsafe Shellbrain app-role configuration:" in capsys.readouterr().err
+
+
 def test_admin_backup_create_should_dispatch_to_backup_module(
     monkeypatch,
     capsys: pytest.CaptureFixture[str],

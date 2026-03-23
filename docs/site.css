@@ -58,6 +58,8 @@ pre,
   flex-wrap: wrap;
   gap: 12px 18px;
   padding: 26px 0 12px;
+  max-width: 920px;
+  margin: 0 auto;
 }
 
 .brand {
@@ -70,8 +72,7 @@ pre,
 .nav {
   display: flex;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 14px 18px;
+  gap: 14px 16px;
 }
 
 .nav a {
@@ -80,6 +81,14 @@ pre,
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--muted);
+  padding-bottom: 4px;
+  border-bottom: 1.5px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.nav a[aria-current="page"] {
+  color: var(--text);
+  border-bottom-color: var(--text);
 }
 
 .copy-page {

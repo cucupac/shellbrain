@@ -22,13 +22,13 @@ def test_readme_should_teach_the_installer_first_happy_path() -> None:
     assert "curl -L shellbrain.ai/install | bash" in readme
     assert "shellbrain upgrade" in readme
     assert "curl -L shellbrain.ai/upgrade | bash" in readme
-    assert "The installer already runs `shellbrain init` for you." in readme
-    assert "pipx install shellbrain" in readme
+    assert "runs `shellbrain init` for you" in readme
     assert "pipx upgrade shellbrain && shellbrain init" in readme
-    assert "shellbrain read --json" in readme
+    assert "Use $shellbrain-session-start" in readme
+    assert "Use Shellbrain Session Start" in readme
     assert "utility_vote" not in readme
     assert "what should I know about this repo?" not in readme
-    assert "auto-registers repos later on first use inside a repo" in readme
+    assert "Repos register themselves on first use." in readme
 
 
 def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
