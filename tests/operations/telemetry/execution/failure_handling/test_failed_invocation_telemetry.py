@@ -14,6 +14,15 @@ from app.periphery.episodes.poller import run_episode_poller
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
 
+class _NoOpLock:
+    """Minimal lock-handle test double that satisfies the poller release contract."""
+
+    def release(self) -> None:
+        """Release nothing."""
+
+        return None
+
+
 def test_read_validation_failures_should_always_append_one_failed_operation_invocation_and_no_read_summary_row(
     uow_factory: Callable[[], PostgresUnitOfWork],
     assert_relation_exists,
@@ -224,6 +233,8 @@ def test_poller_sync_failures_should_always_append_one_failed_episode_sync_run(
     """poller sync failures should always append one failed episode sync run."""
 
     monkeypatch.setattr("app.periphery.episodes.poller.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.periphery.episodes.poller.acquire_poller_lock", lambda **kwargs: _NoOpLock())
+    monkeypatch.setattr("app.periphery.episodes.poller.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
     monkeypatch.setattr("app.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
     monkeypatch.setattr("app.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
     monkeypatch.setattr(

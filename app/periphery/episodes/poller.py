@@ -14,6 +14,7 @@ from uuid import uuid4
 from app.boot.use_cases import get_uow_factory
 from app.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
 from app.core.use_cases.sync_episode import sync_episode_from_host
+from app.periphery.episodes.poller_lock import acquire_poller_lock, write_poller_pid_artifact
 from app.periphery.episodes.source_discovery import (
     SUPPORTED_HOSTS,
     default_search_roots,
@@ -52,126 +53,135 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
     """Run until the repo appears idle for long enough."""
 
     repo_root = repo_root.resolve()
+    lock_handle = acquire_poller_lock(repo_id=repo_id, repo_root=repo_root)
+    if lock_handle is None:
+        return
+
     known_state: dict[str, _HostState] = {}
     last_change_at = time.monotonic()
     uow_factory = get_uow_factory()
-
-    while True:
-        saw_change = False
-        for host_app in SUPPORTED_HOSTS:
-            search_roots = default_search_roots(repo_root=repo_root, host_app=host_app)
-            candidate = discover_active_host_session(
-                host_app=host_app,
-                repo_root=repo_root,
-                search_roots=search_roots,
-            )
-
-            if candidate is None:
-                if host_app in known_state:
-                    _record_missing_source(
-                        repo_root=repo_root,
-                        host_app=host_app,
-                        host_session_key=known_state[host_app].session_key,
-                        search_roots=search_roots,
-                        last_known_path=known_state[host_app].transcript_path,
-                    )
-                continue
-
-            transcript_path = Path(candidate["transcript_path"])
-            state = known_state.get(host_app)
-            session_changed = state is not None and state.session_key != candidate["host_session_key"]
-            if session_changed:
-                _close_episode(
-                    repo_id=repo_id,
+    try:
+        _write_pid_artifact(repo_root=repo_root)
+        while True:
+            saw_change = False
+            for host_app in SUPPORTED_HOSTS:
+                search_roots = default_search_roots(repo_root=repo_root, host_app=host_app)
+                candidate = discover_active_host_session(
                     host_app=host_app,
-                    host_session_key=state.session_key,
-                    uow_factory=uow_factory,
+                    repo_root=repo_root,
+                    search_roots=search_roots,
                 )
 
-            mtime = transcript_path.stat().st_mtime if transcript_path.exists() else 0.0
-            should_sync = state is None or session_changed or state.last_mtime != mtime
-            known_state[host_app] = _HostState(
-                session_key=str(candidate["host_session_key"]),
-                transcript_path=transcript_path,
-                last_mtime=mtime,
-            )
-            if not should_sync:
-                continue
+                if candidate is None:
+                    if host_app in known_state:
+                        _record_missing_source(
+                            repo_root=repo_root,
+                            host_app=host_app,
+                            host_session_key=known_state[host_app].session_key,
+                            search_roots=search_roots,
+                            last_known_path=known_state[host_app].transcript_path,
+                        )
+                    continue
 
-            sync_started_at = perf_counter()
-            try:
-                with uow_factory() as uow:
-                    sync_result = sync_episode_from_host(
+                transcript_path = Path(candidate["transcript_path"])
+                state = known_state.get(host_app)
+                session_changed = state is not None and state.session_key != candidate["host_session_key"]
+                if session_changed:
+                    _close_episode(
+                        repo_id=repo_id,
+                        host_app=host_app,
+                        host_session_key=state.session_key,
+                        uow_factory=uow_factory,
+                    )
+
+                mtime = transcript_path.stat().st_mtime if transcript_path.exists() else 0.0
+                should_sync = state is None or session_changed or state.last_mtime != mtime
+                known_state[host_app] = _HostState(
+                    session_key=str(candidate["host_session_key"]),
+                    transcript_path=transcript_path,
+                    last_mtime=mtime,
+                )
+                if not should_sync:
+                    continue
+
+                sync_started_at = perf_counter()
+                try:
+                    with uow_factory() as uow:
+                        sync_result = sync_episode_from_host(
+                            repo_id=repo_id,
+                            host_app=host_app,
+                            host_session_key=str(candidate["host_session_key"]),
+                            uow=uow,
+                            search_roots=search_roots,
+                            last_known_path=transcript_path,
+                        )
+                    _record_status(
+                        repo_root=repo_root,
+                        host_app=host_app,
+                        host_session_key=str(candidate["host_session_key"]),
+                        last_successful_sync_at=_utc_now().isoformat(),
+                        last_error=None,
+                    )
+                    _record_sync_telemetry_best_effort(
+                        uow_factory=uow_factory,
                         repo_id=repo_id,
                         host_app=host_app,
                         host_session_key=str(candidate["host_session_key"]),
-                        uow=uow,
-                        search_roots=search_roots,
-                        last_known_path=transcript_path,
+                        thread_id=str(sync_result["thread_id"]),
+                        episode_id=str(sync_result["episode_id"]),
+                        transcript_path=str(sync_result["transcript_path"]),
+                        outcome="ok",
+                        error_stage=None,
+                        error_message=None,
+                        duration_ms=int((perf_counter() - sync_started_at) * 1000),
+                        imported_event_count=int(sync_result["imported_event_count"]),
+                        total_event_count=int(sync_result["total_event_count"]),
+                        user_event_count=int(sync_result["user_event_count"]),
+                        assistant_event_count=int(sync_result["assistant_event_count"]),
+                        tool_event_count=int(sync_result["tool_event_count"]),
+                        system_event_count=int(sync_result["system_event_count"]),
+                        tool_type_counts=dict(sync_result["tool_type_counts"]),
                     )
-                _record_status(
-                    repo_root=repo_root,
-                    host_app=host_app,
-                    host_session_key=str(candidate["host_session_key"]),
-                    last_successful_sync_at=_utc_now().isoformat(),
-                    last_error=None,
-                )
-                _record_sync_telemetry_best_effort(
-                    uow_factory=uow_factory,
-                    repo_id=repo_id,
-                    host_app=host_app,
-                    host_session_key=str(candidate["host_session_key"]),
-                    thread_id=str(sync_result["thread_id"]),
-                    episode_id=str(sync_result["episode_id"]),
-                    transcript_path=str(sync_result["transcript_path"]),
-                    outcome="ok",
-                    error_stage=None,
-                    error_message=None,
-                    duration_ms=int((perf_counter() - sync_started_at) * 1000),
-                    imported_event_count=int(sync_result["imported_event_count"]),
-                    total_event_count=int(sync_result["total_event_count"]),
-                    user_event_count=int(sync_result["user_event_count"]),
-                    assistant_event_count=int(sync_result["assistant_event_count"]),
-                    tool_event_count=int(sync_result["tool_event_count"]),
-                    system_event_count=int(sync_result["system_event_count"]),
-                    tool_type_counts=dict(sync_result["tool_type_counts"]),
-                )
-                saw_change = True
-            except Exception as exc:
-                _record_status(
-                    repo_root=repo_root,
-                    host_app=host_app,
-                    host_session_key=str(candidate["host_session_key"]),
-                    last_successful_sync_at=None,
-                    last_error=str(exc),
-                )
-                _record_sync_telemetry_best_effort(
-                    uow_factory=uow_factory,
-                    repo_id=repo_id,
-                    host_app=host_app,
-                    host_session_key=str(candidate["host_session_key"]),
-                    thread_id=f"{host_app}:{candidate['host_session_key']}",
-                    episode_id=None,
-                    transcript_path=str(transcript_path),
-                    outcome="error",
-                    error_stage="sync",
-                    error_message=str(exc),
-                    duration_ms=int((perf_counter() - sync_started_at) * 1000),
-                    imported_event_count=0,
-                    total_event_count=0,
-                    user_event_count=0,
-                    assistant_event_count=0,
-                    tool_event_count=0,
-                    system_event_count=0,
-                    tool_type_counts={},
-                )
+                    saw_change = True
+                except Exception as exc:
+                    _record_status(
+                        repo_root=repo_root,
+                        host_app=host_app,
+                        host_session_key=str(candidate["host_session_key"]),
+                        last_successful_sync_at=None,
+                        last_error=str(exc),
+                    )
+                    _record_sync_telemetry_best_effort(
+                        uow_factory=uow_factory,
+                        repo_id=repo_id,
+                        host_app=host_app,
+                        host_session_key=str(candidate["host_session_key"]),
+                        thread_id=f"{host_app}:{candidate['host_session_key']}",
+                        episode_id=None,
+                        transcript_path=str(transcript_path),
+                        outcome="error",
+                        error_stage="sync",
+                        error_message=str(exc),
+                        duration_ms=int((perf_counter() - sync_started_at) * 1000),
+                        imported_event_count=0,
+                        total_event_count=0,
+                        user_event_count=0,
+                        assistant_event_count=0,
+                        tool_event_count=0,
+                        system_event_count=0,
+                        tool_type_counts={},
+                    )
 
-        if saw_change:
-            last_change_at = time.monotonic()
-        elif time.monotonic() - last_change_at >= IDLE_EXIT_SECONDS:
-            break
+            if saw_change:
+                last_change_at = time.monotonic()
+            elif time.monotonic() - last_change_at >= IDLE_EXIT_SECONDS:
+                break
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+            time.sleep(POLL_INTERVAL_SECONDS)
+    finally:
+        lock_handle.release()
+
+
 def _close_episode(*, repo_id: str, host_app: str, host_session_key: str, uow_factory) -> None:
     """Close one active episode when a newer session replaces it."""
 
@@ -235,6 +245,12 @@ def _record_status(
         host_status["last_successful_sync_at"] = last_successful_sync_at
     host_status["last_error"] = last_error
     status_path.write_text(json.dumps(status, indent=2, sort_keys=True), encoding="utf-8")
+
+
+def _write_pid_artifact(*, repo_root: Path) -> None:
+    """Persist the compatibility pid artifact for the current poller process."""
+
+    write_poller_pid_artifact(repo_root=repo_root)
 
 
 def _utc_now() -> datetime:
