@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 from pathlib import Path
 import sys
@@ -257,6 +258,15 @@ def _load_payload(json_text: str | None, json_file: str | None) -> dict[str, Any
     raise ValueError("Either --json or --json-file is required")
 
 
+def _installed_shellbrain_version() -> str:
+    """Return the installed Shellbrain package version, falling back in editable dev mode."""
+
+    try:
+        return importlib.metadata.version("shellbrain")
+    except importlib.metadata.PackageNotFoundError:
+        return "dev"
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Build the public CLI parser with operator help and subcommands."""
 
@@ -265,6 +275,11 @@ def build_parser() -> argparse.ArgumentParser:
         description="Shellbrain CLI for repo-scoped recall and evidence-backed writes.",
         epilog=_TOP_LEVEL_HELP,
         formatter_class=_HelpFormatter,
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {_installed_shellbrain_version()}",
     )
     _add_repo_context_arguments(parser)
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="command")

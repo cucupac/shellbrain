@@ -92,6 +92,21 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "upgrade" in output
 
 
+def test_shellbrain_version_should_print_the_installed_version(
+    monkeypatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """top-level version should print the installed package version without requiring a command."""
+
+    monkeypatch.setattr(cli_main, "_installed_shellbrain_version", lambda: "9.9.9")
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["--version"])
+
+    assert excinfo.value.code == 0
+    assert capsys.readouterr().out.strip() == "shellbrain 9.9.9"
+
+
 def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixture[str]) -> None:
     """init help should explain the managed bootstrap path and advanced overrides."""
 
