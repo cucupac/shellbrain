@@ -37,7 +37,7 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
     repo_root = Path(__file__).resolve().parents[2]
     texts = [
         _read_text(repo_root / "docs" / "external-quickstart.md"),
-        _read_text(repo_root / "skills" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start" / "SKILL.md"),
         _read_text(repo_root / "app" / "onboarding_assets" / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"),
     ]
 
@@ -83,21 +83,20 @@ def test_cli_help_should_share_the_short_protocol() -> None:
     assert "--no-sync" not in help_text
 
 
-def test_repo_codex_skill_should_ship_codex_agent_metadata() -> None:
-    """The repo-facing Codex skill should include Codex UI metadata."""
+def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
+    """The packaged Codex skill should include Codex UI metadata."""
 
     repo_root = Path(__file__).resolve().parents[2]
-    openai_yaml = _read_text(repo_root / "skills" / "shellbrain-session-start" / "agents" / "openai.yaml")
+    openai_yaml = _read_text(repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start" / "agents" / "openai.yaml")
 
     assert 'display_name: "Shellbrain Session Start"' in openai_yaml
     assert 'default_prompt: "Use $shellbrain-session-start' in openai_yaml
 
 
-def test_packaged_codex_asset_should_match_repo_codex_skill() -> None:
-    """The packaged Codex asset should stay aligned with the repo-facing Codex skill."""
+def test_packaged_codex_asset_should_include_required_files() -> None:
+    """The packaged Codex asset should include the files needed by the host."""
 
     repo_root = Path(__file__).resolve().parents[2]
-    repo_skill_root = repo_root / "skills" / "shellbrain-session-start"
     packaged_skill_root = repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start"
 
     relative_paths = [
@@ -110,7 +109,7 @@ def test_packaged_codex_asset_should_match_repo_codex_skill() -> None:
     ]
 
     for relative_path in relative_paths:
-        assert _read_text(repo_skill_root / relative_path) == _read_text(packaged_skill_root / relative_path)
+        assert (packaged_skill_root / relative_path).is_file()
 
 
 def test_install_script_should_locate_binary_and_always_run_init() -> None:
