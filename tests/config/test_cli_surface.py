@@ -117,9 +117,44 @@ def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixtu
     output = capsys.readouterr().out
     assert "Bootstrap or repair" in output
     assert "registers a repo only when one is obvious" in output
+    assert "--storage" in output
+    assert "--admin-dsn" in output
+    assert "PostgreSQL database with pgvector" in output
     assert "--no-host-assets" in output
     assert "--skip-model-download" in output
     assert "--repo-id" in output
+
+
+def test_init_should_forward_storage_flags_to_run_init(monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """init should pass storage selection flags through to the bootstrap entrypoint."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(cli_main, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root)
+    monkeypatch.setattr(cli_main, "_should_register_repo_during_init", lambda **kwargs: False)
+    monkeypatch.setattr(
+        "app.periphery.admin.init.run_init",
+        lambda **kwargs: captured.update(kwargs)
+        or type("Result", (), {"outcome": "initialized", "lines": ["ok"], "exit_code": 0})(),
+    )
+
+    exit_code = cli_main.main(
+        [
+            "init",
+            "--storage",
+            "external",
+            "--admin-dsn",
+            "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["storage"] == "external"
+    assert captured["admin_dsn"] == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    assert captured["repo_root"] == repo_root
+    assert "Outcome: initialized" in capsys.readouterr().out
 
 
 def test_upgrade_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:

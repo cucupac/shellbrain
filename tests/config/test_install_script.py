@@ -313,8 +313,8 @@ def test_install_script_should_migrate_legacy_inline_path_blocks_to_the_new_sour
     assert migrated_text.count(SHELLBRAIN_SECTION_HEADER) == 1
 
 
-def test_install_script_should_fail_fast_when_docker_is_missing(tmp_path: Path) -> None:
-    """The installer should stop before init when Docker is not installed."""
+def test_install_script_should_delegate_storage_choice_to_init_when_docker_is_missing(tmp_path: Path) -> None:
+    """The installer should still reach init so users can choose external PostgreSQL."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
     completed, home_dir, marker_path, _ = _run_hosted_script(
@@ -325,18 +325,17 @@ def test_install_script_should_fail_fast_when_docker_is_missing(tmp_path: Path) 
         docker_mode="missing",
     )
 
-    assert completed.returncode == 1
-    assert not marker_path.exists()
-    assert "managed-local bootstrap incomplete." in completed.stdout
-    assert "reason: Docker is not installed." in completed.stdout
-    assert "shellbrain CLI is installed, but managed-local bootstrap was not run." in completed.stdout
-    assert "fix Docker, then rerun: shellbrain init" in completed.stdout
-    assert "docs: shellbrain.ai/external-quickstart" in completed.stdout
+    assert completed.returncode == 0
+    assert marker_path.exists()
+    assert "shellbrain init will ask how it should store data." in completed.stdout
+    assert "default: let shellbrain set up local PostgreSQL + pgvector for you." in completed.stdout
+    assert "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
+    assert "STUB_INIT" in completed.stdout
     assert (home_dir / ".config" / "shellbrain" / "path.sh").exists()
 
 
-def test_install_script_should_fail_fast_when_the_docker_daemon_is_unreachable(tmp_path: Path) -> None:
-    """The installer should stop before init when Docker exists but the daemon is unavailable."""
+def test_install_script_should_not_block_init_when_the_docker_daemon_is_unreachable(tmp_path: Path) -> None:
+    """The installer should still delegate to init when Docker exists but is unavailable."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
     completed, home_dir, marker_path, _ = _run_hosted_script(
@@ -347,11 +346,9 @@ def test_install_script_should_fail_fast_when_the_docker_daemon_is_unreachable(t
         docker_mode="daemon-down",
     )
 
-    assert completed.returncode == 1
-    assert not marker_path.exists()
-    assert "managed-local bootstrap incomplete." in completed.stdout
-    assert "reason: Docker is installed, but the daemon is not running or reachable." in completed.stdout
-    assert "shellbrain CLI is installed, but managed-local bootstrap was not run." in completed.stdout
-    assert "fix Docker, then rerun: shellbrain init" in completed.stdout
-    assert "docs: shellbrain.ai/external-quickstart" in completed.stdout
+    assert completed.returncode == 0
+    assert marker_path.exists()
+    assert "shellbrain init will ask how it should store data." in completed.stdout
+    assert "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
+    assert "STUB_INIT" in completed.stdout
     assert (home_dir / ".config" / "shellbrain" / "path.sh").exists()

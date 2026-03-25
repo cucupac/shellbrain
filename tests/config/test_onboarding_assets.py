@@ -112,38 +112,38 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
         assert (packaged_skill_root / relative_path).is_file()
 
 
-def test_install_script_should_locate_binary_preflight_docker_and_configure_shell_snippets() -> None:
-    """The website installer should wire PATH through managed snippets and preflight Docker before init."""
+def test_install_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> None:
+    """The website installer should wire PATH through managed snippets and let init choose storage mode."""
 
     repo_root = Path(__file__).resolve().parents[2]
     install_script = _read_text(repo_root / "docs" / "install")
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in install_script
     assert "--upgrade" in install_script
-    assert "preflight_docker_for_managed_init" in install_script
     assert "$SHELLBRAIN init" in install_script
     assert "ensure_user_bin_on_shell_path" in install_script
     assert 'shellbrain/path.sh' in install_script
     assert 'shellbrain.fish' in install_script
     assert 'cli path: ensured via $PATH_SNIPPET' in install_script
-    assert "managed-local bootstrap incomplete." in install_script
+    assert "shellbrain init will ask how it should store data." in install_script
+    assert "existing PostgreSQL + pgvector database" in install_script
     assert "git rev-parse --is-inside-work-tree" not in install_script
     assert "shellbrain was installed but is not on PATH." not in install_script
 
 
-def test_upgrade_script_should_locate_binary_preflight_docker_and_configure_shell_snippets() -> None:
-    """The website upgrader should wire PATH through managed snippets and preflight Docker before init."""
+def test_upgrade_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> None:
+    """The website upgrader should wire PATH through managed snippets and let init choose storage mode."""
 
     repo_root = Path(__file__).resolve().parents[2]
     upgrade_script = _read_text(repo_root / "docs" / "upgrade")
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in upgrade_script
     assert "--upgrade" in upgrade_script
-    assert "preflight_docker_for_managed_init" in upgrade_script
     assert "$SHELLBRAIN init" in upgrade_script
     assert "ensure_user_bin_on_shell_path" in upgrade_script
     assert 'shellbrain/path.sh' in upgrade_script
     assert 'shellbrain.fish' in upgrade_script
     assert 'cli path: ensured via $PATH_SNIPPET' in upgrade_script
-    assert "managed-local bootstrap incomplete." in upgrade_script
+    assert "shellbrain init will ask how it should store data." in upgrade_script
+    assert "existing PostgreSQL + pgvector database" in upgrade_script
     assert "shellbrain was upgraded but could not be found." in upgrade_script

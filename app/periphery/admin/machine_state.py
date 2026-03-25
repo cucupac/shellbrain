@@ -18,9 +18,10 @@ from app.boot.home import (
 )
 
 
-CONFIG_VERSION = 1
+CONFIG_VERSION = 2
 BOOTSTRAP_VERSION = 1
 RUNTIME_MODE_MANAGED_LOCAL = "managed_local"
+RUNTIME_MODE_EXTERNAL_POSTGRES = "external_postgres"
 BOOTSTRAP_STATE_PROVISIONING = "provisioning"
 BOOTSTRAP_STATE_READY = "ready"
 BOOTSTRAP_STATE_REPAIR_NEEDED = "repair_needed"
@@ -78,12 +79,13 @@ class MachineConfig:
 
     config_version: int
     bootstrap_version: int
+    instance_id: str
     runtime_mode: str
     bootstrap_state: str
     current_step: str | None
     last_error: str | None
     database: DatabaseState
-    managed: ManagedInstanceState
+    managed: ManagedInstanceState | None
     backups: BackupState
     embeddings: EmbeddingRuntimeState
 
@@ -91,7 +93,7 @@ class MachineConfig:
     def machine_instance_id(self) -> str:
         """Return the active machine instance identifier."""
 
-        return self.managed.instance_id
+        return self.instance_id
 
 
 def default_paths() -> dict[str, str]:
@@ -202,22 +204,14 @@ def _machine_config_from_payload(payload: dict[str, Any]) -> MachineConfig:
     managed = payload.get("managed")
     backups = payload.get("backups")
     embeddings = payload.get("embeddings")
-    if not isinstance(database, dict) or not isinstance(managed, dict):
-        raise ValueError("Machine config is missing required database or managed sections.")
+    if not isinstance(database, dict):
+        raise ValueError("Machine config is missing the required database section.")
     if not isinstance(backups, dict) or not isinstance(embeddings, dict):
         raise ValueError("Machine config is missing required backups or embeddings sections.")
-    return MachineConfig(
-        config_version=int(payload.get("config_version") or 0),
-        bootstrap_version=int(payload.get("bootstrap_version") or 0),
-        runtime_mode=str(payload.get("runtime_mode") or ""),
-        bootstrap_state=str(payload.get("bootstrap_state") or ""),
-        current_step=_optional_str(payload.get("current_step")),
-        last_error=_optional_str(payload.get("last_error")),
-        database=DatabaseState(
-            app_dsn=_required_str(database, "app_dsn"),
-            admin_dsn=_required_str(database, "admin_dsn"),
-        ),
-        managed=ManagedInstanceState(
+    runtime_mode = str(payload.get("runtime_mode") or "")
+    managed_state = None
+    if isinstance(managed, dict):
+        managed_state = ManagedInstanceState(
             instance_id=_required_str(managed, "instance_id"),
             container_name=_required_str(managed, "container_name"),
             image=_required_str(managed, "image"),
@@ -229,7 +223,29 @@ def _machine_config_from_payload(payload: dict[str, Any]) -> MachineConfig:
             admin_password=_required_str(managed, "admin_password"),
             app_user=_required_str(managed, "app_user"),
             app_password=_required_str(managed, "app_password"),
+        )
+    instance_id = _optional_str(payload.get("instance_id"))
+    if instance_id is None and managed_state is not None:
+        instance_id = managed_state.instance_id
+    if instance_id is None:
+        raise ValueError("Machine config is missing the required instance_id field.")
+    if runtime_mode == RUNTIME_MODE_MANAGED_LOCAL and managed_state is None:
+        raise ValueError("Managed-local machine config is missing the managed section.")
+    if runtime_mode not in {RUNTIME_MODE_MANAGED_LOCAL, RUNTIME_MODE_EXTERNAL_POSTGRES}:
+        raise ValueError(f"Unsupported machine config runtime_mode: {runtime_mode!r}")
+    return MachineConfig(
+        config_version=int(payload.get("config_version") or 0),
+        bootstrap_version=int(payload.get("bootstrap_version") or 0),
+        instance_id=instance_id,
+        runtime_mode=runtime_mode,
+        bootstrap_state=str(payload.get("bootstrap_state") or ""),
+        current_step=_optional_str(payload.get("current_step")),
+        last_error=_optional_str(payload.get("last_error")),
+        database=DatabaseState(
+            app_dsn=_required_str(database, "app_dsn"),
+            admin_dsn=_required_str(database, "admin_dsn"),
         ),
+        managed=managed_state,
         backups=BackupState(
             root=_required_str(backups, "root"),
             mirror_root=_optional_str(backups.get("mirror_root")),
@@ -271,6 +287,7 @@ def _render_machine_config(config: MachineConfig) -> str:
     payload = {
         "config_version": config.config_version,
         "bootstrap_version": config.bootstrap_version,
+        "instance_id": config.instance_id,
         "runtime_mode": config.runtime_mode,
         "bootstrap_state": config.bootstrap_state,
         "current_step": config.current_step,
@@ -278,19 +295,6 @@ def _render_machine_config(config: MachineConfig) -> str:
         "database": {
             "app_dsn": config.database.app_dsn,
             "admin_dsn": config.database.admin_dsn,
-        },
-        "managed": {
-            "instance_id": config.managed.instance_id,
-            "container_name": config.managed.container_name,
-            "image": config.managed.image,
-            "host": config.managed.host,
-            "port": config.managed.port,
-            "db_name": config.managed.db_name,
-            "data_dir": config.managed.data_dir,
-            "admin_user": config.managed.admin_user,
-            "admin_password": config.managed.admin_password,
-            "app_user": config.managed.app_user,
-            "app_password": config.managed.app_password,
         },
         "backups": {
             "root": config.backups.root,
@@ -306,6 +310,20 @@ def _render_machine_config(config: MachineConfig) -> str:
             "last_error": config.embeddings.last_error,
         },
     }
+    if config.managed is not None:
+        payload["managed"] = {
+            "instance_id": config.managed.instance_id,
+            "container_name": config.managed.container_name,
+            "image": config.managed.image,
+            "host": config.managed.host,
+            "port": config.managed.port,
+            "db_name": config.managed.db_name,
+            "data_dir": config.managed.data_dir,
+            "admin_user": config.managed.admin_user,
+            "admin_password": config.managed.admin_password,
+            "app_user": config.managed.app_user,
+            "app_password": config.managed.app_password,
+        }
     return _render_simple_payload(payload)
 
 

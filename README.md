@@ -11,19 +11,17 @@ It stores what happened, what worked, what failed, and what the human prefers â€
 curl -L shellbrain.ai/install | bash
 ```
 
-**One command on supported machines.** The installer provisions the local runtime, installs the Codex and Claude skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you when the managed-local prerequisites are met. Repos register themselves on first use.
+**One command on supported machines.** The installer provisions the local runtime, installs the Codex and Claude skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you. On first bootstrap, `shellbrain init` asks how it should store data. Repos register themselves on first use.
 
-**Managed-local requirements**
+**Requirements**
 
 - macOS or Linux
 - Python 3.11+ required
-- Docker installed and the daemon running
+- `shellbrain init` asks you to choose one storage mode on first bootstrap
+- managed local: Docker installed and the daemon running
+- external: PostgreSQL with pgvector
 - first init downloads a local embedding model
-- PostgreSQL + pgvector run inside the managed Docker runtime
 - Windows is not supported yet
-- external Postgres remains an advanced/operator-managed path for now
-
-The repo `Dockerfile` is for packaging and development smoke coverage. It is not the end-user runtime path.
 
 ---
 
