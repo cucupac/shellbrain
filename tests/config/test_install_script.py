@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 
@@ -86,6 +87,19 @@ def _write_fake_docker(*, fake_bin: Path, daemon_running: bool) -> None:
     fake_docker.chmod(0o755)
 
 
+def _write_system_tool_shims(*, system_bin: Path) -> None:
+    """Expose only the host commands the hosted scripts need during test runs."""
+
+    system_bin.mkdir(exist_ok=True)
+    for command in ("bash", "grep", "awk", "mv", "dirname", "mkdir", "touch", "cat"):
+        target = shutil.which(command)
+        if target is None:
+            raise RuntimeError(f"expected host command {command!r} to be available for installer tests")
+        shim = system_bin / command
+        if not shim.exists():
+            shim.symlink_to(target)
+
+
 def _run_hosted_script(
     *,
     tmp_path: Path,
@@ -101,6 +115,8 @@ def _run_hosted_script(
     home_dir.mkdir(exist_ok=True)
     fake_bin = tmp_path / "fake-bin"
     fake_bin.mkdir(exist_ok=True)
+    system_bin = tmp_path / "system-bin"
+    _write_system_tool_shims(system_bin=system_bin)
     marker_path = tmp_path / "shellbrain-init-called"
     pip_log_path = tmp_path / "pip-args.txt"
 
@@ -120,7 +136,7 @@ def _run_hosted_script(
         capture_output=True,
         text=True,
         env={
-            **dict(PATH=f"{fake_bin}:{Path('/usr/bin')}:{Path('/bin')}"),
+            **dict(PATH=f"{fake_bin}:{system_bin}"),
             **dict(HOME=str(home_dir), SHELL=shell_path),
         },
         check=False,

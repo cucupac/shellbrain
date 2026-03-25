@@ -230,7 +230,7 @@ def _resolve_command_executable(command: str | None) -> str | None:
         return None
     executable = parts[0]
     if Path(executable).is_absolute():
-        return str(Path(executable).resolve())
+        return str(Path(executable).expanduser())
     resolved = shutil.which(executable)
     if resolved is None:
         return None

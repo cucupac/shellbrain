@@ -27,6 +27,7 @@ _MAX_FAILURES = 6
 _MAX_CAPABILITY_GAPS = 3
 _MAX_EVIDENCE = 3
 _PRIORITY_LIMIT = 3
+_REAL_DATETIME = datetime
 
 _SEVERITY_WEIGHT = {"high": 3, "medium": 2, "low": 1}
 
@@ -779,10 +780,10 @@ def _row_time(row: dict[str, object], *, field: str = "created_at") -> datetime:
     """Return a timezone-aware datetime from one row mapping."""
 
     value = row.get(field)
-    if isinstance(value, datetime):
+    if isinstance(value, _REAL_DATETIME):
         return value.astimezone(timezone.utc) if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
     if isinstance(value, str):
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        parsed = _REAL_DATETIME.fromisoformat(value.replace("Z", "+00:00"))
         return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
     raise TypeError(f"Expected datetime field {field!r}, got {value!r}")
 

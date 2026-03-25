@@ -66,7 +66,7 @@ def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("app.periphery.episodes.poller_lock._is_process_running", lambda pid: False)
+    monkeypatch.setattr("app.periphery.episodes.poller_lock._is_process_running", lambda pid: pid != 999_999)
 
     handle = acquire_poller_lock(repo_id="repo-a", repo_root=repo_root)
 
@@ -94,7 +94,7 @@ def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path
     }
     (lock_root / "owner.json").write_text(json.dumps(owner, indent=2, sort_keys=True), encoding="utf-8")
 
-    def _raise_permission_error(_pid: int) -> None:
+    def _raise_permission_error(_pid: int, _signal: int) -> None:
         raise PermissionError(1, "Operation not permitted")
 
     monkeypatch.setattr("app.periphery.episodes.poller_lock.os.kill", _raise_permission_error)

@@ -189,9 +189,7 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
     )
 
     assert report["host_integrations"]["claude_global_hook"]["managed"] is True
-    assert report["host_integrations"]["claude_global_hook"]["command_executable"] == str(
-        Path("/tmp/missing-shellbrain-python").resolve()
-    )
+    assert report["host_integrations"]["claude_global_hook"]["command_executable"] == "/tmp/missing-shellbrain-python"
     assert report["host_integrations"]["claude_global_hook"]["executable_exists"] is False
     assert report["host_integration_warning"] == (
         "Claude global hook points at a missing interpreter. Rerun `shellbrain init` to repair it."
