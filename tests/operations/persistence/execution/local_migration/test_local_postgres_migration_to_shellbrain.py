@@ -82,7 +82,8 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
 
     try:
         data_dir.mkdir(parents=True, exist_ok=True)
-        _compose_up(repo_root, legacy_env)
+        port = _compose_up(repo_root, legacy_env)
+        migration_env["POSTGRES_PORT"] = str(port)
         _wait_for_container_postgres(legacy_container, LEGACY_USER, "memory")
 
         legacy_dsn = f"postgresql+psycopg://{LEGACY_USER}:{LEGACY_PASSWORD}@localhost:{port}/memory"
@@ -121,10 +122,37 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         _cleanup_project(compose_project, legacy_container, shellbrain_container)
 
 
-def _compose_up(repo_root: Path, env: dict[str, str]) -> None:
-    """Start one isolated Docker Compose PostgreSQL service."""
+def _compose_up(repo_root: Path, env: dict[str, str], *, max_attempts: int = 5) -> int:
+    """Start one isolated Docker Compose PostgreSQL service, retrying on host-port races."""
 
-    subprocess.run(["docker", "compose", "-p", env["COMPOSE_PROJECT_NAME"], "up", "-d", "db"], check=True, cwd=repo_root, env=env)
+    for _attempt in range(max_attempts):
+        completed = subprocess.run(
+            ["docker", "compose", "-p", env["COMPOSE_PROJECT_NAME"], "up", "-d", "db"],
+            check=False,
+            cwd=repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode == 0:
+            return int(env["POSTGRES_PORT"])
+        if "ports are not available" not in completed.stderr or "bind: address already in use" not in completed.stderr:
+            raise subprocess.CalledProcessError(
+                completed.returncode,
+                completed.args,
+                output=completed.stdout,
+                stderr=completed.stderr,
+            )
+        subprocess.run(
+            ["docker", "compose", "-p", env["COMPOSE_PROJECT_NAME"], "down", "--remove-orphans"],
+            check=False,
+            cwd=repo_root,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+        env["POSTGRES_PORT"] = str(_reserve_tcp_port())
+    raise AssertionError(f"Timed out finding one free host port for {env['COMPOSE_PROJECT_NAME']}.")
 
 
 def _cleanup_project(compose_project: str, legacy_container: str, shellbrain_container: str) -> None:

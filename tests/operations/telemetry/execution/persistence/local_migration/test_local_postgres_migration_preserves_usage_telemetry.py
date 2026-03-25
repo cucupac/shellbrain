@@ -75,7 +75,8 @@ def test_local_migration_should_preserve_sentinel_usage_telemetry_while_promotin
 
     try:
         data_dir.mkdir(parents=True, exist_ok=True)
-        _compose_up(repo_root, legacy_env)
+        port = _compose_up(repo_root, legacy_env)
+        migration_env["POSTGRES_PORT"] = str(port)
         _wait_for_container_postgres(legacy_container, LEGACY_USER, "memory")
 
         legacy_dsn = f"postgresql+psycopg://{LEGACY_USER}:{LEGACY_PASSWORD}@localhost:{port}/memory"
