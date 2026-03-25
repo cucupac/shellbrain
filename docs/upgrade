@@ -5,6 +5,9 @@ SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN="# >>> shellbrain path >>>"
 SHELLBRAIN_LEGACY_PATH_MARKER_END="# <<< shellbrain path <<<"
 SHELLBRAIN_SOURCE_MARKER_BEGIN="# >>> shellbrain source >>>"
 SHELLBRAIN_SOURCE_MARKER_END="# <<< shellbrain source <<<"
+SHELLBRAIN_SOURCE_SECTION_BORDER="# ============================================================================ #"
+SHELLBRAIN_SOURCE_SECTION_HEADER="# SHELLBRAIN"
+SHELLBRAIN_SOURCE_LINE='[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" ] && . "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh"'
 PATH_SNIPPET=""
 PATH_TARGETS=()
 
@@ -75,16 +78,112 @@ remove_managed_block() {
   mv "$temp_file" "$file"
 }
 
+remove_shellbrain_section_block() {
+  local file="$1"
+  local temp_file="${file}.shellbrain.tmp"
+
+  [ -f "$file" ] || return 0
+
+  awk \
+    -v border="$SHELLBRAIN_SOURCE_SECTION_BORDER" \
+    -v header="$SHELLBRAIN_SOURCE_SECTION_HEADER" \
+    -v source_line="$SHELLBRAIN_SOURCE_LINE" '
+    function flush_buffer() {
+      if (buffer_count >= 1) print buffer1
+      if (buffer_count >= 2) print buffer2
+      if (buffer_count >= 3) print buffer3
+      if (buffer_count >= 4) print buffer4
+      buffer_count = 0
+      buffer1 = ""
+      buffer2 = ""
+      buffer3 = ""
+      buffer4 = ""
+    }
+
+    {
+      if (buffer_count == 0) {
+        if ($0 == border) {
+          buffer_count = 1
+          buffer1 = $0
+          next
+        }
+        print
+        next
+      }
+
+      if (buffer_count == 1) {
+        if ($0 == header) {
+          buffer_count = 2
+          buffer2 = $0
+          next
+        }
+        flush_buffer()
+        print
+        next
+      }
+
+      if (buffer_count == 2) {
+        if ($0 == border) {
+          buffer_count = 3
+          buffer3 = $0
+          next
+        }
+        flush_buffer()
+        print
+        next
+      }
+
+      if (buffer_count == 3) {
+        if ($0 == "") {
+          buffer_count = 4
+          buffer4 = $0
+          next
+        }
+        flush_buffer()
+        print
+        next
+      }
+
+      if (buffer_count == 4) {
+        if ($0 == source_line) {
+          buffer_count = 0
+          buffer1 = ""
+          buffer2 = ""
+          buffer3 = ""
+          buffer4 = ""
+          next
+        }
+        flush_buffer()
+        print
+        next
+      }
+    }
+
+    END {
+      flush_buffer()
+    }
+  ' "$file" > "$temp_file"
+  mv "$temp_file" "$file"
+}
+
 render_posix_source_block() {
   cat <<'EOF'
-# >>> shellbrain source >>>
-_shellbrain_path="${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh"
-if [ -f "$_shellbrain_path" ]; then
-  . "$_shellbrain_path"
-fi
-unset _shellbrain_path
-# <<< shellbrain source <<<
+# ============================================================================ #
+# SHELLBRAIN
+# ============================================================================ #
+
+[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" ] && . "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh"
 EOF
+}
+
+file_contains_shellbrain_block() {
+  local file="$1"
+
+  file_contains_marker "$file" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" && return 0
+  file_contains_marker "$file" "$SHELLBRAIN_SOURCE_MARKER_BEGIN" && return 0
+
+  grep -Fq "$SHELLBRAIN_SOURCE_SECTION_HEADER" "$file" 2>/dev/null \
+    && grep -Fq "$SHELLBRAIN_SOURCE_LINE" "$file" 2>/dev/null
 }
 
 ensure_profile_sources_snippet() {
@@ -96,6 +195,7 @@ ensure_profile_sources_snippet() {
 
   remove_managed_block "$profile" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" "$SHELLBRAIN_LEGACY_PATH_MARKER_END"
   remove_managed_block "$profile" "$SHELLBRAIN_SOURCE_MARKER_BEGIN" "$SHELLBRAIN_SOURCE_MARKER_END"
+  remove_shellbrain_section_block "$profile"
 
   {
     printf '\n'
@@ -157,8 +257,7 @@ ensure_user_bin_on_shell_path() {
   source_block="$(render_posix_source_block)"
 
   for profile in "${legacy_profiles[@]}"; do
-    if file_contains_marker "$profile" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" \
-      || file_contains_marker "$profile" "$SHELLBRAIN_SOURCE_MARKER_BEGIN"; then
+    if file_contains_shellbrain_block "$profile"; then
       ensure_profile_sources_snippet "$profile" "$source_block"
     fi
   done

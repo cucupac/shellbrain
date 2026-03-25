@@ -8,6 +8,14 @@ import subprocess
 import sys
 
 
+SHELLBRAIN_SECTION_BORDER = "# ============================================================================ #"
+SHELLBRAIN_SECTION_HEADER = "# SHELLBRAIN"
+SHELLBRAIN_SOURCE_LINE = (
+    '[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" ]'
+    ' && . "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh"'
+)
+
+
 def _repo_root() -> Path:
     """Return the repository root for hosted script lookups."""
 
@@ -169,9 +177,12 @@ def test_install_script_should_wire_zsh_login_and_interactive_shells(tmp_path: P
     assert str(zprofile) in completed.stdout
     assert str(zshrc) in completed.stdout
     assert f'export PATH="{user_bin}:$PATH" ;;' in path_snippet.read_text(encoding="utf-8")
-    assert "# >>> shellbrain source >>>" in zprofile.read_text(encoding="utf-8")
-    assert "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" in zprofile.read_text(encoding="utf-8")
-    assert "# >>> shellbrain source >>>" in zshrc.read_text(encoding="utf-8")
+    zprofile_text = zprofile.read_text(encoding="utf-8")
+    zshrc_text = zshrc.read_text(encoding="utf-8")
+    assert f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}" in zprofile_text
+    assert SHELLBRAIN_SOURCE_LINE in zprofile_text
+    assert f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}" in zshrc_text
+    assert SHELLBRAIN_SOURCE_LINE in zshrc_text
     assert not (home_dir / ".bash_profile").exists()
 
 
@@ -199,8 +210,8 @@ def test_upgrade_script_should_wire_bash_login_and_interactive_shells(tmp_path: 
     assert f"cli path: ensured via {path_snippet}" in completed.stdout
     assert str(bash_profile) in completed.stdout
     assert str(bashrc) in completed.stdout
-    assert "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" in bash_profile.read_text(encoding="utf-8")
-    assert "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" in bashrc.read_text(encoding="utf-8")
+    assert SHELLBRAIN_SOURCE_LINE in bash_profile.read_text(encoding="utf-8")
+    assert SHELLBRAIN_SOURCE_LINE in bashrc.read_text(encoding="utf-8")
     assert not (home_dir / ".zprofile").exists()
 
 
@@ -260,8 +271,8 @@ def test_install_script_should_rewrite_the_managed_path_snippet_when_user_bin_ch
     assert second_completed.returncode == 0, second_completed.stderr
     assert str(second_user_bin) in snippet_text
     assert str(first_user_bin) not in snippet_text
-    assert zprofile.read_text(encoding="utf-8").count("# >>> shellbrain source >>>") == 1
-    assert zshrc.read_text(encoding="utf-8").count("# >>> shellbrain source >>>") == 1
+    assert zprofile.read_text(encoding="utf-8").count(SHELLBRAIN_SECTION_HEADER) == 1
+    assert zshrc.read_text(encoding="utf-8").count(SHELLBRAIN_SECTION_HEADER) == 1
 
 
 def test_install_script_should_migrate_legacy_inline_path_blocks_to_the_new_source_model(tmp_path: Path) -> None:
@@ -297,9 +308,9 @@ def test_install_script_should_migrate_legacy_inline_path_blocks_to_the_new_sour
     assert completed.returncode == 0, completed.stderr
     assert marker_path.exists()
     assert "# >>> shellbrain path >>>" not in migrated_text
-    assert "# >>> shellbrain source >>>" in migrated_text
-    assert "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" in migrated_text
-    assert migrated_text.count("# >>> shellbrain source >>>") == 1
+    assert f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}" in migrated_text
+    assert SHELLBRAIN_SOURCE_LINE in migrated_text
+    assert migrated_text.count(SHELLBRAIN_SECTION_HEADER) == 1
 
 
 def test_install_script_should_fail_fast_when_docker_is_missing(tmp_path: Path) -> None:
