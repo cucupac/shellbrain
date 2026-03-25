@@ -500,7 +500,7 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
 
     from app.periphery.admin.instance_guard import InstanceMetadataRecord
 
-    monkeypatch.setattr("app.boot.db.get_db_dsn", lambda: "postgresql+psycopg://shellbrain:shellbrain@localhost:5432/shellbrain_ci_test")
+    monkeypatch.setattr("app.boot.db.get_db_dsn", lambda: "postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test")
     monkeypatch.setattr(
         "app.periphery.admin.instance_guard.inspect_role_safety",
         lambda dsn: ["Current DSN role is superuser-capable."] if dsn else [],
@@ -529,7 +529,7 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 
     from app.periphery.admin.backup import BackupManifest
 
-    monkeypatch.setattr("app.boot.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin:pw@localhost:5432/test_admin")
+    monkeypatch.setattr("app.boot.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
     monkeypatch.setattr("app.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
     monkeypatch.setattr("app.boot.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
@@ -560,8 +560,8 @@ def test_admin_doctor_should_print_structured_report(
 ) -> None:
     """admin doctor should print one JSON safety report."""
 
-    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app:pw@localhost:5432/test_app")
-    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin:pw@localhost:5432/test_admin")
+    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app_user:app_password@localhost:5432/test_app")
+    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
     monkeypatch.setattr("app.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
     monkeypatch.setattr(
         "app.periphery.admin.doctor.build_doctor_report",

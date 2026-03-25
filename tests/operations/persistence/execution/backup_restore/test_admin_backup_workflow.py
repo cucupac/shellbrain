@@ -12,6 +12,11 @@ import pytest
 from app.periphery.admin.backup import BackupManifest, create_backup, list_backups, restore_backup, verify_backup
 from app.periphery.admin.instance_guard import InstanceMetadataRecord
 
+ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
+APP_LIVE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
+ADMIN_RESTORE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_restore_scratch"
+APP_RESTORE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_restore_scratch"
+
 
 def test_admin_backup_create_should_write_manifest_and_optional_mirror(
     tmp_path: Path,
@@ -21,7 +26,7 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
 
     backup_root = tmp_path / "backups"
     mirror_root = tmp_path / "mirror"
-    admin_dsn = "postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live"
+    admin_dsn = ADMIN_LIVE_DSN
 
     monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
     monkeypatch.setattr(
@@ -42,7 +47,7 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
             "host": "localhost",
             "port": "5432",
             "database": "shellbrain_live",
-            "user": "shellbrain_admin",
+            "user": "admin_user",
         },
     )
     monkeypatch.setattr(
@@ -73,7 +78,7 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
     """admin backup verify should fail when the artifact content no longer matches the manifest hash."""
 
     backup_root = tmp_path / "backups"
-    admin_dsn = "postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live"
+    admin_dsn = ADMIN_LIVE_DSN
 
     monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
     monkeypatch.setattr(
@@ -94,7 +99,7 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
             "host": "localhost",
             "port": "5432",
             "database": "shellbrain_live",
-            "user": "shellbrain_admin",
+            "user": "admin_user",
         },
     )
     monkeypatch.setattr(
@@ -117,7 +122,7 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
     """managed-container backup env should preserve PATH while injecting PGPASSWORD."""
 
     backup_root = tmp_path / "backups"
-    admin_dsn = "postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live"
+    admin_dsn = ADMIN_LIVE_DSN
     captured: dict[str, object] = {}
 
     monkeypatch.setenv("PATH", "/usr/local/bin:/usr/bin")
@@ -139,7 +144,7 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
             "host": "localhost",
             "port": "5432",
             "database": "shellbrain_live",
-            "user": "shellbrain_admin",
+            "user": "admin_user",
         },
     )
 
@@ -154,13 +159,13 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
         backup_root=backup_root,
         container_name="shellbrain-postgres-test",
         container_db_name="shellbrain",
-        container_admin_user="shellbrain_admin",
-        container_admin_password="secret-password",
+        container_admin_user="admin_user",
+        container_admin_password="admin_password",
     )
 
     env = captured["env"]
     assert isinstance(env, dict)
-    assert env["PGPASSWORD"] == "secret-password"
+    assert env["PGPASSWORD"] == "admin_password"
     assert env["PATH"] == "/usr/local/bin:/usr/bin"
 
 
@@ -171,7 +176,7 @@ def test_admin_backup_restore_should_refuse_protected_target_names(tmp_path: Pat
 
     with pytest.raises(RuntimeError, match="protected database name"):
         restore_backup(
-            admin_dsn="postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live",
+            admin_dsn=ADMIN_LIVE_DSN,
             backup_root=tmp_path,
             target_db="shellbrain",
         )
@@ -225,10 +230,10 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
     monkeypatch.setattr("app.periphery.admin.backup.subprocess.run", _fake_run)
 
     restored = restore_backup(
-        admin_dsn="postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live",
+        admin_dsn=ADMIN_LIVE_DSN,
         backup_root=backup_root,
         target_db="shellbrain_restore_scratch",
-        app_dsn="postgresql+psycopg://shellbrain_app:shellbrain@localhost:5432/shellbrain_live",
+        app_dsn=APP_LIVE_DSN,
         backup_id="b-restore",
     )
 
@@ -238,8 +243,8 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
     assert b"SET transaction_timeout = 0;" not in restored_sql
     assert b"CREATE TABLE sentinel" in restored_sql
     assert captured["reconciled"] == {
-        "admin_dsn": "postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_restore_scratch",
-        "app_dsn": "postgresql+psycopg://shellbrain_app:shellbrain@localhost:5432/shellbrain_restore_scratch",
+        "admin_dsn": ADMIN_RESTORE_DSN,
+        "app_dsn": APP_RESTORE_DSN,
     }
     assert restored.backup_id == "b-restore"
 

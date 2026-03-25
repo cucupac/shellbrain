@@ -259,8 +259,8 @@ def _machine_config(*, bootstrap_state: str, readiness_state: str = "pending", l
         current_step="bootstrap",
         last_error=last_error,
         database=DatabaseState(
-            app_dsn="postgresql+psycopg://shellbrain_app:app@127.0.0.1:55432/shellbrain",
-            admin_dsn="postgresql+psycopg://shellbrain_admin:admin@127.0.0.1:55432/shellbrain",
+            app_dsn="postgresql+psycopg://app_user:app_password@127.0.0.1:55432/shellbrain",
+            admin_dsn="postgresql+psycopg://admin_user:admin_password@127.0.0.1:55432/shellbrain",
         ),
         managed=ManagedInstanceState(
             instance_id="inst-1",

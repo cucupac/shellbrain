@@ -10,6 +10,9 @@ from app.periphery.admin.doctor import build_doctor_report
 from app.periphery.admin.instance_guard import InstanceMetadataRecord
 from app.periphery.onboarding.host_assets import install_host_assets
 
+APP_LIVE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
+ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
+
 
 def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Path) -> None:
     """doctor should still produce one report when the app DSN is not configured."""
@@ -42,7 +45,7 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
 
     report = build_doctor_report(
         app_dsn=None,
-        admin_dsn="postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live",
+        admin_dsn=ADMIN_LIVE_DSN,
         backup_root=tmp_path,
     )
 
@@ -106,8 +109,8 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
     monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
 
     report = build_doctor_report(
-        app_dsn="postgresql+psycopg://shellbrain_app:shellbrain@localhost:5432/shellbrain_live",
-        admin_dsn="postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain_live",
+        app_dsn=APP_LIVE_DSN,
+        admin_dsn=ADMIN_LIVE_DSN,
         backup_root=tmp_path,
     )
 

@@ -31,6 +31,13 @@ class _StubEmbeddingProvider(IEmbeddingProvider):
         _ = text
         return [0.1, 0.2, 0.3, 0.4]
 
+LEGACY_USER = "legacy_user"
+LEGACY_PASSWORD = "legacy_password"
+APP_USER = "app_user"
+APP_PASSWORD = "app_password"
+ADMIN_USER = "admin_user"
+ADMIN_PASSWORD = "admin_password"
+
 
 @pytest.mark.docker
 @pytest.mark.persistence
@@ -51,8 +58,8 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         "COMPOSE_PROJECT_NAME": compose_project,
         "POSTGRES_PORT": str(port),
         "POSTGRES_DB": "memory",
-        "POSTGRES_USER": "memory",
-        "POSTGRES_PASSWORD": "memory",
+        "POSTGRES_USER": LEGACY_USER,
+        "POSTGRES_PASSWORD": LEGACY_PASSWORD,
         "SHELLBRAIN_DB_DATA_DIR": str(data_dir),
         "SHELLBRAIN_DB_CONTAINER_NAME": legacy_container,
     }
@@ -62,23 +69,23 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         "POSTGRES_PORT": str(port),
         "SHELLBRAIN_DB_DATA_DIR": str(data_dir),
         "OLD_POSTGRES_DB": "memory",
-        "OLD_POSTGRES_USER": "memory",
-        "OLD_POSTGRES_PASSWORD": "memory",
+        "OLD_POSTGRES_USER": LEGACY_USER,
+        "OLD_POSTGRES_PASSWORD": LEGACY_PASSWORD,
         "OLD_DB_CONTAINER_NAME": legacy_container,
         "NEW_POSTGRES_DB": "shellbrain",
-        "NEW_POSTGRES_ADMIN_USER": "shellbrain_admin",
-        "NEW_POSTGRES_ADMIN_PASSWORD": "shellbrain_admin",
-        "NEW_POSTGRES_APP_USER": "shellbrain_app",
-        "NEW_POSTGRES_APP_PASSWORD": "shellbrain",
+        "NEW_POSTGRES_ADMIN_USER": ADMIN_USER,
+        "NEW_POSTGRES_ADMIN_PASSWORD": ADMIN_PASSWORD,
+        "NEW_POSTGRES_APP_USER": APP_USER,
+        "NEW_POSTGRES_APP_PASSWORD": APP_PASSWORD,
         "SHELLBRAIN_DB_CONTAINER_NAME": shellbrain_container,
     }
 
     try:
         data_dir.mkdir(parents=True, exist_ok=True)
         _compose_up(repo_root, legacy_env)
-        _wait_for_container_postgres(legacy_container, "memory", "memory")
+        _wait_for_container_postgres(legacy_container, LEGACY_USER, "memory")
 
-        legacy_dsn = f"postgresql+psycopg://memory:memory@localhost:{port}/memory"
+        legacy_dsn = f"postgresql+psycopg://{LEGACY_USER}:{LEGACY_PASSWORD}@localhost:{port}/memory"
         _wait_for_host_postgres(legacy_dsn)
         _run_packaged_migrations(repo_root, legacy_dsn, backup_dir=tmp_path / "backups")
         sentinel = _seed_sentinel_dataset(legacy_dsn)
@@ -93,10 +100,10 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         )
         assert "Local Docker/Postgres migration is complete." in completed.stdout
 
-        _wait_for_container_postgres(shellbrain_container, "shellbrain_admin", "shellbrain")
+        _wait_for_container_postgres(shellbrain_container, ADMIN_USER, "shellbrain")
 
-        shellbrain_dsn = f"postgresql+psycopg://shellbrain_app:shellbrain@localhost:{port}/shellbrain"
-        shellbrain_legacy_dsn = f"postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:{port}/memory"
+        shellbrain_dsn = f"postgresql+psycopg://{APP_USER}:{APP_PASSWORD}@localhost:{port}/shellbrain"
+        shellbrain_legacy_dsn = f"postgresql+psycopg://{ADMIN_USER}:{ADMIN_PASSWORD}@localhost:{port}/memory"
 
         assert _fetch_memory_text(shellbrain_dsn, sentinel["memory_id"]) == sentinel["memory_text"]
         assert _fetch_memory_text(shellbrain_legacy_dsn, sentinel["memory_id"]) == sentinel["memory_text"]

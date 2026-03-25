@@ -41,7 +41,7 @@ def test_run_tests_should_refuse_a_protected_live_dsn() -> None:
 
     repo_root = _repo_root()
     script_path = repo_root / "scripts" / "run_tests"
-    protected_dsn = "postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain"
+    protected_dsn = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
     env = {
         **os.environ,
         "SHELLBRAIN_DB_DSN": protected_dsn,
