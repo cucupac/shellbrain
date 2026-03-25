@@ -260,7 +260,7 @@ _MIGRATE_HELP = dedent(
     Apply packaged Alembic migrations to the database referenced by `SHELLBRAIN_DB_ADMIN_DSN`.
 
     Example:
-      SHELLBRAIN_DB_ADMIN_DSN=postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain shellbrain admin migrate
+      SHELLBRAIN_DB_ADMIN_DSN=postgresql+psycopg://<admin-user>:<admin-password>@localhost:5432/<database-name> shellbrain admin migrate
     """
 )
 

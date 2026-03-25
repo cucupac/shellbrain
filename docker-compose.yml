@@ -8,7 +8,7 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-shellbrain_admin}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shellbrain_admin}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - type: bind
         source: ${SHELLBRAIN_DB_DATA_DIR:-./.local/postgres-data}

@@ -23,6 +23,12 @@ from tests.operations._shared.integration_db_fixtures import (
 )
 
 
+def _claude_project_slug(repo_root: Path) -> str:
+    """Match Claude Code's cwd-to-project-folder encoding without hard-coded local paths."""
+
+    return str(repo_root.resolve()).replace("/", "-")
+
+
 @pytest.fixture
 def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
     """Provide one synthetic Codex transcript with meaningful and noisy tool events."""
@@ -88,6 +94,7 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
 
     local_session_id = "local_9d640378-6572-4541-8db1-f2f3c241484e"
     cli_session_id = "46cc92ee-1291-49d2-89e5-ef0ac1603709"
+    repo_root = Path.cwd().resolve()
     metadata_root = (
         tmp_path
         / "Library"
@@ -104,13 +111,13 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             {
                 "sessionId": local_session_id,
                 "cliSessionId": cli_session_id,
-                "cwd": "/Users/example/shellbrain",
+                "cwd": str(repo_root),
             }
         ),
         encoding="utf-8",
     )
 
-    transcript_root = tmp_path / ".claude" / "projects" / "-Users-example-shellbrain"
+    transcript_root = tmp_path / ".claude" / "projects" / _claude_project_slug(repo_root)
     transcript_path = transcript_root / f"{cli_session_id}.jsonl"
     entries = [
         {

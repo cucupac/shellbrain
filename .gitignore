@@ -102,14 +102,17 @@ pgdata/
 # Project-local generated artifacts
 .memory/
 artifacts/
-!tests/visualization/artifacts/
-!tests/visualization/artifacts/*.md
+tests/visualization/artifacts/
 
 # Local-only working directories
 architectures/
 insights/
 research/
 writing/
+convo-record.md
+next_steps.md
+memory-system-architecture.html
+memory-system-explorer.html
 
 # AI / agent host local state
 .claude/

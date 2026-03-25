@@ -78,8 +78,8 @@ Machine-owned state lives under `$SHELLBRAIN_HOME`, which defaults to `~/.shellb
 If you are on a pre-productized build, the older operator path is:
 
 ```bash
-export SHELLBRAIN_DB_DSN='postgresql+psycopg://shellbrain_app:shellbrain@localhost:5432/shellbrain'
-export SHELLBRAIN_DB_ADMIN_DSN='postgresql+psycopg://shellbrain_admin:shellbrain_admin@localhost:5432/shellbrain'
+export SHELLBRAIN_DB_DSN='postgresql+psycopg://<app-user>:<app-password>@localhost:5432/<database-name>'
+export SHELLBRAIN_DB_ADMIN_DSN='postgresql+psycopg://<admin-user>:<admin-password>@localhost:5432/<database-name>'
 shellbrain admin migrate
 shellbrain admin doctor
 ```

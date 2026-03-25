@@ -4,6 +4,8 @@ Pytest automatically generates a terse markdown status report at:
 
 - `tests/visualization/artifacts/tests_status.md`
 
+The report is local generated output and is intentionally ignored by git.
+
 The report is updated on every test run and includes:
 
 - one-line intuitive test docstrings

@@ -240,8 +240,8 @@ main() {
   trap - ERR
 
   log "Local Docker/Postgres migration is complete."
-  log "Admin DSN: postgresql+psycopg://${NEW_POSTGRES_ADMIN_USER}:${NEW_POSTGRES_ADMIN_PASSWORD}@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
-  log "App DSN: postgresql+psycopg://${NEW_POSTGRES_APP_USER}:${NEW_POSTGRES_APP_PASSWORD}@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
+  log "Admin DSN: postgresql+psycopg://${NEW_POSTGRES_ADMIN_USER}:<redacted>@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
+  log "App DSN: postgresql+psycopg://${NEW_POSTGRES_APP_USER}:<redacted>@localhost:${POSTGRES_PORT}/${NEW_POSTGRES_DB}"
   log "Legacy database ${LEGACY_POSTGRES_DB} was preserved inside the cluster as a fallback."
 }
 

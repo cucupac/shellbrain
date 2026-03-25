@@ -8,6 +8,12 @@ from pathlib import Path
 import pytest
 
 
+def _claude_project_slug(repo_root: Path) -> str:
+    """Match Claude Code's cwd-to-project-folder encoding without owner-specific literals."""
+
+    return str(repo_root.resolve()).replace("/", "-")
+
+
 @pytest.fixture
 def codex_runtime_identity(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
     """Provide one trusted Codex runtime identity via environment variables."""
@@ -31,7 +37,8 @@ def claude_hook_runtime_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     """Provide one trusted Claude runtime identity via Shellbrain hook variables."""
 
     session_id = "46cc92ee-1291-49d2-89e5-ef0ac1603709"
-    transcript_path = tmp_path / ".claude" / "projects" / "-Users-example-shellbrain" / f"{session_id}.jsonl"
+    repo_root = Path.cwd().resolve()
+    transcript_path = tmp_path / ".claude" / "projects" / _claude_project_slug(repo_root) / f"{session_id}.jsonl"
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     transcript_path.write_text(
         json.dumps(
@@ -65,11 +72,12 @@ def claude_hook_subagent_runtime_identity(tmp_path: Path, monkeypatch: pytest.Mo
 
     session_id = "46cc92ee-1291-49d2-89e5-ef0ac1603709"
     agent_id = "agent-explore-1"
+    repo_root = Path.cwd().resolve()
     transcript_path = (
         tmp_path
         / ".claude"
         / "projects"
-        / "-Users-example-shellbrain"
+        / _claude_project_slug(repo_root)
         / session_id
         / "subagents"
         / f"{agent_id}.jsonl"
