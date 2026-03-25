@@ -11,7 +11,19 @@ It stores what happened, what worked, what failed, and what the human prefers â€
 curl -L shellbrain.ai/install | bash
 ```
 
-**One command. Machine is ready immediately.** The installer provisions the local runtime, installs the Codex and Claude skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you. Repos register themselves on first use.
+**One command on supported machines.** The installer provisions the local runtime, installs the Codex and Claude skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you when the managed-local prerequisites are met. Repos register themselves on first use.
+
+**Managed-local requirements**
+
+- macOS or Linux
+- Python 3.11+ required
+- Docker installed and the daemon running
+- first init downloads a local embedding model
+- PostgreSQL + pgvector run inside the managed Docker runtime
+- Windows is not supported yet
+- external Postgres remains an advanced/operator-managed path for now
+
+The repo `Dockerfile` is for packaging and development smoke coverage. It is not the end-user runtime path.
 
 ---
 
@@ -59,11 +71,14 @@ The rhythm: `read` first, `events` before writes, `create`/`update` at session e
 
 **`shellbrain init`** is the repair path if doctor says `repair_needed`. The installer already ran it once â€” you only rerun it to fix things.
 
-If `shellbrain` isn't found in a tool shell, retry through a login shell:
+If `shellbrain` isn't found in a tool shell, retry through the shell-specific path the installer configured:
 
 ```bash
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
+bash -lc 'source ~/.bash_profile >/dev/null 2>&1; shellbrain --help'
 ```
+
+Fish PATH setup is written to `~/.config/fish/conf.d/shellbrain.fish`.
 
 ---
 

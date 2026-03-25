@@ -1,41 +1,206 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-SHELLBRAIN_PATH_MARKER_BEGIN="# >>> shellbrain path >>>"
-SHELLBRAIN_PATH_MARKER_END="# <<< shellbrain path <<<"
-PATH_PROFILE=""
+SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN="# >>> shellbrain path >>>"
+SHELLBRAIN_LEGACY_PATH_MARKER_END="# <<< shellbrain path <<<"
+SHELLBRAIN_SOURCE_MARKER_BEGIN="# >>> shellbrain source >>>"
+SHELLBRAIN_SOURCE_MARKER_END="# <<< shellbrain source <<<"
+PATH_SNIPPET=""
+PATH_TARGETS=()
 
-ensure_user_bin_on_login_path() {
-  local bin_dir="$1"
-  local profile=""
+config_root() {
+  if [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    printf '%s\n' "$XDG_CONFIG_HOME"
+    return
+  fi
+  printf '%s\n' "$HOME/.config"
+}
 
-  [ -n "$bin_dir" ] || return 0
+shellbrain_path_snippet() {
+  printf '%s\n' "$(config_root)/shellbrain/path.sh"
+}
 
-  case "${SHELL##*/}" in
-    zsh) profile="$HOME/.zprofile" ;;
-    bash) profile="$HOME/.bash_profile" ;;
-    *) profile="$HOME/.profile" ;;
-  esac
+shellbrain_fish_conf() {
+  printf '%s\n' "$(config_root)/fish/conf.d/shellbrain.fish"
+}
+
+append_path_target() {
+  local target="$1"
+  local existing
+
+  [ -n "$target" ] || return 0
+
+  for existing in "${PATH_TARGETS[@]}"; do
+    [ "$existing" = "$target" ] && return 0
+  done
+
+  PATH_TARGETS+=("$target")
+}
+
+render_path_targets() {
+  local rendered=""
+  local target=""
+
+  for target in "${PATH_TARGETS[@]}"; do
+    if [ -n "$rendered" ]; then
+      rendered="$rendered, $target"
+      continue
+    fi
+    rendered="$target"
+  done
+
+  printf '%s\n' "$rendered"
+}
+
+file_contains_marker() {
+  local file="$1"
+  local marker="$2"
+
+  grep -Fq "$marker" "$file" 2>/dev/null
+}
+
+remove_managed_block() {
+  local file="$1"
+  local marker_begin="$2"
+  local marker_end="$3"
+  local temp_file="${file}.shellbrain.tmp"
+
+  [ -f "$file" ] || return 0
+
+  awk -v marker_begin="$marker_begin" -v marker_end="$marker_end" '
+    $0 == marker_begin { skipping = 1; next }
+    $0 == marker_end { skipping = 0; next }
+    skipping != 1 { print }
+  ' "$file" > "$temp_file"
+  mv "$temp_file" "$file"
+}
+
+render_posix_source_block() {
+  cat <<'EOF'
+# >>> shellbrain source >>>
+_shellbrain_path="${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh"
+if [ -f "$_shellbrain_path" ]; then
+  . "$_shellbrain_path"
+fi
+unset _shellbrain_path
+# <<< shellbrain source <<<
+EOF
+}
+
+ensure_profile_sources_snippet() {
+  local profile="$1"
+  local source_block="$2"
 
   mkdir -p "$(dirname "$profile")"
   touch "$profile"
 
-  if grep -Fq "$SHELLBRAIN_PATH_MARKER_BEGIN" "$profile" 2>/dev/null; then
-    PATH_PROFILE="$profile"
-    return 0
-  fi
+  remove_managed_block "$profile" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" "$SHELLBRAIN_LEGACY_PATH_MARKER_END"
+  remove_managed_block "$profile" "$SHELLBRAIN_SOURCE_MARKER_BEGIN" "$SHELLBRAIN_SOURCE_MARKER_END"
 
   {
-    echo ""
-    echo "$SHELLBRAIN_PATH_MARKER_BEGIN"
-    echo "case \":\$PATH:\" in"
-    echo "  *\":$bin_dir:\"*) ;;"
-    echo "  *) export PATH=\"$bin_dir:\$PATH\" ;;"
-    echo "esac"
-    echo "$SHELLBRAIN_PATH_MARKER_END"
+    printf '\n'
+    printf '%s\n' "$source_block"
   } >> "$profile"
 
-  PATH_PROFILE="$profile"
+  append_path_target "$profile"
+}
+
+write_posix_path_snippet() {
+  local bin_dir="$1"
+  local snippet_path
+
+  snippet_path="$(shellbrain_path_snippet)"
+  mkdir -p "$(dirname "$snippet_path")"
+  cat > "$snippet_path" <<EOF
+# shellbrain managed path
+case ":\$PATH:" in
+  *":$bin_dir:"*) ;;
+  *) export PATH="$bin_dir:\$PATH" ;;
+esac
+EOF
+  PATH_SNIPPET="$snippet_path"
+}
+
+write_fish_path_config() {
+  local bin_dir="$1"
+  local fish_conf
+
+  fish_conf="$(shellbrain_fish_conf)"
+  mkdir -p "$(dirname "$fish_conf")"
+  cat > "$fish_conf" <<EOF
+# shellbrain managed path
+if not contains -- "$bin_dir" \$PATH
+    set -gx PATH "$bin_dir" \$PATH
+end
+EOF
+  append_path_target "$fish_conf"
+}
+
+ensure_user_bin_on_shell_path() {
+  local bin_dir="$1"
+  local source_block=""
+  local profile=""
+  local current_shell="${SHELL##*/}"
+  local legacy_profiles=(
+    "$HOME/.zprofile"
+    "$HOME/.zshrc"
+    "$HOME/.bash_profile"
+    "$HOME/.bashrc"
+    "$HOME/.profile"
+  )
+
+  [ -n "$bin_dir" ] || return 0
+
+  PATH_SNIPPET=""
+  PATH_TARGETS=()
+  write_posix_path_snippet "$bin_dir"
+  source_block="$(render_posix_source_block)"
+
+  for profile in "${legacy_profiles[@]}"; do
+    if file_contains_marker "$profile" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" \
+      || file_contains_marker "$profile" "$SHELLBRAIN_SOURCE_MARKER_BEGIN"; then
+      ensure_profile_sources_snippet "$profile" "$source_block"
+    fi
+  done
+
+  case "$current_shell" in
+    zsh)
+      ensure_profile_sources_snippet "$HOME/.zprofile" "$source_block"
+      ensure_profile_sources_snippet "$HOME/.zshrc" "$source_block"
+      ;;
+    bash)
+      ensure_profile_sources_snippet "$HOME/.bash_profile" "$source_block"
+      ensure_profile_sources_snippet "$HOME/.bashrc" "$source_block"
+      ;;
+    fish)
+      write_fish_path_config "$bin_dir"
+      ;;
+    *)
+      ensure_profile_sources_snippet "$HOME/.profile" "$source_block"
+      ;;
+  esac
+}
+
+fail_managed_bootstrap() {
+  local reason="$1"
+
+  echo ""
+  echo "managed-local bootstrap incomplete."
+  echo "  reason: $reason"
+  echo "  shellbrain CLI is installed, but managed-local bootstrap was not run."
+  echo "  fix Docker, then rerun: shellbrain init"
+  echo "  docs: shellbrain.ai/external-quickstart"
+  exit 1
+}
+
+preflight_docker_for_managed_init() {
+  if ! command -v docker >/dev/null 2>&1; then
+    fail_managed_bootstrap "Docker is not installed."
+  fi
+
+  if ! docker info >/dev/null 2>&1; then
+    fail_managed_bootstrap "Docker is installed, but the daemon is not running or reachable."
+  fi
 }
 
 echo "installing shellbrain..."
@@ -57,14 +222,14 @@ if [ -z "$PY" ]; then
   # Check if any python exists at all to give a better error
   if command -v python3 &>/dev/null || command -v python &>/dev/null; then
     FOUND_VER=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || python -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null)
-    echo "error: python $FOUND_VER found, but shellbrain requires python 3.11+."
+    echo "error: python $FOUND_VER found, but Python 3.11+ required."
   else
     echo "error: python not found."
   fi
   if [[ "$OSTYPE" =~ ^darwin ]]; then
-    echo "install it with: brew install python@3.13"
+    echo "install it with: brew install python"
   else
-    echo "install python 3.11+ and try again."
+    echo "install Python 3.11+ and try again."
   fi
   exit 1
 fi
@@ -109,8 +274,10 @@ if [ -z "$SHELLBRAIN" ]; then
 fi
 
 if [ -n "$USER_BIN" ] && [ -d "$USER_BIN" ]; then
-  ensure_user_bin_on_login_path "$USER_BIN"
+  ensure_user_bin_on_shell_path "$USER_BIN"
 fi
+
+preflight_docker_for_managed_init
 
 echo ""
 echo "initializing..."
@@ -120,8 +287,11 @@ $SHELLBRAIN init
 echo ""
 echo "next: start a repo session in codex or claude code."
 echo "  docs: shellbrain.ai/humans"
-if [ -n "$PATH_PROFILE" ]; then
-  echo "  cli path: ensured in $PATH_PROFILE"
+if [ -n "$PATH_SNIPPET" ]; then
+  echo "  cli path: ensured via $PATH_SNIPPET"
+fi
+if [ "${#PATH_TARGETS[@]}" -gt 0 ]; then
+  echo "  shell path wiring: $(render_path_targets)"
 fi
 echo ""
 echo "shellbrain. knowledge compounds."

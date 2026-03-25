@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+import sys
 
 from app.periphery.identity.claude_hook_install import install_claude_hook, inspect_claude_hook
 
@@ -19,6 +20,7 @@ def test_claude_hook_install_should_write_one_repo_local_settings_file_with_shel
     assert "SessionStart" in content
     assert "CLAUDE_ENV_FILE" in content
     assert "SHELLBRAIN_HOST_APP=claude_code" in content
+    assert str(Path(sys.executable).resolve()) in content
 
 
 def test_claude_hook_install_should_merge_shellbrain_entry_without_overwriting_unrelated_hooks(tmp_path: Path) -> None:
@@ -70,6 +72,8 @@ def test_claude_hook_install_should_create_global_settings_file_when_absent(tmp_
     assert status.exists is True
     assert status.malformed is False
     assert status.managed is True
+    assert status.command_executable == str(Path(sys.executable).resolve())
+    assert status.executable_exists is True
 
 
 def test_claude_hook_install_should_backup_malformed_global_settings_before_recreating(tmp_path: Path) -> None:
@@ -88,3 +92,38 @@ def test_claude_hook_install_should_backup_malformed_global_settings_before_recr
     assert backups[0].read_text(encoding="utf-8") == "{not-json"
     assert status.managed is True
     assert status.malformed is False
+    assert status.command_executable == str(Path(sys.executable).resolve())
+    assert status.executable_exists is True
+
+
+def test_claude_hook_inspection_should_report_missing_managed_interpreter(tmp_path: Path) -> None:
+    """managed hook inspection should expose a broken interpreter path clearly."""
+
+    settings_path = tmp_path / ".claude" / "settings.json"
+    settings_path.parent.mkdir(parents=True)
+    settings_path.write_text(
+        json.dumps(
+            {
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "startup|resume|clear|compact",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "/tmp/missing-shellbrain-python -m app.periphery.identity.claude_runtime session-start # shellbrain-managed:session-start",
+                                }
+                            ],
+                        }
+                    ]
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    status = inspect_claude_hook(settings_path=settings_path)
+
+    assert status.managed is True
+    assert status.command_executable == "/tmp/missing-shellbrain-python"
+    assert status.executable_exists is False

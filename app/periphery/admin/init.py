@@ -387,7 +387,7 @@ def _ensure_dependencies() -> None:
     """Verify bootstrap dependencies before mutation."""
 
     if sys.version_info < (3, 11):
-        raise InitDependencyError("Shellbrain init requires Python 3.11 or newer.")
+        raise InitDependencyError("Python 3.11+ required for `shellbrain init`.")
     if shutil.which("docker") is None:
         raise InitDependencyError("Shellbrain init requires Docker to be installed.")
     completed = subprocess.run(

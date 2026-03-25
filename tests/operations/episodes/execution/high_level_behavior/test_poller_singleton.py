@@ -79,6 +79,32 @@ def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch
     handle.release()
 
 
+def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path, monkeypatch) -> None:
+    """permission-denied pid probes should still preserve the active singleton lock."""
+
+    repo_root = _make_repo_root(tmp_path)
+    lock_root = repo_root / ".shellbrain" / "episode_sync.lock"
+    lock_root.mkdir(parents=True, exist_ok=True)
+    owner = {
+        "hostname": socket.gethostname().strip().lower(),
+        "pid": 4242,
+        "repo_id": "repo-a",
+        "repo_root": str(repo_root.resolve()),
+        "started_at": "2026-03-24T00:00:00+00:00",
+    }
+    (lock_root / "owner.json").write_text(json.dumps(owner, indent=2, sort_keys=True), encoding="utf-8")
+
+    def _raise_permission_error(_pid: int) -> None:
+        raise PermissionError(1, "Operation not permitted")
+
+    monkeypatch.setattr("app.periphery.episodes.poller_lock.os.kill", _raise_permission_error)
+
+    inspection = inspect_poller_lock(repo_root=repo_root)
+
+    assert inspection.status == "active"
+    assert inspection.owner == owner
+
+
 def test_launcher_does_not_spawn_when_an_active_lock_exists(tmp_path: Path, monkeypatch) -> None:
     """launcher should always skip spawn when one active poller lock already exists."""
 

@@ -235,6 +235,19 @@ def test_admin_doctor_help_should_include_one_example(capsys: pytest.CaptureFixt
     assert "--repo-root" in output
 
 
+def test_admin_analytics_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """admin analytics help should explain the reviewer-agent report path."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["admin", "analytics", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "reviewer agents" in output
+    assert "--days" in output
+    assert "analytics --days 2" in output
+
+
 def test_admin_install_claude_hook_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
     """admin install-claude-hook help should explain the trusted Claude setup step."""
 
@@ -275,6 +288,33 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
 
     assert exit_code == 0
     assert "Codex skill: installed at /tmp/codex" in capsys.readouterr().out
+
+
+def test_admin_analytics_should_print_the_report(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """admin analytics should render the built analytics report as JSON."""
+
+    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql://app")
+    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: None)
+    monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda dsn: f"engine:{dsn}")
+    monkeypatch.setattr(
+        "app.periphery.admin.analytics.build_analytics_report",
+        lambda **kwargs: {
+            "window": {"days": kwargs["days"]},
+            "summary": {"overall_health": "healthy"},
+            "strengths": [],
+            "failures": [],
+            "capability_gaps": [],
+            "priorities": [],
+            "repo_rollups": [],
+        },
+    )
+
+    exit_code = cli_main.main(["admin", "analytics", "--days", "5"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert '"days": 5' in output
+    assert '"overall_health": "healthy"' in output
 
 
 def test_admin_session_state_help_should_include_management_examples(capsys: pytest.CaptureFixture[str]) -> None:

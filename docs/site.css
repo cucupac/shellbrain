@@ -289,6 +289,88 @@ pre,
   color: var(--text);
 }
 
+.requirements-details {
+  margin-top: 22px;
+}
+
+.requirements-details summary {
+  list-style: none;
+}
+
+.requirements-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.requirements-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted-light);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.requirements-toggle:hover {
+  color: var(--text);
+}
+
+.requirements-toggle svg {
+  width: 12px;
+  height: 12px;
+  stroke: currentColor;
+  transition: transform 0.2s ease;
+}
+
+.requirements-details[open] .requirements-toggle svg {
+  transform: rotate(90deg);
+}
+
+.requirements-panel {
+  margin-top: 14px;
+}
+
+.requirements-list {
+  list-style: none;
+  margin: 0;
+  padding: 18px 20px 20px;
+}
+
+.requirements-list li {
+  position: relative;
+  padding-left: 24px;
+  font-family: "DM Mono", "SF Mono", "Fira Code", "Consolas", monospace;
+  font-size: 0.94rem;
+  line-height: 1.8;
+  color: var(--text);
+}
+
+.requirements-list li + li {
+  margin-top: 4px;
+}
+
+.requirements-list li::before {
+  content: "\2014";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 0.78rem;
+  color: var(--muted-light);
+}
+
+.requirements-list li.req-no::before {
+  content: "\00D7";
+  color: var(--muted);
+}
+
+.requirements-list li.req-no {
+  color: var(--muted);
+}
+
 .panel pre {
   margin: 0;
   padding: 18px;

@@ -32,6 +32,13 @@ _TOP_LEVEL_HELP = dedent(
       4. The installer/upgrade flow runs `shellbrain init` for machine bootstrap and repair.
       5. Repos auto-register on first Shellbrain use inside a git repo.
 
+    Managed-local prerequisites:
+      - macOS or Linux
+      - Python 3.11+ required
+      - Docker installed and daemon running
+      - First init downloads a local embedding model and boots PostgreSQL + pgvector inside a managed Docker container.
+      - Windows and first-class external Postgres adoption are not part of this happy path.
+
     After install:
       - Start a repo session in Codex or Claude Code (see shellbrain.ai/humans).
       - If readiness is unclear, run `shellbrain admin doctor`.
@@ -61,6 +68,7 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain admin migrate
       shellbrain admin backup create
       shellbrain admin doctor
+      shellbrain admin analytics --days 2
 
     Docs:
       https://shellbrain.ai/agents — how agents use shellbrain
@@ -171,7 +179,8 @@ _INIT_HELP = dedent(
 
     Happy path:
       - `shellbrain init`
-      - Shellbrain provisions or reuses one managed local Postgres instance, prepares embeddings, installs host integrations, and registers a repo only when one is obvious.
+      - Shellbrain provisions or reuses one managed local PostgreSQL + pgvector instance, prepares embeddings, installs host integrations, and registers a repo only when one is obvious.
+      - Requirements: macOS or Linux, Python 3.11+, and Docker installed with the daemon running.
 
     Advanced:
       - `--repo-root` targets a different repo root.
@@ -203,6 +212,15 @@ _DOCTOR_HELP = dedent(
 
     Example:
       shellbrain admin doctor
+    """
+)
+
+_ANALYTICS_HELP = dedent(
+    """\
+    Print one cross-repo usage analytics report for reviewer agents.
+
+    Example:
+      shellbrain admin analytics --days 2
     """
 )
 
@@ -391,6 +409,19 @@ def build_parser() -> argparse.ArgumentParser:
     admin_subparsers.choices["doctor"].add_argument(
         "--repo-root",
         help="Optional repo root for repo registration and Claude integration diagnostics.",
+    )
+    analytics_parser = admin_subparsers.add_parser(
+        "analytics",
+        help="Print one cross-repo usage analytics report for reviewer agents.",
+        description="Print one cross-repo usage analytics report for reviewer agents.",
+        epilog=_ANALYTICS_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    analytics_parser.add_argument(
+        "--days",
+        type=int,
+        default=2,
+        help="Number of trailing days to include in the report. Defaults to 2.",
     )
     install_hook_parser = admin_subparsers.add_parser(
         "install-claude-hook",
@@ -672,6 +703,19 @@ def _run_admin_command(args: argparse.Namespace) -> int:
             backup_root=get_backup_dir(),
             repo_root=_resolve_admin_repo_root(getattr(args, "repo_root", None)),
         )
+        print(json.dumps(report, indent=2, sort_keys=True))
+        return 0
+
+    if args.admin_command == "analytics":
+        from app.boot.admin_db import get_optional_admin_db_dsn
+        from app.boot.db import get_optional_db_dsn
+        from app.periphery.admin.analytics import build_analytics_report
+        from app.periphery.db.engine import get_engine
+
+        dsn = get_optional_db_dsn() or get_optional_admin_db_dsn()
+        if not dsn:
+            raise RuntimeError("Shellbrain database is not configured. Run `shellbrain init` first.")
+        report = build_analytics_report(engine=get_engine(dsn), days=int(args.days))
         print(json.dumps(report, indent=2, sort_keys=True))
         return 0
 

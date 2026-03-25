@@ -17,8 +17,10 @@ from app.periphery.identity.claude_hook_install import (
 )
 
 
-_CODEX_SKILL_NAME = "shellbrain-session-start"
-_CLAUDE_SKILL_NAME = "shellbrain-session-start"
+_PRIMARY_CODEX_SKILL_NAME = "shellbrain-session-start"
+_PRIMARY_CLAUDE_SKILL_NAME = "shellbrain-session-start"
+_CODEX_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
+_CLAUDE_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
 _CLAUDE_LEGACY_COMMAND = "shellbrain-session-start.md"
 _MANAGED_MARKER_FILENAME = ".shellbrain-managed.json"
 
@@ -56,9 +58,17 @@ def _install_codex_skill(*, force: bool) -> list[str]:
     """Install the packaged Codex skill into the default Codex home."""
 
     skills_root = _default_codex_home() / "skills"
-    target_root = skills_root / _CODEX_SKILL_NAME
-    source_root = resources.files("app.onboarding_assets").joinpath("codex", _CODEX_SKILL_NAME)
-    return [_render_install_status("Codex skill", _install_asset_tree(source_root=source_root, target_root=target_root, asset_kind="codex_skill", force=force))]
+    lines: list[str] = []
+    for skill_name in _CODEX_SKILL_NAMES:
+        target_root = skills_root / skill_name
+        source_root = resources.files("app.onboarding_assets").joinpath("codex", skill_name)
+        lines.append(
+            _render_install_status(
+                f"Codex skill ({skill_name})",
+                _install_asset_tree(source_root=source_root, target_root=target_root, asset_kind="codex_skill", force=force),
+            )
+        )
+    return lines
 
 
 def _install_claude_skill(*, force: bool) -> list[str]:
@@ -66,9 +76,15 @@ def _install_claude_skill(*, force: bool) -> list[str]:
 
     claude_root = _default_claude_root()
     lines: list[str] = []
-    target_root = claude_root / "skills" / _CLAUDE_SKILL_NAME
-    source_root = resources.files("app.onboarding_assets").joinpath("claude", "skills", _CLAUDE_SKILL_NAME)
-    lines.append(_render_install_status("Claude skill", _install_asset_tree(source_root=source_root, target_root=target_root, asset_kind="claude_skill", force=force)))
+    for skill_name in _CLAUDE_SKILL_NAMES:
+        target_root = claude_root / "skills" / skill_name
+        source_root = resources.files("app.onboarding_assets").joinpath("claude", "skills", skill_name)
+        lines.append(
+            _render_install_status(
+                f"Claude skill ({skill_name})",
+                _install_asset_tree(source_root=source_root, target_root=target_root, asset_kind="claude_skill", force=force),
+            )
+        )
     settings_path = install_claude_hook(settings_path=default_global_claude_settings_path())
     lines.append(f"Claude global hook: installed at {settings_path}")
     legacy_command = claude_root / "commands" / _CLAUDE_LEGACY_COMMAND
@@ -80,9 +96,9 @@ def _install_claude_skill(*, force: bool) -> list[str]:
 def inspect_host_assets() -> HostAssetInspection:
     """Inspect the default Shellbrain-managed host integrations."""
 
-    codex_root = _default_codex_home() / "skills" / _CODEX_SKILL_NAME
+    codex_root = _default_codex_home() / "skills" / _PRIMARY_CODEX_SKILL_NAME
     claude_root = _default_claude_root()
-    claude_skill_root = claude_root / "skills" / _CLAUDE_SKILL_NAME
+    claude_skill_root = claude_root / "skills" / _PRIMARY_CLAUDE_SKILL_NAME
     claude_hook = inspect_claude_hook(settings_path=default_global_claude_settings_path())
     return HostAssetInspection(
         codex_skill={
@@ -100,6 +116,8 @@ def inspect_host_assets() -> HostAssetInspection:
             "installed": claude_hook.exists,
             "managed": claude_hook.managed,
             "malformed": claude_hook.malformed,
+            "command_executable": claude_hook.command_executable,
+            "executable_exists": claude_hook.executable_exists,
         },
     )
 

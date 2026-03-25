@@ -220,6 +220,8 @@ def _is_process_running(pid: int) -> bool:
 
     try:
         os.kill(pid, 0)
+    except PermissionError:
+        return True
     except OSError:
         return False
     return True

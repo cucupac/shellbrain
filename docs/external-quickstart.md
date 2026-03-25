@@ -24,6 +24,16 @@ curl -L shellbrain.ai/upgrade | bash
 
 That bootstrap step is machine-level. It prepares the managed runtime, installs host integrations, and leaves repo registration to first use inside a repo.
 
+Managed-local requirements:
+
+- macOS or Linux
+- Python 3.11+ required
+- Docker installed and the daemon running
+- first init downloads a local embedding model
+- PostgreSQL + pgvector run inside the managed Docker runtime
+- Windows is not supported in this path
+- external Postgres remains advanced/operator-managed
+
 Manual install path:
 
 ```bash
@@ -86,6 +96,8 @@ If the host shell is bash instead of zsh, use:
 bash -lc 'source ~/.bash_profile >/dev/null 2>&1; shellbrain --help'
 ```
 
+Fish PATH setup is written to `~/.config/fish/conf.d/shellbrain.fish`; open a new fish session and run `shellbrain --help`.
+
 If the wrapped login-shell check still cannot find `shellbrain`, inspect Python's user script directory:
 
 ```bash
@@ -93,6 +105,8 @@ python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))
 ```
 
 If that directory contains `shellbrain`, call it directly or add that directory to the login profile PATH and retry. If it does not, reinstall the Shellbrain CLI.
+
+The repo Dockerfile is for packaging and development smoke coverage. It is not the end-user runtime path.
 
 Then use the same wrapper shape for real commands when needed:
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shellbrain Usage Review"
+  short_description: "Review shellbrain usage across repos"
+  default_prompt: "Use $shellbrain-usage-review to inspect shellbrain usage across all repos and summarize what is working, what is failing, why it is failing, and where agents are skipping expected capabilities."

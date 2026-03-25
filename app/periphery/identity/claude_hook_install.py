@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import json
 from pathlib import Path
+import shlex
 import shutil
+import sys
 
 
 _SESSION_START_MATCHER = "startup|resume|clear|compact"
@@ -20,6 +22,8 @@ class ClaudeHookStatus:
     exists: bool
     malformed: bool
     managed: bool
+    command_executable: str | None = None
+    executable_exists: bool = False
 
 
 def default_global_claude_settings_path() -> Path:
@@ -49,6 +53,8 @@ def inspect_claude_hook(*, settings_path: Path | None = None) -> ClaudeHookStatu
             exists=False,
             malformed=False,
             managed=False,
+            command_executable=None,
+            executable_exists=False,
         )
     try:
         settings = json.loads(resolved_settings_path.read_text(encoding="utf-8"))
@@ -58,6 +64,8 @@ def inspect_claude_hook(*, settings_path: Path | None = None) -> ClaudeHookStatu
             exists=True,
             malformed=True,
             managed=False,
+            command_executable=None,
+            executable_exists=False,
         )
     if not isinstance(settings, dict):
         return ClaudeHookStatus(
@@ -65,20 +73,27 @@ def inspect_claude_hook(*, settings_path: Path | None = None) -> ClaudeHookStatu
             exists=True,
             malformed=True,
             managed=False,
+            command_executable=None,
+            executable_exists=False,
         )
+    managed_command = _extract_managed_command(settings.get("hooks"))
+    command_executable = _resolve_command_executable(managed_command)
     return ClaudeHookStatus(
         settings_path=resolved_settings_path,
         exists=True,
         malformed=False,
         managed=_hooks_contain_managed_entry(settings.get("hooks")),
+        command_executable=command_executable,
+        executable_exists=bool(command_executable and Path(command_executable).exists()),
     )
 
 
 def _managed_command() -> str:
     """Return the Shellbrain-managed Claude SessionStart hook command."""
 
+    executable = str(Path(sys.executable).resolve())
     return (
-        "python -m app.periphery.identity.claude_runtime session-start "
+        f"{shlex.quote(executable)} -m app.periphery.identity.claude_runtime session-start "
         f"# {_MANAGED_MARKER} uses CLAUDE_ENV_FILE to export SHELLBRAIN_HOST_APP=claude_code "
         "and related Shellbrain identity variables"
     )
@@ -174,3 +189,49 @@ def _hooks_contain_managed_entry(hooks: object) -> bool:
         if any(_MANAGED_MARKER in str(item.get("command", "")) for item in nested_hooks if isinstance(item, dict)):
             return True
     return False
+
+
+def _extract_managed_command(hooks: object) -> str | None:
+    """Return the managed Shellbrain command string when present."""
+
+    if not isinstance(hooks, dict):
+        return None
+    session_start_entries = hooks.get("SessionStart")
+    if not isinstance(session_start_entries, list):
+        return None
+    for entry in session_start_entries:
+        if not isinstance(entry, dict):
+            continue
+        nested_hooks = entry.get("hooks")
+        if not isinstance(nested_hooks, list):
+            continue
+        for item in nested_hooks:
+            if not isinstance(item, dict):
+                continue
+            command = str(item.get("command", ""))
+            if _MANAGED_MARKER in command:
+                return command
+    return None
+
+
+def _resolve_command_executable(command: str | None) -> str | None:
+    """Resolve the executable path from one managed hook command string."""
+
+    if not command:
+        return None
+    prefix = command.split(" # ", 1)[0].strip()
+    if not prefix:
+        return None
+    try:
+        parts = shlex.split(prefix)
+    except ValueError:
+        return None
+    if not parts:
+        return None
+    executable = parts[0]
+    if Path(executable).is_absolute():
+        return str(Path(executable).resolve())
+    resolved = shutil.which(executable)
+    if resolved is None:
+        return None
+    return str(Path(resolved).resolve())

@@ -41,7 +41,7 @@
         <div class="section-inner">
           <h2 class="section-title">install.</h2>
           <p class="section-copy">
-            <strong>one command.</strong> the installer sets up shellbrain and auto-installs skills into Claude Code and Codex if they're on your machine.
+            <strong>one command on supported machines.</strong> the installer installs the shellbrain CLI, sets up PATH for zsh, bash, or fish, auto-installs skills into Claude Code and Codex, preflights Docker, and runs <code>shellbrain init</code> when the managed-local prerequisites are met.
           </p>
           <div class="panel" style="margin-top: 22px;">
             <div class="panel-head">
@@ -57,6 +57,28 @@
             </div>
             <pre id="install-cmd">curl -L shellbrain.ai/install | bash</pre>
           </div>
+          <details class="requirements-details">
+            <summary class="requirements-toggle">
+              <span>view requirements</span>
+              <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5" aria-hidden="true">
+                <path d="M6 3l5 5-5 5"/>
+              </svg>
+            </summary>
+            <div class="panel requirements-panel">
+              <div class="panel-head">
+                <span class="panel-label">requirements</span>
+              </div>
+              <ul class="requirements-list">
+                <li class="req-ok">macOS and Linux</li>
+                <li class="req-ok">Python 3.11+</li>
+                <li class="req-ok">Docker installed and running</li>
+                <li class="req-ok">first init downloads a local embedding model (~few hundred MB)</li>
+                <li class="req-ok">Postgres and pgvector run inside Docker&mdash;nothing to configure</li>
+                <li class="req-no">Windows not yet supported</li>
+                <li class="req-no">external Postgres support during install is coming soon</li>
+              </ul>
+            </div>
+          </details>
           <p class="section-copy" style="margin-top: 22px;">
             <strong>we ship often.</strong> run the upgrade command when you want newer capabilities.
           </p>

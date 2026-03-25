@@ -83,6 +83,11 @@ def build_doctor_report(
     }
     if repo_report and repo_report.get("identity_strength") == IDENTITY_STRENGTH_WEAK_LOCAL:
         report["repo_warning"] = "Repo identity is weak-local and will change if this directory moves."
+    claude_hook = report["host_integrations"]["claude_global_hook"]
+    if claude_hook.get("managed") and not claude_hook.get("executable_exists", False):
+        report["host_integration_warning"] = (
+            "Claude global hook points at a missing interpreter. Rerun `shellbrain init` to repair it."
+        )
     return report
 
 
