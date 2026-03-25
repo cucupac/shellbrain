@@ -179,18 +179,23 @@ _INIT_HELP = dedent(
 
     Happy path:
       - `shellbrain init`
-      - Shellbrain provisions or reuses one managed local PostgreSQL + pgvector instance, prepares embeddings, installs host integrations, and registers a repo only when one is obvious.
-      - Requirements: macOS or Linux, Python 3.11+, and Docker installed with the daemon running.
+      - On first bootstrap, Shellbrain asks how it should store data.
+      - The recommended default provisions or reuses one managed local PostgreSQL + pgvector instance, prepares embeddings, installs host integrations, and registers a repo only when one is obvious.
+      - External mode uses an existing PostgreSQL database with pgvector.
+      - Requirements for managed-local mode: macOS or Linux, Python 3.11+, and Docker installed with the daemon running.
 
     Advanced:
       - `--repo-root` targets a different repo root.
       - `--repo-id` overrides repo identity when multiple remotes exist or a weak local identity is not acceptable.
+      - `--storage managed|external` skips the first-run storage prompt.
+      - External mode requires `--admin-dsn` in non-interactive runs.
 
     Examples:
       shellbrain init
       shellbrain init --repo-root /path/to/repo
       shellbrain init --no-host-assets
       shellbrain init --skip-model-download
+      shellbrain init --storage external --admin-dsn postgresql+psycopg://admin:password@host:5432/shellbrain
     """
 )
 
@@ -304,12 +309,21 @@ def build_parser() -> argparse.ArgumentParser:
 
     init_parser = subparsers.add_parser(
         "init",
-        help="Bootstrap or repair the managed Shellbrain runtime.",
-        description="Bootstrap or repair the machine-local Shellbrain runtime and default host integrations.",
+        help="Bootstrap or repair the Shellbrain runtime.",
+        description="Bootstrap or repair the Shellbrain runtime and default host integrations.",
         epilog=_INIT_HELP,
         formatter_class=_HelpFormatter,
     )
     _add_repo_context_arguments(init_parser, suppress_default=True)
+    init_parser.add_argument(
+        "--storage",
+        choices=("managed", "external"),
+        help="Choose managed local PostgreSQL + pgvector or an existing external PostgreSQL + pgvector database.",
+    )
+    init_parser.add_argument(
+        "--admin-dsn",
+        help="Admin PostgreSQL DSN for external storage mode. Required for non-interactive external init.",
+    )
     init_parser.add_argument(
         "--skip-model-download",
         action="store_true",
@@ -495,6 +509,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             skip_model_download=bool(getattr(args, "skip_model_download", False)),
             skip_host_assets=bool(getattr(args, "no_host_assets", False)),
+            storage=getattr(args, "storage", None),
+            admin_dsn=getattr(args, "admin_dsn", None),
         )
         print(f"Outcome: {result.outcome}")
         for line in result.lines:
@@ -841,7 +857,12 @@ def _ensure_repo_registration_for_operation(*, repo_context: RepoContext, repo_i
 def _managed_backup_kwargs(machine_config, machine_error: str | None) -> dict[str, Any]:
     """Return managed-container backup kwargs when machine config is active and readable."""
 
-    if machine_error is not None or machine_config is None or machine_config.runtime_mode != "managed_local":
+    if (
+        machine_error is not None
+        or machine_config is None
+        or machine_config.runtime_mode != "managed_local"
+        or machine_config.managed is None
+    ):
         return {}
     return {
         "container_name": machine_config.managed.container_name,

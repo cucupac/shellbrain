@@ -8,6 +8,7 @@ import sys
 from app.periphery.admin.backup import BackupManifest
 from app.periphery.admin.doctor import build_doctor_report
 from app.periphery.admin.instance_guard import InstanceMetadataRecord
+from app.periphery.admin.machine_state import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig
 from app.periphery.onboarding.host_assets import install_host_assets
 
 APP_LIVE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
@@ -194,3 +195,66 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
     assert report["host_integration_warning"] == (
         "Claude global hook points at a missing interpreter. Rerun `shellbrain init` to repair it."
     )
+
+
+def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp_path: Path) -> None:
+    """doctor should report external storage mode without managed container fields."""
+
+    machine_config = MachineConfig(
+        config_version=2,
+        bootstrap_version=1,
+        instance_id="ext-1",
+        runtime_mode="external_postgres",
+        bootstrap_state="ready",
+        current_step="verification",
+        last_error=None,
+        database=DatabaseState(
+            app_dsn="postgresql+psycopg://shellbrain_app:app_secret@db.example.com:5432/shellbrain",
+            admin_dsn="postgresql+psycopg://admin:admin_secret@db.example.com:5432/shellbrain",
+        ),
+        managed=None,
+        backups=BackupState(root="/tmp/shellbrain-backups"),
+        embeddings=EmbeddingRuntimeState(
+            provider="sentence_transformers",
+            model="all-MiniLM-L6-v2",
+            model_revision=None,
+            backend_version="1.0.0",
+            cache_path="/tmp/shellbrain-models",
+            readiness_state="ready",
+            last_error=None,
+        ),
+    )
+
+    monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
+    monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: [])
+    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (machine_config, None))
+    monkeypatch.setattr("app.periphery.admin.doctor.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr(
+        "app.periphery.admin.doctor.inspect_host_assets",
+        lambda: type(
+            "HostInspection",
+            (),
+            {
+                "codex_skill": {"installed": True},
+                "claude_skill": {"installed": True},
+                "claude_global_hook": {"installed": False, "managed": False},
+            },
+        )(),
+    )
+    monkeypatch.setattr(
+        "app.periphery.admin.doctor.external_runtime.inspect_runtime",
+        lambda admin_dsn: ["External PostgreSQL database must have the pgvector extension installed."],
+    )
+
+    report = build_doctor_report(
+        app_dsn=machine_config.database.app_dsn,
+        admin_dsn=machine_config.database.admin_dsn,
+        backup_root=tmp_path,
+    )
+
+    assert report["runtime_mode"] == "external_postgres"
+    assert report["runtime_warnings"] == ["External PostgreSQL database must have the pgvector extension installed."]
+    assert report["machine_instance"]["instance_id"] == "ext-1"
+    assert "container_name" not in report["machine_instance"]
+    assert report["machine_instance"]["database"]["host"] == "db.example.com"

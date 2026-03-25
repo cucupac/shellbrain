@@ -1,15 +1,14 @@
-"""Managed Shellbrain bootstrap and repair flow."""
+"""Shellbrain machine bootstrap and repair flow."""
 
 from __future__ import annotations
 
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta, timezone
 import importlib.metadata
 import json
 import os
 from pathlib import Path
-import secrets
 import shutil
 import socket
 import subprocess
@@ -18,43 +17,35 @@ import time
 from typing import Iterator
 
 import psycopg
-from psycopg import sql
 
-from app.boot.config import get_config_provider
-from app.boot.home import (
-    get_machine_backups_dir,
-    get_machine_lock_path,
-    get_machine_models_dir,
-    get_machine_postgres_data_dir,
-    get_shellbrain_home,
-)
+from app.boot.home import get_machine_lock_path, get_shellbrain_home
+from app.periphery.admin import external_runtime, managed_runtime
 from app.periphery.admin.destructive_guard import backup_and_verify_before_destructive_action
-from app.periphery.admin.instance_guard import dsn_fingerprint, ensure_instance_metadata
+from app.periphery.admin.init_errors import InitConflictError, InitDependencyError, InitLockError
+from app.periphery.admin.instance_guard import fingerprint_summary
 from app.periphery.admin.machine_state import (
     BOOTSTRAP_STATE_PROVISIONING,
     BOOTSTRAP_STATE_READY,
     BOOTSTRAP_STATE_REPAIR_NEEDED,
     BOOTSTRAP_VERSION,
     CONFIG_VERSION,
-    BackupState,
-    DatabaseState,
     EmbeddingRuntimeState,
     MachineConfig,
-    ManagedInstanceState,
+    RUNTIME_MODE_EXTERNAL_POSTGRES,
+    RUNTIME_MODE_MANAGED_LOCAL,
     backup_corrupt_machine_config,
-    load_machine_config,
     save_machine_config,
     save_recovery_stub,
     try_load_machine_config,
     update_bootstrap_state,
 )
-from app.periphery.admin.privileges import reconcile_app_role_privileges
 from app.periphery.admin.repo_state import (
     IDENTITY_STRENGTH_WEAK_LOCAL,
     RepoRegistration,
     load_repo_registration_for_target,
     register_repo_for_target,
 )
+from app.periphery.admin.storage_setup import resolve_storage_selection
 from app.periphery.onboarding.host_assets import install_host_assets
 
 
@@ -76,30 +67,8 @@ INIT_EXIT_CODES = {
     INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT: 13,
 }
 
-_MANAGED_IMAGE = "pgvector/pgvector:pg16"
-_MANAGED_DB_NAME = "shellbrain"
-_MANAGED_ADMIN_USER = "shellbrain_admin"
-_MANAGED_APP_USER = "shellbrain_app"
-_MANAGED_HOST = "127.0.0.1"
-_MANAGED_LABEL = "io.shellbrain.managed"
-_MANAGED_HOME_LABEL = "io.shellbrain.home_sha"
-_MANAGED_INSTANCE_LABEL = "io.shellbrain.instance_id"
-_MANAGED_PORT_START = 55432
-_MANAGED_PORT_END = 55499
 _LOCK_TIMEOUT_SECONDS = 30
 _STALE_LOCK_MINUTES = 15
-
-
-class InitDependencyError(RuntimeError):
-    """Raised when one bootstrap dependency is missing."""
-
-
-class InitConflictError(RuntimeError):
-    """Raised when managed resources cannot be adopted safely."""
-
-
-class InitLockError(RuntimeError):
-    """Raised when the machine init lock cannot be acquired safely."""
 
 
 @dataclass(frozen=True)
@@ -123,8 +92,10 @@ def run_init(
     register_repo_now: bool,
     skip_model_download: bool,
     skip_host_assets: bool,
+    storage: str | None = None,
+    admin_dsn: str | None = None,
 ) -> InitResult:
-    """Bootstrap or repair the managed Shellbrain environment."""
+    """Bootstrap or repair the machine-local Shellbrain environment."""
 
     home_root = get_shellbrain_home()
     home_root.mkdir(parents=True, exist_ok=True)
@@ -145,18 +116,12 @@ def run_init(
                     notes.append(f"Preserved corrupt machine config at {backup_path}")
                 recovered = _recover_machine_config_from_docker()
                 if recovered is None:
-                    save_recovery_stub(
-                        current_step="config_recovery",
-                        last_error=machine_error,
-                    )
-                    return InitResult(
-                        outcome=INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT,
-                        lines=[
-                            "Unable to recover a managed Shellbrain instance from the corrupt machine config.",
-                            "Rerun after resolving Docker/resource conflicts or remove the corrupt config manually if this is a fresh install.",
-                            *notes,
-                        ],
-                    )
+                    save_recovery_stub(current_step="config_recovery", last_error=machine_error)
+                    lines = ["Unable to recover Shellbrain runtime state from the corrupt machine config."]
+                    if backup_path is not None:
+                        lines.append(f"Preserved corrupt machine config at {backup_path}")
+                    lines.append("Rerun `shellbrain init` after repairing or replacing the runtime configuration.")
+                    return InitResult(outcome=INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT, lines=lines)
                 machine_config = update_bootstrap_state(
                     recovered,
                     bootstrap_state=BOOTSTRAP_STATE_REPAIR_NEEDED,
@@ -167,8 +132,22 @@ def run_init(
                 config_corruption_recovered = True
                 mutated_machine = True
 
+            selection = resolve_storage_selection(
+                existing_config=machine_config,
+                storage_flag=storage,
+                admin_dsn_flag=admin_dsn,
+            )
+
             if machine_config is None:
-                machine_config = _build_fresh_machine_config()
+                if selection.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL:
+                    _ensure_managed_dependencies()
+                    machine_config = _build_fresh_machine_config()
+                else:
+                    if selection.admin_dsn is None:
+                        raise InitDependencyError(
+                            "Shellbrain init needs --admin-dsn when bootstrapping external PostgreSQL non-interactively."
+                        )
+                    machine_config = external_runtime.build_fresh_machine_config(admin_dsn=selection.admin_dsn)
                 save_machine_config(machine_config)
                 mutated_machine = True
 
@@ -176,20 +155,22 @@ def run_init(
             should_repair = (
                 machine_config.bootstrap_state == BOOTSTRAP_STATE_REPAIR_NEEDED or config_corruption_recovered
             )
-            machine_config = update_bootstrap_state(
-                machine_config,
-                bootstrap_state=BOOTSTRAP_STATE_PROVISIONING,
-                current_step="managed_instance",
-                last_error=None,
-            )
-            save_machine_config(machine_config)
 
-            container_changed = _ensure_managed_container(machine_config)
-            mutated_machine = mutated_machine or container_changed
+            if machine_config.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL:
+                _ensure_managed_dependencies()
+                machine_config = update_bootstrap_state(
+                    machine_config,
+                    bootstrap_state=BOOTSTRAP_STATE_PROVISIONING,
+                    current_step="managed_instance",
+                    last_error=None,
+                )
+                save_machine_config(machine_config)
+                container_changed = _ensure_managed_container(machine_config)
+                mutated_machine = mutated_machine or container_changed
 
             if should_repair:
                 _backup_before_repair(machine_config)
-                notes.append("Created a backup before repairing the managed instance.")
+                notes.append("Created a backup before repairing the configured Shellbrain runtime.")
                 repair_performed = True
 
             _wait_for_postgres(machine_config.database.admin_dsn)
@@ -201,8 +182,9 @@ def run_init(
                 last_error=None,
             )
             save_machine_config(machine_config)
-            db_changed = _reconcile_database(machine_config)
+            db_changed, machine_config = _reconcile_database(machine_config)
             mutated_machine = mutated_machine or db_changed
+            save_machine_config(machine_config)
 
             machine_config = update_bootstrap_state(
                 machine_config,
@@ -384,10 +366,15 @@ def _read_lock_holder(lock_path: Path) -> str | None:
 
 
 def _ensure_dependencies() -> None:
-    """Verify bootstrap dependencies before mutation."""
+    """Verify shared bootstrap dependencies before mutation."""
 
     if sys.version_info < (3, 11):
         raise InitDependencyError("Python 3.11+ required for `shellbrain init`.")
+
+
+def _ensure_managed_dependencies() -> None:
+    """Verify managed-local Docker prerequisites before mutation."""
+
     if shutil.which("docker") is None:
         raise InitDependencyError("Shellbrain init requires Docker to be installed.")
     completed = subprocess.run(
@@ -403,49 +390,7 @@ def _ensure_dependencies() -> None:
 def _build_fresh_machine_config() -> MachineConfig:
     """Construct a fresh machine config for managed-local mode."""
 
-    runtime = get_config_provider().get_runtime()
-    embeddings = runtime.get("embeddings")
-    if not isinstance(embeddings, dict):
-        raise RuntimeError("runtime.embeddings must be configured")
-    home_hash = _home_hash()
-    port = _select_managed_port()
-    admin_password = secrets.token_hex(16)
-    app_password = secrets.token_hex(16)
-    admin_dsn = f"postgresql+psycopg://{_MANAGED_ADMIN_USER}:{admin_password}@{_MANAGED_HOST}:{port}/{_MANAGED_DB_NAME}"
-    app_dsn = f"postgresql+psycopg://{_MANAGED_APP_USER}:{app_password}@{_MANAGED_HOST}:{port}/{_MANAGED_DB_NAME}"
-    instance_id = dsn_fingerprint(admin_dsn)
-    return MachineConfig(
-        config_version=CONFIG_VERSION,
-        bootstrap_version=BOOTSTRAP_VERSION,
-        runtime_mode="managed_local",
-        bootstrap_state=BOOTSTRAP_STATE_PROVISIONING,
-        current_step="bootstrap",
-        last_error=None,
-        database=DatabaseState(app_dsn=app_dsn, admin_dsn=admin_dsn),
-        managed=ManagedInstanceState(
-            instance_id=instance_id,
-            container_name=f"shellbrain-postgres-{home_hash[:8]}",
-            image=_MANAGED_IMAGE,
-            host=_MANAGED_HOST,
-            port=port,
-            db_name=_MANAGED_DB_NAME,
-            data_dir=str(get_machine_postgres_data_dir()),
-            admin_user=_MANAGED_ADMIN_USER,
-            admin_password=admin_password,
-            app_user=_MANAGED_APP_USER,
-            app_password=app_password,
-        ),
-        backups=BackupState(root=str(get_machine_backups_dir()), mirror_root=None),
-        embeddings=EmbeddingRuntimeState(
-            provider=str(embeddings.get("provider") or "sentence_transformers"),
-            model=str(embeddings.get("model") or "all-MiniLM-L6-v2"),
-            model_revision=None,
-            backend_version=None,
-            cache_path=str(get_machine_models_dir()),
-            readiness_state="pending",
-            last_error=None,
-        ),
-    )
+    return managed_runtime.build_fresh_machine_config()
 
 
 def _migrate_machine_config(config: MachineConfig) -> MachineConfig:
@@ -453,11 +398,14 @@ def _migrate_machine_config(config: MachineConfig) -> MachineConfig:
 
     if config.config_version > CONFIG_VERSION or config.bootstrap_version > BOOTSTRAP_VERSION:
         raise InitConflictError("Machine config version is newer than this Shellbrain build can manage.")
+    if config.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL and config.managed is None:
+        raise InitConflictError("Managed-local Shellbrain config is missing managed container metadata.")
     if config.config_version == CONFIG_VERSION and config.bootstrap_version == BOOTSTRAP_VERSION:
         return config
     return MachineConfig(
         config_version=CONFIG_VERSION,
         bootstrap_version=BOOTSTRAP_VERSION,
+        instance_id=config.machine_instance_id,
         runtime_mode=config.runtime_mode,
         bootstrap_state=config.bootstrap_state,
         current_step=config.current_step,
@@ -472,106 +420,11 @@ def _migrate_machine_config(config: MachineConfig) -> MachineConfig:
 def _ensure_managed_container(config: MachineConfig) -> bool:
     """Create or start the managed Postgres container."""
 
-    info = _inspect_container(config.managed.container_name)
-    if info is None:
-        _create_managed_container(config)
-        _start_container(config.managed.container_name)
-        return True
-    labels = info.get("Config", {}).get("Labels", {}) or {}
-    if labels.get(_MANAGED_LABEL) != "true" or labels.get(_MANAGED_HOME_LABEL) != _home_hash():
-        raise InitConflictError(
-            f"Container {config.managed.container_name} already exists but is not owned by Shellbrain for this machine state."
-        )
-    if labels.get(_MANAGED_INSTANCE_LABEL) != config.machine_instance_id:
-        raise InitConflictError(
-            f"Managed container {config.managed.container_name} does not match the configured Shellbrain instance id."
-        )
-    state = info.get("State", {}) or {}
-    if not state.get("Running"):
-        _start_container(config.managed.container_name)
-        return True
-    return False
-
-
-def _create_managed_container(config: MachineConfig) -> None:
-    """Create the managed Postgres container with Shellbrain-owned labels."""
-
-    data_dir = Path(config.managed.data_dir)
-    data_dir.mkdir(parents=True, exist_ok=True)
-    command = [
-        "docker",
-        "create",
-        "--name",
-        config.managed.container_name,
-        "--label",
-        f"{_MANAGED_LABEL}=true",
-        "--label",
-        f"{_MANAGED_HOME_LABEL}={_home_hash()}",
-        "--label",
-        f"{_MANAGED_INSTANCE_LABEL}={config.machine_instance_id}",
-        "--health-cmd",
-        f"pg_isready -U {config.managed.admin_user} -d {config.managed.db_name}",
-        "--health-interval",
-        "10s",
-        "--health-timeout",
-        "5s",
-        "--health-retries",
-        "10",
-        "-e",
-        f"POSTGRES_DB={config.managed.db_name}",
-        "-e",
-        f"POSTGRES_USER={config.managed.admin_user}",
-        "-e",
-        f"POSTGRES_PASSWORD={config.managed.admin_password}",
-        "-e",
-        f"SHELLBRAIN_APP_USER={config.managed.app_user}",
-        "-e",
-        f"SHELLBRAIN_APP_PASSWORD={config.managed.app_password}",
-        "-p",
-        f"{config.managed.port}:5432",
-        "-v",
-        f"{config.managed.data_dir}:/var/lib/postgresql/data",
-        config.managed.image,
-    ]
-    completed = subprocess.run(command, capture_output=True, text=True, check=False)
-    if completed.returncode != 0:
-        raise InitConflictError(completed.stderr.strip() or f"Failed to create container {config.managed.container_name}.")
-
-
-def _start_container(container_name: str) -> None:
-    """Start one existing Docker container."""
-
-    completed = subprocess.run(
-        ["docker", "start", container_name],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        raise InitConflictError(completed.stderr.strip() or f"Failed to start container {container_name}.")
-
-
-def _inspect_container(container_name: str) -> dict[str, object] | None:
-    """Return one docker inspect payload when the container exists."""
-
-    completed = subprocess.run(
-        ["docker", "inspect", container_name],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return None
-    payload = json.loads(completed.stdout)
-    if not payload:
-        return None
-    if not isinstance(payload[0], dict):
-        return None
-    return payload[0]
+    return managed_runtime.ensure_managed_container(config)
 
 
 def _wait_for_postgres(admin_dsn: str) -> None:
-    """Wait for managed Postgres to accept connections."""
+    """Wait for the configured PostgreSQL runtime to accept connections."""
 
     deadline = time.time() + 45
     raw_dsn = admin_dsn.replace("+psycopg", "")
@@ -581,73 +434,37 @@ def _wait_for_postgres(admin_dsn: str) -> None:
                 return
         except psycopg.Error:
             if time.time() >= deadline:
-                raise InitConflictError("Managed Postgres did not become ready in time.")
+                raise InitConflictError("Shellbrain PostgreSQL runtime did not become ready in time.")
             time.sleep(1)
 
 
 def _backup_before_repair(config: MachineConfig) -> None:
-    """Create and verify a logical backup before mutating an existing managed instance."""
+    """Create and verify a logical backup before mutating the configured runtime."""
 
-    backup_and_verify_before_destructive_action(
-        admin_dsn=config.database.admin_dsn,
-        backup_root=Path(config.backups.root),
-        container_name=config.managed.container_name,
-        container_db_name=config.managed.db_name,
-        container_admin_user=config.managed.admin_user,
-        container_admin_password=config.managed.admin_password,
-    )
+    if config.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL:
+        managed_runtime.backup_before_repair(config)
+        return
+    if config.runtime_mode == RUNTIME_MODE_EXTERNAL_POSTGRES:
+        backup_and_verify_before_destructive_action(
+            admin_dsn=config.database.admin_dsn,
+            backup_root=Path(config.backups.root),
+        )
+        return
+    raise InitConflictError(f"Unsupported runtime mode during backup: {config.runtime_mode}")
 
 
-def _reconcile_database(config: MachineConfig) -> bool:
-    """Create or repair managed roles, database, extension, and grants."""
+def _reconcile_database(config: MachineConfig) -> tuple[bool, MachineConfig]:
+    """Create or repair roles, database metadata, extension state, and grants."""
 
-    changed = False
-    raw_admin_dsn = config.database.admin_dsn.replace("+psycopg", "")
-    postgres_dsn = _replace_database(raw_admin_dsn, "postgres")
-    with psycopg.connect(postgres_dsn, autocommit=True) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (config.managed.db_name,))
-            if cur.fetchone() is None:
-                cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(config.managed.db_name)))
-                changed = True
-
-    with psycopg.connect(raw_admin_dsn, autocommit=True) as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (config.managed.app_user,))
-            if cur.fetchone() is None:
-                cur.execute(
-                    sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}").format(
-                        sql.Identifier(config.managed.app_user),
-                        sql.Literal(config.managed.app_password),
-                    ),
-                )
-                changed = True
-            else:
-                cur.execute(
-                    sql.SQL("ALTER ROLE {} WITH PASSWORD {}").format(
-                        sql.Identifier(config.managed.app_user),
-                        sql.Literal(config.managed.app_password),
-                    ),
-                )
-            cur.execute("CREATE EXTENSION IF NOT EXISTS vector")
-            cur.execute(
-                sql.SQL("GRANT CONNECT ON DATABASE {} TO {}").format(
-                    sql.Identifier(config.managed.db_name),
-                    sql.Identifier(config.managed.app_user),
-                )
-            )
-    reconcile_app_role_privileges(admin_dsn=config.database.admin_dsn, app_dsn=config.database.app_dsn)
-    ensure_instance_metadata(
-        config.database.admin_dsn,
-        instance_mode="live",
-        created_by="app.init",
-        notes="Managed local Shellbrain instance",
-    )
-    return changed
+    if config.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL:
+        return managed_runtime.reconcile_database(config), config
+    if config.runtime_mode == RUNTIME_MODE_EXTERNAL_POSTGRES:
+        return external_runtime.reconcile_database(config)
+    raise InitConflictError(f"Unsupported runtime mode during database reconcile: {config.runtime_mode}")
 
 
 def _apply_schema_migrations(config: MachineConfig) -> bool:
-    """Apply packaged schema migrations to the managed Shellbrain database."""
+    """Apply packaged schema migrations to the configured Shellbrain database."""
 
     from app.boot.migrations import upgrade_database
 
@@ -675,22 +492,13 @@ def _fetch_schema_revision(dsn: str) -> str | None:
 def _prewarm_embeddings(config: MachineConfig, *, skip_model_download: bool) -> tuple[bool, MachineConfig]:
     """Prewarm the configured embedding backend and pin its runtime metadata."""
 
-    backend_version = None
     try:
         backend_version = importlib.metadata.version("sentence-transformers")
     except importlib.metadata.PackageNotFoundError:
         backend_version = None
     if skip_model_download:
-        updated = MachineConfig(
-            config_version=config.config_version,
-            bootstrap_version=config.bootstrap_version,
-            runtime_mode=config.runtime_mode,
-            bootstrap_state=config.bootstrap_state,
-            current_step=config.current_step,
-            last_error=config.last_error,
-            database=config.database,
-            managed=config.managed,
-            backups=config.backups,
+        updated = replace(
+            config,
             embeddings=EmbeddingRuntimeState(
                 provider=config.embeddings.provider,
                 model=config.embeddings.model,
@@ -714,16 +522,11 @@ def _prewarm_embeddings(config: MachineConfig, *, skip_model_download: bool) -> 
     try:
         provider.embed("shellbrain init warmup")
     except Exception as exc:
-        updated = MachineConfig(
-            config_version=config.config_version,
-            bootstrap_version=config.bootstrap_version,
-            runtime_mode=config.runtime_mode,
+        updated = replace(
+            config,
             bootstrap_state=BOOTSTRAP_STATE_REPAIR_NEEDED,
             current_step="embeddings",
             last_error=str(exc),
-            database=config.database,
-            managed=config.managed,
-            backups=config.backups,
             embeddings=EmbeddingRuntimeState(
                 provider=config.embeddings.provider,
                 model=config.embeddings.model,
@@ -735,16 +538,8 @@ def _prewarm_embeddings(config: MachineConfig, *, skip_model_download: bool) -> 
             ),
         )
         return True, updated
-    updated = MachineConfig(
-        config_version=config.config_version,
-        bootstrap_version=config.bootstrap_version,
-        runtime_mode=config.runtime_mode,
-        bootstrap_state=config.bootstrap_state,
-        current_step=config.current_step,
-        last_error=config.last_error,
-        database=config.database,
-        managed=config.managed,
-        backups=config.backups,
+    updated = replace(
+        config,
         embeddings=EmbeddingRuntimeState(
             provider=config.embeddings.provider,
             model=config.embeddings.model,
@@ -801,11 +596,13 @@ def _render_success_lines(
 ) -> list[str]:
     """Render the init success summary lines without the outcome prefix."""
 
-    lines = [
-        f"Managed instance: {config.managed.container_name} ({config.managed.host}:{config.managed.port})",
-        f"Embeddings: {config.embeddings.readiness_state}",
-        f"Backups: {config.backups.root}",
-    ]
+    del outcome
+    if config.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL and config.managed is not None:
+        runtime_line = f"Managed instance: {config.managed.container_name} ({config.managed.host}:{config.managed.port})"
+    else:
+        summary = fingerprint_summary(config.database.admin_dsn)
+        runtime_line = f"External database: {summary['host']}:{summary['port']}/{summary['database']}"
+    lines = [runtime_line, f"Embeddings: {config.embeddings.readiness_state}", f"Backups: {config.backups.root}"]
     if registration is None:
         lines.append("Repo registration: deferred until first Shellbrain use inside a repo.")
         lines.append(
@@ -842,169 +639,9 @@ def _mark_repair_needed(message: str) -> None:
 def _recover_machine_config_from_docker() -> MachineConfig | None:
     """Attempt to recover one unique managed instance for the current home root."""
 
-    completed = subprocess.run(
-        [
-            "docker",
-            "ps",
-            "-a",
-            "--filter",
-            f"label={_MANAGED_LABEL}=true",
-            "--filter",
-            f"label={_MANAGED_HOME_LABEL}={_home_hash()}",
-            "--format",
-            "{{.Names}}",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
+    if shutil.which("docker") is None:
         return None
-    names = [line.strip() for line in completed.stdout.splitlines() if line.strip()]
-    if len(names) != 1:
+    try:
+        return managed_runtime.recover_machine_config_from_docker()
+    except FileNotFoundError:
         return None
-    info = _inspect_container(names[0])
-    if info is None:
-        return None
-    env_map: dict[str, str] = {}
-    for item in info.get("Config", {}).get("Env", []) or []:
-        if not isinstance(item, str) or "=" not in item:
-            continue
-        key, value = item.split("=", 1)
-        env_map[key] = value
-    network_settings = info.get("NetworkSettings", {}) or {}
-    ports = network_settings.get("Ports", {}) or {}
-    host_entries = ports.get("5432/tcp") or []
-    if not host_entries or not isinstance(host_entries[0], dict):
-        return None
-    port = int(host_entries[0]["HostPort"])
-    admin_password = env_map.get("POSTGRES_PASSWORD")
-    app_password = env_map.get("SHELLBRAIN_APP_PASSWORD")
-    if not admin_password or not app_password:
-        return None
-    admin_dsn = f"postgresql+psycopg://{_MANAGED_ADMIN_USER}:{admin_password}@{_MANAGED_HOST}:{port}/{_MANAGED_DB_NAME}"
-    app_dsn = f"postgresql+psycopg://{_MANAGED_APP_USER}:{app_password}@{_MANAGED_HOST}:{port}/{_MANAGED_DB_NAME}"
-    return MachineConfig(
-        config_version=CONFIG_VERSION,
-        bootstrap_version=BOOTSTRAP_VERSION,
-        runtime_mode="managed_local",
-        bootstrap_state=BOOTSTRAP_STATE_REPAIR_NEEDED,
-        current_step="config_recovery",
-        last_error=None,
-        database=DatabaseState(app_dsn=app_dsn, admin_dsn=admin_dsn),
-        managed=ManagedInstanceState(
-            instance_id=dsn_fingerprint(admin_dsn),
-            container_name=names[0],
-            image=str(info.get("Config", {}).get("Image") or _MANAGED_IMAGE),
-            host=_MANAGED_HOST,
-            port=port,
-            db_name=env_map.get("POSTGRES_DB", _MANAGED_DB_NAME),
-            data_dir=str(get_machine_postgres_data_dir()),
-            admin_user=env_map.get("POSTGRES_USER", _MANAGED_ADMIN_USER),
-            admin_password=admin_password,
-            app_user=env_map.get("SHELLBRAIN_APP_USER", _MANAGED_APP_USER),
-            app_password=app_password,
-        ),
-        backups=BackupState(root=str(get_machine_backups_dir()), mirror_root=None),
-        embeddings=EmbeddingRuntimeState(
-            provider="sentence_transformers",
-            model=str(get_config_provider().get_runtime()["embeddings"]["model"]),
-            model_revision=None,
-            backend_version=None,
-            cache_path=str(get_machine_models_dir()),
-            readiness_state="pending",
-            last_error=None,
-        ),
-    )
-
-
-def _select_managed_port() -> int:
-    """Select a free reserved port for the managed Postgres instance."""
-
-    claimed_ports = _managed_claimed_host_ports()
-    for port in range(_MANAGED_PORT_START, _MANAGED_PORT_END + 1):
-        if port in claimed_ports:
-            continue
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            try:
-                sock.bind((_MANAGED_HOST, port))
-            except OSError:
-                continue
-            return port
-    raise InitConflictError("No free reserved port is available for the managed Shellbrain Postgres instance.")
-
-
-def _replace_database(dsn: str, db_name: str) -> str:
-    """Replace the database path component of a DSN."""
-
-    prefix, _, _ = dsn.rpartition("/")
-    return f"{prefix}/{db_name}"
-
-
-def _home_hash() -> str:
-    """Return a stable short hash for the active Shellbrain home root."""
-
-    import hashlib
-
-    return hashlib.sha256(str(get_shellbrain_home()).encode("utf-8")).hexdigest()[:16]
-
-
-def _managed_claimed_host_ports() -> set[int]:
-    """Return reserved host ports already claimed by managed Shellbrain containers."""
-
-    completed = subprocess.run(
-        [
-            "docker",
-            "ps",
-            "-a",
-            "--filter",
-            f"label={_MANAGED_LABEL}=true",
-            "--format",
-            "{{.Names}}",
-        ],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    if completed.returncode != 0:
-        return set()
-    ports: set[int] = set()
-    for name in (line.strip() for line in completed.stdout.splitlines()):
-        if not name:
-            continue
-        info = _inspect_container(name)
-        if info is None:
-            continue
-        ports.update(_container_host_ports(info))
-    return ports
-
-
-def _container_host_ports(info: dict[str, object]) -> set[int]:
-    """Extract declared host ports from one Docker inspect payload."""
-
-    ports: set[int] = set()
-    host_config = info.get("HostConfig", {}) or {}
-    port_bindings = host_config.get("PortBindings", {}) or {}
-    for bindings in port_bindings.values():
-        if not isinstance(bindings, list):
-            continue
-        for binding in bindings:
-            if not isinstance(binding, dict):
-                continue
-            host_port = binding.get("HostPort")
-            if isinstance(host_port, str) and host_port.isdigit():
-                ports.add(int(host_port))
-
-    network_settings = info.get("NetworkSettings", {}) or {}
-    active_ports = network_settings.get("Ports", {}) or {}
-    for bindings in active_ports.values():
-        if not isinstance(bindings, list):
-            continue
-        for binding in bindings:
-            if not isinstance(binding, dict):
-                continue
-            host_port = binding.get("HostPort")
-            if isinstance(host_port, str) and host_port.isdigit():
-                ports.add(int(host_port))
-    return ports

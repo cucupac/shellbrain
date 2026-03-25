@@ -6,6 +6,7 @@ from contextlib import nullcontext
 from pathlib import Path
 
 from app.periphery.admin import init as init_module
+from app.periphery.admin import managed_runtime
 from app.periphery.admin.machine_state import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
 from app.periphery.admin.repo_state import RepoRegistration
 
@@ -71,10 +72,11 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "_backup_before_repair", lambda config: backup_calls.append(config.machine_instance_id))
     monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: False)
+    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: True)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
     monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (registration, True))
@@ -108,6 +110,7 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: P
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(
         init_module,
         "_ensure_managed_container",
@@ -144,9 +147,10 @@ def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: False)
+    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
     monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: register_calls.append(kwargs))
@@ -180,9 +184,14 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_pa
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: call_order.append("reconcile") or False)
+    monkeypatch.setattr(
+        init_module,
+        "_reconcile_database",
+        lambda config: (call_order.append("reconcile") or False, config),
+    )
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: call_order.append("migrate") or True)
     monkeypatch.setattr(
         init_module,
@@ -203,6 +212,50 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_pa
     assert call_order == ["reconcile", "migrate", "embeddings"]
 
 
+def test_external_init_should_skip_managed_container_setup(monkeypatch, tmp_path: Path) -> None:
+    """external init should not require Docker-backed managed runtime helpers."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    initial_config = _external_machine_config(bootstrap_state="provisioning")
+    ready_config = _external_machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    saved: list[MachineConfig] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")))
+    monkeypatch.setattr(init_module.external_runtime, "build_fresh_machine_config", lambda admin_dsn: initial_config)
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: saved.append(config))
+    monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_container",
+        lambda config: (_ for _ in ()).throw(AssertionError("unexpected managed container step")),
+    )
+    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
+    monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
+    monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
+    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (_ for _ in ()).throw(AssertionError("unexpected repo registration")))
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=False,
+        skip_model_download=False,
+        skip_host_assets=True,
+        storage="external",
+        admin_dsn=initial_config.database.admin_dsn,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
+    assert any("External database:" in line for line in result.lines)
+    assert saved[0].runtime_mode == "external_postgres"
+
+
 def test_reconcile_database_should_inline_role_password_literals(monkeypatch) -> None:
     """role creation should not use server-side bind params inside CREATE/ALTER ROLE."""
 
@@ -211,11 +264,11 @@ def test_reconcile_database_should_inline_role_password_literals(monkeypatch) ->
     admin_cursor = _FakeCursor(fetch_results=[None])
     connections = [_FakeConnection(postgres_cursor), _FakeConnection(admin_cursor)]
 
-    monkeypatch.setattr(init_module.psycopg, "connect", lambda *args, **kwargs: connections.pop(0))
-    monkeypatch.setattr(init_module, "reconcile_app_role_privileges", lambda **kwargs: None)
-    monkeypatch.setattr(init_module, "ensure_instance_metadata", lambda *args, **kwargs: None)
+    monkeypatch.setattr(managed_runtime.psycopg, "connect", lambda *args, **kwargs: connections.pop(0))
+    monkeypatch.setattr(managed_runtime, "reconcile_app_role_privileges", lambda **kwargs: None)
+    monkeypatch.setattr(managed_runtime, "ensure_instance_metadata", lambda *args, **kwargs: None)
 
-    changed = init_module._reconcile_database(config)
+    changed = managed_runtime.reconcile_database(config)
 
     assert changed is True
     create_role_call = admin_cursor.calls[1]
@@ -240,10 +293,10 @@ def test_select_managed_port_should_skip_ports_claimed_by_created_containers(mon
         def __exit__(self, exc_type, exc, tb):
             return False
 
-    monkeypatch.setattr(init_module, "_managed_claimed_host_ports", lambda: {55432})
-    monkeypatch.setattr(init_module.socket, "socket", lambda *args, **kwargs: _Socket())
+    monkeypatch.setattr(managed_runtime, "_managed_claimed_host_ports", lambda: {55432})
+    monkeypatch.setattr(managed_runtime.socket, "socket", lambda *args, **kwargs: _Socket())
 
-    selected = init_module._select_managed_port()
+    selected = managed_runtime._select_managed_port()
 
     assert selected == 55433
 
@@ -252,8 +305,9 @@ def _machine_config(*, bootstrap_state: str, readiness_state: str = "pending", l
     """Return one minimal machine config for init tests."""
 
     return MachineConfig(
-        config_version=1,
+        config_version=2,
         bootstrap_version=1,
+        instance_id="inst-1",
         runtime_mode="managed_local",
         bootstrap_state=bootstrap_state,
         current_step="bootstrap",
@@ -275,6 +329,40 @@ def _machine_config(*, bootstrap_state: str, readiness_state: str = "pending", l
             app_user="shellbrain_app",
             app_password="app-secret",
         ),
+        backups=BackupState(root="/tmp/shellbrain-backups"),
+        embeddings=EmbeddingRuntimeState(
+            provider="sentence_transformers",
+            model="all-MiniLM-L6-v2",
+            model_revision=None,
+            backend_version="1.0.0",
+            cache_path="/tmp/shellbrain-models",
+            readiness_state=readiness_state,
+            last_error=last_error,
+        ),
+    )
+
+
+def _external_machine_config(
+    *,
+    bootstrap_state: str,
+    readiness_state: str = "pending",
+    last_error: str | None = "repair me",
+) -> MachineConfig:
+    """Return one minimal external machine config for init tests."""
+
+    return MachineConfig(
+        config_version=2,
+        bootstrap_version=1,
+        instance_id="ext-1",
+        runtime_mode="external_postgres",
+        bootstrap_state=bootstrap_state,
+        current_step="bootstrap",
+        last_error=last_error,
+        database=DatabaseState(
+            app_dsn="postgresql+psycopg://shellbrain_app:app_password@db.example.com:5432/shellbrain",
+            admin_dsn="postgresql+psycopg://admin_user:admin_password@db.example.com:5432/shellbrain",
+        ),
+        managed=None,
         backups=BackupState(root="/tmp/shellbrain-backups"),
         embeddings=EmbeddingRuntimeState(
             provider="sentence_transformers",

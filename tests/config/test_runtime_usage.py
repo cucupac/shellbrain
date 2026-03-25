@@ -35,8 +35,9 @@ def test_db_boot_should_prefer_machine_config_over_legacy_env(monkeypatch) -> No
     """db boot should use the managed machine config before env-based runtime settings."""
 
     machine_config = MachineConfig(
-        config_version=1,
+        config_version=2,
         bootstrap_version=1,
+        instance_id="inst-1",
         runtime_mode="managed_local",
         bootstrap_state="ready",
         current_step=None,
@@ -107,8 +108,9 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(monke
             return {"embeddings": {"provider": "sentence_transformers", "model": "all-MiniLM-L6-v2"}}
 
     machine_config = MachineConfig(
-        config_version=1,
+        config_version=2,
         bootstrap_version=1,
+        instance_id="inst-1",
         runtime_mode="managed_local",
         bootstrap_state="ready",
         current_step=None,
@@ -169,6 +171,39 @@ def test_runtime_yaml_should_always_define_database_cli_and_embedding_sections()
         "provider": "sentence_transformers",
         "model": "all-MiniLM-L6-v2",
     }
+
+
+def test_db_boot_should_support_external_machine_config(monkeypatch) -> None:
+    """db boot should use the persisted external machine config without managed metadata."""
+
+    machine_config = MachineConfig(
+        config_version=2,
+        bootstrap_version=1,
+        instance_id="ext-1",
+        runtime_mode="external_postgres",
+        bootstrap_state="ready",
+        current_step=None,
+        last_error=None,
+        database=DatabaseState(
+            app_dsn="postgresql+psycopg://shellbrain_app:app_secret@db.example.com:5432/shellbrain",
+            admin_dsn="postgresql+psycopg://admin_user:admin_secret@db.example.com:5432/shellbrain",
+        ),
+        managed=None,
+        backups=BackupState(root="/tmp/shellbrain-backups"),
+        embeddings=EmbeddingRuntimeState(
+            provider="sentence_transformers",
+            model="all-MiniLM-L6-v2",
+            model_revision=None,
+            backend_version="1.0.0",
+            cache_path="/tmp/shellbrain-models",
+            readiness_state="ready",
+            last_error=None,
+        ),
+    )
+
+    monkeypatch.setattr("app.boot.db.try_load_machine_config", lambda: (machine_config, None))
+
+    assert get_db_dsn() == "postgresql+psycopg://shellbrain_app:app_secret@db.example.com:5432/shellbrain"
 
 
 def test_unsafe_app_role_should_fail_closed_by_default(monkeypatch) -> None:

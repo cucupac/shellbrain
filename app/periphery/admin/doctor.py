@@ -11,9 +11,15 @@ from typing import Any
 import psycopg
 
 from app.boot.home import get_shellbrain_home
+from app.periphery.admin import external_runtime
 from app.periphery.admin.backup import list_backups
-from app.periphery.admin.instance_guard import fetch_instance_metadata, inspect_role_safety
-from app.periphery.admin.machine_state import MachineConfig, try_load_machine_config
+from app.periphery.admin.instance_guard import fetch_instance_metadata, fingerprint_summary, inspect_role_safety
+from app.periphery.admin.machine_state import (
+    MachineConfig,
+    RUNTIME_MODE_EXTERNAL_POSTGRES,
+    RUNTIME_MODE_MANAGED_LOCAL,
+    try_load_machine_config,
+)
 from app.periphery.admin.repo_state import IDENTITY_STRENGTH_WEAK_LOCAL, load_repo_registration_for_target, resolve_git_root
 from app.periphery.onboarding.host_assets import inspect_host_assets
 
@@ -48,6 +54,7 @@ def build_doctor_report(
     disk = shutil.disk_usage(home_root if home_root.exists() else home_root.parent)
     repo_report = _build_repo_report(repo_root=repo_root)
     host_integrations = inspect_host_assets()
+    runtime_warnings = _runtime_warnings(machine_config)
 
     report: dict[str, Any] = {
         "checked_at": checked_at.isoformat(),
@@ -61,6 +68,7 @@ def build_doctor_report(
         "config_version": None if machine_config is None else machine_config.config_version,
         "bootstrap_version": None if machine_config is None else machine_config.bootstrap_version,
         "machine_instance": _machine_instance_report(machine_config),
+        "runtime_warnings": runtime_warnings,
         "effective_config": _effective_config_summary(machine_config=machine_config, app_dsn=app_dsn, admin_dsn=admin_dsn),
         "app_dsn_configured": bool(app_dsn),
         "admin_dsn_configured": bool(admin_dsn),
@@ -127,18 +135,13 @@ def _config_status(*, machine_config: MachineConfig | None, machine_error: str |
 
 
 def _machine_instance_report(machine_config: MachineConfig | None) -> dict[str, Any] | None:
-    """Return managed-instance details when machine config exists."""
+    """Return runtime details when machine config exists."""
 
     if machine_config is None:
         return None
-    return {
+    report: dict[str, Any] = {
         "instance_id": machine_config.machine_instance_id,
-        "container_name": machine_config.managed.container_name,
-        "image": machine_config.managed.image,
-        "host": machine_config.managed.host,
-        "port": machine_config.managed.port,
-        "db_name": machine_config.managed.db_name,
-        "data_dir": machine_config.managed.data_dir,
+        "runtime_mode": machine_config.runtime_mode,
         "backup_root": machine_config.backups.root,
         "embeddings": {
             "provider": machine_config.embeddings.provider,
@@ -150,6 +153,31 @@ def _machine_instance_report(machine_config: MachineConfig | None) -> dict[str, 
             "last_error": machine_config.embeddings.last_error,
         },
     }
+    if machine_config.runtime_mode == RUNTIME_MODE_MANAGED_LOCAL and machine_config.managed is not None:
+        report.update(
+            {
+                "container_name": machine_config.managed.container_name,
+                "image": machine_config.managed.image,
+                "host": machine_config.managed.host,
+                "port": machine_config.managed.port,
+                "db_name": machine_config.managed.db_name,
+                "data_dir": machine_config.managed.data_dir,
+            }
+        )
+        return report
+    if machine_config.runtime_mode == RUNTIME_MODE_EXTERNAL_POSTGRES:
+        report["database"] = fingerprint_summary(machine_config.database.admin_dsn)
+    return report
+
+
+def _runtime_warnings(machine_config: MachineConfig | None) -> list[str]:
+    """Return runtime-specific warnings for the active machine config."""
+
+    if machine_config is None:
+        return []
+    if machine_config.runtime_mode == RUNTIME_MODE_EXTERNAL_POSTGRES:
+        return external_runtime.inspect_runtime(admin_dsn=machine_config.database.admin_dsn)
+    return []
 
 
 def _effective_config_summary(

@@ -41,7 +41,7 @@
         <div class="section-inner">
           <h2 class="section-title">install.</h2>
           <p class="section-copy">
-            <strong>one command on supported machines.</strong> the installer installs the shellbrain CLI, sets up PATH for zsh, bash, or fish, auto-installs skills into Claude Code and Codex, preflights Docker, and runs <code>shellbrain init</code> when the managed-local prerequisites are met.
+            <strong>one command on supported machines.</strong> the installer installs the shellbrain CLI, sets up PATH for zsh, bash, or fish, auto-installs skills into Claude Code and Codex, and runs <code>shellbrain init</code>. on first bootstrap, <code>shellbrain init</code> asks where shellbrain should store data.
           </p>
           <div class="panel" style="margin-top: 22px;">
             <div class="panel-head">
@@ -71,11 +71,11 @@
               <ul class="requirements-list">
                 <li class="req-ok">macOS and Linux</li>
                 <li class="req-ok">Python 3.11+</li>
-                <li class="req-ok">Docker installed and running</li>
+                <li class="req-ok">first init asks you to choose a storage mode</li>
+                <li class="req-ok">managed local: Docker installed and running</li>
+                <li class="req-ok">external: PostgreSQL with pgvector</li>
                 <li class="req-ok">first init downloads a local embedding model (~few hundred MB)</li>
-                <li class="req-ok">Postgres and pgvector run inside Docker&mdash;nothing to configure</li>
                 <li class="req-no">Windows not yet supported</li>
-                <li class="req-no">external Postgres support during install is coming soon</li>
               </ul>
             </div>
           </details>

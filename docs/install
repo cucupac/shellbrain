@@ -280,28 +280,6 @@ ensure_user_bin_on_shell_path() {
   esac
 }
 
-fail_managed_bootstrap() {
-  local reason="$1"
-
-  echo ""
-  echo "managed-local bootstrap incomplete."
-  echo "  reason: $reason"
-  echo "  shellbrain CLI is installed, but managed-local bootstrap was not run."
-  echo "  fix Docker, then rerun: shellbrain init"
-  echo "  docs: shellbrain.ai/external-quickstart"
-  exit 1
-}
-
-preflight_docker_for_managed_init() {
-  if ! command -v docker >/dev/null 2>&1; then
-    fail_managed_bootstrap "Docker is not installed."
-  fi
-
-  if ! docker info >/dev/null 2>&1; then
-    fail_managed_bootstrap "Docker is installed, but the daemon is not running or reachable."
-  fi
-}
-
 echo "installing shellbrain..."
 echo ""
 
@@ -376,10 +354,11 @@ if [ -n "$USER_BIN" ] && [ -d "$USER_BIN" ]; then
   ensure_user_bin_on_shell_path "$USER_BIN"
 fi
 
-preflight_docker_for_managed_init
-
 echo ""
 echo "initializing..."
+echo "  shellbrain init will ask how it should store data."
+echo "  default: let shellbrain set up local PostgreSQL + pgvector for you."
+echo "  advanced: use an existing PostgreSQL + pgvector database."
 echo ""
 $SHELLBRAIN init
 
