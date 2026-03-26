@@ -303,7 +303,7 @@ def test_admin_install_host_assets_help_should_include_examples(capsys: pytest.C
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "Codex and Claude host integrations" in output
+    assert "Codex, Claude, and Cursor host integrations" in output
     assert "--host" in output
     assert "--force" in output
 

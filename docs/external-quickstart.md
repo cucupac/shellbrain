@@ -152,9 +152,12 @@ shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"ut
 
 - `shellbrain init` installs the personal Codex skill in `${CODEX_HOME:-~/.codex}/skills`.
 - `shellbrain init` installs the personal Claude skill in `~/.claude/skills`.
+- `shellbrain init` installs the personal Cursor skill in `${CURSOR_HOME:-~/.cursor}/skills`.
 - `shellbrain init` installs the Claude global SessionStart hook in `~/.claude/settings.json`.
 - Shellbrain creates `~/.claude/settings.json` if needed and merges one managed hook entry without overwriting unrelated settings.
 - Repo-local Claude hook install is now an explicit override/repair path, not the default integration.
+- Cursor foreground chat support is passive and untrusted in v1; Shellbrain reads the active Composer thread from Cursor's local SQLite state.
+- Cursor background agents, rules, custom modes, and extension bridges are not part of this path yet.
 - Manual host asset repair path:
 
 ```bash

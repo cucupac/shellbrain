@@ -41,7 +41,7 @@
         <div class="section-inner">
           <h2 class="section-title">install.</h2>
           <p class="section-copy">
-            <strong>one command on supported machines.</strong> the installer installs the shellbrain CLI, sets up PATH for zsh, bash, or fish, auto-installs skills into Claude Code and Codex, and runs <code>shellbrain init</code>. on first bootstrap, <code>shellbrain init</code> asks where shellbrain should store data.
+            <strong>one command on supported machines.</strong> the installer installs the shellbrain CLI, sets up PATH for zsh, bash, or fish, auto-installs skills into Claude Code, Codex, and Cursor, and runs <code>shellbrain init</code>. on first bootstrap, <code>shellbrain init</code> asks where shellbrain should store data.
           </p>
           <div class="panel" style="margin-top: 22px;">
             <div class="panel-head">
@@ -103,45 +103,34 @@
         <div class="section-inner">
           <h2 class="section-title">use the skill with every thread.</h2>
           <p class="section-copy" style="margin-bottom: 22px;">
-            <strong>shellbrain only activates when you tell the agent to use it.</strong> paste the prompt below at the start of every new conversation thread in Codex or Claude Code. the skill tells the agent how to read context, gather evidence, and write durable memories. <em>you don't manage any of this directly&mdash;the agent does.</em>
+            <strong>shellbrain only activates when you tell the agent to use it.</strong> paste the prompt below at the start of every new conversation thread. the skill tells the agent how to read context, gather evidence, and write durable memories. <em>you don't manage any of this directly&mdash;the agent does.</em>
           </p>
-          <div class="card-grid">
-            <article class="card">
-              <h3>codex.</h3>
-              <p>open a repo. paste the prompt. the installed skill handles the rest.</p>
-              <div class="panel" style="margin-top: 14px;">
-                <div class="panel-head">
-                  <span class="panel-label">prompt</span>
-                  <button
-                    type="button"
-                    class="copy-button"
-                    data-copy-source="#codex-prompt"
-                    data-copy-label="copy"
-                    data-copy-success="copied"
-                    data-copy-failed="copy failed"
-                  >copy</button>
-                </div>
-                <pre id="codex-prompt">Use $shellbrain-session-start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.</pre>
-              </div>
-            </article>
-            <article class="card">
-              <h3>claude code.</h3>
-              <p>the global hook already wires identity into every session. start repo work explicitly.</p>
-              <div class="panel" style="margin-top: 14px;">
-                <div class="panel-head">
-                  <span class="panel-label">prompt</span>
-                  <button
-                    type="button"
-                    class="copy-button"
-                    data-copy-source="#claude-prompt"
-                    data-copy-label="copy"
-                    data-copy-success="copied"
-                    data-copy-failed="copy failed"
-                  >copy</button>
-                </div>
-                <pre id="claude-prompt">Use Shellbrain Session Start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.</pre>
-              </div>
-            </article>
+          <div class="compat-grid">
+            <div class="compat-row">
+              <span class="compat-env">terminal support</span>
+              <span class="compat-pill">Codex</span>
+              <span class="compat-pill">Claude Code</span>
+            </div>
+            <div class="compat-row">
+              <span class="compat-env">desktop support</span>
+              <span class="compat-pill">Codex</span>
+              <span class="compat-pill">Claude Code</span>
+              <span class="compat-pill">Cursor</span>
+            </div>
+          </div>
+          <div class="panel" style="margin-top: 22px;">
+            <div class="panel-head">
+              <span class="panel-label">prompt</span>
+              <button
+                type="button"
+                class="copy-button"
+                data-copy-source="#session-prompt"
+                data-copy-label="copy"
+                data-copy-success="copied"
+                data-copy-failed="copy failed"
+              >copy</button>
+            </div>
+            <pre id="session-prompt">Use Shellbrain Session Start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.</pre>
           </div>
         </div>
       </section>

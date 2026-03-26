@@ -8,13 +8,15 @@ import sys
 from app.periphery.onboarding.host_assets import inspect_host_assets, install_host_assets
 
 
-def test_install_host_assets_auto_should_install_the_default_codex_and_claude_set(monkeypatch, tmp_path: Path) -> None:
-    """auto mode should install Codex skill, Claude skill, and the Claude global hook by default."""
+def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cursor_set(monkeypatch, tmp_path: Path) -> None:
+    """auto mode should install Codex skill, Claude skill, Cursor skill, and the Claude global hook by default."""
 
     home_root = tmp_path / "home"
     codex_home = home_root / ".codex"
+    cursor_home = home_root / ".cursor"
     monkeypatch.setenv("HOME", str(home_root))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    monkeypatch.setenv("CURSOR_HOME", str(cursor_home))
 
     result = install_host_assets(host_mode="auto", force=False)
     inspection = inspect_host_assets()
@@ -23,6 +25,8 @@ def test_install_host_assets_auto_should_install_the_default_codex_and_claude_se
     codex_review_root = codex_home / "skills" / "shellbrain-usage-review"
     claude_skill_root = home_root / ".claude" / "skills" / "shellbrain-session-start"
     claude_review_root = home_root / ".claude" / "skills" / "shellbrain-usage-review"
+    cursor_skill_root = cursor_home / "skills" / "shellbrain-session-start"
+    cursor_review_root = cursor_home / "skills" / "shellbrain-usage-review"
     claude_settings_path = home_root / ".claude" / "settings.json"
 
     assert (codex_skill_root / "SKILL.md").exists()
@@ -30,9 +34,12 @@ def test_install_host_assets_auto_should_install_the_default_codex_and_claude_se
     assert (codex_skill_root / "agents" / "openai.yaml").exists()
     assert (claude_skill_root / "SKILL.md").exists()
     assert (claude_review_root / "SKILL.md").exists()
+    assert (cursor_skill_root / "SKILL.md").exists()
+    assert (cursor_review_root / "SKILL.md").exists()
     assert claude_settings_path.exists()
     assert inspection.codex_skill["managed"] is True
     assert inspection.claude_skill["managed"] is True
+    assert inspection.cursor_skill["managed"] is True
     assert inspection.claude_global_hook["managed"] is True
     assert inspection.claude_global_hook["command_executable"] == str(Path(sys.executable).resolve())
     assert inspection.claude_global_hook["executable_exists"] is True
@@ -40,6 +47,8 @@ def test_install_host_assets_auto_should_install_the_default_codex_and_claude_se
     assert any(line.startswith("Codex skill (shellbrain-usage-review): installed at ") for line in result.lines)
     assert any(line.startswith("Claude skill (shellbrain-session-start): installed at ") for line in result.lines)
     assert any(line.startswith("Claude skill (shellbrain-usage-review): installed at ") for line in result.lines)
+    assert any(line.startswith("Cursor skill (shellbrain-session-start): installed at ") for line in result.lines)
+    assert any(line.startswith("Cursor skill (shellbrain-usage-review): installed at ") for line in result.lines)
     assert any(line.startswith("Claude global hook: installed at ") for line in result.lines)
 
 
@@ -81,6 +90,27 @@ def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_
         f"Codex skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
     )
     assert any(line.startswith("Codex skill (shellbrain-usage-review): installed at ") for line in result.lines)
+
+
+def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without_force(monkeypatch, tmp_path: Path) -> None:
+    """explicit Cursor installs should skip unmanaged conflicts unless force is requested."""
+
+    home_root = tmp_path / "home"
+    cursor_home = home_root / ".cursor"
+    unmanaged_root = cursor_home / "skills" / "shellbrain-session-start"
+    unmanaged_root.mkdir(parents=True)
+    sentinel = unmanaged_root / "SKILL.md"
+    sentinel.write_text("custom cursor skill\n", encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home_root))
+    monkeypatch.setenv("CURSOR_HOME", str(cursor_home))
+
+    result = install_host_assets(host_mode="cursor", force=False)
+
+    assert sentinel.read_text(encoding="utf-8") == "custom cursor skill\n"
+    assert result.lines[0] == (
+        f"Cursor skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
+    )
+    assert any(line.startswith("Cursor skill (shellbrain-usage-review): installed at ") for line in result.lines)
 
 
 def test_install_host_assets_should_update_managed_codex_skill_idempotently(monkeypatch, tmp_path: Path) -> None:

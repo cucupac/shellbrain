@@ -72,3 +72,53 @@ def test_events_selects_the_most_recent_matching_host_session_across_supported_h
 
     rows = fetch_rows(episode_events)
     assert len(rows) == 3
+
+
+def test_events_should_fall_back_to_cursor_when_no_trusted_host_exists(
+    cursor_transcript_fixture: dict[str, object],
+    uow_factory: Callable[[], PostgresUnitOfWork],
+) -> None:
+    """events should sync a repo-matching Cursor composer when no trusted host overrides it."""
+
+    result = handle_events(
+        {},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={
+            "codex": [],
+            "claude_code": [],
+            "cursor": list(cursor_transcript_fixture["search_roots"]),
+        },
+    )
+
+    assert result["status"] == "ok"
+    assert result["data"]["host_app"] == "cursor"
+    assert result["data"]["thread_id"] == cursor_transcript_fixture["canonical_thread_id"]
+
+
+def test_events_should_keep_trusted_codex_over_a_newer_cursor_candidate(
+    codex_transcript_fixture: dict[str, object],
+    cursor_transcript_fixture: dict[str, object],
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch,
+) -> None:
+    """trusted caller identity should still win even when Cursor has the newer fallback candidate."""
+
+    monkeypatch.setenv("CODEX_THREAD_ID", str(codex_transcript_fixture["host_session_key"]))
+
+    result = handle_events(
+        {},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={
+            "codex": list(codex_transcript_fixture["search_roots"]),
+            "claude_code": [],
+            "cursor": list(cursor_transcript_fixture["search_roots"]),
+        },
+    )
+
+    assert result["status"] == "ok"
+    assert result["data"]["host_app"] == "codex"
+    assert result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]

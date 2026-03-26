@@ -1,4 +1,4 @@
-"""Install Shellbrain-managed host assets for Codex and Claude."""
+"""Install Shellbrain-managed host assets for Codex, Claude, and Cursor."""
 
 from __future__ import annotations
 
@@ -19,8 +19,10 @@ from app.periphery.identity.claude_hook_install import (
 
 _PRIMARY_CODEX_SKILL_NAME = "shellbrain-session-start"
 _PRIMARY_CLAUDE_SKILL_NAME = "shellbrain-session-start"
+_PRIMARY_CURSOR_SKILL_NAME = "shellbrain-session-start"
 _CODEX_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
 _CLAUDE_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
+_CURSOR_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
 _CLAUDE_LEGACY_COMMAND = "shellbrain-session-start.md"
 _MANAGED_MARKER_FILENAME = ".shellbrain-managed.json"
 
@@ -38,6 +40,7 @@ class HostAssetInspection:
 
     codex_skill: dict[str, object]
     claude_skill: dict[str, object]
+    cursor_skill: dict[str, object]
     claude_global_hook: dict[str, object]
 
 
@@ -45,12 +48,14 @@ def install_host_assets(*, host_mode: str, force: bool = False) -> HostAssetInst
     """Install one or more Shellbrain-managed host assets."""
 
     lines: list[str] = []
-    if host_mode not in {"auto", "codex", "claude", "all"}:
+    if host_mode not in {"auto", "codex", "claude", "cursor", "all"}:
         raise ValueError(f"Unsupported host asset mode: {host_mode}")
     if host_mode in {"auto", "codex", "all"}:
         lines.extend(_install_codex_skill(force=force))
     if host_mode in {"auto", "claude", "all"}:
         lines.extend(_install_claude_skill(force=force))
+    if host_mode in {"auto", "cursor", "all"}:
+        lines.extend(_install_cursor_skill(force=force))
     return HostAssetInstallResult(lines=lines)
 
 
@@ -93,12 +98,30 @@ def _install_claude_skill(*, force: bool) -> list[str]:
     return lines
 
 
+def _install_cursor_skill(*, force: bool) -> list[str]:
+    """Install the packaged Cursor skills into the default Cursor home."""
+
+    cursor_root = _default_cursor_home()
+    lines: list[str] = []
+    for skill_name in _CURSOR_SKILL_NAMES:
+        target_root = cursor_root / "skills" / skill_name
+        source_root = resources.files("app.onboarding_assets").joinpath("cursor", "skills", skill_name)
+        lines.append(
+            _render_install_status(
+                f"Cursor skill ({skill_name})",
+                _install_asset_tree(source_root=source_root, target_root=target_root, asset_kind="cursor_skill", force=force),
+            )
+        )
+    return lines
+
+
 def inspect_host_assets() -> HostAssetInspection:
     """Inspect the default Shellbrain-managed host integrations."""
 
     codex_root = _default_codex_home() / "skills" / _PRIMARY_CODEX_SKILL_NAME
     claude_root = _default_claude_root()
     claude_skill_root = claude_root / "skills" / _PRIMARY_CLAUDE_SKILL_NAME
+    cursor_root = _default_cursor_home() / "skills" / _PRIMARY_CURSOR_SKILL_NAME
     claude_hook = inspect_claude_hook(settings_path=default_global_claude_settings_path())
     return HostAssetInspection(
         codex_skill={
@@ -110,6 +133,11 @@ def inspect_host_assets() -> HostAssetInspection:
             "path": str(claude_skill_root),
             "installed": claude_skill_root.exists(),
             "managed": _is_shellbrain_managed_asset(target_root=claude_skill_root, asset_kind="claude_skill"),
+        },
+        cursor_skill={
+            "path": str(cursor_root),
+            "installed": cursor_root.exists(),
+            "managed": _is_shellbrain_managed_asset(target_root=cursor_root, asset_kind="cursor_skill"),
         },
         claude_global_hook={
             "path": str(claude_hook.settings_path),
@@ -220,3 +248,12 @@ def _default_claude_root() -> Path:
     """Return the default Claude home path for host assets."""
 
     return (Path.home() / ".claude").resolve()
+
+
+def _default_cursor_home() -> Path:
+    """Return the default Cursor home path for host assets."""
+
+    raw = os.getenv("CURSOR_HOME")
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return (Path.home() / ".cursor").resolve()

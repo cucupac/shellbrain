@@ -69,3 +69,30 @@ def test_codex_and_claude_code_should_always_normalize_equivalent_tool_results_i
     assert codex_tool["source"] == claude_tool["source"] == "tool"
     assert codex_tool["status"] == claude_tool["status"] == "error"
     assert codex_tool["is_error"] is claude_tool["is_error"] is True
+
+
+def test_cursor_tool_results_should_normalize_into_the_same_analytics_shape_as_codex(
+    codex_transcript_fixture: dict[str, object],
+    cursor_transcript_fixture: dict[str, object],
+) -> None:
+    """cursor tool results should reuse the shared telemetry shape used by the other hosts."""
+
+    codex_events = normalize_host_transcript(
+        host_app="codex",
+        host_session_key=str(codex_transcript_fixture["host_session_key"]),
+        transcript_path=Path(str(codex_transcript_fixture["transcript_path"])),
+    )
+    cursor_events = normalize_host_transcript(
+        host_app="cursor",
+        host_session_key=str(cursor_transcript_fixture["host_session_key"]),
+        transcript_path=Path(str(cursor_transcript_fixture["transcript_path"])),
+    )
+
+    codex_tool = next(event for event in codex_events if event["host_event_key"] == "codex-tool-important-1")
+    cursor_tool = next(event for event in cursor_events if event["host_event_key"] == "cursor-bubble-tool-1:tool:tool-result-0")
+
+    assert set(codex_tool) == set(cursor_tool)
+    assert cursor_tool["content_kind"] == "tool_result"
+    assert cursor_tool["source"] == "tool"
+    assert cursor_tool["status"] == "error"
+    assert cursor_tool["is_error"] is True

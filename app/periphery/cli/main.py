@@ -40,7 +40,7 @@ _TOP_LEVEL_HELP = dedent(
       - Windows and first-class external Postgres adoption are not part of this happy path.
 
     After install:
-      - Start a repo session in Codex or Claude Code (see shellbrain.ai/humans).
+      - Start a repo session in Codex, Claude Code, or Cursor (see shellbrain.ai/humans).
       - If readiness is unclear, run `shellbrain admin doctor`.
 
     Mental model:
@@ -78,7 +78,7 @@ _TOP_LEVEL_HELP = dedent(
       - `shellbrain: command not found`: rerun `curl -L shellbrain.ai/install | bash`.
       - `Shellbrain machine config is unreadable`: rerun `shellbrain init` to repair the managed instance.
       - `Outcome: blocked_dependency`: install Docker or start the Docker daemon, then rerun `shellbrain init`.
-      - No active host session found: verify Codex/Claude Code transcript availability, then rerun `events`.
+      - No active host session found: verify Codex, Claude Code, or Cursor transcript availability, then rerun `events`.
       - Evidence ref rejected: rerun `events` and use the returned `episode_event` ids verbatim.
       - Wrong working tree: rerun with `--repo-root` (and optionally `--repo-id`) for the target repo.
     """
@@ -162,7 +162,7 @@ _UPGRADE_HELP = dedent(
 
     This is the official product-path upgrader for website installs.
     It upgrades the package and reruns `shellbrain init` to refresh the managed runtime,
-    Codex skill, Claude skill, and Claude hook.
+    Codex skill, Claude skill, Cursor skill, and Claude hook.
 
     Manual/advanced path:
       pipx upgrade shellbrain && shellbrain init
@@ -240,11 +240,12 @@ _INSTALL_CLAUDE_HOOK_HELP = dedent(
 
 _INSTALL_HOST_ASSETS_HELP = dedent(
     """\
-    Install or update Shellbrain-managed Codex and Claude host integrations.
+    Install or update Shellbrain-managed Codex, Claude, and Cursor host integrations.
 
     Examples:
       shellbrain admin install-host-assets --host auto
       shellbrain admin install-host-assets --host codex
+      shellbrain admin install-host-assets --host cursor
       shellbrain admin install-host-assets --host claude --force
     """
 )
@@ -332,7 +333,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--no-host-assets",
         action="store_true",
-        help="Skip Codex skill, Claude skill, and Claude global hook installation during init.",
+        help="Skip Codex skill, Claude skill, Cursor skill, and Claude global hook installation during init.",
     )
 
     subparsers.add_parser(
@@ -447,14 +448,14 @@ def build_parser() -> argparse.ArgumentParser:
     install_hook_parser.add_argument("--repo-root", help="Target repository root. Defaults to the current working directory.")
     install_host_assets_parser = admin_subparsers.add_parser(
         "install-host-assets",
-        help="Install Shellbrain-managed Codex and Claude host integrations.",
-        description="Install or update Shellbrain-managed Codex and Claude host integrations.",
+        help="Install Shellbrain-managed Codex, Claude, and Cursor host integrations.",
+        description="Install or update Shellbrain-managed Codex, Claude, and Cursor host integrations.",
         epilog=_INSTALL_HOST_ASSETS_HELP,
         formatter_class=_HelpFormatter,
     )
     install_host_assets_parser.add_argument(
         "--host",
-        choices=("auto", "codex", "claude", "all"),
+        choices=("auto", "codex", "claude", "cursor", "all"),
         default="auto",
         help="Host asset install mode. Defaults to auto.",
     )

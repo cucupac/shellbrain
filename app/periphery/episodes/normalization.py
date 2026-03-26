@@ -7,6 +7,7 @@ from typing import Any
 
 from app.periphery.episodes.claude_code import normalize_claude_code_transcript
 from app.periphery.episodes.codex import normalize_codex_transcript
+from app.periphery.episodes.cursor import normalize_cursor_transcript
 
 
 def normalize_host_transcript(
@@ -25,6 +26,11 @@ def normalize_host_transcript(
         )
     if host_app == "claude_code":
         return normalize_claude_code_transcript(
+            host_session_key=host_session_key,
+            transcript_path=transcript_path,
+        )
+    if host_app == "cursor":
+        return normalize_cursor_transcript(
             host_session_key=host_session_key,
             transcript_path=transcript_path,
         )
