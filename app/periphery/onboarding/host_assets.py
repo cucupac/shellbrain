@@ -170,6 +170,9 @@ def _install_asset_tree(*, source_root, target_root: Path, asset_kind: str, forc
         if _is_shellbrain_managed_asset(target_root=target_root, asset_kind=asset_kind):
             _remove_existing_path(target_root)
             status = "updated"
+        elif _is_legacy_shellbrain_asset(target_root=target_root, asset_kind=asset_kind):
+            _remove_existing_path(target_root)
+            status = "updated"
         elif force:
             _remove_existing_path(target_root)
             status = "installed"
@@ -224,6 +227,31 @@ def _is_shellbrain_managed_asset(*, target_root: Path, asset_kind: str) -> bool:
     except (FileNotFoundError, json.JSONDecodeError):
         return False
     return payload.get("managed_by") == "shellbrain" and payload.get("asset_kind") == asset_kind
+
+
+def _is_legacy_shellbrain_asset(*, target_root: Path, asset_kind: str) -> bool:
+    """Return whether one target root looks like a pre-marker Shellbrain-managed asset."""
+
+    if asset_kind != "codex_skill" or target_root.name != "shellbrain-session-start":
+        return False
+    skill_path = target_root / "SKILL.md"
+    openai_path = target_root / "agents" / "openai.yaml"
+    request_shapes = target_root / "references" / "request-shapes.md"
+    session_workflow = target_root / "references" / "session-workflow.md"
+    required_paths = (skill_path, openai_path, request_shapes, session_workflow)
+    if not all(path.is_file() for path in required_paths):
+        return False
+    try:
+        skill_text = skill_path.read_text(encoding="utf-8")
+        openai_text = openai_path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return (
+        "name: shellbrain-session-start" in skill_text
+        and "Use Shellbrain as a case-based reasoning system for long-running agent work." in skill_text
+        and 'display_name: "Shellbrain Session Start"' in openai_text
+        and 'default_prompt: "Use $shellbrain-session-start' in openai_text
+    )
 
 
 def _remove_existing_path(path: Path) -> None:
