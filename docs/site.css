@@ -227,6 +227,52 @@ pre,
   margin-bottom: 10px;
 }
 
+.compat-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-top: 20px;
+  background: var(--surface);
+  border: 1px solid var(--rule-strong);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 16px 40px rgba(22, 19, 15, 0.05);
+}
+
+.compat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 22px;
+}
+
+.compat-row + .compat-row {
+  border-top: 1px solid var(--rule);
+}
+
+.compat-env {
+  font-family: "DM Mono", monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.compat-pill {
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--rule-strong);
+  border-radius: 999px;
+  padding: 5px 14px;
+  white-space: nowrap;
+}
+
 .card p,
 .card li {
   font-size: 0.98rem;
