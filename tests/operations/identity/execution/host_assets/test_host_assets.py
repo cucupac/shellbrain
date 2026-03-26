@@ -92,6 +92,40 @@ def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_
     assert any(line.startswith("Codex skill (shellbrain-usage-review): installed at ") for line in result.lines)
 
 
+def test_install_host_assets_should_adopt_legacy_markerless_codex_shellbrain_skill(monkeypatch, tmp_path: Path) -> None:
+    """Legacy Shellbrain Codex skill installs without a marker should update in place."""
+
+    home_root = tmp_path / "home"
+    codex_home = home_root / ".codex"
+    skill_root = codex_home / "skills" / "shellbrain-session-start"
+    source_root = (
+        Path(__file__).resolve().parents[5]
+        / "app"
+        / "onboarding_assets"
+        / "codex"
+        / "shellbrain-session-start"
+    )
+    skill_root.mkdir(parents=True)
+    for relative_path in (
+        Path("SKILL.md"),
+        Path("agents") / "openai.yaml",
+        Path("references") / "request-shapes.md",
+        Path("references") / "session-workflow.md",
+    ):
+        destination = skill_root / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        text = (source_root / relative_path).read_text(encoding="utf-8")
+        destination.write_text(text.replace("~/.bash_profile", "~/.bashrc"), encoding="utf-8")
+    monkeypatch.setenv("HOME", str(home_root))
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+
+    result = install_host_assets(host_mode="codex", force=False)
+
+    assert any(line == f"Codex skill (shellbrain-session-start): updated at {skill_root}" for line in result.lines)
+    assert (skill_root / ".shellbrain-managed.json").exists()
+    assert "~/.bash_profile" in (skill_root / "SKILL.md").read_text(encoding="utf-8")
+
+
 def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without_force(monkeypatch, tmp_path: Path) -> None:
     """explicit Cursor installs should skip unmanaged conflicts unless force is requested."""
 
