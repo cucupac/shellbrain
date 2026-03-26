@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -36,4 +35,4 @@ def write_session_state(repo_with_shellbrain_state: Path):
 def old_timestamp() -> str:
     """Return one timestamp old enough to trigger idle/session-state GC behavior."""
 
-    return (datetime.now(timezone.utc) - timedelta(days=8)).isoformat()
+    return "2026-03-10T00:00:00+00:00"
