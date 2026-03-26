@@ -231,6 +231,7 @@ def run_init(
                     [
                         "Codex skill: skipped (--no-host-assets)",
                         "Claude skill: skipped (--no-host-assets)",
+                        "Cursor skill: skipped (--no-host-assets)",
                         "Claude global hook: skipped (--no-host-assets)",
                     ]
                 )

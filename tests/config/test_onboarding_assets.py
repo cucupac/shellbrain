@@ -39,6 +39,7 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
         _read_text(repo_root / "docs" / "external-quickstart.md"),
         _read_text(repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start" / "SKILL.md"),
         _read_text(repo_root / "app" / "onboarding_assets" / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(repo_root / "app" / "onboarding_assets" / "cursor" / "skills" / "shellbrain-session-start" / "SKILL.md"),
     ]
 
     required_phrases = [
@@ -110,6 +111,15 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
 
     for relative_path in relative_paths:
         assert (packaged_skill_root / relative_path).is_file()
+
+
+def test_packaged_cursor_skill_should_include_the_required_skill_file() -> None:
+    """The packaged Cursor skill should ship the SKILL.md file consumed by Cursor."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    packaged_skill_root = repo_root / "app" / "onboarding_assets" / "cursor" / "skills" / "shellbrain-session-start"
+
+    assert (packaged_skill_root / "SKILL.md").is_file()
 
 
 def test_install_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> None:

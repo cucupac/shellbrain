@@ -85,6 +85,7 @@ def build_doctor_report(
         "host_integrations": {
             "codex_skill": host_integrations.codex_skill,
             "claude_skill": host_integrations.claude_skill,
+            "cursor_skill": host_integrations.cursor_skill,
             "claude_global_hook": host_integrations.claude_global_hook,
         },
         "repo": repo_report,

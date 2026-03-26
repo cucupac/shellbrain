@@ -126,6 +126,52 @@ def test_episode_parsing_skips_unknown_transcript_lines_without_failing_normaliz
     assert {event["host_event_key"] for event in events}.isdisjoint({"codex-unknown-1"})
 
 
+def test_cursor_parsing_normalizes_messages_tool_results_and_rich_text_into_common_event_shape(
+    cursor_transcript_fixture: dict[str, object],
+) -> None:
+    """cursor parsing should normalize messages, rich text, and tool events into the shared shape."""
+
+    events = normalize_host_transcript(
+        host_app="cursor",
+        host_session_key=str(cursor_transcript_fixture["host_session_key"]),
+        transcript_path=Path(str(cursor_transcript_fixture["transcript_path"])),
+    )
+
+    _assert_normalized_event(
+        next(event for event in events if event["host_event_key"] == "cursor-bubble-user-1"),
+        host_app="cursor",
+        host_session_key=str(cursor_transcript_fixture["host_session_key"]),
+        host_event_key="cursor-bubble-user-1",
+        source="user",
+        content_kind="message",
+        content_text="Fix the smoke workflow.",
+    )
+    _assert_normalized_event(
+        next(event for event in events if event["host_event_key"] == "cursor-bubble-assistant-1"),
+        host_app="cursor",
+        host_session_key=str(cursor_transcript_fixture["host_session_key"]),
+        host_event_key="cursor-bubble-assistant-1",
+        source="assistant",
+        content_kind="message",
+        content_text="I will inspect the workflow.",
+    )
+    _assert_normalized_event(
+        next(event for event in events if event["host_event_key"] == "cursor-bubble-richtext-1"),
+        host_app="cursor",
+        host_session_key=str(cursor_transcript_fixture["host_session_key"]),
+        host_event_key="cursor-bubble-richtext-1",
+        source="assistant",
+        content_kind="message",
+        content_text="Rich text fallback still becomes a message.",
+    )
+    tool_event = next(event for event in events if event["host_event_key"] == "cursor-bubble-tool-1:tool:tool-result-0")
+    assert tool_event["tool_name"] == "exec_command"
+    assert tool_event["status"] == "error"
+    assert tool_event["is_error"] is True
+    assert all(event["host_event_key"] != "cursor-bubble-generating-1" for event in events)
+    assert all("messageRequestContext" not in event["raw_ref"] for event in events)
+
+
 def _assert_normalized_event(
     event: dict[str, object],
     *,

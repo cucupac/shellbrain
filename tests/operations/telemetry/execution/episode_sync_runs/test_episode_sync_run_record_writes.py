@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
+import os
 from pathlib import Path
 
 import pytest
@@ -154,3 +156,70 @@ def test_episode_sync_runs_should_always_record_tool_type_counts_from_the_normal
     assert len(rows) == 1
     assert rows[0]["tool_type"] == "exec_command"
     assert rows[0]["event_count"] == 1
+
+
+def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_cursor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Cursor poller freshness should track the composer marker, not the shared DB mtime."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    cursor_root = tmp_path / "Cursor" / "User"
+    transcript_path = cursor_root / "globalStorage" / "state.vscdb"
+    transcript_path.parent.mkdir(parents=True, exist_ok=True)
+    transcript_path.write_text("stub", encoding="utf-8")
+    os.utime(transcript_path, (10.0, 10.0))
+
+    sync_calls: list[dict[str, object]] = []
+    discovery_calls = {"cursor": 0}
+
+    monkeypatch.setattr("app.periphery.episodes.poller.get_uow_factory", lambda: (lambda: nullcontext(object())))
+    monkeypatch.setattr("app.periphery.episodes.poller.acquire_poller_lock", lambda **kwargs: _NoOpLock())
+    monkeypatch.setattr("app.periphery.episodes.poller.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
+    monkeypatch.setattr("app.periphery.episodes.poller._record_sync_telemetry_best_effort", lambda **kwargs: None)
+    monkeypatch.setattr("app.periphery.episodes.poller._close_episode", lambda **kwargs: None)
+    monkeypatch.setattr("app.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
+    monkeypatch.setattr("app.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr(
+        "app.periphery.episodes.poller.default_search_roots",
+        lambda *, repo_root, host_app: [cursor_root] if host_app == "cursor" else [],
+    )
+
+    def _discover_active_host_session(*, host_app, repo_root, search_roots):
+        if host_app != "cursor":
+            return None
+        discovery_calls["cursor"] += 1
+        if discovery_calls["cursor"] == 2:
+            os.utime(transcript_path, (20.0, 20.0))
+        return {
+            "host_app": "cursor",
+            "host_session_key": "cursor-composer-1",
+            "transcript_path": transcript_path,
+            "updated_at": 1234.0,
+        }
+
+    monkeypatch.setattr("app.periphery.episodes.poller.discover_active_host_session", _discover_active_host_session)
+    monkeypatch.setattr(
+        "app.periphery.episodes.poller.sync_episode_from_host",
+        lambda **kwargs: sync_calls.append(kwargs)
+        or {
+            "thread_id": "cursor:cursor-composer-1",
+            "episode_id": "ep-1",
+            "transcript_path": str(transcript_path),
+            "imported_event_count": 0,
+            "total_event_count": 0,
+            "user_event_count": 0,
+            "assistant_event_count": 0,
+            "tool_event_count": 0,
+            "system_event_count": 0,
+            "tool_type_counts": {},
+        },
+    )
+
+    run_episode_poller(repo_id="shellbrain", repo_root=repo_root)
+
+    assert discovery_calls["cursor"] >= 2
+    assert len(sync_calls) == 1
+    assert sync_calls[0]["host_app"] == "cursor"

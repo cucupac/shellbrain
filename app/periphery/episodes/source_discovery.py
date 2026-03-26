@@ -10,8 +10,13 @@ from app.periphery.episodes.claude_code import (
     resolve_claude_code_transcript_path,
 )
 from app.periphery.episodes.codex import find_latest_codex_session_for_repo, resolve_codex_transcript_path
+from app.periphery.episodes.cursor import (
+    default_cursor_user_roots,
+    find_latest_cursor_session_for_repo,
+    resolve_cursor_transcript_path,
+)
 
-SUPPORTED_HOSTS = ("codex", "claude_code")
+SUPPORTED_HOSTS = ("codex", "claude_code", "cursor")
 
 
 def resolve_host_transcript_source(
@@ -36,6 +41,12 @@ def resolve_host_transcript_source(
             search_roots=search_roots,
             last_known_path=last_known_path,
         )
+    if host_app == "cursor":
+        return resolve_cursor_transcript_path(
+            host_session_key=host_session_key,
+            search_roots=search_roots,
+            last_known_path=last_known_path,
+        )
     raise ValueError(f"Unsupported host app for episode sync: {host_app}")
 
 
@@ -47,6 +58,8 @@ def default_search_roots(*, repo_root: Path, host_app: str) -> list[Path]:
         return [home / ".codex" / "sessions"]
     if host_app == "claude_code":
         return [home]
+    if host_app == "cursor":
+        return default_cursor_user_roots()
     return [repo_root]
 
 
@@ -63,4 +76,6 @@ def discover_active_host_session(
         return find_latest_codex_session_for_repo(repo_root=repo_root, search_roots=search_roots)
     if host_app == "claude_code":
         return find_latest_claude_code_session_for_repo(repo_root=repo_root, search_roots=search_roots)
+    if host_app == "cursor":
+        return find_latest_cursor_session_for_repo(repo_root=repo_root, search_roots=search_roots)
     raise ValueError(f"Unsupported host app for episode sync: {host_app}")

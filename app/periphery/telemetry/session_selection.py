@@ -11,6 +11,7 @@ from typing import Any
 from app.core.entities.telemetry import SessionSelectionSummary
 from app.periphery.episodes.claude_code import list_claude_code_sessions_for_repo
 from app.periphery.episodes.codex import list_codex_sessions_for_repo
+from app.periphery.episodes.cursor import list_cursor_sessions_for_repo
 from app.periphery.episodes.source_discovery import SUPPORTED_HOSTS, default_search_roots
 
 
@@ -142,6 +143,8 @@ def _list_candidates_for_host(*, host_app: str, repo_root: Path, search_roots: l
         return list_codex_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
     if host_app == "claude_code":
         return list_claude_code_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+    if host_app == "cursor":
+        return list_cursor_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
     raise ValueError(f"Unsupported host app for telemetry discovery: {host_app}")
 
 

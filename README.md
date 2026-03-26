@@ -11,7 +11,7 @@ It stores what happened, what worked, what failed, and what the human prefers �
 curl -L shellbrain.ai/install | bash
 ```
 
-**One command on supported machines.** The installer provisions the local runtime, installs the Codex and Claude skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you. On first bootstrap, `shellbrain init` asks how it should store data. Repos register themselves on first use.
+**One command on supported machines.** The installer provisions the local runtime, installs the Codex, Claude, and Cursor skills, wires the Claude SessionStart hook, and runs `shellbrain init` for you. On first bootstrap, `shellbrain init` asks how it should store data. Repos register themselves on first use.
 
 **Requirements**
 
@@ -44,6 +44,8 @@ The install script also works as an upgrade path — `curl -L shellbrain.ai/upgr
 **Codex:** `Use $shellbrain-session-start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.`
 
 **Claude Code:** `Use Shellbrain Session Start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.`
+
+**Cursor:** `Use shellbrain-session-start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.`
 
 The agent handles everything from there — reading prior context, gathering evidence, writing durable memories at session end. *You don't manage any of this directly.*
 

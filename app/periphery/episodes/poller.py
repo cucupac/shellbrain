@@ -34,7 +34,7 @@ class _HostState:
 
     session_key: str
     transcript_path: Path
-    last_mtime: float
+    last_freshness: float
 
 
 def main() -> int:
@@ -94,12 +94,12 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
                         uow_factory=uow_factory,
                     )
 
-                mtime = transcript_path.stat().st_mtime if transcript_path.exists() else 0.0
-                should_sync = state is None or session_changed or state.last_mtime != mtime
+                freshness = float(candidate.get("updated_at") or 0.0)
+                should_sync = state is None or session_changed or state.last_freshness != freshness
                 known_state[host_app] = _HostState(
                     session_key=str(candidate["host_session_key"]),
                     transcript_path=transcript_path,
-                    last_mtime=mtime,
+                    last_freshness=freshness,
                 )
                 if not should_sync:
                     continue

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from app.periphery.episodes.cursor import list_cursor_sessions_for_repo
 from app.periphery.episodes.source_discovery import resolve_host_transcript_source
 
 
@@ -55,6 +56,36 @@ def test_source_resolution_recovers_when_transcript_moved_within_known_host_root
     )
 
     assert resolved == moved_path
+
+
+def test_cursor_source_resolution_returns_the_global_state_db_for_one_active_composer(
+    cursor_transcript_fixture: dict[str, object],
+) -> None:
+    """cursor source resolution should return the shared global DB for the requested composer."""
+
+    resolved = resolve_host_transcript_source(
+        host_app="cursor",
+        host_session_key=str(cursor_transcript_fixture["host_session_key"]),
+        search_roots=list(cursor_transcript_fixture["search_roots"]),
+    )
+
+    assert resolved == cursor_transcript_fixture["transcript_path"]
+
+
+def test_cursor_session_listing_finds_the_active_repo_matching_composer(
+    cursor_transcript_fixture: dict[str, object],
+) -> None:
+    """cursor session discovery should only use active repo-matching composers."""
+
+    candidates = list_cursor_sessions_for_repo(
+        repo_root=Path.cwd().resolve(),
+        search_roots=list(cursor_transcript_fixture["search_roots"]),
+    )
+
+    assert len(candidates) == 1
+    assert candidates[0]["host_app"] == "cursor"
+    assert candidates[0]["host_session_key"] == cursor_transcript_fixture["host_session_key"]
+    assert candidates[0]["transcript_path"] == cursor_transcript_fixture["transcript_path"]
 
 
 def test_source_resolution_fails_clearly_when_host_transcript_can_no_longer_be_found(tmp_path: Path) -> None:

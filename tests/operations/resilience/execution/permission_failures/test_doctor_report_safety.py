@@ -29,6 +29,7 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
             {
                 "codex_skill": {"installed": True},
                 "claude_skill": {"installed": True},
+                "cursor_skill": {"installed": False},
                 "claude_global_hook": {"installed": True, "managed": True},
             },
         )(),
@@ -103,6 +104,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
             {
                 "codex_skill": {"installed": False},
                 "claude_skill": {"installed": True},
+                "cursor_skill": {"installed": False},
                 "claude_global_hook": {"installed": True, "managed": True},
             },
         )(),
@@ -238,6 +240,7 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
             {
                 "codex_skill": {"installed": True},
                 "claude_skill": {"installed": True},
+                "cursor_skill": {"installed": False},
                 "claude_global_hook": {"installed": False, "managed": False},
             },
         )(),
