@@ -57,7 +57,7 @@
     }
 
     .typing-area {
-      height: 12rem;
+      height: 15rem;
       display: flex;
       align-items: flex-start;
       justify-content: center;
@@ -290,7 +290,9 @@
 
     .section-body .quiet {
       color: var(--muted);
-      font-size: 0.95em;
+      font-family: "DM Mono", monospace;
+      font-size: clamp(0.78rem, 1.3vw, 0.88rem);
+      letter-spacing: 0.01em;
     }
 
     .section-body .kicker {
@@ -361,8 +363,49 @@
       color: #f5f0e8;
     }
 
+    .dark .section-body .quiet {
+      color: rgba(245, 240, 232, 0.44);
+    }
+
     .dark .divider-line {
       background: rgba(245, 240, 232, 0.12);
+    }
+
+    /* ─── SYSTEM GRID ─────────────────────────── */
+
+    .system-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--rule);
+      border: 1px solid var(--rule);
+      border-radius: 2px;
+    }
+
+    .system-cell {
+      background: var(--bg);
+      padding: clamp(24px, 3.5vw, 40px);
+    }
+
+    .system-cell h4 {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .system-cell p {
+      font-size: clamp(0.92rem, 1.5vw, 1.02rem);
+      line-height: 1.7;
+      font-weight: 300;
+      color: var(--text);
+    }
+
+    .system-cell p strong {
+      font-weight: 500;
     }
 
     /* ─── OPERATIONS GRID ──────────────────────── */
@@ -470,12 +513,16 @@
     /* ─── RESPONSIVE ───────────────────────────── */
 
     @media (max-width: 640px) {
+      .system-grid {
+        grid-template-columns: 1fr;
+      }
+
       .ops-grid {
         grid-template-columns: 1fr;
       }
 
       .typing-area {
-        height: 14rem;
+        height: 17rem;
       }
 
       .scroll-hint {
@@ -540,7 +587,7 @@
     </div>
   </section>
 
-  <!-- ─── INTRO ─────────────────────────────────── -->
+  <!-- ─── PROBLEM ─────────────────────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="intro">
@@ -549,15 +596,38 @@
         <strong>agents have no long-term memory.</strong> every session starts from zero. lessons vanish. mistakes repeat. knowledge never compounds.
       </p>
       <p>
-        shellbrain fixes this. it gives agents <em>durable, structured memory</em> grounded in what actually happened&mdash;and retrieves it the moment a problem resembles something already seen.
-      </p>
-      <p>
-        <strong>the result.</strong> agents that solve faster, fail less, and recall things <em>they would never think to look for.</em>
+        shellbrain gives agents <em>structured, long-term memory</em>&mdash;typed, evidence-grounded, and retrieved the moment a problem resembles something already seen.
       </p>
     </div>
   </section>
 
-  <!-- ─── CASE-BASED REASONING ──────────────────── -->
+  <!-- ─── SYSTEM ──────────────────────────────────── -->
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <section class="content-section">
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="system-grid">
+        <div class="system-cell">
+          <h4>use model</h4>
+          <p>shellbrain is a <strong>skill</strong>. your agent activates it automatically at the start of every conversation. you never manage memory directly.</p>
+        </div>
+        <div class="system-cell">
+          <h4>compatibility</h4>
+          <p>works with <strong>claude code</strong>, <strong>cursor</strong>, and <strong>codex</strong>. installs as a native skill in each. memory is shared across all of them.</p>
+        </div>
+        <div class="system-cell">
+          <h4>storage</h4>
+          <p>typed memory in a <strong>knowledge graph</strong>. scenarios, facts, preferences, associations&mdash;distinct node types with structural edges. not markdown files.</p>
+        </div>
+        <div class="system-cell">
+          <h4>retrieval</h4>
+          <p><strong>BM25</strong> keyword search fused with <strong>semantic embeddings</strong>. candidates expand through graph edges. bounded, scored, and every result explains why it was included.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── PROCEDURAL ─────────────────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
@@ -565,16 +635,14 @@
       <div class="section-eyebrow">procedural memory</div>
       <h2 class="section-title">every problem you've ever solved.</h2>
       <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>shellbrain remembers every problem, every working solution, and every failed attempt.</strong></p>
-        <p>failed tactics matter. <em>knowing what didn't work is half the solution.</em></p>
-        <p>every solution and every failure is linked to the problem it belongs to. without that link, the memory is invalid. shellbrain enforces this.</p>
-        <p>a problem, its solutions, and its failed tactics form a <strong>scenario</strong>. shellbrain remembers all of your scenarios.</p>
-        <p class="kicker">the next time a similar problem appears, shellbrain retrieves the relevant scenarios and gives the agent a head start.</p>
+        <p><strong>every problem, every working solution, and every failed attempt</strong>&mdash;linked together as a <strong>scenario</strong>. without that link, the memory is invalid. shellbrain enforces this.</p>
+        <p>the next time a similar problem appears, the agent already knows what to try and what to skip.</p>
+        <p class="quiet">this is case-based reasoning. problems are never stored in isolation&mdash;only as structured cases with outcomes.</p>
       </div>
     </div>
   </section>
 
-  <!-- ─── KNOWLEDGE THAT EVOLVES ────────────────── -->
+  <!-- ─── SEMANTIC ───────────────────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
@@ -582,47 +650,41 @@
       <div class="section-eyebrow">semantic memory</div>
       <h2 class="section-title">knowledge that never silently mutates.</h2>
       <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>shellbrain remembers facts</strong> about the world, your repo, and your code.</p>
-        <p><strong>shellbrain never overwrites facts.</strong> when a fact changes, it stores the change that invalidated it, stores the updated fact, and links all three: old fact &rarr; change &rarr; new fact.</p>
-        <p><em>history is always preserved.</em> you can trace any belief back through every revision that shaped it.</p>
-        <p>shellbrain also remembers <strong>how you like to work</strong>&mdash;repo conventions, style decisions, what should win when there is ambiguity. these are durable memories, learned from working with you.</p>
+        <p><strong>facts are never overwritten.</strong> when knowledge changes, shellbrain stores the old fact, the change that invalidated it, and the new fact&mdash;linked as an immutable revision chain.</p>
+        <p>shellbrain also remembers <strong>how you like to work</strong>&mdash;repo conventions, style decisions, what should win when there is ambiguity.</p>
+        <p class="quiet">facts, preferences, and changes are distinct typed nodes. each with its own retrieval and revision semantics.</p>
       </div>
     </div>
   </section>
 
-  <!-- ─── GROUNDED IN EVIDENCE ──────────────────── -->
+  <!-- ─── EPISODIC ───────────────────────────────── -->
 
   <section class="content-section dark">
     <div class="content-section-inner">
       <div class="section-eyebrow">episodic memory</div>
       <h2 class="section-title">grounded in truth.</h2>
       <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>shellbrain records every interaction between you and your agent.</strong> all dialog. all tool use. every event from every work session.</p>
-        <p>this is episodic memory. <em>it is the foundation everything else is built on.</em></p>
-        <p><strong>every durable memory must trace back to a real event.</strong> evidence is never fabricated. if the evidence is ambiguous, shellbrain skips the write entirely.</p>
+        <p><strong>every durable memory must trace back to a real event</strong>&mdash;dialog, tool use, or session activity. evidence is never fabricated. if it is ambiguous, shellbrain skips the write entirely.</p>
         <p class="kicker">shellbrain would rather have <strong>no memory</strong> than a memory it cannot justify.</p>
+        <p class="quiet">three-layer validation&mdash;schema, semantic, integrity&mdash;rejects anything that can't cite its evidence.</p>
       </div>
     </div>
   </section>
 
-  <!-- ─── CREATIVE RECALL ───────────────────────── -->
+  <!-- ─── ASSOCIATIVE ────────────────────────────── -->
 
   <section class="content-section">
     <div class="content-section-inner">
       <div class="section-eyebrow">associative memory</div>
       <h2 class="section-title">recall that looks like creativity.</h2>
       <div class="section-body typewriter-block" data-typewriter>
-        <p>memories relate to each other. shellbrain captures these relationships in two ways.</p>
-        <p><strong>explicit associations</strong> are formal links in a knowledge graph&mdash;structural relationships stored as first-class records.</p>
-        <p><strong>implicit associations</strong> are computed from semantic similarity via vector embeddings.</p>
-        <p>when a problem triggers retrieval, shellbrain doesn't just return direct matches. it seeds candidates from semantic and keyword search, then <em>expands outward</em>&mdash;through linked scenarios, fact-update chains, association edges, and semantic neighbors. it scores, deduplicates, and returns a bounded context pack.</p>
-        <p>every result explains why it was included. the pack is capped. <em>retrieval is precise, not exhaustive.</em></p>
-        <p class="kicker">chaining through multiple associative hops surfaces memories the agent would never think to look for. <strong>recall starts to look like creativity.</strong></p>
+        <p><strong>explicit associations</strong> are formal edges in the knowledge graph. <strong>implicit associations</strong> are computed from vector similarity. both expand recall outward&mdash;through linked scenarios, revision chains, and semantic neighbors.</p>
+        <p class="kicker">multi-hop traversal surfaces memories the agent would never think to look for. <strong>recall starts to look like creativity.</strong></p>
       </div>
     </div>
   </section>
 
-  <!-- ─── UTILITY ───────────────────────────────── -->
+  <!-- ─── FEEDBACK ───────────────────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
@@ -630,9 +692,7 @@
       <div class="section-eyebrow">feedback</div>
       <h2 class="section-title">utility is earned, not assumed.</h2>
       <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>a memory can be critical for one class of problem and useless for another.</strong></p>
-        <p>shellbrain does not assign a single global score. it records utility <em>per problem</em>&mdash;a vote for each memory against each problem it was recalled for.</p>
-        <p class="kicker"><strong>global utility is derived</strong> from these observations. never assumed.</p>
+        <p>after retrieval, agents vote on which memories actually helped. utility is recorded <em>per problem</em>, not globally. the graph sharpens itself over time.</p>
       </div>
     </div>
   </section>
@@ -646,15 +706,15 @@
       <div class="ops-grid">
         <div class="ops-card">
           <h4>read</h4>
-          <p>retrieve memories related to a concrete problem. does not mutate state.</p>
+          <p>retrieve memories for a concrete problem. does not mutate state.</p>
         </div>
         <div class="ops-card">
           <h4>events</h4>
-          <p>inspect recent evidence from the active session. how the agent knows what just happened.</p>
+          <p>sync the session transcript. returns episode event IDs the agent can cite as evidence.</p>
         </div>
         <div class="ops-card">
           <h4>create</h4>
-          <p>add one durable memory. at least one evidence reference is required.</p>
+          <p>write one durable memory. at least one evidence reference is required.</p>
         </div>
         <div class="ops-card">
           <h4>update</h4>
@@ -671,7 +731,7 @@
     <div class="content-section-inner">
       <h2 class="section-title">your brain. your machine. your knowledge.</h2>
       <div class="section-body typewriter-block" data-typewriter>
-        <p>shellbrain runs locally. nothing leaves. no cloud. no outbound telemetry. local-only operational telemetry stays on your machine.</p>
+        <p>shellbrain runs locally. nothing leaves your machine. no cloud. no outbound telemetry.</p>
         <p>every solution. every failure. every pattern. <em>that's the most valuable thing you'll ever build.</em> it belongs to you.</p>
       </div>
     </div>
