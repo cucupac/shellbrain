@@ -25,12 +25,11 @@ def sync_episode(
     """Import one already-normalized host transcript into episodes and episode events."""
 
     counts = _count_normalized_events(normalized_events)
-    episode = uow.episodes.get_episode_by_thread(repo_id=repo_id, thread_id=thread_id)
+    uow.episodes.acquire_thread_sync_guard(repo_id=repo_id, thread_id=thread_id)
     imported_count = 0
-
-    if episode is None:
-        started_at = _earliest_event_timestamp(normalized_events) or datetime.now(timezone.utc)
-        episode = Episode(
+    started_at = _earliest_event_timestamp(normalized_events) or datetime.now(timezone.utc)
+    episode = uow.episodes.get_or_create_episode_for_thread(
+        Episode(
             id=str(uuid4()),
             repo_id=repo_id,
             host_app=host_app,
@@ -39,17 +38,13 @@ def sync_episode(
             started_at=started_at,
             created_at=datetime.now(timezone.utc),
         )
-        uow.episodes.create_episode(episode)
-
-    existing_keys = set(uow.episodes.list_event_keys(episode_id=episode.id))
+    )
     next_seq = uow.episodes.next_event_seq(episode_id=episode.id)
     for normalized_event in normalized_events:
         host_event_key = str(normalized_event["host_event_key"])
-        if host_event_key in existing_keys:
-            continue
         created_at = _parse_timestamp(str(normalized_event["occurred_at"]))
         source = EpisodeEventSource(str(normalized_event["source"]))
-        uow.episodes.append_event(
+        inserted = uow.episodes.append_event_if_new(
             EpisodeEvent(
                 id=str(uuid4()),
                 episode_id=episode.id,
@@ -60,7 +55,8 @@ def sync_episode(
                 created_at=created_at,
             )
         )
-        existing_keys.add(host_event_key)
+        if not inserted:
+            continue
         next_seq += 1
         imported_count += 1
 
