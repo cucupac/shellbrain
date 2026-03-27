@@ -283,24 +283,6 @@
       font-style: italic;
     }
 
-    .section-body .standout {
-      font-weight: 400;
-      color: var(--text);
-    }
-
-    .section-body .quiet {
-      color: var(--muted);
-      font-family: "DM Mono", monospace;
-      font-size: clamp(0.78rem, 1.3vw, 0.88rem);
-      letter-spacing: 0.01em;
-    }
-
-    .section-body .kicker {
-      font-size: clamp(1.05rem, 1.7vw, 1.18rem);
-      font-weight: 400;
-      margin-top: 0.6em;
-    }
-
     /* ─── TYPEWRITER SECTIONS ──────────────────── */
 
     .typewriter-block {
@@ -311,15 +293,6 @@
     .typewriter-block.active,
     .typewriter-block.done {
       opacity: 1;
-    }
-
-    .typewriter-block .tw-line {
-      overflow: hidden;
-      white-space: normal;
-    }
-
-    .typewriter-block .tw-line .tw-inner {
-      display: inline;
     }
 
     .typewriter-block .tw-cursor {
@@ -355,18 +328,6 @@
       color: #f5f0e8;
     }
 
-    .dark .section-body .standout {
-      color: #f5f0e8;
-    }
-
-    .dark .section-body .kicker {
-      color: #f5f0e8;
-    }
-
-    .dark .section-body .quiet {
-      color: rgba(245, 240, 232, 0.44);
-    }
-
     .dark .divider-line {
       background: rgba(245, 240, 232, 0.12);
     }
@@ -376,15 +337,23 @@
     .system-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 1px;
+      grid-template-rows: repeat(2, auto auto);
+      gap: 0 1px;
       background: var(--rule);
       border: 1px solid var(--rule);
       border-radius: 2px;
     }
 
+    .system-cell:nth-child(n+3) {
+      border-top: 1px solid var(--rule);
+    }
+
     .system-cell {
       background: var(--bg);
       padding: clamp(24px, 3.5vw, 40px);
+      display: grid;
+      grid-row: span 2;
+      grid-template-rows: subgrid;
     }
 
     .system-cell h4 {
@@ -394,7 +363,8 @@
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--muted);
-      margin-bottom: 12px;
+      margin-bottom: 4px;
+      align-self: end;
     }
 
     .system-cell p {
@@ -402,10 +372,46 @@
       line-height: 1.7;
       font-weight: 300;
       color: var(--text);
+      align-self: start;
     }
 
     .system-cell p strong {
       font-weight: 500;
+    }
+
+    /* ─── GRID TYPEWRITER (shared) ──────────────── */
+
+    [data-grid-tw] {
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    [data-grid-tw].gtw-active {
+      opacity: 1;
+    }
+
+    .gtw-cursor {
+      display: inline-block;
+      width: 2px;
+      height: 0.85em;
+      margin-left: 1px;
+      vertical-align: -0.08em;
+      background: var(--text);
+      animation: blink 0.9s steps(1, end) infinite;
+    }
+
+    .dark .gtw-cursor {
+      background: #f5f0e8;
+    }
+
+    /* system grid: hide children until typed */
+    .system-cell > * {
+      visibility: hidden;
+    }
+
+    .system-cell.gtw-typing > *,
+    .system-cell.gtw-done > * {
+      visibility: visible;
     }
 
     /* ─── TAXONOMY GRID ──────────────────────── */
@@ -477,6 +483,16 @@
       color: rgba(245, 240, 232, 0.38);
       margin-top: 10px;
       align-self: start;
+    }
+
+    /* taxonomy grid: hide children until typed */
+    .taxonomy-cell > * {
+      visibility: hidden;
+    }
+
+    .taxonomy-cell.gtw-typing > *,
+    .taxonomy-cell.gtw-done > * {
+      visibility: visible;
     }
 
     /* ─── OPERATIONS GRID ──────────────────────── */
@@ -554,6 +570,7 @@
     .footer-sub {
       font-family: "DM Mono", monospace;
       letter-spacing: 0.06em;
+      text-indent: 0.06em;
     }
 
     /* ─── REVEAL (for non-typewriter sections) ── */
@@ -588,6 +605,10 @@
         grid-template-columns: 1fr;
       }
 
+      .system-cell:nth-child(n+2) {
+        border-top: 1px solid var(--rule);
+      }
+
       .taxonomy-grid {
         grid-template-columns: 1fr;
       }
@@ -611,6 +632,15 @@
       .memory-strip {
         gap: 8px 20px;
       }
+
+      .install-line {
+        padding: 10px 16px;
+      }
+
+      .install-prompt,
+      .install-cmd {
+        font-size: 11px;
+      }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -625,6 +655,16 @@
         opacity: 1;
       }
       .typewriter-block .tw-cursor {
+        animation: none;
+      }
+      [data-grid-tw] {
+        opacity: 1;
+      }
+      .system-cell > *,
+      .taxonomy-cell > * {
+        visibility: visible;
+      }
+      .gtw-cursor {
         animation: none;
       }
     }
@@ -684,11 +724,11 @@
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section">
-    <div class="content-section-inner reveal" data-reveal>
+    <div class="content-section-inner" data-grid-tw>
       <div class="system-grid">
         <div class="system-cell">
           <h4>use model</h4>
-          <p>shellbrain is a <strong>skill</strong>. your agent activates it automatically at the start of every conversation. you never manage memory directly.</p>
+          <p>shellbrain is a <strong>skill</strong>. you start each session with it. the agent reads, writes, and evolves memory on its own.</p>
         </div>
         <div class="system-cell">
           <h4>compatibility</h4>
@@ -710,7 +750,7 @@
   <div class="divider"><div class="divider-line"></div></div>
 
   <section class="content-section dark">
-    <div class="content-section-inner reveal" data-reveal>
+    <div class="content-section-inner" data-grid-tw>
       <div class="section-eyebrow">memory ontology</div>
       <h2 class="section-title">four memory types.</h2>
       <div class="taxonomy-grid">
@@ -907,6 +947,33 @@
     const twBlocks = document.querySelectorAll("[data-typewriter]");
     const twState = new Map(); // block -> { started, done }
 
+    // ── Shared: progressive HTML reveal ──────────
+    // Returns HTML with only the first `n` text characters visible,
+    // preserving all tags so <strong> words type out bold from the start.
+    function truncateHTML(html, n) {
+      if (n <= 0) return "";
+      const doc = new DOMParser().parseFromString("<body>" + html + "</body>", "text/html");
+      let remaining = n;
+
+      function walk(node) {
+        if (remaining <= 0) { node.parentNode.removeChild(node); return; }
+        if (node.nodeType === 3) { // text node
+          if (node.length <= remaining) { remaining -= node.length; }
+          else { node.textContent = node.textContent.slice(0, remaining); remaining = 0; }
+          return;
+        }
+        if (node.nodeType === 1) { // element
+          const kids = Array.from(node.childNodes);
+          for (const kid of kids) walk(kid);
+          // remove empty elements left after truncation (except <br>)
+          if (!node.childNodes.length && node.tagName !== "BR") node.parentNode.removeChild(node);
+        }
+      }
+
+      Array.from(doc.body.childNodes).forEach(walk);
+      return doc.body.innerHTML;
+    }
+
     const CHAR_SPEED = 12;   // ms per character
     const LINE_PAUSE = 120;  // ms pause between paragraphs
 
@@ -968,12 +1035,7 @@
           }
 
           charIdx++;
-          // Build partial text by truncating the plain-text representation
-          // For simplicity and correctness with HTML tags, we reveal
-          // character-by-character from the plain text, but render
-          // progressively through the HTML
-          const partialText = fullText.slice(0, charIdx);
-          p.innerHTML = partialText;
+          p.innerHTML = truncateHTML(fullHTML, charIdx);
           p.appendChild(cursor);
 
           // Speed variation: slightly slower on punctuation
@@ -1038,6 +1100,100 @@
       block.style.minHeight = block.offsetHeight + "px";
       twState.set(block, { started: false, done: false });
       twObserver.observe(block);
+    });
+
+    // ── Grid cascading typewriter (shared) ────────
+    function initGridTypewriter(wrapper, gridSel, cellSel) {
+      const cells = Array.from(wrapper.querySelectorAll(cellSel));
+      const CHAR = 10, ELEM_PAUSE = 80, CELL_PAUSE = 200;
+
+      const cellData = cells.map(cell =>
+        Array.from(cell.children).map(el => ({ el, html: el.innerHTML, text: (el.textContent || "") }))
+      );
+
+      function typeElement({ el, html, text }, onDone) {
+        const total = text.length;
+        el.innerHTML = "";
+        const cursor = document.createElement("span");
+        cursor.className = "gtw-cursor";
+        cursor.setAttribute("aria-hidden", "true");
+        el.appendChild(cursor);
+
+        let i = 0;
+        function step() {
+          if (i >= total) { el.innerHTML = html; onDone(); return; }
+          i++;
+          el.innerHTML = truncateHTML(html, i);
+          el.appendChild(cursor);
+
+          const ch = text[i - 1];
+          let d = CHAR;
+          if (ch === "." || ch === "!" || ch === "?") d = CHAR * 6;
+          else if (ch === ",") d = CHAR * 3;
+          else if (ch === "\u2014" || ch === "\u2013") d = CHAR * 2;
+          setTimeout(step, d);
+        }
+        step();
+      }
+
+      function typeCell(ci, onDone) {
+        if (ci >= cells.length) { onDone(); return; }
+        const cell = cells[ci];
+        cell.classList.add("gtw-typing");
+
+        let ei = 0;
+        function next() {
+          if (ei >= cellData[ci].length) {
+            cell.classList.replace("gtw-typing", "gtw-done");
+            setTimeout(() => typeCell(ci + 1, onDone), CELL_PAUSE);
+            return;
+          }
+          typeElement(cellData[ci][ei], () => { ei++; setTimeout(next, ELEM_PAUSE); });
+        }
+        next();
+      }
+
+      function start() {
+        const grid = wrapper.querySelector(gridSel);
+        grid.style.minHeight = grid.offsetHeight + "px";
+        cellData.forEach(ce => ce.forEach(({ el }) => { el.style.minHeight = el.offsetHeight + "px"; }));
+
+        wrapper.classList.add("gtw-active");
+        cellData.forEach(ce => ce.forEach(({ el }) => { el.innerHTML = ""; }));
+        typeCell(0, () => {
+          grid.style.minHeight = "";
+          cellData.forEach(ce => ce.forEach(({ el }) => { el.style.minHeight = ""; }));
+        });
+      }
+
+      function finishImmediately() {
+        wrapper.classList.add("gtw-active");
+        cellData.forEach((ce, ci) => {
+          cells[ci].classList.add("gtw-done");
+          ce.forEach(({ el, html }) => { el.innerHTML = html; });
+        });
+      }
+
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            if (prefersReduced) { finishImmediately(); }
+            else { start(); }
+            observer.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.1 });
+
+      observer.observe(wrapper);
+    }
+
+    // ── Init grid typewriters ───────────────────────
+    document.querySelectorAll("[data-grid-tw]").forEach(wrapper => {
+      // Each grid-tw wrapper contains exactly one grid + its cells
+      const isSys = !!wrapper.querySelector(".system-grid");
+      const gridSel = isSys ? ".system-grid" : ".taxonomy-grid";
+      const cellSel = isSys ? ".system-cell" : ".taxonomy-cell";
+      initGridTypewriter(wrapper, gridSel, cellSel);
     });
 
     // ── Standard reveal for non-typewriter blocks ─
