@@ -408,6 +408,77 @@
       font-weight: 500;
     }
 
+    /* ─── TAXONOMY GRID ──────────────────────── */
+
+    .taxonomy-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      /* 4 content rows per visual row × 2 visual rows = 8 implicit rows */
+      grid-template-rows: repeat(2, auto auto auto auto);
+      gap: 0 1px;
+      background: rgba(245, 240, 232, 0.10);
+      border: 1px solid rgba(245, 240, 232, 0.10);
+      border-radius: 2px;
+    }
+
+    /* horizontal rule between visual row pairs */
+    .taxonomy-cell:nth-child(n+3) {
+      border-top: 1px solid rgba(245, 240, 232, 0.10);
+    }
+
+    .taxonomy-cell {
+      padding: clamp(28px, 4vw, 44px);
+      background: var(--accent);
+      display: grid;
+      grid-row: span 4;
+      grid-template-rows: subgrid;
+    }
+
+    .taxonomy-cell h4 {
+      font-family: "DM Mono", monospace;
+      font-size: 11px;
+      font-weight: 400;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: rgba(245, 240, 232, 0.38);
+      margin-bottom: 4px;
+      align-self: end;
+    }
+
+    .taxonomy-headline {
+      font-family: "Bricolage Grotesque", serif;
+      font-size: clamp(1.08rem, 1.8vw, 1.22rem);
+      font-weight: 500;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+      color: #f5f0e8;
+      margin-bottom: 6px;
+      align-self: start;
+    }
+
+    .taxonomy-detail {
+      font-size: clamp(0.88rem, 1.4vw, 0.96rem);
+      line-height: 1.68;
+      font-weight: 300;
+      color: rgba(245, 240, 232, 0.78);
+      align-self: start;
+    }
+
+    .taxonomy-detail strong {
+      font-weight: 500;
+      color: #f5f0e8;
+    }
+
+    .taxonomy-quiet {
+      font-family: "DM Mono", monospace;
+      font-size: clamp(0.72rem, 1.2vw, 0.8rem);
+      line-height: 1.6;
+      letter-spacing: 0.01em;
+      color: rgba(245, 240, 232, 0.38);
+      margin-top: 10px;
+      align-self: start;
+    }
+
     /* ─── OPERATIONS GRID ──────────────────────── */
 
     .ops-grid {
@@ -517,6 +588,14 @@
         grid-template-columns: 1fr;
       }
 
+      .taxonomy-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .taxonomy-cell:nth-child(n+2) {
+        border-top: 1px solid rgba(245, 240, 232, 0.10);
+      }
+
       .ops-grid {
         grid-template-columns: 1fr;
       }
@@ -621,65 +700,44 @@
         </div>
         <div class="system-cell">
           <h4>retrieval</h4>
-          <p><strong>BM25</strong> keyword search fused with <strong>semantic embeddings</strong>. candidates expand through graph edges. bounded, scored, and every result explains why it was included.</p>
+          <p><strong>BM25</strong> search fused with <strong>semantic embeddings</strong>. candidates expand through graph edges. bounded, scored, and every result explains why it was included.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- ─── PROCEDURAL ─────────────────────────────── -->
+  <!-- ─── MEMORY TAXONOMY ─────────────────────────── -->
   <div class="divider"><div class="divider-line"></div></div>
-
-  <section class="content-section">
-    <div class="content-section-inner">
-      <div class="section-eyebrow">procedural memory</div>
-      <h2 class="section-title">every problem you've ever solved.</h2>
-      <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>every problem, every working solution, and every failed attempt</strong>&mdash;linked together as a <strong>scenario</strong>. without that link, the memory is invalid. shellbrain enforces this.</p>
-        <p>the next time a similar problem appears, the agent already knows what to try and what to skip.</p>
-        <p class="quiet">this is case-based reasoning. problems are never stored in isolation&mdash;only as structured cases with outcomes.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── SEMANTIC ───────────────────────────────── -->
-  <div class="divider"><div class="divider-line"></div></div>
-
-  <section class="content-section">
-    <div class="content-section-inner">
-      <div class="section-eyebrow">semantic memory</div>
-      <h2 class="section-title">knowledge that never silently mutates.</h2>
-      <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>facts are never overwritten.</strong> when knowledge changes, shellbrain stores the old fact, the change that invalidated it, and the new fact&mdash;linked as an immutable revision chain.</p>
-        <p>shellbrain also remembers <strong>how you like to work</strong>&mdash;repo conventions, style decisions, what should win when there is ambiguity.</p>
-        <p class="quiet">facts, preferences, and changes are distinct typed nodes. each with its own retrieval and revision semantics.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── EPISODIC ───────────────────────────────── -->
 
   <section class="content-section dark">
-    <div class="content-section-inner">
-      <div class="section-eyebrow">episodic memory</div>
-      <h2 class="section-title">grounded in truth.</h2>
-      <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>every durable memory must trace back to a real event</strong>&mdash;dialog, tool use, or session activity. evidence is never fabricated. if it is ambiguous, shellbrain skips the write entirely.</p>
-        <p class="kicker">shellbrain would rather have <strong>no memory</strong> than a memory it cannot justify.</p>
-        <p class="quiet">three-layer validation&mdash;schema, semantic, integrity&mdash;rejects anything that can't cite its evidence.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ─── ASSOCIATIVE ────────────────────────────── -->
-
-  <section class="content-section">
-    <div class="content-section-inner">
-      <div class="section-eyebrow">associative memory</div>
-      <h2 class="section-title">recall that looks like creativity.</h2>
-      <div class="section-body typewriter-block" data-typewriter>
-        <p><strong>explicit associations</strong> are formal edges in the knowledge graph. <strong>implicit associations</strong> are computed from vector similarity. both expand recall outward&mdash;through linked scenarios, revision chains, and semantic neighbors.</p>
-        <p class="kicker">multi-hop traversal surfaces memories the agent would never think to look for. <strong>recall starts to look like creativity.</strong></p>
+    <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">memory ontology</div>
+      <h2 class="section-title">four memory types.</h2>
+      <div class="taxonomy-grid">
+        <div class="taxonomy-cell">
+          <h4>procedural</h4>
+          <p class="taxonomy-headline">prior problems and outcomes.</p>
+          <p class="taxonomy-detail">every problem, solution, and failed tactic linked as a <strong>scenario</strong>. the next time a similar problem appears, the agent knows what to try and what to skip.</p>
+          <p class="taxonomy-quiet">case-based reasoning. problems are never stored in isolation&mdash;only as structured cases with outcomes.</p>
+        </div>
+        <div class="taxonomy-cell">
+          <h4>semantic</h4>
+          <p class="taxonomy-headline">facts, preferences, revision history.</p>
+          <p class="taxonomy-detail">facts are never overwritten. when knowledge changes, the old fact, the change, and the new fact are linked as an <strong>immutable revision chain</strong>. preferences capture how you like to work.</p>
+          <p class="taxonomy-quiet">facts, preferences, and changes are distinct typed nodes with their own revision semantics.</p>
+        </div>
+        <div class="taxonomy-cell">
+          <h4>episodic</h4>
+          <p class="taxonomy-headline">evidence and grounding.</p>
+          <p class="taxonomy-detail">every durable memory must trace back to a real event. if the evidence is ambiguous, shellbrain <strong>skips the write entirely</strong>.</p>
+          <p class="taxonomy-quiet">three-layer validation&mdash;schema, semantic, integrity&mdash;rejects anything that can't cite its evidence.</p>
+        </div>
+        <div class="taxonomy-cell">
+          <h4>associative</h4>
+          <p class="taxonomy-headline">expansion beyond retrieval.</p>
+          <p class="taxonomy-detail">explicit graph edges and implicit vector similarity both expand recall outward&mdash;through linked scenarios, revision chains, and <strong>semantic neighbors</strong>.</p>
+          <p class="taxonomy-quiet">multi-hop traversal surfaces memories the agent would never think to look for.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -689,7 +747,7 @@
 
   <section class="content-section">
     <div class="content-section-inner">
-      <div class="section-eyebrow">feedback</div>
+      <div class="section-eyebrow">learns from feedback</div>
       <h2 class="section-title">utility is earned, not assumed.</h2>
       <div class="section-body typewriter-block" data-typewriter>
         <p>after retrieval, agents vote on which memories actually helped. utility is recorded <em>per problem</em>, not globally. the graph sharpens itself over time.</p>
@@ -702,6 +760,7 @@
 
   <section class="content-section">
     <div class="content-section-inner reveal" data-reveal>
+      <div class="section-eyebrow">operation set</div>
       <h2 class="section-title">four operations. that's it.</h2>
       <div class="ops-grid">
         <div class="ops-card">
@@ -729,6 +788,7 @@
 
   <section class="content-section dark">
     <div class="content-section-inner">
+      <div class="section-eyebrow">ownership</div>
       <h2 class="section-title">your brain. your machine. your knowledge.</h2>
       <div class="section-body typewriter-block" data-typewriter>
         <p>shellbrain runs locally. nothing leaves your machine. no cloud. no outbound telemetry.</p>
