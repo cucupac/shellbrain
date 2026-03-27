@@ -37,7 +37,7 @@ def test_episode_import_rolls_back_partial_writes_if_a_db_write_fails_mid_import
 
     with pytest.raises(RuntimeError, match="boom"):
         with uow_factory() as uow:
-            original_append_event = uow.episodes.append_event
+            original_append_event_if_new = uow.episodes.append_event_if_new
             call_count = 0
 
             def _boom(event) -> None:
@@ -45,9 +45,9 @@ def test_episode_import_rolls_back_partial_writes_if_a_db_write_fails_mid_import
                 call_count += 1
                 if call_count == 2:
                     raise RuntimeError("boom")
-                original_append_event(event)
+                return original_append_event_if_new(event)
 
-            uow.episodes.append_event = _boom
+            uow.episodes.append_event_if_new = _boom
             sync_episode_from_host(
                 repo_id="repo-a",
                 host_app="codex",

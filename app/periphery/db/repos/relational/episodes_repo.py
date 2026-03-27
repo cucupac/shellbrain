@@ -3,7 +3,8 @@
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, select, text, update
+from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus, SessionTransfer
 from app.core.interfaces.repos import IEpisodesRepo
@@ -35,6 +36,40 @@ class EpisodesRepo(IEpisodesRepo):
                 created_at=episode.created_at or datetime.now(timezone.utc),
             )
         )
+
+    def acquire_thread_sync_guard(self, *, repo_id: str, thread_id: str) -> None:
+        """This method serializes sync writes for one repo/thread pair."""
+
+        self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:repo_id), hashtext(:thread_id))"),
+            {"repo_id": repo_id, "thread_id": thread_id},
+        )
+
+    def get_or_create_episode_for_thread(self, episode: Episode) -> Episode:
+        """This method returns the canonical episode row for one thread, creating it when missing."""
+
+        if episode.thread_id is None:
+            raise ValueError("thread_id is required when ensuring an episode for sync")
+        self._session.execute(
+            insert(episodes)
+            .values(
+                id=episode.id,
+                repo_id=episode.repo_id,
+                host_app=episode.host_app,
+                thread_id=episode.thread_id,
+                title=episode.title,
+                objective=episode.objective,
+                status=episode.status.value,
+                started_at=episode.started_at or datetime.now(timezone.utc),
+                ended_at=episode.ended_at,
+                created_at=episode.created_at or datetime.now(timezone.utc),
+            )
+            .on_conflict_do_nothing(index_elements=["repo_id", "thread_id"])
+        )
+        stored = self.get_episode_by_thread(repo_id=episode.repo_id, thread_id=episode.thread_id)
+        if stored is None:
+            raise RuntimeError("episode ensure failed to return a canonical thread row")
+        return stored
 
     def get_episode_by_thread(
         self,
@@ -99,6 +134,25 @@ class EpisodesRepo(IEpisodesRepo):
                 created_at=event.created_at or datetime.now(timezone.utc),
             )
         )
+
+    def append_event_if_new(self, event: EpisodeEvent) -> bool:
+        """This method appends an episode event only when its host_event_key is new."""
+
+        inserted_id = self._session.execute(
+            insert(episode_events)
+            .values(
+                id=event.id,
+                episode_id=event.episode_id,
+                seq=event.seq,
+                host_event_key=event.host_event_key,
+                source=event.source.value,
+                content=event.content,
+                created_at=event.created_at or datetime.now(timezone.utc),
+            )
+            .on_conflict_do_nothing(index_elements=["episode_id", "host_event_key"])
+            .returning(episode_events.c.id)
+        ).scalar_one_or_none()
+        return inserted_id is not None
 
     def close_episode(self, *, episode_id: str, ended_at: datetime) -> None:
         """This method marks an active episode closed."""

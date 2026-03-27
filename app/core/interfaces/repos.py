@@ -86,6 +86,14 @@ class IEpisodesRepo(ABC):
         """This method persists an episode row."""
 
     @abstractmethod
+    def acquire_thread_sync_guard(self, *, repo_id: str, thread_id: str) -> None:
+        """This method serializes sync writes for one repo/thread pair."""
+
+    @abstractmethod
+    def get_or_create_episode_for_thread(self, episode: Episode) -> Episode:
+        """This method returns the canonical episode row for one thread, creating it when missing."""
+
+    @abstractmethod
     def get_episode_by_thread(
         self,
         *,
@@ -105,6 +113,10 @@ class IEpisodesRepo(ABC):
     @abstractmethod
     def append_event(self, event: EpisodeEvent) -> None:
         """This method appends an event into an episode stream."""
+
+    @abstractmethod
+    def append_event_if_new(self, event: EpisodeEvent) -> bool:
+        """This method appends an event only when its host_event_key is not already present."""
 
     @abstractmethod
     def close_episode(self, *, episode_id: str, ended_at: datetime) -> None:
