@@ -60,6 +60,7 @@ _TOP_LEVEL_HELP = dedent(
     Examples:
       shellbrain init
       shellbrain upgrade
+      shellbrain metrics --days 30
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
       shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
       shellbrain events --json '{"limit":10}'
@@ -229,6 +230,17 @@ _ANALYTICS_HELP = dedent(
     """
 )
 
+_METRICS_HELP = dedent(
+    """\
+    Generate one lightweight repo-scoped metrics snapshot, write local artifacts, and open a static dashboard.
+
+    Examples:
+      shellbrain metrics
+      shellbrain metrics --days 30
+      shellbrain metrics --days 14 --no-open
+    """
+)
+
 _INSTALL_CLAUDE_HOOK_HELP = dedent(
     """\
     Install or update the repo-local Claude Code SessionStart hook used as an explicit repo-local override.
@@ -342,6 +354,26 @@ def build_parser() -> argparse.ArgumentParser:
         description="Upgrade Shellbrain through the hosted upgrade script and rerun init.",
         epilog=_UPGRADE_HELP,
         formatter_class=_HelpFormatter,
+    )
+
+    metrics_parser = subparsers.add_parser(
+        "metrics",
+        help="Open a lightweight repo-scoped metrics dashboard.",
+        description="Generate one local metrics snapshot and open a static Shellbrain dashboard.",
+        epilog=_METRICS_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(metrics_parser, suppress_default=True)
+    metrics_parser.add_argument(
+        "--days",
+        type=int,
+        default=30,
+        help="Number of trailing days to include in the snapshot. Defaults to 30.",
+    )
+    metrics_parser.add_argument(
+        "--no-open",
+        action="store_true",
+        help="Generate artifacts without opening the dashboard in the browser.",
     )
 
     create_parser = subparsers.add_parser(
@@ -522,6 +554,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         from app.periphery.admin.upgrade import run_upgrade
 
         return run_upgrade()
+
+    if args.command == "metrics":
+        return _run_metrics_command(args)
 
     if args.command == "admin":
         return _run_admin_command(args)
@@ -774,6 +809,58 @@ def _run_admin_command(args: argparse.Namespace) -> int:
             print(json.dumps({"deleted": deleted}, indent=2, sort_keys=True))
             return 0
     raise ValueError(f"Unsupported admin command: {args.admin_command}")
+
+
+def _run_metrics_command(args: argparse.Namespace) -> int:
+    """Generate one repo-scoped metrics snapshot and local dashboard artifacts."""
+
+    try:
+        from app.boot.admin_db import get_optional_admin_db_dsn
+        from app.boot.db import get_optional_db_dsn
+        from app.periphery.db.engine import get_engine
+        from app.periphery.metrics.artifacts import write_metrics_artifacts
+        from app.periphery.metrics.browser import open_metrics_dashboard
+        from app.periphery.metrics.render_html import render_metrics_dashboard
+        from app.periphery.metrics.service import build_metrics_snapshot
+
+        repo_context = resolve_repo_context(
+            repo_root_arg=getattr(args, "repo_root", None),
+            repo_id_arg=getattr(args, "repo_id", None),
+        )
+        _warn_or_fail_on_unsafe_app_role()
+        _ensure_repo_registration_for_operation(
+            repo_context=repo_context,
+            repo_id_override=getattr(args, "repo_id", None),
+        )
+        dsn = get_optional_db_dsn() or get_optional_admin_db_dsn()
+        if not dsn:
+            raise RuntimeError("Shellbrain database is not configured. Run `shellbrain init` first.")
+        snapshot = build_metrics_snapshot(
+            engine=get_engine(dsn),
+            repo_id=repo_context.repo_id,
+            days=int(args.days),
+        )
+        html = render_metrics_dashboard(snapshot)
+        paths = write_metrics_artifacts(repo_id=repo_context.repo_id, snapshot=snapshot, html=html)
+        opened_dashboard = False
+        if not bool(getattr(args, "no_open", False)):
+            opened_dashboard = bool(open_metrics_dashboard(paths["html_path"]))
+        print(f"Generated Shellbrain metrics for {repo_context.repo_id}")
+        print(f"Status: {snapshot['status']} ({snapshot['confidence']} confidence)")
+        print(f"JSON: {paths['json_path']}")
+        print(f"Markdown: {paths['md_path']}")
+        print(f"Dashboard: {paths['html_path']}")
+        print("Artifacts: updated in place")
+        if bool(getattr(args, "no_open", False)):
+            print("Browser: skipped")
+        elif opened_dashboard:
+            print("Browser: opened dashboard")
+        else:
+            print("Browser: could not open automatically")
+        return 0
+    except (RuntimeError, ValueError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
 
 def _print_operation_result(result: dict[str, Any]) -> None:
