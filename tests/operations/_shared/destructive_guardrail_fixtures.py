@@ -8,6 +8,7 @@ from app.periphery.admin.instance_guard import (
     TEST,
     assert_destructive_allowed,
     assert_disposable_test_dsn,
+    dsn_fingerprint,
     ensure_instance_metadata,
 )
 
@@ -15,12 +16,13 @@ from app.periphery.admin.instance_guard import (
 def assert_test_database_is_disposable(test_dsn: str) -> None:
     """Refuse to run destructive setup against protected or production-shaped DBs."""
 
+    protected_dsn = os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN")
+    fallback_dsn = os.getenv("SHELLBRAIN_DB_DSN")
+    if protected_dsn is None and fallback_dsn and dsn_fingerprint(fallback_dsn) != dsn_fingerprint(test_dsn):
+        protected_dsn = fallback_dsn
     assert_disposable_test_dsn(
         test_dsn=test_dsn,
-        protected_dsn=(
-            os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN")
-            or os.getenv("SHELLBRAIN_DB_DSN")
-        ),
+        protected_dsn=protected_dsn,
     )
 
 

@@ -186,6 +186,8 @@ shellbrain admin doctor
 
 Backups default to `$SHELLBRAIN_HOME/backups`, which is `~/.shellbrain/backups` unless `SHELLBRAIN_HOME` is set. The Docker bind-mounted Postgres data dir protects against container loss, but it is not a backup by itself.
 
+DB-backed tests are a separate workflow. For managed local Shellbrain, keep the live managed database for memories only and use the dedicated repo-owned test host from `docker-compose.test.yml` via `scripts/run_tests` for destructive test setup and scratch validation.
+
 If repair is needed:
 
 1. run `shellbrain admin doctor`

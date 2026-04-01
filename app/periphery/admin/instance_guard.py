@@ -45,17 +45,36 @@ def dsn_fingerprint(dsn: str) -> str:
     return hashlib.sha256(normalize_dsn(dsn).encode("utf-8")).hexdigest()
 
 
+def host_port_from_dsn(dsn: str) -> tuple[str, int]:
+    """Extract the normalized host/port pair from one DSN."""
+
+    parsed = urlparse(dsn.replace("+psycopg", ""))
+    return ((parsed.hostname or "").lower(), parsed.port or 5432)
+
+
 def database_name_from_dsn(dsn: str) -> str:
     """Extract the target database name from one DSN."""
 
     return urlparse(dsn.replace("+psycopg", "")).path.lstrip("/")
 
 
-def assert_disposable_test_dsn(*, test_dsn: str, protected_dsn: str | None = None) -> None:
+def assert_disposable_test_dsn(
+    *,
+    test_dsn: str,
+    protected_dsn: str | None = None,
+    protected_host_ports: set[tuple[str, int]] | None = None,
+) -> None:
     """Refuse to treat a protected or production-shaped database as disposable."""
 
     if protected_dsn and dsn_fingerprint(test_dsn) == dsn_fingerprint(protected_dsn):
         raise RuntimeError("Refusing destructive test setup against the protected live database DSN.")
+    protected_pairs = set(protected_host_ports or set())
+    if protected_dsn:
+        protected_pairs.add(host_port_from_dsn(protected_dsn))
+    if host_port_from_dsn(test_dsn) in protected_pairs:
+        raise RuntimeError(
+            "Refusing destructive test setup against the protected live database host/port."
+        )
     db_name = database_name_from_dsn(test_dsn).lower()
     if db_name in PROTECTED_DB_NAMES:
         raise RuntimeError(

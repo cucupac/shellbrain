@@ -16,6 +16,12 @@ def test_operation_failure_classification_should_cover_known_categories() -> Non
     )["category"] == "duplicate_evidence_ref"
     assert classify_operation_failure(
         command="create",
+        error_stage="internal_error",
+        error_code="internal_error",
+        error_message='duplicate key value violates unique constraint "uq_evidence_repo_episode_event"',
+    )["category"] == "duplicate_evidence_ref"
+    assert classify_operation_failure(
+        command="create",
         error_stage="semantic_validation",
         error_code="not_found",
         error_message="Episode event not found: evt-123",

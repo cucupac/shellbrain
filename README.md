@@ -82,6 +82,19 @@ Fish PATH setup is written to `~/.config/fish/conf.d/shellbrain.fish`.
 
 ---
 
+## DB-backed tests
+
+**Live memories and DB-backed tests now use different Postgres hosts.**
+
+- managed local Shellbrain keeps durable memories on the machine-owned managed instance
+- DB-backed tests and scratch validation should use the dedicated repo-owned test host from `docker-compose.test.yml`
+- `scripts/run_tests` provisions a disposable test database on that dedicated host by default
+- `scripts/storage_status` shows the live managed target, the dedicated test host, and any legacy local test host that is still hanging around
+
+If you are running managed local Shellbrain, do not leave a stale `SHELLBRAIN_DB_DSN` export in your shell profile that points at the old local compose database. The machine config wins anyway, and the stale env var just makes the storage layout harder to reason about.
+
+---
+
 ## Docs
 
 - [shellbrain.ai/humans](https://shellbrain.ai/humans/) — install, upgrade, getting started

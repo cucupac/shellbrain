@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from uuid import uuid4
 
-from sqlalchemy import select, update
+from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.evidence import EvidenceRef
@@ -24,6 +24,7 @@ class EvidenceRepo(IEvidenceRepo):
     def upsert_ref(self, repo_id: str, ref: str) -> EvidenceRef:
         """This method inserts or returns a canonical evidence reference row."""
 
+        self._acquire_ref_guard(repo_id=repo_id, ref=ref)
         existing = (
             self._session.execute(
                 select(evidence_refs).where(
@@ -62,6 +63,14 @@ class EvidenceRepo(IEvidenceRepo):
             )
         )
         return EvidenceRef(id=evidence_id, repo_id=repo_id, ref=ref, episode_event_id=ref)
+
+    def _acquire_ref_guard(self, *, repo_id: str, ref: str) -> None:
+        """Serialize concurrent writes for one repo/ref pair within the active transaction."""
+
+        self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:repo_id), hashtext(:ref))"),
+            {"repo_id": repo_id, "ref": ref},
+        )
 
     def link_memory_evidence(self, memory_id: str, evidence_id: str) -> None:
         """This method creates shellbrain-to-evidence link rows."""

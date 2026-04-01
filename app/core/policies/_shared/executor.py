@@ -52,7 +52,7 @@ def apply_side_effects(
         if effect_type == "memory_evidence.attach":
             refs = params["refs"]
             assert isinstance(refs, list)
-            for ref in refs:
+            for ref in sorted(str(ref) for ref in refs):
                 evidence = uow.evidence.upsert_ref(repo_id=str(params["repo_id"]), ref=str(ref))
                 uow.evidence.link_memory_evidence(memory_id=str(params["memory_id"]), evidence_id=evidence.id)
             continue
@@ -124,7 +124,7 @@ def apply_side_effects(
             )
             evidence_refs = params.get("evidence_refs", [])
             assert isinstance(evidence_refs, list)
-            for ref in evidence_refs:
+            for ref in sorted(str(ref) for ref in evidence_refs):
                 evidence = uow.evidence.upsert_ref(repo_id=str(params["repo_id"]), ref=str(ref))
                 uow.evidence.link_association_edge_evidence(edge_id=edge.id, evidence_id=evidence.id)
             continue

@@ -84,6 +84,7 @@ temp/
 .local/
 .shellbrain/
 .shellbrain-home/
+.shellbrain-home-test/
 .hf/
 
 # Databases, dumps, and local persistence
