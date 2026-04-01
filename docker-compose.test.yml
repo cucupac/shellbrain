@@ -1,0 +1,25 @@
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: ${SHELLBRAIN_TEST_DB_CONTAINER_NAME:-shellbrain-postgres-test}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${SHELLBRAIN_TEST_POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${SHELLBRAIN_TEST_POSTGRES_USER:-shellbrain_test_admin}
+      POSTGRES_PASSWORD: ${SHELLBRAIN_TEST_POSTGRES_PASSWORD:-shellbrain_test_admin}
+    ports:
+      - "127.0.0.1:${SHELLBRAIN_TEST_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - type: bind
+        source: ${SHELLBRAIN_TEST_DB_DATA_DIR:-./.local/postgres-test-data}
+        target: /var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${SHELLBRAIN_TEST_POSTGRES_USER:-shellbrain_test_admin} -d ${SHELLBRAIN_TEST_POSTGRES_DB:-postgres}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s

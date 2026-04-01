@@ -11,6 +11,7 @@ from app.periphery.admin.instance_guard import (
     assert_destructive_allowed,
     assert_disposable_test_dsn,
     dsn_fingerprint,
+    host_port_from_dsn,
 )
 
 PROTECTED_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
@@ -43,6 +44,22 @@ def test_instance_guard_fingerprint_should_ignore_role_username() -> None:
     """instance fingerprinting should classify one DB independently of app/admin role usernames."""
 
     assert dsn_fingerprint(APP_TEST_DSN) == dsn_fingerprint(PROTECTED_DSN)
+
+
+def test_instance_guard_should_reject_the_protected_live_host_port_even_with_a_different_database_name() -> None:
+    """instance guard should refuse test targets that share the live host/port."""
+
+    with pytest.raises(RuntimeError, match="protected live database host/port"):
+        assert_disposable_test_dsn(
+            test_dsn="postgresql+psycopg://test_user:test_password@localhost:5432/shellbrain_test_safe",
+            protected_dsn=PROTECTED_DSN,
+        )
+
+
+def test_instance_guard_host_port_should_ignore_role_username() -> None:
+    """host/port comparison should classify one Postgres server independently of role usernames."""
+
+    assert host_port_from_dsn(APP_TEST_DSN) == host_port_from_dsn(PROTECTED_DSN)
 
 
 def test_destructive_guard_should_fail_closed_when_metadata_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:

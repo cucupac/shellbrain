@@ -13,7 +13,7 @@ def classify_operation_failure(
     """Return one stable diagnosis payload for an operation failure."""
 
     message = (error_message or "").lower()
-    if "uq_evidence_repo_ref" in message:
+    if "uq_evidence_repo_ref" in message or "uq_evidence_repo_episode_event" in message:
         return _diagnosis(
             category="duplicate_evidence_ref",
             summary="Evidence refs are being inserted twice for the same repo/event pair.",

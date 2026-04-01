@@ -1,6 +1,24 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+TEST_COMPOSE_FILE="${SHELLBRAIN_TEST_COMPOSE_FILE:-docker-compose.test.yml}"
+TEST_CONTAINER_NAME="${SHELLBRAIN_TEST_DB_CONTAINER_NAME:-shellbrain-postgres-test}"
+TEST_HOST="${SHELLBRAIN_TEST_DB_HOST:-127.0.0.1}"
+TEST_PORT="${SHELLBRAIN_TEST_POSTGRES_PORT:-5433}"
+TEST_ADMIN_USER="${SHELLBRAIN_TEST_POSTGRES_USER:-shellbrain_test_admin}"
+TEST_ADMIN_PASSWORD="${SHELLBRAIN_TEST_POSTGRES_PASSWORD:-shellbrain_test_admin}"
+TEST_DB_PREFIX="${SHELLBRAIN_TEST_DB_PREFIX:-shellbrain_test_}"
+TEST_RETENTION_HOURS="${SHELLBRAIN_TEST_RETENTION_HOURS:-72}"
+KEEP_TEST_DB="${SHELLBRAIN_TEST_KEEP_DB:-0}"
+
+if [[ -n "${SHELLBRAIN_TEST_PYTHON:-}" ]]; then
+  PYTHON_BIN="${SHELLBRAIN_TEST_PYTHON}"
+elif [[ -x "$PWD/.venv/bin/python" ]]; then
+  PYTHON_BIN="$PWD/.venv/bin/python"
+else
+  PYTHON_BIN="python3"
+fi
+
 if ! command -v docker >/dev/null 2>&1; then
   echo "docker is required because persistence tests run in the default suite." >&2
   exit 1
@@ -16,39 +34,109 @@ if ! docker compose version >/dev/null 2>&1; then
   exit 1
 fi
 
+GENERATED_TEST_TARGET=0
 if [[ -z "${SHELLBRAIN_DB_DSN_TEST:-}" ]]; then
-  echo "SHELLBRAIN_DB_DSN_TEST must point at an explicitly disposable test database." >&2
-  exit 1
+  GENERATED_TEST_TARGET=1
+  TEST_DB_NAME="${TEST_DB_PREFIX}$(date -u +%Y%m%d%H%M%S)_$$"
+  export SHELLBRAIN_DB_DSN_TEST="postgresql+psycopg://${TEST_ADMIN_USER}:${TEST_ADMIN_PASSWORD}@${TEST_HOST}:${TEST_PORT}/${TEST_DB_NAME}"
+  export SHELLBRAIN_DB_ADMIN_DSN_TEST="$SHELLBRAIN_DB_DSN_TEST"
+else
+  TEST_DB_NAME=""
+  export SHELLBRAIN_DB_ADMIN_DSN_TEST="${SHELLBRAIN_DB_ADMIN_DSN_TEST:-$SHELLBRAIN_DB_DSN_TEST}"
 fi
 
-export SHELLBRAIN_PROTECTED_LIVE_DSN="${SHELLBRAIN_DB_DSN:-}"
+ORIGINAL_SHELLBRAIN_HOME="${SHELLBRAIN_HOME:-}"
+export SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH="${SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH:-${ORIGINAL_SHELLBRAIN_HOME:-$HOME/.shellbrain}/config.toml}"
 export SHELLBRAIN_DB_ADMIN_DSN="${SHELLBRAIN_DB_ADMIN_DSN_TEST:-$SHELLBRAIN_DB_DSN_TEST}"
 export SHELLBRAIN_DB_DSN="${SHELLBRAIN_DB_DSN_TEST}"
 export SHELLBRAIN_INSTANCE_MODE="${SHELLBRAIN_INSTANCE_MODE:-test}"
-export SHELLBRAIN_HOME="${SHELLBRAIN_HOME:-$PWD/.shellbrain-home}"
+export SHELLBRAIN_HOME="${SHELLBRAIN_HOME:-$PWD/.shellbrain-home-test}"
 export HF_HOME="${HF_HOME:-$PWD/.local/huggingface}"
 mkdir -p "$SHELLBRAIN_HOME"
 mkdir -p "$HF_HOME"
 
-python3 - <<'PY'
+if [[ -z "${SHELLBRAIN_PROTECTED_LIVE_DSN:-}" ]]; then
+  RESOLVED_PROTECTED_LIVE_DSN="$("$PYTHON_BIN" - <<'PY'
+import os
+from pathlib import Path
+
+from app.periphery.admin.machine_state import try_load_machine_config
+
+machine_config_path = Path(os.environ["SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH"]).expanduser().resolve()
+machine_config, machine_error = try_load_machine_config(machine_config_path)
+if machine_error is None and machine_config is not None:
+    print(machine_config.database.admin_dsn)
+PY
+)"
+  if [[ -n "$RESOLVED_PROTECTED_LIVE_DSN" ]]; then
+    export SHELLBRAIN_PROTECTED_LIVE_DSN="$RESOLVED_PROTECTED_LIVE_DSN"
+  fi
+fi
+
+"$PYTHON_BIN" - <<'PY'
+import os
+from pathlib import Path
+
+from app.periphery.admin.instance_guard import assert_disposable_test_dsn, host_port_from_dsn
+from app.periphery.admin.machine_state import try_load_machine_config
+
+protected_dsn = os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN") or None
+protected_host_ports: set[tuple[str, int]] = set()
+if protected_dsn:
+    protected_host_ports.add(host_port_from_dsn(protected_dsn))
+else:
+    machine_config_path = Path(os.environ["SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH"]).expanduser().resolve()
+    machine_config, machine_error = try_load_machine_config(machine_config_path)
+    if machine_error is None and machine_config is not None:
+        protected_dsn = machine_config.database.admin_dsn
+        protected_host_ports.add(host_port_from_dsn(machine_config.database.admin_dsn))
+
+assert_disposable_test_dsn(
+    test_dsn=os.environ["SHELLBRAIN_DB_DSN_TEST"],
+    protected_dsn=protected_dsn,
+    protected_host_ports=protected_host_ports,
+)
+assert_disposable_test_dsn(
+    test_dsn=os.environ["SHELLBRAIN_DB_ADMIN_DSN"],
+    protected_dsn=protected_dsn,
+    protected_host_ports=protected_host_ports,
+)
+PY
+
+if [[ "$GENERATED_TEST_TARGET" == "1" ]]; then
+  docker compose -f "$TEST_COMPOSE_FILE" up -d db >/dev/null
+fi
+
+RUN_TESTS_STATE_FILE="$(mktemp)"
+export RUN_TESTS_STATE_FILE
+export GENERATED_TEST_TARGET
+export TEST_RETENTION_HOURS
+
+"$PYTHON_BIN" - <<'PY'
 import os
 import time
+from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse, urlunparse
 
 import psycopg
 from psycopg import sql
-from app.periphery.admin.instance_guard import assert_disposable_test_dsn
+from app.periphery.admin.instance_guard import (
+    SCRATCH,
+    TEST,
+    assert_destructive_allowed,
+    fetch_instance_metadata,
+)
 
 dsn = os.environ["SHELLBRAIN_DB_DSN_TEST"].replace("+psycopg", "")
 admin_dsn = os.environ["SHELLBRAIN_DB_ADMIN_DSN"].replace("+psycopg", "")
-assert_disposable_test_dsn(
-    test_dsn=os.environ["SHELLBRAIN_DB_DSN_TEST"],
-    protected_dsn=os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN") or None,
-)
+generated = os.getenv("GENERATED_TEST_TARGET") == "1"
+admin_parsed = urlparse(admin_dsn)
+admin_root_dsn = urlunparse(admin_parsed._replace(path="/postgres"))
+
 deadline = time.time() + 30
 while True:
     try:
-        with psycopg.connect(dsn, connect_timeout=2):
+        with psycopg.connect(admin_root_dsn, connect_timeout=2):
             break
     except Exception:
         if time.time() >= deadline:
@@ -57,21 +145,97 @@ while True:
 
 parsed = urlparse(dsn)
 db_name = parsed.path.lstrip("/")
-admin_parsed = urlparse(admin_dsn)
-admin_root_dsn = urlunparse(admin_parsed._replace(path="/postgres"))
 with psycopg.connect(admin_root_dsn, autocommit=True) as conn:
     exists = conn.execute(
         "SELECT 1 FROM pg_database WHERE datname = %s",
         (db_name,),
     ).fetchone()
+    created = exists is None
     if exists is None:
         conn.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(db_name)))
+    if generated:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=int(os.getenv("TEST_RETENTION_HOURS", "72")))
+        stale_prefixes = ("shellbrain_test_", "shellbrain_ci_")
+        rows = conn.execute(
+            """
+            SELECT datname
+            FROM pg_database
+            WHERE datistemplate = FALSE
+            ORDER BY datname
+            """
+        ).fetchall()
+        for (candidate_name,) in rows:
+            if candidate_name == db_name or not candidate_name.startswith(stale_prefixes):
+                continue
+            candidate_dsn = urlunparse(parsed._replace(path=f"/{candidate_name}"))
+            metadata = fetch_instance_metadata(candidate_dsn.replace("postgresql://", "postgresql+psycopg://", 1))
+            if metadata is None or metadata.instance_mode not in {TEST, SCRATCH}:
+                continue
+            created_at = datetime.fromisoformat(metadata.created_at.replace(" ", "T"))
+            if created_at >= cutoff:
+                continue
+            conn.execute(
+                """
+                SELECT pg_terminate_backend(pid)
+                FROM pg_stat_activity
+                WHERE datname = %s
+                  AND pid <> pg_backend_pid()
+                """,
+                (candidate_name,),
+            )
+            conn.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(candidate_name)))
 
-with psycopg.connect(admin_dsn, autocommit=True) as conn:
-    conn.execute("DROP SCHEMA IF EXISTS public CASCADE;")
-    conn.execute("CREATE SCHEMA public;")
-    conn.execute("GRANT USAGE ON SCHEMA public TO PUBLIC;")
+if not created:
+    assert_destructive_allowed(os.environ["SHELLBRAIN_DB_ADMIN_DSN"])
+    with psycopg.connect(admin_dsn, autocommit=True) as conn:
+        conn.execute("DROP SCHEMA IF EXISTS public CASCADE;")
+        conn.execute("CREATE SCHEMA public;")
+        conn.execute("GRANT USAGE ON SCHEMA public TO PUBLIC;")
+
+drop_on_exit = int(created)
+with open(os.environ["RUN_TESTS_STATE_FILE"], "w", encoding="utf-8") as handle:
+    handle.write(f"export TEST_DB_NAME={db_name}\n")
+    handle.write(f"DROP_ON_EXIT={drop_on_exit}\n")
 PY
 
-python3 -m app admin migrate
-python3 -m pytest -q tests
+# shellcheck disable=SC1090
+source "$RUN_TESTS_STATE_FILE"
+rm -f "$RUN_TESTS_STATE_FILE"
+
+cleanup() {
+  if [[ "${DROP_ON_EXIT:-0}" != "1" ]]; then
+    return
+  fi
+  if [[ "$KEEP_TEST_DB" == "1" ]]; then
+    echo "Retained test database: ${TEST_DB_NAME}" >&2
+    return
+  fi
+  "$PYTHON_BIN" - <<'PY'
+import os
+from urllib.parse import urlparse, urlunparse
+
+import psycopg
+from psycopg import sql
+
+admin_dsn = os.environ["SHELLBRAIN_DB_ADMIN_DSN"].replace("+psycopg", "")
+db_name = os.environ["TEST_DB_NAME"]
+parsed = urlparse(admin_dsn)
+admin_root_dsn = urlunparse(parsed._replace(path="/postgres"))
+with psycopg.connect(admin_root_dsn, autocommit=True) as conn:
+    conn.execute(
+        """
+        SELECT pg_terminate_backend(pid)
+        FROM pg_stat_activity
+        WHERE datname = %s
+          AND pid <> pg_backend_pid()
+        """,
+        (db_name,),
+    )
+    conn.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))
+PY
+}
+
+trap cleanup EXIT
+
+"$PYTHON_BIN" -m app admin migrate
+"$PYTHON_BIN" -m pytest -q tests

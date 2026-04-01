@@ -1,0 +1,225 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+python3 - <<'PY'
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from urllib.parse import urlparse, urlunparse
+
+import psycopg
+from psycopg.rows import dict_row
+
+from app.periphery.admin.instance_guard import dsn_fingerprint, fetch_instance_metadata
+from app.periphery.admin.machine_state import try_load_machine_config
+
+
+TEST_CONTAINER_NAME = os.environ.get("SHELLBRAIN_TEST_DB_CONTAINER_NAME", "shellbrain-postgres-test")
+TEST_HOST = os.environ.get("SHELLBRAIN_TEST_DB_HOST", "127.0.0.1")
+TEST_PORT = int(os.environ.get("SHELLBRAIN_TEST_POSTGRES_PORT", "5433"))
+TEST_ADMIN_USER = os.environ.get("SHELLBRAIN_TEST_POSTGRES_USER", "shellbrain_test_admin")
+TEST_ADMIN_PASSWORD = os.environ.get("SHELLBRAIN_TEST_POSTGRES_PASSWORD", "shellbrain_test_admin")
+TEST_DATA_DIR = Path(os.environ.get("SHELLBRAIN_TEST_DB_DATA_DIR", str(Path.cwd() / ".local" / "postgres-test-data"))).expanduser().resolve()
+STALE_HOURS = int(os.environ.get("SHELLBRAIN_TEST_RETENTION_HOURS", "72"))
+LEGACY_CONTAINER_NAME = os.environ.get("SHELLBRAIN_LEGACY_DB_CONTAINER_NAME", "shellbrain-postgres")
+
+
+def _mask_dsn(raw_dsn: str) -> str:
+    parsed = urlparse(raw_dsn.replace("+psycopg", ""))
+    user = parsed.username or "<redacted>"
+    return f"postgresql://{user}:<redacted>@{parsed.hostname}:{parsed.port or 5432}{parsed.path}"
+
+
+def _inspect_container(name: str) -> dict[str, object]:
+    try:
+        completed = subprocess.run(
+            ["docker", "inspect", name],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except FileNotFoundError:
+        return {"name": name, "present": False, "error": "docker not found"}
+    if completed.returncode != 0:
+        return {"name": name, "present": False}
+    payload = json.loads(completed.stdout)[0]
+    ports = payload["NetworkSettings"].get("Ports") or {}
+    host_port = None
+    if ports.get("5432/tcp"):
+        host_port = int(ports["5432/tcp"][0]["HostPort"])
+    env = {}
+    for item in payload["Config"].get("Env") or []:
+        key, _, value = item.partition("=")
+        env[key] = value
+    return {
+        "name": name,
+        "present": True,
+        "status": payload["State"]["Status"],
+        "health": (payload["State"].get("Health") or {}).get("Status"),
+        "image": payload["Config"]["Image"],
+        "host_port": host_port,
+        "env": env,
+    }
+
+
+def _list_databases(admin_dsn: str) -> tuple[list[dict[str, object]], str | None]:
+    parsed = urlparse(admin_dsn.replace("+psycopg", ""))
+    root_dsn = urlunparse(parsed._replace(path="/postgres"))
+    rows: list[dict[str, object]] = []
+    try:
+        with psycopg.connect(root_dsn, row_factory=dict_row) as conn:
+            databases = conn.execute(
+                """
+                SELECT datname, pg_database_size(datname) AS size_bytes
+                FROM pg_database
+                WHERE datistemplate = FALSE
+                ORDER BY datname
+                """
+            ).fetchall()
+    except psycopg.Error as exc:
+        return [], str(exc)
+
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=STALE_HOURS)
+    for database in databases:
+        name = str(database["datname"])
+        db_dsn = urlunparse(parsed._replace(path=f"/{name}")).replace("postgresql://", "postgresql+psycopg://", 1)
+        metadata = fetch_instance_metadata(db_dsn)
+        latest = {
+            "memories_max": None,
+            "episode_events_max": None,
+            "op_max": None,
+            "evidence_max": None,
+        }
+        table_count = 0
+        try:
+            with psycopg.connect(db_dsn.replace("+psycopg", ""), row_factory=dict_row) as conn:
+                table_count = int(
+                    conn.execute(
+                        "SELECT COUNT(*) AS count FROM pg_tables WHERE schemaname = 'public'"
+                    ).fetchone()["count"]
+                )
+                if table_count > 0:
+                    latest = conn.execute(
+                        """
+                        SELECT
+                          to_regclass('public.memories') IS NOT NULL AS has_memories,
+                          to_regclass('public.episode_events') IS NOT NULL AS has_episode_events,
+                          to_regclass('public.operation_invocations') IS NOT NULL AS has_ops,
+                          to_regclass('public.evidence_refs') IS NOT NULL AS has_evidence
+                        """
+                    ).fetchone()
+                    latest = {
+                        "memories_max": conn.execute("SELECT MAX(created_at)::text AS ts FROM memories").fetchone()["ts"] if latest["has_memories"] else None,
+                        "episode_events_max": conn.execute("SELECT MAX(created_at)::text AS ts FROM episode_events").fetchone()["ts"] if latest["has_episode_events"] else None,
+                        "op_max": conn.execute("SELECT MAX(created_at)::text AS ts FROM operation_invocations").fetchone()["ts"] if latest["has_ops"] else None,
+                        "evidence_max": conn.execute("SELECT MAX(created_at)::text AS ts FROM evidence_refs").fetchone()["ts"] if latest["has_evidence"] else None,
+                    }
+        except psycopg.Error as exc:
+            latest = {"error": str(exc)}
+
+        created_at = None
+        prunable = False
+        if metadata is not None:
+            created_at = metadata.created_at
+            created_dt = datetime.fromisoformat(metadata.created_at.replace(" ", "T"))
+            prunable = (
+                metadata.instance_mode in {"test", "scratch"}
+                and name.startswith(("shellbrain_test_", "shellbrain_ci_"))
+                and created_dt < cutoff
+            )
+        rows.append(
+            {
+                "name": name,
+                "size_bytes": int(database["size_bytes"]),
+                "instance_mode": metadata.instance_mode if metadata is not None else None,
+                "created_at": created_at,
+                "latest": latest,
+                "table_count": table_count,
+                "prunable": prunable,
+            }
+        )
+    return rows, None
+
+
+live_config, live_error = try_load_machine_config()
+print("Live managed database")
+if live_error:
+    print(f"  config_error: {live_error}")
+elif live_config is None:
+    print("  status: unavailable")
+else:
+    print(f"  runtime_mode: {live_config.runtime_mode}")
+    print(f"  admin_dsn: {_mask_dsn(live_config.database.admin_dsn)}")
+    print(f"  fingerprint: {dsn_fingerprint(live_config.database.admin_dsn)}")
+    if live_config.managed is not None:
+        print(f"  container: {live_config.managed.container_name}")
+        print(f"  data_dir: {live_config.managed.data_dir}")
+
+print("")
+print("Dedicated test host")
+test_container = _inspect_container(TEST_CONTAINER_NAME)
+print(f"  container: {TEST_CONTAINER_NAME}")
+print(f"  expected_admin_dsn: {_mask_dsn(f'postgresql+psycopg://{TEST_ADMIN_USER}:{TEST_ADMIN_PASSWORD}@{TEST_HOST}:{TEST_PORT}/postgres')}")
+print(f"  data_dir: {TEST_DATA_DIR}")
+if not test_container["present"]:
+    print("  status: not present")
+else:
+    print(f"  status: {test_container['status']}")
+    print(f"  health: {test_container.get('health')}")
+    host_port = test_container.get("host_port") or TEST_PORT
+    admin_user = test_container["env"].get("POSTGRES_USER", TEST_ADMIN_USER)
+    admin_password = test_container["env"].get("POSTGRES_PASSWORD", TEST_ADMIN_PASSWORD)
+    admin_db = test_container["env"].get("POSTGRES_DB", "postgres")
+    admin_dsn = f"postgresql+psycopg://{admin_user}:{admin_password}@127.0.0.1:{host_port}/{admin_db}"
+    databases, error = _list_databases(admin_dsn)
+    if error:
+        print(f"  query_error: {error}")
+    else:
+        for database in databases:
+            print(
+                f"  - {database['name']}: mode={database['instance_mode'] or 'unknown'} "
+                f"tables={database['table_count']} size_bytes={database['size_bytes']} "
+                f"prunable={database['prunable']}"
+            )
+            latest = database["latest"]
+            if isinstance(latest, dict):
+                print(
+                    f"    latest memories={latest.get('memories_max')} "
+                    f"events={latest.get('episode_events_max')} ops={latest.get('op_max')}"
+                )
+
+print("")
+print("Legacy 5432 host")
+legacy_container = _inspect_container(LEGACY_CONTAINER_NAME)
+if not legacy_container["present"]:
+    print("  status: not present")
+else:
+    print(f"  container: {legacy_container['name']}")
+    print(f"  status: {legacy_container['status']}")
+    print(f"  health: {legacy_container.get('health')}")
+    host_port = legacy_container.get("host_port") or 5432
+    admin_user = legacy_container["env"].get("POSTGRES_USER", "postgres")
+    admin_password = legacy_container["env"].get("POSTGRES_PASSWORD", "")
+    admin_db = legacy_container["env"].get("POSTGRES_DB", "postgres")
+    admin_dsn = f"postgresql+psycopg://{admin_user}:{admin_password}@127.0.0.1:{host_port}/{admin_db}"
+    databases, error = _list_databases(admin_dsn)
+    if error:
+        print(f"  query_error: {error}")
+    else:
+        for database in databases:
+            print(
+                f"  - {database['name']}: mode={database['instance_mode'] or 'unknown'} "
+                f"tables={database['table_count']} size_bytes={database['size_bytes']} "
+                f"prunable={database['prunable']}"
+            )
+            latest = database["latest"]
+            if isinstance(latest, dict):
+                print(
+                    f"    latest memories={latest.get('memories_max')} "
+                    f"events={latest.get('episode_events_max')} ops={latest.get('op_max')}"
+                )
+PY
