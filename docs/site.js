@@ -1,3 +1,19 @@
+// ── Shared favicon ───────────────────────────
+(function () {
+  if (document.querySelector('link[rel="icon"]')) return;
+
+  var script = document.currentScript;
+  var base = script && script.src ? script.src : location.href;
+  var href = new URL("assets/shellbrain_logo.png", base).href;
+  var icon = document.createElement("link");
+
+  icon.rel = "icon";
+  icon.type = "image/png";
+  icon.href = href;
+
+  document.head.appendChild(icon);
+})();
+
 // ── Active nav link ──────────────────────────
 // Works both on deployed site (paths like /agents/) and local file opens
 // (paths like /Users/.../docs/agents/index.html).
