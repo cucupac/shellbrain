@@ -7,25 +7,9 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    services:
-      db:
-        image: pgvector/pgvector:pg16
-        env:
-          POSTGRES_DB: shellbrain_ci_test
-          POSTGRES_USER: ci_user
-          POSTGRES_PASSWORD: ci_password
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ci_user -d shellbrain_ci_test"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 10
 
     env:
-      SHELLBRAIN_DB_DSN: postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain
-      SHELLBRAIN_DB_DSN_TEST: postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test
-      SHELLBRAIN_HOME: ${{ github.workspace }}/.shellbrain-home
+      SHELLBRAIN_HOME: ${{ github.workspace }}/.shellbrain-home-test
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
 
     steps:
