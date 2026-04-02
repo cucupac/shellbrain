@@ -3,32 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shellbrain: Long-Term Memory for AI Coding Agents</title>
-  <meta name="description" content="Shellbrain gives Codex, Claude Code, and Cursor durable, structured long-term memory with evidence-grounded recall across problems, solutions, facts, and preferences.">
-  <meta name="robots" content="index,follow,max-image-preview:large">
-  <link rel="canonical" href="https://shellbrain.ai/">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="shellbrain">
-  <meta property="og:title" content="Shellbrain: Long-Term Memory for AI Coding Agents">
-  <meta property="og:description" content="Shellbrain gives coding agents durable, structured long-term memory with evidence-grounded recall.">
-  <meta property="og:url" content="https://shellbrain.ai/">
-  <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Shellbrain: Long-Term Memory for AI Coding Agents">
-  <meta name="twitter:description" content="Shellbrain gives coding agents durable, structured long-term memory with evidence-grounded recall.">
+  <title>shellbrain</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="site.css">
   <script src="site.js" defer></script>
-  <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "shellbrain",
-      "url": "https://shellbrain.ai/",
-      "description": "Shellbrain gives coding agents durable, structured long-term memory with evidence-grounded recall."
-    }
-  </script>
   <style>
     /* landing page overrides and extensions */
 
@@ -77,37 +57,23 @@
       margin-bottom: 36px;
     }
 
-    .hero-title {
-      font-family: "Bricolage Grotesque", serif;
-      font-size: clamp(2.5rem, 6vw, 5.4rem);
-      font-weight: 550;
-      line-height: 0.98;
-      letter-spacing: -0.05em;
-      text-wrap: balance;
-      max-width: 14ch;
-      margin: 0;
-    }
-
     .typing-area {
-      min-height: 5.5rem;
-      height: auto;
+      height: 15rem;
       display: flex;
       align-items: flex-start;
       justify-content: center;
-      padding-top: 1.5rem;
+      padding-top: 2rem;
       width: 100%;
     }
 
     .typed-text {
       font-family: "Bricolage Grotesque", serif;
-      font-size: clamp(1.15rem, 2.3vw, 1.6rem);
-      font-weight: 400;
-      line-height: 1.35;
+      font-size: clamp(2.1rem, 5.2vw, 4.4rem);
+      font-weight: 500;
+      line-height: 1.1;
       letter-spacing: -0.03em;
       text-wrap: balance;
       text-align: center;
-      color: var(--muted);
-      max-width: 40rem;
     }
 
     .caret {
@@ -153,30 +119,6 @@
     .memory-strip-item.visible {
       opacity: 1;
       transform: translateY(0);
-    }
-
-    .hero-links {
-      margin-top: 24px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: center;
-      gap: 10px 18px;
-      font-family: "DM Mono", monospace;
-      font-size: 11px;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .hero-links a {
-      color: var(--muted);
-      text-decoration: none;
-      border-bottom: 1px solid rgba(48, 44, 40, 0.16);
-      padding-bottom: 4px;
-    }
-
-    .hero-links a:hover {
-      color: var(--text);
-      border-color: rgba(48, 44, 40, 0.4);
     }
 
     .scroll-hint {
@@ -706,8 +648,7 @@
       }
 
       .typing-area {
-        min-height: 4.8rem;
-        height: auto;
+        height: 17rem;
       }
 
       .scroll-hint {
@@ -761,9 +702,8 @@
   <section class="hero">
     <div class="hero-inner">
       <div class="hero-label">shellbrain</div>
-      <h1 class="hero-title">long-term memory for AI coding agents.</h1>
       <div class="typing-area">
-        <p class="typed-text" id="typed" aria-live="polite">structured recall for Codex, Claude Code, and Cursor.</p><span class="caret" aria-hidden="true"></span>
+        <p class="typed-text" id="typed" aria-live="polite"></p><span class="caret" aria-hidden="true"></span>
       </div>
       <div class="hero-counter mono" id="counter"></div>
 
@@ -784,13 +724,6 @@
         read the docs
         <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5"><path d="M6 3l5 5-5 5"/></svg>
       </a>
-
-      <nav class="hero-links" aria-label="Key pages">
-        <a href="/humans/">for humans</a>
-        <a href="/agents/">for agents</a>
-        <a href="/recall/">recall pipeline</a>
-        <a href="/memory/procedural/">memory model</a>
-      </nav>
 
       <a class="github-link" href="https://github.com/cucupac/shellbrain" target="_blank" rel="noopener">
         <svg viewBox="0 0 16 16"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -954,11 +887,13 @@
 
     // ── Hero typing loop ──────────────────────────
     const scenes = [
-      "procedural, semantic, episodic, and associative memory.",
-      "evidence-grounded memory agents can reuse.",
-      "hybrid recall across BM25, embeddings, and graph links.",
+      "agents forget.",
+      "what if they didn't?",
       "every problem. every failure. every solution.",
-      "memory that compounds across coding sessions."
+      "every memory answerable to truth.",
+      "every experience compounding into the next.",
+      "until recall looks like creativity.",
+      "shellbrain."
     ];
 
     const el = document.getElementById("typed");
