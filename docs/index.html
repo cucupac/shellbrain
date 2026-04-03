@@ -880,6 +880,9 @@
     // ── Install copy ─────────────────────────────
     function copyInstall() {
       navigator.clipboard.writeText("curl -L shellbrain.ai/install | bash").then(() => {
+        if (typeof window.shellbrainTrack === "function") {
+          window.shellbrainTrack("install_command_copy");
+        }
         const hint = document.getElementById("installHint");
         hint.textContent = "copied";
         setTimeout(() => { hint.textContent = "click to copy"; }, 1600);

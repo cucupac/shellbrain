@@ -1,3 +1,68 @@
+window.SHELLBRAIN_ANALYTICS = window.SHELLBRAIN_ANALYTICS || {
+  // GA4 measurement IDs are public identifiers, not secrets.
+  // Paste your GA4 measurement ID here, for example: "G-ABC123DEF4"
+  gaMeasurementId: "G-0R72SSJBD6",
+  allowedHosts: ["shellbrain.ai", "www.shellbrain.ai", "cucupac.github.io"],
+};
+
+// ── Analytics bootstrap ──────────────────────
+(function () {
+  var config = window.SHELLBRAIN_ANALYTICS || {};
+  var measurementId = (config.gaMeasurementId || "").trim();
+  var allowedHosts = Array.isArray(config.allowedHosts) ? config.allowedHosts : [];
+  var host = window.location.hostname;
+  var protocol = window.location.protocol;
+
+  window.shellbrainTrack = function () {};
+
+  if (!measurementId) return;
+  if (protocol !== "https:" && protocol !== "http:") return;
+
+  if (allowedHosts.length > 0) {
+    var isAllowedHost = allowedHosts.some(function (allowedHost) {
+      return host === allowedHost || host.endsWith("." + allowedHost);
+    });
+
+    if (!isAllowedHost) return;
+  }
+
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = window.gtag || function gtag() {
+    window.dataLayer.push(arguments);
+  };
+
+  window.gtag("js", new Date());
+  window.gtag("config", measurementId);
+
+  window.shellbrainTrack = function (eventName, params) {
+    if (!eventName) return;
+    window.gtag("event", eventName, params || {});
+  };
+
+  var script = document.createElement("script");
+  script.async = true;
+  script.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(measurementId);
+  document.head.appendChild(script);
+})();
+
+function trackSiteEvent(eventName, params) {
+  if (typeof window.shellbrainTrack !== "function") return;
+  window.shellbrainTrack(eventName, params);
+}
+
+function getCopyEventName(selector) {
+  switch (selector) {
+    case "#install-cmd":
+      return "install_command_copy";
+    case "#upgrade-cmd":
+      return "upgrade_command_copy";
+    case "#session-prompt":
+      return "session_prompt_copy";
+    default:
+      return "copy_source";
+  }
+}
+
 // ── Shared favicon ───────────────────────────
 (function () {
   if (document.querySelector('link[rel="icon"]')) return;
@@ -33,6 +98,32 @@
   });
 })();
 
+document.addEventListener("click", (event) => {
+  const link = event.target.closest("a[href]");
+  if (!link) return;
+
+  const href = link.getAttribute("href");
+  if (!href || href.startsWith("#") || href.startsWith("mailto:") || href.startsWith("tel:")) {
+    return;
+  }
+
+  let url;
+  try {
+    url = new URL(link.href, location.href);
+  } catch {
+    return;
+  }
+
+  // GA4 enhanced measurement can capture outbound clicks. This fills the gap
+  // for same-site navigation.
+  if (url.origin !== location.origin) return;
+  if (url.pathname === location.pathname && url.hash) return;
+
+  trackSiteEvent("internal_link_click", {
+    destination_path: url.pathname,
+  });
+});
+
 document.addEventListener("click", async (event) => {
   const button = event.target.closest("[data-copy-source]");
   if (!button) return;
@@ -48,6 +139,8 @@ document.addEventListener("click", async (event) => {
 
   try {
     await navigator.clipboard.writeText(text);
+    trackSiteEvent(getCopyEventName(selector));
+
     const previous = button.textContent;
     button.textContent = button.getAttribute("data-copy-success") || "copied";
     button.classList.add("is-copied");
@@ -75,6 +168,8 @@ document.addEventListener("click", async (event) => {
 
   try {
     await navigator.clipboard.writeText(text);
+    trackSiteEvent("page_copy");
+
     const previous = button.textContent;
     button.textContent = "copied";
     button.classList.add("is-copied");
