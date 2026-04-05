@@ -10,6 +10,7 @@ SHELLBRAIN_SOURCE_SECTION_HEADER="# SHELLBRAIN"
 SHELLBRAIN_SOURCE_LINE='[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" ] && . "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh"'
 PATH_SNIPPET=""
 PATH_TARGETS=()
+PATH_SETUP_WARNING=""
 
 config_root() {
   if [ -n "${XDG_CONFIG_HOME:-}" ]; then
@@ -190,17 +191,17 @@ ensure_profile_sources_snippet() {
   local profile="$1"
   local source_block="$2"
 
-  mkdir -p "$(dirname "$profile")"
-  touch "$profile"
+  mkdir -p "$(dirname "$profile")" || return 1
+  touch "$profile" || return 1
 
-  remove_managed_block "$profile" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" "$SHELLBRAIN_LEGACY_PATH_MARKER_END"
-  remove_managed_block "$profile" "$SHELLBRAIN_SOURCE_MARKER_BEGIN" "$SHELLBRAIN_SOURCE_MARKER_END"
-  remove_shellbrain_section_block "$profile"
+  remove_managed_block "$profile" "$SHELLBRAIN_LEGACY_PATH_MARKER_BEGIN" "$SHELLBRAIN_LEGACY_PATH_MARKER_END" || return 1
+  remove_managed_block "$profile" "$SHELLBRAIN_SOURCE_MARKER_BEGIN" "$SHELLBRAIN_SOURCE_MARKER_END" || return 1
+  remove_shellbrain_section_block "$profile" || return 1
 
   {
     printf '\n'
     printf '%s\n' "$source_block"
-  } >> "$profile"
+  } >> "$profile" || return 1
 
   append_path_target "$profile"
 }
@@ -210,14 +211,17 @@ write_posix_path_snippet() {
   local snippet_path
 
   snippet_path="$(shellbrain_path_snippet)"
-  mkdir -p "$(dirname "$snippet_path")"
-  cat > "$snippet_path" <<EOF
+  mkdir -p "$(dirname "$snippet_path")" || return 1
+  if ! cat > "$snippet_path" <<EOF
 # shellbrain managed path
 case ":\$PATH:" in
   *":$bin_dir:"*) ;;
   *) export PATH="$bin_dir:\$PATH" ;;
 esac
 EOF
+  then
+    return 1
+  fi
   PATH_SNIPPET="$snippet_path"
 }
 
@@ -226,13 +230,16 @@ write_fish_path_config() {
   local fish_conf
 
   fish_conf="$(shellbrain_fish_conf)"
-  mkdir -p "$(dirname "$fish_conf")"
-  cat > "$fish_conf" <<EOF
+  mkdir -p "$(dirname "$fish_conf")" || return 1
+  if ! cat > "$fish_conf" <<EOF
 # shellbrain managed path
 if not contains -- "$bin_dir" \$PATH
     set -gx PATH "$bin_dir" \$PATH
 end
 EOF
+  then
+    return 1
+  fi
   append_path_target "$fish_conf"
 }
 
@@ -253,29 +260,29 @@ ensure_user_bin_on_shell_path() {
 
   PATH_SNIPPET=""
   PATH_TARGETS=()
-  write_posix_path_snippet "$bin_dir"
+  write_posix_path_snippet "$bin_dir" || return 1
   source_block="$(render_posix_source_block)"
 
   for profile in "${legacy_profiles[@]}"; do
     if file_contains_shellbrain_block "$profile"; then
-      ensure_profile_sources_snippet "$profile" "$source_block"
+      ensure_profile_sources_snippet "$profile" "$source_block" || return 1
     fi
   done
 
   case "$current_shell" in
     zsh)
-      ensure_profile_sources_snippet "$HOME/.zprofile" "$source_block"
-      ensure_profile_sources_snippet "$HOME/.zshrc" "$source_block"
+      ensure_profile_sources_snippet "$HOME/.zprofile" "$source_block" || return 1
+      ensure_profile_sources_snippet "$HOME/.zshrc" "$source_block" || return 1
       ;;
     bash)
-      ensure_profile_sources_snippet "$HOME/.bash_profile" "$source_block"
-      ensure_profile_sources_snippet "$HOME/.bashrc" "$source_block"
+      ensure_profile_sources_snippet "$HOME/.bash_profile" "$source_block" || return 1
+      ensure_profile_sources_snippet "$HOME/.bashrc" "$source_block" || return 1
       ;;
     fish)
-      write_fish_path_config "$bin_dir"
+      write_fish_path_config "$bin_dir" || return 1
       ;;
     *)
-      ensure_profile_sources_snippet "$HOME/.profile" "$source_block"
+      ensure_profile_sources_snippet "$HOME/.profile" "$source_block" || return 1
       ;;
   esac
 }
@@ -351,7 +358,11 @@ if [ -z "$SHELLBRAIN" ]; then
 fi
 
 if [ -n "$USER_BIN" ] && [ -d "$USER_BIN" ]; then
-  ensure_user_bin_on_shell_path "$USER_BIN"
+  if ! ensure_user_bin_on_shell_path "$USER_BIN"; then
+    PATH_SNIPPET=""
+    PATH_TARGETS=()
+    PATH_SETUP_WARNING="warning: could not update shell PATH wiring under $(config_root). shellbrain is installed at $SHELLBRAIN, but future shells may not find it automatically. fix permissions on $(config_root) and rerun the installer, or add $USER_BIN to PATH manually."
+  fi
 fi
 
 echo ""
@@ -370,6 +381,9 @@ if [ -n "$PATH_SNIPPET" ]; then
 fi
 if [ "${#PATH_TARGETS[@]}" -gt 0 ]; then
   echo "  shell path wiring: $(render_path_targets)"
+fi
+if [ -n "$PATH_SETUP_WARNING" ]; then
+  echo "  $PATH_SETUP_WARNING"
 fi
 echo ""
 echo "shellbrain. knowledge compounds."

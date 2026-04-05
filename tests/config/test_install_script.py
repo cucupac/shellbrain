@@ -6,6 +6,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import sys
+from typing import Mapping
 
 
 SHELLBRAIN_SECTION_BORDER = "# ============================================================================ #"
@@ -116,6 +117,7 @@ def _run_hosted_script(
     user_bin: Path,
     docker_mode: str,
     init_stdout: str = "STUB_INIT",
+    extra_env: Mapping[str, str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path, Path]:
     """Run one hosted install or upgrade script under a fake Python/Docker environment."""
 
@@ -146,6 +148,7 @@ def _run_hosted_script(
         env={
             **dict(PATH=f"{fake_bin}:{system_bin}"),
             **dict(HOME=str(home_dir), SHELL=shell_path),
+            **dict(extra_env or {}),
         },
         check=False,
     )
@@ -352,3 +355,33 @@ def test_install_script_should_not_block_init_when_the_docker_daemon_is_unreacha
     assert "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
     assert "STUB_INIT" in completed.stdout
     assert (home_dir / ".config" / "shellbrain" / "path.sh").exists()
+
+
+def test_install_script_should_continue_when_config_root_is_not_writable(tmp_path: Path) -> None:
+    """A blocked config root should warn and continue instead of aborting the installer."""
+
+    user_bin = tmp_path / "home" / ".local" / "bin"
+    config_root = tmp_path / "blocked-config"
+    config_root.mkdir()
+    config_root.chmod(0o555)
+
+    completed, home_dir, marker_path, _ = _run_hosted_script(
+        tmp_path=tmp_path,
+        script_name="install",
+        shell_path="/bin/zsh",
+        user_bin=user_bin,
+        docker_mode="ok",
+        extra_env={"XDG_CONFIG_HOME": str(config_root)},
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert marker_path.exists()
+    assert "STUB_INIT" in completed.stdout
+    assert "warning: could not update shell PATH wiring under" in completed.stdout
+    assert str(config_root) in completed.stdout
+    assert str(user_bin) in completed.stdout
+    assert f"shellbrain is installed at {user_bin / 'shellbrain'}" in completed.stdout
+    assert f"cli path: ensured via {config_root / 'shellbrain' / 'path.sh'}" not in completed.stdout
+    assert not (config_root / "shellbrain" / "path.sh").exists()
+    assert not (home_dir / ".zprofile").exists()
+    assert not (home_dir / ".zshrc").exists()
