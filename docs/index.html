@@ -904,9 +904,12 @@
     const counterEl = document.getElementById("counter");
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+    const TYPE_SPEED_MULTIPLIER = 1.25;
+    const scaleTypingDelay = (ms) => Math.max(0, Math.round(ms / TYPE_SPEED_MULTIPLIER));
+
     const cfg = prefersReduced
       ? { type: 0, erase: 0, hold: 2800, gap: 200 }
-      : { type: 30, erase: 14, hold: 1200, gap: 320 };
+      : { type: scaleTypingDelay(30), erase: scaleTypingDelay(14), hold: 1200, gap: 320 };
 
     let idx = 0, ch = 0, deleting = false, timer;
 
@@ -1009,8 +1012,8 @@
       return doc.body.innerHTML;
     }
 
-    const CHAR_SPEED = 12;   // ms per character
-    const LINE_PAUSE = 120;  // ms pause between paragraphs
+    const CHAR_SPEED = scaleTypingDelay(12);   // ms per character
+    const LINE_PAUSE = scaleTypingDelay(120);  // ms pause between paragraphs
 
     function typewriterBlock(block) {
       const state = twState.get(block);
@@ -1140,7 +1143,9 @@
     // ── Grid cascading typewriter (shared) ────────
     function initGridTypewriter(wrapper, gridSel, cellSel) {
       const cells = Array.from(wrapper.querySelectorAll(cellSel));
-      const CHAR = 10, ELEM_PAUSE = 80, CELL_PAUSE = 200;
+      const CHAR = scaleTypingDelay(10);
+      const ELEM_PAUSE = scaleTypingDelay(80);
+      const CELL_PAUSE = scaleTypingDelay(200);
 
       const cellData = cells.map(cell =>
         Array.from(cell.children).map(el => ({ el, html: el.innerHTML, text: (el.textContent || "") }))
