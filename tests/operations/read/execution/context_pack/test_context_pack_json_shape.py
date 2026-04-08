@@ -31,6 +31,17 @@ def test_read_context_pack_should_always_order_sections_as_meta_direct_explicit_
     assert list(result.data["pack"].keys()) == ["meta", "direct", "explicit_related", "implicit_related"]
 
 
+def test_read_context_pack_should_never_echo_the_request_query_in_meta(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """read context pack should never echo the request query in meta."""
+
+    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
+
+    assert "query" not in result.data["pack"]["meta"]
+
+
 def test_read_context_pack_should_always_assign_global_priority_values_in_displayed_order(
     uow_factory: Callable[[], PostgresUnitOfWork],
     monkeypatch: pytest.MonkeyPatch,
