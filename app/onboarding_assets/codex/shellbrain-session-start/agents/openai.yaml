@@ -1,6 +1,6 @@
 interface:
   display_name: "Shellbrain Session Start"
-  short_description: "Start repo work with shellbrain"
+  short_description: "Reconsider shellbrain at subproblem boundaries"
   icon_small: "./assets/shellbrain-small.svg"
-  icon_large: "./assets/shellbrain-large.svg"
-  default_prompt: "Use $shellbrain-session-start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings."
+  icon_large: "./assets/shellbrain_logo.png"
+  default_prompt: "Use $shellbrain-session-start when work shifts to a new surface, repeated failures suggest prior memory may help, a hypothesis changes, an evidence-bearing write is about to happen, or closeout should record durable learnings."

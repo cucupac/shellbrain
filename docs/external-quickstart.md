@@ -129,15 +129,19 @@ zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":
 Even in advanced/operator environments, the usage model stays the same: Shellbrain stores durable memories grounded by episodic evidence.
 
 1. Query first, but query precisely. Do not start with vague prompts like "what should I know about this repo?"
-2. Re-query during the task when the search shifts.
-3. Before evidence-bearing writes, run:
+2. Maintain a mental summary of the current subproblem as `goal | surface | obstacle | hypothesis`.
+3. Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output.
+4. Use `SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>` if prior memory might help, then actually call the Shellbrain CLI to read.
+5. Use `SB: skip | same signature | <one-line reason>` when the tuple has not meaningfully changed and there is no new evidence or failure.
+6. Do not reread just because you can. A reread is a decision, not a reflex.
+7. Before evidence-bearing writes, run:
 
 ```bash
 shellbrain events --json '{"limit":10}'
 ```
 
-4. Use returned `episode_event` ids verbatim in `create` or evidence-bearing `update`.
-5. At session end, normalize the work into durable memories.
+8. Use returned `episode_event` ids verbatim in `create` or evidence-bearing `update`.
+9. At session end, normalize the work into durable memories and record `utility_vote` updates.
 
 Examples:
 
@@ -150,7 +154,9 @@ shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"ut
 
 ## Host Integration
 
+- `shellbrain init` installs a managed Shellbrain block in `${CODEX_HOME:-~/.codex}/AGENTS.md`.
 - `shellbrain init` installs the personal Codex skill in `${CODEX_HOME:-~/.codex}/skills`.
+- `shellbrain init` installs a managed Shellbrain block in `~/.claude/CLAUDE.md`.
 - `shellbrain init` installs the personal Claude skill in `~/.claude/skills`.
 - `shellbrain init` installs the personal Cursor skill in `${CURSOR_HOME:-~/.cursor}/skills`.
 - `shellbrain init` installs the Claude global SessionStart hook in `~/.claude/settings.json`.

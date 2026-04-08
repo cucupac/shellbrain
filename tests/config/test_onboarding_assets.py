@@ -48,6 +48,8 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
         "durable memories",
         "episodic evidence",
         "--repo-root",
+        "goal | surface | obstacle | hypothesis",
+        "SB: read |",
         "utility_vote",
         "what should I know about this repo?",
         "sysconfig.get_path('scripts', 'posix_user')",
@@ -91,6 +93,7 @@ def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
     openai_yaml = _read_text(repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start" / "agents" / "openai.yaml")
 
     assert 'display_name: "Shellbrain Session Start"' in openai_yaml
+    assert 'icon_large: "./assets/shellbrain_logo.png"' in openai_yaml
     assert 'default_prompt: "Use $shellbrain-session-start' in openai_yaml
 
 
@@ -105,12 +108,36 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
         Path("agents") / "openai.yaml",
         Path("assets") / "shellbrain-small.svg",
         Path("assets") / "shellbrain-large.svg",
+        Path("assets") / "shellbrain_logo.png",
         Path("references") / "request-shapes.md",
         Path("references") / "session-workflow.md",
     ]
 
     for relative_path in relative_paths:
         assert (packaged_skill_root / relative_path).is_file()
+
+
+def test_packaged_startup_guidance_assets_should_exist_for_codex_and_claude() -> None:
+    """The packaged startup guidance blocks should ship for the managed startup-layer install."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+
+    assert (repo_root / "app" / "onboarding_assets" / "codex" / "AGENTS.md").is_file()
+    assert (repo_root / "app" / "onboarding_assets" / "claude" / "CLAUDE.md").is_file()
+
+
+def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons() -> None:
+    """The secondary packaged Codex skill should also ship icon metadata and assets."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    packaged_skill_root = repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-usage-review"
+    openai_yaml = _read_text(packaged_skill_root / "agents" / "openai.yaml")
+
+    assert 'display_name: "Shellbrain Usage Review"' in openai_yaml
+    assert 'icon_small: "./assets/shellbrain-small.svg"' in openai_yaml
+    assert 'icon_large: "./assets/shellbrain_logo.png"' in openai_yaml
+    assert (packaged_skill_root / "assets" / "shellbrain-small.svg").is_file()
+    assert (packaged_skill_root / "assets" / "shellbrain_logo.png").is_file()
 
 
 def test_packaged_cursor_skill_should_include_the_required_skill_file() -> None:

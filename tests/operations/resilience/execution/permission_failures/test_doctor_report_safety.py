@@ -27,7 +27,9 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
             "HostInspection",
             (),
             {
+                "codex_startup_guidance": {"installed": True, "managed": True},
                 "codex_skill": {"installed": True},
+                "claude_startup_guidance": {"installed": True, "managed": True},
                 "claude_skill": {"installed": True},
                 "cursor_skill": {"installed": False},
                 "claude_global_hook": {"installed": True, "managed": True},
@@ -102,7 +104,9 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
             "HostInspection",
             (),
             {
+                "codex_startup_guidance": {"installed": False, "managed": False},
                 "codex_skill": {"installed": False},
+                "claude_startup_guidance": {"installed": True, "managed": True},
                 "claude_skill": {"installed": True},
                 "cursor_skill": {"installed": False},
                 "claude_global_hook": {"installed": True, "managed": True},
@@ -238,7 +242,9 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
             "HostInspection",
             (),
             {
+                "codex_startup_guidance": {"installed": True, "managed": True},
                 "codex_skill": {"installed": True},
+                "claude_startup_guidance": {"installed": True, "managed": True},
                 "claude_skill": {"installed": True},
                 "cursor_skill": {"installed": False},
                 "claude_global_hook": {"installed": False, "managed": False},

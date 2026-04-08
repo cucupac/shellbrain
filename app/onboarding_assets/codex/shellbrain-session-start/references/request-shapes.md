@@ -25,6 +25,22 @@ Use `read` to retrieve durable memories related to the current problem or subpro
 
 Shellbrain `read` is retrieval, not chat. Query it with concrete failure modes, subsystem names, decisions, or constraints. Avoid vague prompts like "what should I know about this repo?"
 
+Maintain a mental summary of the current subproblem as a tuple: `goal | surface | obstacle | hypothesis`.
+
+Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output. This forces Shellbrain back into your local context so you can make a real decision about whether to use it.
+
+If prior memory might help right now:
+
+- `SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
+
+Then actually call the Shellbrain CLI to read.
+
+If the tuple has not meaningfully changed and there is no new evidence or failure:
+
+- `SB: skip | same signature | <one-line reason>`
+
+Then move on. Do not reread just because you can. A reread is a decision, not a reflex. Skip it when there is no new failed attempt, no new evidence, and no changed hypothesis.
+
 Prior attempts:
 
 ```bash
@@ -71,6 +87,7 @@ shellbrain events --json '{"limit":10}'
 Read returned ids from `data.events[].id`.
 
 `events` inspects normalized episodic evidence. Those ids are the canonical grounding for durable writes.
+`events` is a hard rule before evidence-bearing `create` and `update`.
 
 When caller identity is trusted, `events` reads from the exact caller thread instead of guessing from the repo alone.
 `shellbrain init` normally installs Claude integration through the global Shellbrain SessionStart hook in `~/.claude/settings.json`. Use `shellbrain admin install-claude-hook --repo-root ...` only when you intentionally need the repo-local override path.
