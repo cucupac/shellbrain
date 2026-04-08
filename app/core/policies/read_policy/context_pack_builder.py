@@ -75,7 +75,6 @@ def assemble_context_pack(scored_candidates: dict[str, list[dict[str, Any]]], pa
     return {
         "meta": {
             "mode": mode,
-            "query": payload.get("query"),
             "limit": limit,
             "counts": {
                 "direct": len(sections["direct"]),
