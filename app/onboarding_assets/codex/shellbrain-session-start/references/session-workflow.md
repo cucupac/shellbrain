@@ -117,14 +117,29 @@ Use `why_included` and `anchor_memory_id` to understand why a related item appea
 
 ### During the task
 
-Re-run `read` whenever:
+Maintain a mental summary of the current subproblem as a tuple: `goal | surface | obstacle | hypothesis`.
 
-- the search shifts to a new subproblem
-- you hit a blocker and want similar prior failures or tactics
-- you move into a new subsystem
-- you suspect a fact, preference, or change memory may matter halfway through the journey
+Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output. This forces Shellbrain back into your local context so you can make a real decision about whether to use it.
 
-Do not treat Shellbrain as startup-only. Query liberally while solving.
+Boundary states:
+
+- The goal, surface, obstacle, or hypothesis just changed.
+- The same approach failed twice.
+- An error is repeating.
+- You are about to `create` or `update` a Shellbrain memory with evidence.
+- You are closing out a task.
+
+If prior memory might help right now:
+
+- `SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
+
+Then actually call the Shellbrain CLI to read.
+
+If the tuple has not meaningfully changed and there is no new evidence or failure:
+
+- `SB: skip | same signature | <one-line reason>`
+
+Then move on. Do not reread just because you can. A reread is a decision, not a reflex. Skip it when there is no new failed attempt, no new evidence, and no changed hypothesis.
 
 ### Before any write
 
@@ -135,6 +150,8 @@ shellbrain events --json '{"limit":10}'
 ```
 
 Then reuse returned `data.events[].id` values verbatim as `evidence_refs`.
+
+This is a hard rule before any evidence-bearing `create` or `update`.
 
 ### Session end
 

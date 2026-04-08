@@ -83,7 +83,9 @@ def build_doctor_report(
         "disk_free_bytes": disk.free,
         "disk_warning": None if disk.free >= _LOW_DISK_WARNING_BYTES else "Low free disk space under Shellbrain home.",
         "host_integrations": {
+            "codex_startup_guidance": host_integrations.codex_startup_guidance,
             "codex_skill": host_integrations.codex_skill,
+            "claude_startup_guidance": host_integrations.claude_startup_guidance,
             "claude_skill": host_integrations.claude_skill,
             "cursor_skill": host_integrations.cursor_skill,
             "claude_global_hook": host_integrations.claude_global_hook,

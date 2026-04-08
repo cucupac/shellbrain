@@ -32,5 +32,6 @@ app = [
   "migrations/versions/*.py",
   "onboarding_assets/**/*.md",
   "onboarding_assets/**/*.yaml",
+  "onboarding_assets/**/*.png",
   "onboarding_assets/**/*.svg",
 ]

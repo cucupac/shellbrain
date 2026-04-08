@@ -110,8 +110,10 @@ def test_editable_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
                 "from importlib import resources; "
                 "root = resources.files('app.onboarding_assets'); "
                 "print(root.joinpath('codex', 'shellbrain-session-start', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('codex', 'shellbrain-session-start', 'assets', 'shellbrain_logo.png').is_file()); "
                 "print(root.joinpath('claude', 'skills', 'shellbrain-session-start', 'SKILL.md').read_text().splitlines()[0]); "
                 "print(root.joinpath('codex', 'shellbrain-usage-review', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('codex', 'shellbrain-usage-review', 'assets', 'shellbrain_logo.png').is_file()); "
                 "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text().splitlines()[0])"
             ),
         ],
@@ -123,6 +125,7 @@ def test_editable_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
     )
 
     assert 'display_name: "Shellbrain Session Start"' in completed.stdout
+    assert "True" in completed.stdout
     assert "# Shellbrain Session Start" in completed.stdout
     assert 'display_name: "Shellbrain Usage Review"' in completed.stdout
     assert "# Shellbrain Usage Review" in completed.stdout
@@ -154,8 +157,10 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
                 "from importlib import resources; "
                 "root = resources.files('app.onboarding_assets'); "
                 "print(root.joinpath('codex', 'shellbrain-session-start', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('codex', 'shellbrain-session-start', 'assets', 'shellbrain_logo.png').is_file()); "
                 "print(root.joinpath('claude', 'skills', 'shellbrain-session-start', 'SKILL.md').read_text().splitlines()[0]); "
                 "print(root.joinpath('codex', 'shellbrain-usage-review', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('codex', 'shellbrain-usage-review', 'assets', 'shellbrain_logo.png').is_file()); "
                 "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text().splitlines()[0])"
             ),
         ],
@@ -167,6 +172,7 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
     )
 
     assert 'display_name: "Shellbrain Session Start"' in completed.stdout
+    assert "True" in completed.stdout
     assert "# Shellbrain Session Start" in completed.stdout
     assert 'display_name: "Shellbrain Usage Review"' in completed.stdout
     assert "# Shellbrain Usage Review" in completed.stdout

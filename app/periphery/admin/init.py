@@ -229,7 +229,9 @@ def run_init(
             if skip_host_assets:
                 notes.extend(
                     [
+                        "Codex startup guidance: skipped (--no-host-assets)",
                         "Codex skill: skipped (--no-host-assets)",
+                        "Claude startup guidance: skipped (--no-host-assets)",
                         "Claude skill: skipped (--no-host-assets)",
                         "Cursor skill: skipped (--no-host-assets)",
                         "Claude global hook: skipped (--no-host-assets)",
