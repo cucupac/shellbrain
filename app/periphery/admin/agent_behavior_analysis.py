@@ -16,8 +16,8 @@ _MID_SESSION_MINUTES = 15
 _STARTUP_WINDOW_MINUTES = 10
 _CHECKPOINT_TO_READ_WINDOW_MINUTES = 10
 _UTILITY_VOTE_UPDATE_TYPES = {"utility_vote", "utility_vote_batch"}
-_SB_READ_RE = re.compile(r"^SB:\s*read\s*\|\s*(.+)$")
-_SB_SKIP_RE = re.compile(r"^SB:\s*skip\s*\|\s*(.+)$")
+_SB_READ_RE = re.compile(r"SB:\s*read\s*\|\s*([^|\n\r]+?)\s*\|\s*([^|\n\r]+?)\s*\|\s*([^|\n\r]+?)\s*\|\s*([^\n\r]+)")
+_SB_SKIP_RE = re.compile(r"SB:\s*skip\s*\|\s*([^\n\r]+)")
 
 
 def build_agent_behavior_report(
@@ -207,9 +207,9 @@ def _parse_checkpoint_lines(
     checkpoints: list[dict[str, object]] = []
     for line in content.splitlines():
         stripped = line.strip()
-        read_match = _SB_READ_RE.match(stripped)
+        read_match = _SB_READ_RE.search(stripped)
         if read_match:
-            payload = [part.strip() for part in read_match.group(1).split("|")]
+            payload = [part.strip() for part in read_match.groups()]
             signature = " | ".join(payload)
             checkpoints.append(
                 {
@@ -220,12 +220,12 @@ def _parse_checkpoint_lines(
                     "action": "read",
                     "signature": signature,
                     "reason": None,
-                    "raw_line": stripped,
+                    "raw_line": read_match.group(0).strip(),
                     "created_at": created_at,
                 }
             )
             continue
-        skip_match = _SB_SKIP_RE.match(stripped)
+        skip_match = _SB_SKIP_RE.search(stripped)
         if skip_match:
             payload = [part.strip() for part in skip_match.group(1).split("|")]
             checkpoints.append(
@@ -237,7 +237,7 @@ def _parse_checkpoint_lines(
                     "action": "skip",
                     "signature": None,
                     "reason": " | ".join(payload),
-                    "raw_line": stripped,
+                    "raw_line": skip_match.group(0).strip(),
                     "created_at": created_at,
                 }
             )
