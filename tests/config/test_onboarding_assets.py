@@ -157,7 +157,8 @@ def test_install_script_should_locate_binary_delegate_to_init_and_configure_shel
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in install_script
     assert "--upgrade" in install_script
-    assert "$SHELLBRAIN init" in install_script
+    assert 'if "$SHELLBRAIN" init; then' in install_script
+    assert 'rerun bootstrap with: "%s" init' in install_script
     assert "ensure_user_bin_on_shell_path" in install_script
     assert 'shellbrain/path.sh' in install_script
     assert 'shellbrain.fish' in install_script
@@ -176,7 +177,8 @@ def test_upgrade_script_should_locate_binary_delegate_to_init_and_configure_shel
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in upgrade_script
     assert "--upgrade" in upgrade_script
-    assert "$SHELLBRAIN init" in upgrade_script
+    assert 'if "$SHELLBRAIN" init; then' in upgrade_script
+    assert 'rerun bootstrap with: "%s" init' in upgrade_script
     assert "ensure_user_bin_on_shell_path" in upgrade_script
     assert 'shellbrain/path.sh' in upgrade_script
     assert 'shellbrain.fish' in upgrade_script

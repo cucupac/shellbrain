@@ -141,11 +141,24 @@ def _open_interactive_stream() -> tuple[TextIO, TextIO, TextIO | None]:
 
     if sys.stdin.isatty() and sys.stdout.isatty():
         return sys.stdin, sys.stdout, None
+    writer = _resolve_interactive_writer()
+    if sys.stdin.isatty():
+        return sys.stdin, writer, None
     try:
-        handle = Path("/dev/tty").open("r+", encoding="utf-8")
+        handle = Path("/dev/tty").open("r", encoding="utf-8")
     except OSError as exc:
         raise InitDependencyError(_NON_INTERACTIVE_MESSAGE) from exc
-    return handle, handle, handle
+    return handle, writer, handle
+
+
+def _resolve_interactive_writer() -> TextIO:
+    """Return one visible terminal writer for prompts when available."""
+
+    if sys.stderr.isatty():
+        return sys.stderr
+    if sys.stdout.isatty():
+        return sys.stdout
+    raise InitDependencyError(_NON_INTERACTIVE_MESSAGE)
 
 
 def _close_interactive_stream(handle: TextIO | None) -> None:

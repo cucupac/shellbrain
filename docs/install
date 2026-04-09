@@ -287,6 +287,24 @@ ensure_user_bin_on_shell_path() {
   esac
 }
 
+run_shellbrain_init_with_recovery() {
+  local init_exit_code=0
+
+  if "$SHELLBRAIN" init; then
+    return 0
+  else
+    init_exit_code=$?
+  fi
+
+  echo ""
+  echo "shellbrain init did not complete."
+  echo "  shellbrain is installed at: $SHELLBRAIN"
+  echo "  your current shell may not have reloaded PATH yet."
+  printf '  rerun bootstrap with: "%s" init\n' "$SHELLBRAIN"
+  echo "  after bootstrap succeeds, open a new terminal to use shellbrain by name."
+  return "$init_exit_code"
+}
+
 echo "installing shellbrain..."
 echo ""
 
@@ -371,7 +389,7 @@ echo "  shellbrain init will ask how it should store data."
 echo "  default: let shellbrain set up local PostgreSQL + pgvector for you."
 echo "  advanced: use an existing PostgreSQL + pgvector database."
 echo ""
-$SHELLBRAIN init
+run_shellbrain_init_with_recovery
 
 echo ""
 echo "next: start a repo session in codex or claude code."
