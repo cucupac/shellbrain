@@ -30,6 +30,8 @@ def _write_fake_python(
     marker_path: Path,
     pip_log_path: Path,
     init_stdout: str,
+    init_stderr: str,
+    init_exit_code: int,
 ) -> None:
     """Write one fake Python executable that installs a stub Shellbrain CLI."""
 
@@ -38,8 +40,9 @@ def _write_fake_python(
         "#!/usr/bin/env bash\n"
         'if [ "$1" = "init" ]; then\n'
         f"  touch {str(marker_path)!r}\n"
-        f"  printf '%s\\n' {init_stdout!r}\n"
-        "  exit 0\n"
+        f"  [ -n {init_stdout!r} ] && printf '%s\\n' {init_stdout!r}\n"
+        f"  [ -n {init_stderr!r} ] && printf '%s\\n' {init_stderr!r} >&2\n"
+        f"  exit {init_exit_code}\n"
         "fi\n"
         "exit 1\n"
     )
@@ -117,6 +120,8 @@ def _run_hosted_script(
     user_bin: Path,
     docker_mode: str,
     init_stdout: str = "STUB_INIT",
+    init_stderr: str = "",
+    init_exit_code: int = 0,
     extra_env: Mapping[str, str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], Path, Path, Path]:
     """Run one hosted install or upgrade script under a fake Python/Docker environment."""
@@ -136,6 +141,8 @@ def _run_hosted_script(
         marker_path=marker_path,
         pip_log_path=pip_log_path,
         init_stdout=init_stdout,
+        init_stderr=init_stderr,
+        init_exit_code=init_exit_code,
     )
     if docker_mode != "missing":
         _write_fake_docker(fake_bin=fake_bin, daemon_running=docker_mode == "ok")
@@ -385,3 +392,60 @@ def test_install_script_should_continue_when_config_root_is_not_writable(tmp_pat
     assert not (config_root / "shellbrain" / "path.sh").exists()
     assert not (home_dir / ".zprofile").exists()
     assert not (home_dir / ".zshrc").exists()
+
+
+def test_install_script_should_print_absolute_recovery_guidance_when_init_fails(tmp_path: Path) -> None:
+    """A failed first bootstrap should print an absolute rerun command for the current shell session."""
+
+    user_bin = tmp_path / "home" / ".local" / "bin"
+    init_output = "\n".join(
+        [
+            "Outcome: blocked_dependency",
+            "Shellbrain init needs a storage choice on first bootstrap. Rerun interactively or pass --storage managed or --storage external --admin-dsn <dsn>.",
+        ]
+    )
+    completed, _, marker_path, _ = _run_hosted_script(
+        tmp_path=tmp_path,
+        script_name="install",
+        shell_path="/bin/zsh",
+        user_bin=user_bin,
+        docker_mode="ok",
+        init_stdout=init_output,
+        init_exit_code=12,
+    )
+
+    expected_cli = user_bin / "shellbrain"
+
+    assert completed.returncode == 12
+    assert marker_path.exists()
+    assert "Outcome: blocked_dependency" in completed.stdout
+    assert "shellbrain init did not complete." in completed.stdout
+    assert f"shellbrain is installed at: {expected_cli}" in completed.stdout
+    assert "your current shell may not have reloaded PATH yet." in completed.stdout
+    assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
+    assert "after bootstrap succeeds, open a new terminal to use shellbrain by name." in completed.stdout
+    assert "restart your terminal, then run: shellbrain init" not in completed.stdout
+
+
+def test_upgrade_script_should_print_absolute_recovery_guidance_when_init_fails(tmp_path: Path) -> None:
+    """A failed upgrade bootstrap should print an absolute rerun command for the current shell session."""
+
+    user_bin = tmp_path / "home" / ".local" / "bin"
+    completed, _, marker_path, _ = _run_hosted_script(
+        tmp_path=tmp_path,
+        script_name="upgrade",
+        shell_path="/bin/bash",
+        user_bin=user_bin,
+        docker_mode="ok",
+        init_stdout="Outcome: blocked_dependency",
+        init_exit_code=12,
+    )
+
+    expected_cli = user_bin / "shellbrain"
+
+    assert completed.returncode == 12
+    assert marker_path.exists()
+    assert "shellbrain init did not complete." in completed.stdout
+    assert f"shellbrain is installed at: {expected_cli}" in completed.stdout
+    assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
+    assert "restart your terminal, then run: shellbrain init" not in completed.stdout

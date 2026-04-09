@@ -19,7 +19,7 @@ def test_resolve_storage_selection_should_prompt_for_first_run_managed_default(m
     """first bootstrap should default to managed-local when the user presses enter."""
 
     reader = _FakeTerminal(["\n"])
-    writer = _FakeTerminal([])
+    writer = _FakeTerminal([], is_tty=True)
     monkeypatch.setattr(storage_setup, "_open_interactive_stream", lambda: (reader, writer, writer))
     monkeypatch.setattr(storage_setup, "_close_interactive_stream", lambda stream: None)
 
@@ -37,9 +37,16 @@ def test_resolve_storage_selection_should_use_dev_tty_fallback_for_external_prom
     """pipe installs should still prompt through /dev/tty when stdin is not interactive."""
 
     handle = _FakeTerminal(["2\n", "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain\n"])
+    writer = _FakeTerminal([], is_tty=True)
+    open_modes: list[str] = []
     monkeypatch.setattr(storage_setup.sys.stdin, "isatty", lambda: False)
     monkeypatch.setattr(storage_setup.sys.stdout, "isatty", lambda: False)
-    monkeypatch.setattr(storage_setup.Path, "open", lambda self, *args, **kwargs: handle)
+    monkeypatch.setattr(storage_setup.sys, "stderr", writer)
+    monkeypatch.setattr(
+        storage_setup.Path,
+        "open",
+        lambda self, mode="r", *args, **kwargs: open_modes.append(mode) or handle,
+    )
 
     selection = storage_setup.resolve_storage_selection(
         existing_config=None,
@@ -49,6 +56,8 @@ def test_resolve_storage_selection_should_use_dev_tty_fallback_for_external_prom
 
     assert selection.runtime_mode == "external_postgres"
     assert selection.admin_dsn == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    assert open_modes == ["r", "r"]
+    assert "Choose 1 or 2 [1]: " in "".join(writer.output)
 
 
 def test_resolve_storage_selection_should_fail_cleanly_without_any_interactive_stream(monkeypatch) -> None:
@@ -57,6 +66,26 @@ def test_resolve_storage_selection_should_fail_cleanly_without_any_interactive_s
     monkeypatch.setattr(storage_setup.sys.stdin, "isatty", lambda: False)
     monkeypatch.setattr(storage_setup.sys.stdout, "isatty", lambda: False)
     monkeypatch.setattr(storage_setup.Path, "open", lambda self, *args, **kwargs: (_ for _ in ()).throw(OSError("no tty")))
+
+    with pytest.raises(InitDependencyError) as excinfo:
+        storage_setup.resolve_storage_selection(
+            existing_config=None,
+            storage_flag=None,
+            admin_dsn_flag=None,
+        )
+
+    assert "--storage managed" in str(excinfo.value)
+    assert "--storage external --admin-dsn <dsn>" in str(excinfo.value)
+
+
+def test_resolve_storage_selection_should_fail_cleanly_without_any_visible_output_stream(monkeypatch) -> None:
+    """first bootstrap should fail when prompt input exists but no visible writer does."""
+
+    handle = _FakeTerminal(["1\n"])
+    monkeypatch.setattr(storage_setup.sys.stdin, "isatty", lambda: False)
+    monkeypatch.setattr(storage_setup.sys.stdout, "isatty", lambda: False)
+    monkeypatch.setattr(storage_setup.sys.stderr, "isatty", lambda: False)
+    monkeypatch.setattr(storage_setup.Path, "open", lambda self, *args, **kwargs: handle)
 
     with pytest.raises(InitDependencyError) as excinfo:
         storage_setup.resolve_storage_selection(
@@ -164,9 +193,10 @@ def _managed_machine_config() -> MachineConfig:
 class _FakeTerminal:
     """Minimal line-oriented tty stub for prompt tests."""
 
-    def __init__(self, lines: list[str]) -> None:
+    def __init__(self, lines: list[str], *, is_tty: bool = False) -> None:
         self._lines = list(lines)
         self.output: list[str] = []
+        self._is_tty = is_tty
 
     def readline(self) -> str:
         if not self._lines:
@@ -182,3 +212,6 @@ class _FakeTerminal:
 
     def close(self) -> None:
         return None
+
+    def isatty(self) -> bool:
+        return self._is_tty
