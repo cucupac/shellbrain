@@ -183,7 +183,7 @@ def _seed_behavior_dataset(integration_engine, *, cutoff_at: datetime) -> None:
             episode_id="episode-post-1",
             seq=1,
             source="assistant",
-            content="SB: read | fix auth callback | api | oauth callback loop | new hypothesis",
+            content="I should check memory here. SB: read | fix auth callback | api | oauth callback loop | new hypothesis",
             created_at=post_base + timedelta(minutes=14),
         ),
         _event_row(
@@ -199,7 +199,7 @@ def _seed_behavior_dataset(integration_engine, *, cutoff_at: datetime) -> None:
             episode_id="episode-post-1",
             seq=3,
             source="assistant",
-            content="SB: skip | same signature | no new evidence",
+            content="SB: skip | same signature | no new evidence\n\nI can keep moving without rereading.",
             created_at=post_base + timedelta(minutes=40),
         ),
     ]
