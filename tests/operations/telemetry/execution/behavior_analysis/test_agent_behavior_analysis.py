@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from app.core.entities.episodes import EpisodeStatus
 from app.periphery.admin.agent_behavior_analysis import build_agent_behavior_report
 from app.periphery.db.models.episodes import episode_events, episodes
 from app.periphery.db.models.telemetry import operation_invocations, read_invocation_summaries, write_invocation_summaries
@@ -57,7 +58,7 @@ def test_agent_behavior_analysis_script_should_print_json_report(monkeypatch, ca
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    dsn = str(integration_engine.url)
+    dsn = integration_engine.url.render_as_string(hide_password=False)
     monkeypatch.setattr(module, "get_optional_db_dsn", lambda: dsn)
     monkeypatch.setattr(module, "get_optional_admin_db_dsn", lambda: None)
 
@@ -307,7 +308,7 @@ def _episode_row(*, episode_id: str, repo_id: str, host_app: str, thread_id: str
         "thread_id": thread_id,
         "title": None,
         "objective": None,
-        "status": "completed",
+        "status": EpisodeStatus.CLOSED.value,
         "started_at": started_at,
         "ended_at": started_at + timedelta(minutes=45),
         "created_at": started_at,

@@ -1,4 +1,4 @@
-"""Shared fixture wiring for update execution integration tests."""
+"""Shared fixture wiring for create operation tests."""
 
 import pytest
 

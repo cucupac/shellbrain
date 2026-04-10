@@ -2,13 +2,13 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryUpdateRequest
 from app.core.entities.memory import MemoryKind, MemoryScope
 from app.core.use_cases.update_memory import execute_update_memory
 from app.periphery.db.models.associations import association_edge_evidence, association_edges, association_observations
 from app.periphery.db.models.experiences import fact_updates
 from app.periphery.db.models.utility import utility_observations
 from app.periphery.db.uow import PostgresUnitOfWork
+from tests.operations.update._execution_helpers import make_update_request, snapshot_related_update_counts
 
 
 def test_update_utility_vote_commit_appends_observation_with_exact_payload(
@@ -32,7 +32,7 @@ def test_update_utility_vote_commit_appends_observation_with_exact_payload(
         kind=MemoryKind.PROBLEM,
         text_value="Problem memory.",
     )
-    request = _make_update_request(
+    request = make_update_request(
         repo_id="repo-a",
         memory_id="target-memory",
         update={
@@ -85,7 +85,7 @@ def test_update_fact_update_link_commit_appends_fact_update_with_change_id(
         kind=MemoryKind.FACT,
         text_value="New fact.",
     )
-    request = _make_update_request(
+    request = make_update_request(
         repo_id="repo-a",
         memory_id="change-1",
         update={
@@ -127,7 +127,7 @@ def test_update_association_link_commit_persists_edge_observation_and_edge_evide
         kind=MemoryKind.FACT,
         text_value="Target memory.",
     )
-    request = _make_update_request(
+    request = make_update_request(
         repo_id="repo-a",
         memory_id="source-memory",
         update={
@@ -285,46 +285,15 @@ def test_update_writes_only_its_own_related_record_family(
 
     for target_id, update_payload, seed_case, expected_deltas in cases:
         seed_case()
-        before_counts = _snapshot_related_update_counts(count_rows)
-        request = _make_update_request(repo_id="repo-a", memory_id=target_id, update=update_payload)
+        before_counts = snapshot_related_update_counts(count_rows)
+        request = make_update_request(repo_id="repo-a", memory_id=target_id, update=update_payload)
 
         with uow_factory() as uow:
             result = execute_update_memory(request, uow)
 
-        after_counts = _snapshot_related_update_counts(count_rows)
+        after_counts = snapshot_related_update_counts(count_rows)
         assert result.status == "ok"
         assert _count_deltas(before_counts, after_counts) == expected_deltas
-
-
-def _make_update_request(
-    *,
-    repo_id: str,
-    memory_id: str,
-    update: dict[str, object],
-) -> MemoryUpdateRequest:
-    """Build a valid update request with caller-provided payload."""
-
-    return MemoryUpdateRequest.model_validate(
-        {
-            "op": "update",
-            "repo_id": repo_id,
-            "memory_id": memory_id,
-            "update": update,
-        }
-    )
-
-
-def _snapshot_related_update_counts(count_rows: Callable[[str], int]) -> dict[str, int]:
-    """Capture counts for the related-record tables written by non-archive updates."""
-
-    return {
-        "utility_observations": count_rows("utility_observations"),
-        "fact_updates": count_rows("fact_updates"),
-        "association_edges": count_rows("association_edges"),
-        "association_observations": count_rows("association_observations"),
-        "association_edge_evidence": count_rows("association_edge_evidence"),
-        "evidence_refs": count_rows("evidence_refs"),
-    }
 
 
 def _count_deltas(before: dict[str, int], after: dict[str, int]) -> dict[str, int]:

@@ -6,11 +6,11 @@ from typing import Any
 import pytest
 
 from app.core.contracts.errors import ErrorCode
-from app.core.contracts.requests import MemoryReadRequest
 from app.core.use_cases.read_memory import execute_read_memory
 from app.periphery.cli.handlers import handle_read
 from app.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
 from app.periphery.db.uow import PostgresUnitOfWork
+from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 
 def test_read_returns_semantic_direct_matches_through_live_query_embedding_seam_when_lexical_misses(
@@ -46,7 +46,12 @@ def test_read_returns_semantic_direct_matches_through_live_query_embedding_seam_
 
     monkeypatch.setattr(SemanticRetrievalRepo, "query_semantic", _query_semantic_spy)
 
-    request = _make_read_request(
+    request = make_read_request(
+        expand_defaults={
+            "include_problem_links": False,
+            "include_fact_update_links": False,
+            "include_association_links": False,
+        },
         repo_id="repo-a",
         query="latent semantic regression",
         expand={"semantic_hops": 0},
@@ -55,7 +60,7 @@ def test_read_returns_semantic_direct_matches_through_live_query_embedding_seam_
         result = execute_read_memory(request, uow)
 
     assert captured["query_vector"] != []
-    assert _item_ids(result) == ["semantic-hit"]
+    assert item_ids(result) == ["semantic-hit"]
 
 
 def test_read_fuses_live_semantic_seeds_with_keyword_direct_hits_without_duplicates(
@@ -108,7 +113,12 @@ def test_read_fuses_live_semantic_seeds_with_keyword_direct_hits_without_duplica
 
     monkeypatch.setattr(SemanticRetrievalRepo, "query_semantic", _query_semantic_spy)
 
-    request = _make_read_request(
+    request = make_read_request(
+        expand_defaults={
+            "include_problem_links": False,
+            "include_fact_update_links": False,
+            "include_association_links": False,
+        },
         repo_id="repo-a",
         query="rollback deployment",
         expand={"semantic_hops": 0},
@@ -116,7 +126,7 @@ def test_read_fuses_live_semantic_seeds_with_keyword_direct_hits_without_duplica
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
 
-    ids = _item_ids(result)
+    ids = item_ids(result)
     assert captured["query_vector"] != []
     assert ids.count("dual-hit") == 1
     assert "keyword-only" in ids
@@ -163,49 +173,3 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
         }
     ]
 
-
-def _make_read_request(**overrides: object) -> MemoryReadRequest:
-    """Build a read request with deterministic defaults and caller overrides."""
-
-    return MemoryReadRequest.model_validate(_make_read_payload(**overrides))
-
-
-def _make_read_payload(**overrides: object) -> dict[str, object]:
-    """Build a read payload with deterministic defaults and caller overrides."""
-
-    payload: dict[str, object] = {
-        "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
-        "query": "deployment issue",
-        "include_global": True,
-        "limit": 20,
-        "expand": {
-            "semantic_hops": 2,
-            "include_problem_links": False,
-            "include_fact_update_links": False,
-            "include_association_links": False,
-            "max_association_depth": 2,
-            "min_association_strength": 0.25,
-        },
-    }
-    if "expand" in overrides:
-        expanded = dict(payload["expand"])  # type: ignore[arg-type]
-        expanded.update(overrides["expand"])  # type: ignore[arg-type]
-        payload["expand"] = expanded
-        overrides = {key: value for key, value in overrides.items() if key != "expand"}
-    payload.update(overrides)
-    return payload
-
-
-def _item_ids(result) -> list[str]:
-    """Extract ordered shellbrain IDs from a read operation result."""
-
-    assert result.status == "ok"
-    assert "pack" in result.data
-    pack = result.data["pack"]
-    return [
-        *[item["memory_id"] for item in pack["direct"]],
-        *[item["memory_id"] for item in pack["explicit_related"]],
-        *[item["memory_id"] for item in pack["implicit_related"]],
-    ]

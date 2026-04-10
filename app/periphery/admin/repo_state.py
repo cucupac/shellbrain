@@ -124,35 +124,6 @@ def save_repo_registration(registration: RepoRegistration, repo_root: Path) -> P
     return path
 
 
-def register_repo(
-    *,
-    repo_root: Path,
-    machine_instance_id: str,
-    explicit_repo_id: str | None = None,
-    claude_status: str = "not_checked",
-    claude_settings_path: str | None = None,
-    claude_note: str | None = None,
-) -> RepoRegistration:
-    """Resolve and persist one repo registration."""
-
-    identity = resolve_repo_identity(repo_root=repo_root, explicit_repo_id=explicit_repo_id)
-    registration_root = Path(identity.git_root).resolve() if identity.git_root is not None else Path(repo_root).resolve()
-    registration = RepoRegistration(
-        repo_state_version=REPO_STATE_VERSION,
-        repo_id=identity.repo_id,
-        identity_strength=identity.identity_strength,
-        git_root=identity.git_root,
-        source_remote=identity.source_remote,
-        registered_at=datetime.now(timezone.utc).isoformat(),
-        machine_instance_id=machine_instance_id,
-        claude_status=claude_status,
-        claude_settings_path=claude_settings_path,
-        claude_note=claude_note,
-    )
-    save_repo_registration(registration, registration_root)
-    return registration
-
-
 def register_repo_for_target(
     *,
     repo_root: Path,

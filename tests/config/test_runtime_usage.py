@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from app.boot.embeddings import get_embedding_provider
-from app.boot.admin_db import should_fail_on_unsafe_app_role
+from app.boot.admin_db import get_admin_db_dsn, get_optional_admin_db_dsn, should_fail_on_unsafe_app_role
 from app.boot.db import get_db_dsn
 from app.config.loader import YamlConfigProvider
 from app.periphery.admin.machine_state import (
@@ -29,6 +29,71 @@ def test_db_boot_should_always_resolve_the_runtime_configured_dsn_env(monkeypatc
     monkeypatch.setenv("CUSTOM_MEMORY_DSN", "postgresql://configured-dsn")
 
     assert get_db_dsn() == "postgresql://configured-dsn"
+
+
+def test_admin_db_boot_should_always_resolve_the_runtime_configured_admin_dsn_env(monkeypatch) -> None:
+    """admin db boot should always resolve the runtime-configured admin dsn env."""
+
+    class _FakeProvider:
+        """Stub config provider for runtime database settings."""
+
+        def get_runtime(self) -> dict[str, object]:
+            return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN", "admin_dsn_env": "CUSTOM_ADMIN_DSN"}}
+
+    monkeypatch.setattr("app.boot.admin_db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setenv("CUSTOM_ADMIN_DSN", "postgresql://configured-admin-dsn")
+
+    assert get_admin_db_dsn() == "postgresql://configured-admin-dsn"
+
+
+def test_admin_db_boot_should_fail_when_runtime_admin_dsn_key_is_missing(monkeypatch) -> None:
+    """admin db boot should fail cleanly when the runtime admin env key is missing."""
+
+    class _FakeProvider:
+        """Stub config provider missing the admin dsn env key."""
+
+        def get_runtime(self) -> dict[str, object]:
+            return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN"}}
+
+    monkeypatch.setattr("app.boot.admin_db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, None))
+
+    try:
+        get_admin_db_dsn()
+    except RuntimeError as exc:
+        assert str(exc) == "runtime.database.admin_dsn_env must be configured"
+    else:  # pragma: no cover - defensive guard
+        raise AssertionError("Expected get_admin_db_dsn() to fail when admin_dsn_env is missing.")
+
+
+def test_admin_db_boot_should_fail_when_runtime_admin_dsn_env_is_unset(monkeypatch) -> None:
+    """admin db boot should fail cleanly when the configured admin dsn env is unset."""
+
+    class _FakeProvider:
+        """Stub config provider for runtime database settings."""
+
+        def get_runtime(self) -> dict[str, object]:
+            return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN", "admin_dsn_env": "CUSTOM_ADMIN_DSN"}}
+
+    monkeypatch.setattr("app.boot.admin_db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.delenv("CUSTOM_ADMIN_DSN", raising=False)
+
+    try:
+        get_admin_db_dsn()
+    except RuntimeError as exc:
+        assert str(exc) == "CUSTOM_ADMIN_DSN is not set"
+    else:  # pragma: no cover - defensive guard
+        raise AssertionError("Expected get_admin_db_dsn() to fail when the configured env var is unset.")
+
+
+def test_optional_admin_db_dsn_should_return_none_when_machine_config_is_corrupt(monkeypatch) -> None:
+    """optional admin db boot should suppress unreadable machine config errors."""
+
+    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, "corrupt toml"))
+
+    assert get_optional_admin_db_dsn() is None
 
 
 def test_db_boot_should_prefer_machine_config_over_legacy_env(monkeypatch) -> None:

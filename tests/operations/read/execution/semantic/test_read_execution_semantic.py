@@ -6,6 +6,7 @@ from app.core.contracts.requests import MemoryReadRequest
 from app.core.interfaces.retrieval import IVectorSearch
 from app.core.use_cases.read_memory import execute_read_memory
 from app.periphery.db.uow import PostgresUnitOfWork
+from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 
 def test_read_returns_semantic_seed_matches_when_lexical_misses(
@@ -33,7 +34,7 @@ def test_read_returns_semantic_seed_matches_when_lexical_misses(
     )
     seed_read_embedding(memory_id="semantic-hit", vector=[1.0, 0.0, 0.0, 0.0])
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="latent semantic regression",
         expand={"semantic_hops": 0},
@@ -45,7 +46,7 @@ def test_read_returns_semantic_seed_matches_when_lexical_misses(
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
-    assert _item_ids(result) == ["semantic-hit"]
+    assert item_ids(result) == ["semantic-hit"]
 
 
 def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
@@ -76,7 +77,7 @@ def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
     vector_search = stub_vector_search({query_text: [1.0, 0.0, 0.0, 0.0]})
 
     without_global = _execute_read_with_semantic_override(
-        _make_read_request(
+        make_read_request(
             repo_id="repo-a",
             query=query_text,
             include_global=False,
@@ -88,7 +89,7 @@ def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
     with_global = _execute_read_with_semantic_override(
-        _make_read_request(
+        make_read_request(
             repo_id="repo-a",
             query=query_text,
             include_global=True,
@@ -100,8 +101,8 @@ def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
-    without_global_ids = _item_ids(without_global)
-    with_global_ids = _item_ids(with_global)
+    without_global_ids = item_ids(without_global)
+    with_global_ids = item_ids(with_global)
     assert without_global_ids == ["repo-a-fact"]
     assert "repo-a-fact" in with_global_ids
     assert "repo-a-global-fact" in with_global_ids
@@ -134,7 +135,7 @@ def test_read_fuses_semantic_and_keyword_direct_hits_without_duplicates(
     )
     seed_read_embedding(memory_id="dual-hit", vector=[1.0, 0.0, 0.0, 0.0])
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="rollback deployment",
         expand={"semantic_hops": 0},
@@ -146,7 +147,7 @@ def test_read_fuses_semantic_and_keyword_direct_hits_without_duplicates(
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
-    ids = _item_ids(result)
+    ids = item_ids(result)
     assert ids.count("dual-hit") == 1
     assert "keyword-only" in ids
     assert ids[0] == "dual-hit"
@@ -190,7 +191,7 @@ def test_read_expands_implicit_semantic_neighbors_only_up_to_semantic_hops_depth
     vector_search = stub_vector_search({query_text: [1.0, 0.0, 0.0, 0.0]})
 
     zero_hops = _execute_read_with_semantic_override(
-        _make_read_request(
+        make_read_request(
             repo_id="repo-a",
             query=query_text,
             expand={
@@ -205,7 +206,7 @@ def test_read_expands_implicit_semantic_neighbors_only_up_to_semantic_hops_depth
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
     one_hop = _execute_read_with_semantic_override(
-        _make_read_request(
+        make_read_request(
             repo_id="repo-a",
             query=query_text,
             expand={
@@ -220,7 +221,7 @@ def test_read_expands_implicit_semantic_neighbors_only_up_to_semantic_hops_depth
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
     two_hops = _execute_read_with_semantic_override(
-        _make_read_request(
+        make_read_request(
             repo_id="repo-a",
             query=query_text,
             expand={
@@ -235,9 +236,9 @@ def test_read_expands_implicit_semantic_neighbors_only_up_to_semantic_hops_depth
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
-    zero_hops_ids = _item_ids(zero_hops)
-    one_hop_ids = _item_ids(one_hop)
-    two_hops_ids = _item_ids(two_hops)
+    zero_hops_ids = item_ids(zero_hops)
+    one_hop_ids = item_ids(one_hop)
+    two_hops_ids = item_ids(two_hops)
     assert "neighbor-1" not in zero_hops_ids
     assert "neighbor-1" in one_hop_ids
     assert "neighbor-2" not in one_hop_ids
@@ -270,7 +271,7 @@ def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
     seed_read_embedding(memory_id="semantic-a", vector=[1.0, 0.0, 0.0, 0.0])
     seed_read_embedding(memory_id="semantic-b", vector=[1.0, 0.0, 0.0, 0.0])
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="deterministic semantic query",
         expand={"semantic_hops": 0},
@@ -290,7 +291,7 @@ def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
-    assert _item_ids(first) == _item_ids(second)
+    assert item_ids(first) == item_ids(second)
 
 
 def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion_paths(
@@ -434,7 +435,7 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
     seed_read_embedding(memory_id="visible-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0])
     seed_read_embedding(memory_id="archived-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0])
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="archived probe",
         expand={"semantic_hops": 1},
@@ -446,7 +447,7 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
-    ids = _item_ids(result)
+    ids = item_ids(result)
     assert "visible-problem" in ids
     assert "visible-solution" in ids
     assert "visible-old-fact" in ids
@@ -480,43 +481,3 @@ def _execute_read_with_semantic_override(
         )
         return execute_read_memory(request, uow)
 
-
-def _make_read_request(**overrides: object) -> MemoryReadRequest:
-    """Build a read request with deterministic defaults and caller overrides."""
-
-    payload: dict[str, object] = {
-        "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
-        "query": "deployment issue",
-        "include_global": True,
-        "limit": 20,
-        "expand": {
-            "semantic_hops": 2,
-            "include_problem_links": True,
-            "include_fact_update_links": True,
-            "include_association_links": True,
-            "max_association_depth": 2,
-            "min_association_strength": 0.25,
-        },
-    }
-    if "expand" in overrides:
-        expanded = dict(payload["expand"])  # type: ignore[arg-type]
-        expanded.update(overrides["expand"])  # type: ignore[arg-type]
-        payload["expand"] = expanded
-        overrides = {key: value for key, value in overrides.items() if key != "expand"}
-    payload.update(overrides)
-    return MemoryReadRequest.model_validate(payload)
-
-
-def _item_ids(result) -> list[str]:
-    """Extract ordered shellbrain IDs from a read operation result."""
-
-    assert result.status == "ok"
-    assert "pack" in result.data
-    pack = result.data["pack"]
-    return [
-        *[item["memory_id"] for item in pack["direct"]],
-        *[item["memory_id"] for item in pack["explicit_related"]],
-        *[item["memory_id"] for item in pack["implicit_related"]],
-    ]

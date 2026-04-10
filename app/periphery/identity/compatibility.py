@@ -31,8 +31,3 @@ def host_identity_drifted_error(*, caller_id: str) -> ErrorDetail:
         message=f"Trusted caller identity drifted and could not be resolved for `{caller_id}`. Verify the host thread/session still exists and rerun `events`.",
     )
 
-
-def transcript_source_not_found_error(*, message: str) -> ErrorDetail:
-    """Return the canonical error for transcript-source resolution failures."""
-
-    return ErrorDetail(code=ErrorCode.TRANSCRIPT_SOURCE_NOT_FOUND, message=message)
