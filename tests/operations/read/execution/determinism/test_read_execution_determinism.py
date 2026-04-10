@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryReadRequest
 from app.core.use_cases.read_memory import execute_read_memory
 from app.periphery.db.uow import PostgresUnitOfWork
+from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 
 def test_read_deduplicates_memories_reached_by_multiple_paths(
@@ -37,7 +37,7 @@ def test_read_deduplicates_memories_reached_by_multiple_paths(
         strength=0.8,
     )
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="deployment",
         expand={
@@ -50,7 +50,7 @@ def test_read_deduplicates_memories_reached_by_multiple_paths(
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
 
-    ids = _item_ids(result)
+    ids = item_ids(result)
     assert "dup-target" in ids
     assert len(ids) == len(set(ids))
 
@@ -83,55 +83,15 @@ def test_read_produces_deterministic_ordering_on_unchanged_snapshot(
         text_value="Deployment issue shellbrain C.",
     )
 
-    request = _make_read_request(repo_id="repo-a", query="deployment issue", limit=3)
+    request = make_read_request(repo_id="repo-a", query="deployment issue", limit=3)
 
     with uow_factory() as uow:
         first = execute_read_memory(request, uow)
     with uow_factory() as uow:
         second = execute_read_memory(request, uow)
 
-    first_ids = _item_ids(first)
-    second_ids = _item_ids(second)
+    first_ids = item_ids(first)
+    second_ids = item_ids(second)
     assert len(first_ids) >= 2
     assert first_ids == second_ids
 
-
-def _make_read_request(**overrides: object) -> MemoryReadRequest:
-    """Build a read request with deterministic defaults and caller overrides."""
-
-    payload: dict[str, object] = {
-        "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
-        "query": "deployment issue",
-        "include_global": True,
-        "limit": 20,
-        "expand": {
-            "semantic_hops": 2,
-            "include_problem_links": True,
-            "include_fact_update_links": True,
-            "include_association_links": True,
-            "max_association_depth": 2,
-            "min_association_strength": 0.25,
-        },
-    }
-    if "expand" in overrides:
-        expanded = dict(payload["expand"])  # type: ignore[arg-type]
-        expanded.update(overrides["expand"])  # type: ignore[arg-type]
-        payload["expand"] = expanded
-        overrides = {key: value for key, value in overrides.items() if key != "expand"}
-    payload.update(overrides)
-    return MemoryReadRequest.model_validate(payload)
-
-
-def _item_ids(result) -> list[str]:
-    """Extract ordered shellbrain IDs from a read operation result."""
-
-    assert result.status == "ok"
-    assert "pack" in result.data
-    pack = result.data["pack"]
-    return [
-        *[item["memory_id"] for item in pack["direct"]],
-        *[item["memory_id"] for item in pack["explicit_related"]],
-        *[item["memory_id"] for item in pack["implicit_related"]],
-    ]

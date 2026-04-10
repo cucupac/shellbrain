@@ -6,31 +6,26 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
-import sys
-from urllib.parse import urlparse, urlunparse
-from uuid import uuid4
 
 import psycopg
 import pytest
-
-
-_LIGHTWEIGHT_RUNTIME_DEPS = [
-    "SQLAlchemy>=2.0,<3.0",
-    "alembic>=1.13,<2.0",
-    "pydantic>=2.7,<3.0",
-    "PyYAML>=6.0,<7.0",
-    "psycopg[binary]>=3.1,<4.0",
-    "pgvector>=0.3,<1.0",
-]
+from tests._shared.packaging_smoke_helpers import (
+    create_isolated_install,
+    create_temp_database,
+    drop_temp_database,
+    prepare_git_snapshot,
+    replace_database_dsn,
+    repo_root as resolve_repo_root,
+)
 
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path: Path) -> None:
     """editable installs should expose the shellbrain console script outside this repository."""
 
-    repo_root = _repo_root()
+    repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-editable-repo"
     external_repo.mkdir()
-    python_executable, shellbrain_executable = _create_isolated_install(
+    python_executable, shellbrain_executable = create_isolated_install(
         tmp_path=tmp_path,
         name="editable-install",
         install_spec=str(repo_root),
@@ -60,11 +55,11 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
     if shutil.which("git") is None:
         pytest.skip("git is required for git+file install smoke tests")
 
-    repo_root = _repo_root()
-    git_snapshot = _prepare_git_snapshot(tmp_path, repo_root)
+    repo_root = resolve_repo_root()
+    git_snapshot = prepare_git_snapshot(tmp_path, repo_root)
     external_repo = tmp_path / "external-git-repo"
     external_repo.mkdir()
-    _, shellbrain_executable = _create_isolated_install(
+    _, shellbrain_executable = create_isolated_install(
         tmp_path=tmp_path,
         name="git-install",
         install_spec=f"git+file://{git_snapshot}",
@@ -91,10 +86,10 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
 def test_editable_install_should_package_onboarding_assets_in_a_clean_room(tmp_path: Path) -> None:
     """editable installs should expose packaged onboarding assets through importlib.resources."""
 
-    repo_root = _repo_root()
+    repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-assets-repo"
     external_repo.mkdir()
-    python_executable, _ = _create_isolated_install(
+    python_executable, _ = create_isolated_install(
         tmp_path=tmp_path,
         name="assets-install",
         install_spec=str(repo_root),
@@ -137,11 +132,11 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
     if shutil.which("git") is None:
         pytest.skip("git is required for git+file install smoke tests")
 
-    repo_root = _repo_root()
-    git_snapshot = _prepare_git_snapshot(tmp_path, repo_root)
+    repo_root = resolve_repo_root()
+    git_snapshot = prepare_git_snapshot(tmp_path, repo_root)
     external_repo = tmp_path / "external-assets-git-repo"
     external_repo.mkdir()
-    python_executable, _ = _create_isolated_install(
+    python_executable, _ = create_isolated_install(
         tmp_path=tmp_path,
         name="assets-git-install",
         install_spec=f"git+file://{git_snapshot}",
@@ -186,10 +181,10 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
     if not base_dsn or not admin_base_dsn:
         pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
 
-    repo_root = _repo_root()
+    repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-migrate-repo"
     external_repo.mkdir()
-    _, shellbrain_executable = _create_isolated_install(
+    _, shellbrain_executable = create_isolated_install(
         tmp_path=tmp_path,
         name="migrate-install",
         install_spec=str(repo_root),
@@ -197,8 +192,8 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
         install_runtime_deps=True,
     )
 
-    package_dsn, admin_dsn, db_name = _create_temp_database(base_dsn, admin_base_dsn)
-    package_admin_dsn = _replace_database_dsn(admin_base_dsn, db_name)
+    package_dsn, admin_dsn, db_name = create_temp_database(base_dsn, admin_base_dsn)
+    package_admin_dsn = replace_database_dsn(admin_base_dsn, db_name)
     try:
         completed = subprocess.run(
             [shellbrain_executable, "admin", "migrate"],
@@ -228,126 +223,4 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
         assert alembic_version == "20260320_0008"
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
-        _drop_temp_database(admin_dsn, db_name)
-
-
-def _create_isolated_install(
-    *,
-    tmp_path: Path,
-    name: str,
-    install_spec: str,
-    editable: bool,
-    install_runtime_deps: bool,
-) -> tuple[Path, Path]:
-    """Create one clean-room virtualenv and install the packaged CLI into it."""
-
-    venv_dir = tmp_path / name
-    subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True, capture_output=True, text=True)
-    python_executable = _venv_python(venv_dir)
-    subprocess.run(
-        [str(python_executable), "-m", "pip", "install", "setuptools>=69.0", "wheel"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-
-    install_command = [str(python_executable), "-m", "pip", "install", "--no-build-isolation", "--no-deps"]
-    if editable:
-        install_command.extend(["-e", install_spec])
-    else:
-        install_command.append(install_spec)
-    subprocess.run(install_command, check=True, capture_output=True, text=True)
-
-    if install_runtime_deps:
-        subprocess.run(
-            [str(python_executable), "-m", "pip", "install", * _LIGHTWEIGHT_RUNTIME_DEPS],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-
-    return python_executable, _venv_shellbrain(venv_dir)
-
-
-def _create_temp_database(base_dsn: str, admin_base_dsn: str | None = None) -> tuple[str, str, str]:
-    """Create one disposable database alongside the configured test server."""
-
-    raw_base_dsn = base_dsn.replace("+psycopg", "")
-    parsed = urlparse(raw_base_dsn)
-    admin_parsed = urlparse((admin_base_dsn or base_dsn).replace("+psycopg", ""))
-    db_name = f"shellbrain_pkg_{uuid4().hex[:8]}"
-    admin_dsn = urlunparse(admin_parsed._replace(path="/postgres"))
-    package_dsn = urlunparse(parsed._replace(path=f"/{db_name}"))
-
-    with psycopg.connect(admin_dsn, autocommit=True) as conn:
-        conn.execute(f'CREATE DATABASE "{db_name}"')
-
-    return package_dsn.replace("postgresql://", "postgresql+psycopg://", 1), admin_dsn, db_name
-
-
-def _drop_temp_database(admin_dsn: str, db_name: str) -> None:
-    """Drop one disposable smoke-test database and terminate leftover sessions."""
-
-    with psycopg.connect(admin_dsn, autocommit=True) as conn:
-        conn.execute(
-            """
-            SELECT pg_terminate_backend(pid)
-            FROM pg_stat_activity
-            WHERE datname = %s AND pid <> pg_backend_pid()
-            """,
-            (db_name,),
-        )
-        conn.execute(f'DROP DATABASE IF EXISTS "{db_name}"')
-
-
-def _replace_database_dsn(dsn: str, db_name: str) -> str:
-    """Return one DSN string with the database path swapped to a named database."""
-
-    parsed = urlparse(dsn.replace("+psycopg", ""))
-    return urlunparse(parsed._replace(path=f"/{db_name}")).replace("postgresql://", "postgresql+psycopg://", 1)
-
-
-def _repo_root() -> Path:
-    """Resolve the repository root for clean-room install commands."""
-
-    return Path(__file__).resolve().parents[2]
-
-
-def _prepare_git_snapshot(tmp_path: Path, repo_root: Path) -> Path:
-    """Create one temporary git repository that reflects the current working tree state."""
-
-    snapshot_root = tmp_path / "git-install-source"
-    shutil.copytree(
-        repo_root,
-        snapshot_root,
-        ignore=shutil.ignore_patterns(
-            ".git",
-            "env",
-            ".venv",
-            "__pycache__",
-            ".pytest_cache",
-            ".local",
-        ),
-    )
-    subprocess.run(["git", "init"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "config", "user.email", "smoke@example.com"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "config", "user.name", "Packaging Smoke"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "add", "."], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "commit", "-m", "snapshot"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    return snapshot_root
-
-
-def _venv_python(venv_dir: Path) -> Path:
-    """Resolve the Python executable inside one virtualenv."""
-
-    if os.name == "nt":
-        return venv_dir / "Scripts" / "python.exe"
-    return venv_dir / "bin" / "python"
-
-
-def _venv_shellbrain(venv_dir: Path) -> Path:
-    """Resolve the shellbrain console script inside one virtualenv."""
-
-    if os.name == "nt":
-        return venv_dir / "Scripts" / "app.exe"
-    return venv_dir / "bin" / "shellbrain"
+        drop_temp_database(admin_dsn, db_name)

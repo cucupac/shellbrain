@@ -9,12 +9,12 @@ from pathlib import Path
 import psycopg
 import pytest
 
-from tests.config.test_packaging_smoke import (
-    _create_isolated_install,
-    _create_temp_database,
-    _drop_temp_database,
-    _replace_database_dsn,
-    _repo_root,
+from tests._shared.packaging_smoke_helpers import (
+    create_isolated_install,
+    create_temp_database,
+    drop_temp_database,
+    replace_database_dsn,
+    repo_root as resolve_repo_root,
 )
 
 
@@ -28,10 +28,10 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
     if not base_dsn or not admin_base_dsn:
         pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
 
-    repo_root = _repo_root()
+    repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-telemetry-migrate-repo"
     external_repo.mkdir()
-    _, shellbrain_executable = _create_isolated_install(
+    _, shellbrain_executable = create_isolated_install(
         tmp_path=tmp_path,
         name="telemetry-migrate-install",
         install_spec=str(repo_root),
@@ -39,8 +39,8 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         install_runtime_deps=True,
     )
 
-    package_dsn, admin_dsn, db_name = _create_temp_database(base_dsn, admin_base_dsn)
-    package_admin_dsn = _replace_database_dsn(admin_base_dsn, db_name)
+    package_dsn, admin_dsn, db_name = create_temp_database(base_dsn, admin_base_dsn)
+    package_admin_dsn = replace_database_dsn(admin_base_dsn, db_name)
     try:
         subprocess.run(
             [shellbrain_executable, "admin", "migrate"],
@@ -72,4 +72,4 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert usage_command_daily_view is not None
         assert alembic_version == "20260320_0008"
     finally:
-        _drop_temp_database(admin_dsn, db_name)
+        drop_temp_database(admin_dsn, db_name)

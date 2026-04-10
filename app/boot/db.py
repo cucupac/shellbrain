@@ -1,8 +1,6 @@
 """This module defines boot-time factory helpers for database engine and sessions."""
 
-import os
-from pathlib import Path
-
+from app.boot._dsn_resolution import resolve_database_dsn
 from app.boot.config import get_config_provider
 from app.periphery.admin.machine_state import try_load_machine_config
 from app.periphery.db.engine import get_engine
@@ -12,44 +10,15 @@ from app.periphery.db.session import get_session_factory
 def get_db_dsn() -> str:
     """This function resolves the database DSN from environment configuration."""
 
-    machine_config, machine_error = try_load_machine_config()
-    if machine_error:
-        raise RuntimeError(
-            "Shellbrain machine config is unreadable. Rerun `shellbrain init` to repair it."
-        )
-    if machine_config is not None:
-        return machine_config.database.app_dsn
-
-    runtime = get_config_provider().get_runtime()
-    database = runtime.get("database")
-    if not isinstance(database, dict):
-        raise RuntimeError("runtime.database must be configured")
-    dsn_env = database.get("dsn_env")
-    if not isinstance(dsn_env, str) or not dsn_env:
-        raise RuntimeError("runtime.database.dsn_env must be configured")
-    dsn = os.getenv(dsn_env)
-    if not dsn:
-        raise RuntimeError(f"{dsn_env} is not set")
+    dsn = _resolve_app_db_dsn(required=True)
+    assert dsn is not None
     return dsn
 
 
 def get_optional_db_dsn() -> str | None:
     """Resolve the application DSN when present, otherwise return None."""
 
-    machine_config, machine_error = try_load_machine_config()
-    if machine_error:
-        return None
-    if machine_config is not None:
-        return machine_config.database.app_dsn
-
-    runtime = get_config_provider().get_runtime()
-    database = runtime.get("database")
-    if not isinstance(database, dict):
-        return None
-    dsn_env = database.get("dsn_env")
-    if not isinstance(dsn_env, str) or not dsn_env:
-        return None
-    return os.getenv(dsn_env)
+    return _resolve_app_db_dsn(required=False)
 
 
 def get_engine_instance():
@@ -64,7 +33,13 @@ def get_session_factory_instance():
     return get_session_factory(get_engine_instance())
 
 
-def get_defaults_dir() -> Path:
-    """This function returns the path to bundled YAML default configuration files."""
+def _resolve_app_db_dsn(*, required: bool) -> str | None:
+    """Resolve the application DSN from machine config or runtime env config."""
 
-    return Path(__file__).resolve().parents[1] / "config" / "defaults"
+    return resolve_database_dsn(
+        load_machine_config=try_load_machine_config,
+        runtime_provider=lambda: get_config_provider().get_runtime(),
+        machine_field="app_dsn",
+        runtime_env_key="dsn_env",
+        required=required,
+    )

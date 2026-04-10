@@ -8,10 +8,8 @@ from app.core.interfaces.retrieval import IVectorSearch
 from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
 from app.core.policies.read_policy.expansion import expand_candidates
 from app.core.policies.read_policy.fusion_rrf import fuse_with_rrf
-from app.core.policies.read_policy.scenario_lift import derive_scenarios
 from app.core.policies.read_policy.scoring import score_candidates
 from app.core.policies.read_policy.seed_retrieval import retrieve_seeds
-from app.core.policies.read_policy.utility_prior import apply_utility_prior
 
 
 def build_context_pack(
@@ -45,13 +43,8 @@ def build_context_pack(
         "implicit": expanded_candidates["implicit"],
     }
     scored_candidates = score_candidates(bucketed_candidates, payload)
-    adjusted_candidates = {
-        bucket_name: apply_utility_prior(candidates, payload)
-        for bucket_name, candidates in scored_candidates.items()
-    }
-    pack = assemble_context_pack(adjusted_candidates, payload)
-    hydrated_pack = _hydrate_pack_items(pack, memories)
-    return derive_scenarios(hydrated_pack, payload)["pack"]
+    pack = assemble_context_pack(scored_candidates, payload)
+    return _hydrate_pack_items(pack, memories)
 
 
 def _resolve_read_defaults(payload: dict[str, Any]) -> dict[str, Any]:

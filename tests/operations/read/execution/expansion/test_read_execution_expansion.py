@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryReadRequest
 from app.core.use_cases.read_memory import execute_read_memory
 from app.periphery.db.uow import PostgresUnitOfWork
+from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 
 def test_read_includes_problem_attempt_links_when_enabled(
@@ -30,7 +30,7 @@ def test_read_includes_problem_attempt_links_when_enabled(
     )
     seed_problem_attempt_link(problem_id="problem-1", attempt_id="solution-1", role="solution")
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="rollback fix",
         expand={"include_problem_links": True, "include_fact_update_links": False, "include_association_links": False},
@@ -38,7 +38,7 @@ def test_read_includes_problem_attempt_links_when_enabled(
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
 
-    ids = _item_ids(result)
+    ids = item_ids(result)
     assert "solution-1" in ids
     assert "problem-1" in ids
 
@@ -78,7 +78,7 @@ def test_read_includes_fact_update_links_when_enabled(
         new_fact_id="new-fact-1",
     )
 
-    request = _make_read_request(
+    request = make_read_request(
         repo_id="repo-a",
         query="previous deploy behavior",
         expand={"include_problem_links": False, "include_fact_update_links": True, "include_association_links": False},
@@ -86,7 +86,7 @@ def test_read_includes_fact_update_links_when_enabled(
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
 
-    ids = _item_ids(result)
+    ids = item_ids(result)
     assert "old-fact-1" in ids
     assert "new-fact-1" in ids
 
@@ -136,7 +136,7 @@ def test_read_applies_association_expansion_flag_and_strength_threshold(
         strength=0.1,
     )
 
-    request_enabled = _make_read_request(
+    request_enabled = make_read_request(
         repo_id="repo-a",
         query="deployment anchor",
         expand={
@@ -146,7 +146,7 @@ def test_read_applies_association_expansion_flag_and_strength_threshold(
             "min_association_strength": 0.25,
         },
     )
-    request_disabled = _make_read_request(
+    request_disabled = make_read_request(
         repo_id="repo-a",
         query="deployment anchor",
         expand={
@@ -162,8 +162,8 @@ def test_read_applies_association_expansion_flag_and_strength_threshold(
     with uow_factory() as uow:
         disabled = execute_read_memory(request_disabled, uow)
 
-    enabled_ids = _item_ids(enabled)
-    disabled_ids = _item_ids(disabled)
+    enabled_ids = item_ids(enabled)
+    disabled_ids = item_ids(disabled)
     assert "neighbor-strong" in enabled_ids
     assert "neighbor-weak" not in enabled_ids
     assert "neighbor-strong" not in disabled_ids
@@ -214,7 +214,7 @@ def test_read_expands_association_neighbors_only_up_to_max_association_depth(
         strength=0.8,
     )
 
-    one_hop = _make_read_request(
+    one_hop = make_read_request(
         repo_id="repo-a",
         query="depth anchor",
         expand={
@@ -226,7 +226,7 @@ def test_read_expands_association_neighbors_only_up_to_max_association_depth(
             "min_association_strength": 0.25,
         },
     )
-    two_hops = _make_read_request(
+    two_hops = make_read_request(
         repo_id="repo-a",
         query="depth anchor",
         expand={
@@ -244,49 +244,9 @@ def test_read_expands_association_neighbors_only_up_to_max_association_depth(
     with uow_factory() as uow:
         two_hop_result = execute_read_memory(two_hops, uow)
 
-    one_hop_ids = _item_ids(one_hop_result)
-    two_hop_ids = _item_ids(two_hop_result)
+    one_hop_ids = item_ids(one_hop_result)
+    two_hop_ids = item_ids(two_hop_result)
     assert "association-hop-1" in one_hop_ids
     assert "association-hop-2" not in one_hop_ids
     assert "association-hop-2" in two_hop_ids
 
-
-def _make_read_request(**overrides: object) -> MemoryReadRequest:
-    """Build a read request with deterministic defaults and caller overrides."""
-
-    payload: dict[str, object] = {
-        "op": "read",
-        "repo_id": "repo-a",
-        "mode": "targeted",
-        "query": "deployment issue",
-        "include_global": True,
-        "limit": 20,
-        "expand": {
-            "semantic_hops": 2,
-            "include_problem_links": True,
-            "include_fact_update_links": True,
-            "include_association_links": True,
-            "max_association_depth": 2,
-            "min_association_strength": 0.25,
-        },
-    }
-    if "expand" in overrides:
-        expanded = dict(payload["expand"])  # type: ignore[arg-type]
-        expanded.update(overrides["expand"])  # type: ignore[arg-type]
-        payload["expand"] = expanded
-        overrides = {key: value for key, value in overrides.items() if key != "expand"}
-    payload.update(overrides)
-    return MemoryReadRequest.model_validate(payload)
-
-
-def _item_ids(result) -> list[str]:
-    """Extract ordered shellbrain IDs from a read operation result."""
-
-    assert result.status == "ok"
-    assert "pack" in result.data
-    pack = result.data["pack"]
-    return [
-        *[item["memory_id"] for item in pack["direct"]],
-        *[item["memory_id"] for item in pack["explicit_related"]],
-        *[item["memory_id"] for item in pack["implicit_related"]],
-    ]
