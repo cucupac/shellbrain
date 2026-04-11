@@ -19,7 +19,7 @@ def test_destructive_guard_should_create_and_verify_backup(monkeypatch, tmp_path
         instance_id="inst-1",
         instance_mode="live",
         source={"fingerprint": "abc", "host": "localhost", "port": "5432", "database": "shellbrain", "user": "admin"},
-        schema_revision="20260320_0008",
+        schema_revision="20260410_0009",
         created_at="2026-03-19T00:00:00+00:00",
         artifact_filename="artifact.sql.gz",
         artifact_sha256="deadbeef",

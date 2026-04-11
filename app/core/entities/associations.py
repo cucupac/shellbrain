@@ -9,6 +9,7 @@ class AssociationRelationType(str, Enum):
 
     DEPENDS_ON = "depends_on"
     ASSOCIATED_WITH = "associated_with"
+    MATURES_INTO = "matures_into"
 
 
 class AssociationSourceMode(str, Enum):

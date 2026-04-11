@@ -250,3 +250,67 @@ def test_read_expands_association_neighbors_only_up_to_max_association_depth(
     assert "association-hop-2" not in one_hop_ids
     assert "association-hop-2" in two_hop_ids
 
+
+def test_read_reverse_matures_into_expansion_requires_explicit_frontier_kind_filter(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_association_edge: Callable[..., None],
+) -> None:
+    """read should always keep reverse matures_into frontier predecessors behind explicit kinds filters."""
+
+    seed_read_memory(
+        memory_id="mature-anchor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="mature anchor memory",
+    )
+    seed_read_memory(
+        memory_id="frontier-predecessor",
+        repo_id="repo-a",
+        scope="repo",
+        kind="frontier",
+        text_value="frontier predecessor memory",
+    )
+    seed_association_edge(
+        edge_id="edge-matures-into",
+        repo_id="repo-a",
+        from_memory_id="frontier-predecessor",
+        to_memory_id="mature-anchor",
+        relation_type="matures_into",
+        strength=0.9,
+    )
+
+    default_request = make_read_request(
+        repo_id="repo-a",
+        query="mature anchor",
+        expand={
+            "semantic_hops": 0,
+            "include_problem_links": False,
+            "include_fact_update_links": False,
+            "include_association_links": True,
+            "max_association_depth": 1,
+            "min_association_strength": 0.25,
+        },
+    )
+    explicit_frontier_request = make_read_request(
+        repo_id="repo-a",
+        query="mature anchor",
+        kinds=["fact", "frontier"],
+        expand={
+            "semantic_hops": 0,
+            "include_problem_links": False,
+            "include_fact_update_links": False,
+            "include_association_links": True,
+            "max_association_depth": 1,
+            "min_association_strength": 0.25,
+        },
+    )
+
+    with uow_factory() as uow:
+        default_result = execute_read_memory(default_request, uow)
+    with uow_factory() as uow:
+        explicit_frontier_result = execute_read_memory(explicit_frontier_request, uow)
+
+    assert "frontier-predecessor" not in item_ids(default_result)
+    assert "frontier-predecessor" in item_ids(explicit_frontier_result)

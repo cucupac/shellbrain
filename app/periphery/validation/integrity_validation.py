@@ -10,7 +10,12 @@ from app.core.contracts.requests import (
     MemoryUpdateRequest,
     UtilityVoteUpdate,
 )
-from app.core.entities.memory import Memory, MemoryKind, MemoryScope
+from app.core.entities.memory import (
+    Memory,
+    MemoryKind,
+    MemoryScope,
+    is_mature_memory_kind,
+)
 from app.core.interfaces.unit_of_work import IUnitOfWork
 
 
@@ -27,6 +32,38 @@ def _require_memory(uow: IUnitOfWork, *, memory_id: str, field: str) -> tuple[Me
     if memory is None:
         return None, [ErrorDetail(code=ErrorCode.NOT_FOUND, message=f"Memory not found: {memory_id}", field=field)]
     return memory, []
+
+
+def _validate_matures_into_relation(
+    *,
+    source_kind: MemoryKind,
+    target_memory: Memory | None,
+    relation_type: str,
+    field: str,
+) -> list[ErrorDetail]:
+    """Validate the frontier-to-mature kind contract for matures_into relations."""
+
+    if relation_type != "matures_into":
+        return []
+
+    errors: list[ErrorDetail] = []
+    if source_kind != MemoryKind.FRONTIER:
+        errors.append(
+            ErrorDetail(
+                code=ErrorCode.INTEGRITY_ERROR,
+                message="matures_into requires the source memory to be a frontier memory",
+                field=field,
+            )
+        )
+    if target_memory is not None and not is_mature_memory_kind(target_memory.kind):
+        errors.append(
+            ErrorDetail(
+                code=ErrorCode.INTEGRITY_ERROR,
+                message="matures_into requires the target memory to be a mature durable memory",
+                field=field,
+            )
+        )
+    return errors
 
 
 def _validate_evidence_refs(
@@ -110,6 +147,15 @@ def validate_create_integrity(request: MemoryCreateRequest, uow: IUnitOfWork) ->
                     code=ErrorCode.INTEGRITY_ERROR,
                     message="Association target shellbrain is not visible for this repo_id",
                     field=f"memory.links.associations.{index}.to_memory_id",
+                )
+            )
+        if target and _is_visible(target, request.repo_id):
+            errors.extend(
+                _validate_matures_into_relation(
+                    source_kind=MemoryKind(request.memory.kind),
+                    target_memory=target,
+                    relation_type=association.relation_type,
+                    field=f"memory.links.associations.{index}.relation_type",
                 )
             )
     return errors
@@ -248,6 +294,15 @@ def validate_update_integrity(request: MemoryUpdateRequest | MemoryBatchUpdateRe
                     code=ErrorCode.INTEGRITY_ERROR,
                     message="association_link.to_memory_id is not visible for this repo_id",
                     field="update.to_memory_id",
+                )
+            )
+        if target_memory and target and _is_visible(target, request.repo_id):
+            errors.extend(
+                _validate_matures_into_relation(
+                    source_kind=target_memory.kind,
+                    target_memory=target,
+                    relation_type=update.relation_type,
+                    field="update.relation_type",
                 )
             )
     return errors

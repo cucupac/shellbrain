@@ -25,7 +25,7 @@ def validate_create_semantics(request: MemoryCreateRequest) -> list[ErrorDetail]
                 field="memory.links.problem_id",
             )
         )
-    if kind in {MemoryKind.PROBLEM, MemoryKind.FACT, MemoryKind.PREFERENCE, MemoryKind.CHANGE} and problem_id:
+    if kind not in {MemoryKind.SOLUTION, MemoryKind.FAILED_TACTIC} and problem_id:
         errors.append(
             ErrorDetail(
                 code=ErrorCode.SEMANTIC_ERROR,

@@ -220,7 +220,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
 
         assert memories_table is not None
         assert episode_events_table is not None
-        assert alembic_version == "20260320_0008"
+        assert alembic_version == "20260410_0009"
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
         drop_temp_database(admin_dsn, db_name)

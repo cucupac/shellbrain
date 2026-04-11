@@ -4,6 +4,7 @@ from copy import deepcopy
 from typing import Any
 
 from app.boot.config import get_config_provider
+from app.core.entities.memory import MATURE_MEMORY_KIND_VALUES
 
 
 _SUPPORTED_MODES = ("targeted", "ambient")
@@ -164,6 +165,8 @@ def resolve_read_payload_defaults(payload: dict[str, Any]) -> dict[str, Any]:
         resolved["include_global"] = settings["include_global"]
     if resolved.get("limit") is None:
         resolved["limit"] = settings["limits_by_mode"][resolved["mode"]]
+    if resolved.get("kinds") is None:
+        resolved["kinds"] = list(MATURE_MEMORY_KIND_VALUES)
 
     incoming_expand = resolved.get("expand")
     merged_expand = deepcopy(settings["expand"])

@@ -167,6 +167,67 @@ def test_update_association_link_commit_persists_edge_observation_and_edge_evide
     assert len(edge_evidence_rows) == 2
 
 
+def test_update_matures_into_commit_persists_edge_observation_and_edge_evidence(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+    fetch_rows: Callable[..., list[dict[str, object]]],
+) -> None:
+    """update(matures_into) commit should always persist edge, observation, and edge evidence links."""
+
+    seed_memory(
+        memory_id="frontier-memory",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FRONTIER,
+        text_value="Half-formed theory.",
+    )
+    seed_memory(
+        memory_id="mature-memory",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Ratified fact.",
+    )
+    request = make_update_request(
+        repo_id="repo-a",
+        memory_id="frontier-memory",
+        update={
+            "type": "association_link",
+            "to_memory_id": "mature-memory",
+            "relation_type": "matures_into",
+            "confidence": 0.9,
+            "salience": 0.8,
+            "evidence_refs": ["session://1", "session://2"],
+        },
+    )
+
+    with uow_factory() as uow:
+        result = execute_update_memory(request, uow)
+
+    assert result.status == "ok"
+    edges = fetch_rows(
+        association_edges,
+        association_edges.c.repo_id == "repo-a",
+        association_edges.c.from_memory_id == "frontier-memory",
+        association_edges.c.to_memory_id == "mature-memory",
+        association_edges.c.relation_type == "matures_into",
+    )
+    assert len(edges) == 1
+
+    edge_id = edges[0]["id"]
+    observations = fetch_rows(
+        association_observations,
+        association_observations.c.edge_id == edge_id,
+    )
+    assert len(observations) == 1
+
+    edge_evidence_rows = fetch_rows(
+        association_edge_evidence,
+        association_edge_evidence.c.edge_id == edge_id,
+    )
+    assert len(edge_evidence_rows) == 2
+
+
 def test_update_writes_only_its_own_related_record_family(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],

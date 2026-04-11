@@ -79,6 +79,37 @@ def test_read_kinds_reject_duplicates() -> None:
     assert any((error.field or "").startswith("kinds") for error in errors)
 
 
+def test_read_kinds_reject_empty_lists() -> None:
+    """read requests should always require at least one kind when kinds is provided."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "kinds": [],
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert any(error.code.value == "schema_error" for error in errors)
+    assert any((error.field or "").startswith("kinds") for error in errors)
+
+
+def test_read_kinds_accept_frontier() -> None:
+    """read requests should always accept frontier in explicit kinds filters."""
+
+    payload = {
+        "op": "read",
+        "query": "open questions about retrieval",
+        "kinds": ["frontier"],
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert errors == []
+    assert request is not None
+
+
 def test_read_rejects_hidden_expansion_override_knobs_at_agent_interface() -> None:
     """read requests should always reject hidden expansion override knobs at the agent interface."""
 

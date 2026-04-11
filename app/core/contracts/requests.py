@@ -5,6 +5,10 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
+MemoryKindValue = Literal["problem", "solution", "failed_tactic", "fact", "preference", "change", "frontier"]
+AssociationRelationValue = Literal["depends_on", "associated_with", "matures_into"]
+
+
 class StrictBaseModel(BaseModel):
     """This base model enforces strict schemas by rejecting unknown fields."""
 
@@ -30,9 +34,7 @@ class MemoryReadRequest(StrictBaseModel):
     mode: Literal["ambient", "targeted"]
     query: str = Field(min_length=1)
     include_global: bool | None = None
-    kinds: (
-        list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
-    ) = None
+    kinds: list[MemoryKindValue] | None = Field(default=None, min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
     expand: ReadExpandRequest | None = None
 
@@ -40,8 +42,8 @@ class MemoryReadRequest(StrictBaseModel):
     @classmethod
     def _validate_kinds_unique(
         cls,
-        value: list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None,
-    ) -> list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None:
+        value: list[MemoryKindValue] | None,
+    ) -> list[MemoryKindValue] | None:
         """This validator enforces unique kinds filters for read requests."""
 
         if value is None:
@@ -63,7 +65,7 @@ class MemoryCreateAssociationLink(StrictBaseModel):
     """This model defines a typed explicit association link payload on create."""
 
     to_memory_id: str
-    relation_type: Literal["depends_on", "associated_with"]
+    relation_type: AssociationRelationValue
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     salience: float | None = Field(default=None, ge=0.0, le=1.0)
     rationale: str | None = None
@@ -91,7 +93,7 @@ class MemoryCreateBody(StrictBaseModel):
 
     text: str
     scope: Literal["repo", "global"]
-    kind: Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]
+    kind: MemoryKindValue
     rationale: str | None = None
     links: MemoryCreateLinks = Field(default_factory=MemoryCreateLinks)
     evidence_refs: list[str] = Field(min_length=1)
@@ -165,7 +167,7 @@ class AssociationLinkUpdate(StrictBaseModel):
 
     type: Literal["association_link"]
     to_memory_id: str
-    relation_type: Literal["depends_on", "associated_with"]
+    relation_type: AssociationRelationValue
     confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     salience: float | None = Field(default=None, ge=0.0, le=1.0)
     rationale: str | None = None

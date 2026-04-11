@@ -419,6 +419,77 @@ def test_update_association_link_rejects_episode_event_evidence_from_another_rep
     )
 
 
+def test_update_matures_into_requires_frontier_source_and_mature_target(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+) -> None:
+    """association_link updates should always restrict matures_into edges to frontier -> mature pairs."""
+
+    seed_memory(
+        memory_id="source-frontier",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FRONTIER,
+        text_value="Frontier source.",
+    )
+    seed_memory(
+        memory_id="source-fact",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Non-frontier source.",
+    )
+    seed_memory(
+        memory_id="target-fact",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Mature target.",
+    )
+    seed_memory(
+        memory_id="target-frontier",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FRONTIER,
+        text_value="Frontier target.",
+    )
+
+    non_frontier_source_request = _make_update_request(
+        repo_id="repo-a",
+        memory_id="source-fact",
+        update={
+            "type": "association_link",
+            "to_memory_id": "target-fact",
+            "relation_type": "matures_into",
+            "evidence_refs": ["session://1"],
+        },
+    )
+    non_mature_target_request = _make_update_request(
+        repo_id="repo-a",
+        memory_id="source-frontier",
+        update={
+            "type": "association_link",
+            "to_memory_id": "target-frontier",
+            "relation_type": "matures_into",
+            "evidence_refs": ["session://1"],
+        },
+    )
+
+    with uow_factory() as uow:
+        non_frontier_source_errors = validate_update_integrity(non_frontier_source_request, uow)
+    with uow_factory() as uow:
+        non_mature_target_errors = validate_update_integrity(non_mature_target_request, uow)
+
+    assert any(
+        error.code.value == "integrity_error" and error.field == "update.relation_type"
+        for error in non_frontier_source_errors
+    )
+    assert any(
+        error.code.value == "integrity_error" and error.field == "update.relation_type"
+        for error in non_mature_target_errors
+    )
+
+
 def test_update_optional_evidence_must_resolve_to_stored_episode_events_when_present(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],

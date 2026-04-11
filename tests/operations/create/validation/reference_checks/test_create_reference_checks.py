@@ -153,6 +153,87 @@ def test_create_rejects_invisible_association_target(
     assert any(error["code"] == "integrity_error" for error in result["errors"])
 
 
+def test_create_matures_into_requires_frontier_source_and_mature_target(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+) -> None:
+    """create should always restrict matures_into edges to frontier -> mature pairs."""
+
+    seed_memory(
+        memory_id="target-fact",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Mature fact target.",
+    )
+    seed_memory(
+        memory_id="target-frontier",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FRONTIER,
+        text_value="Frontier target.",
+    )
+
+    non_frontier_payload = {
+        "memory": {
+            "text": "Problem with invalid promotion edge.",
+            "scope": "repo",
+            "kind": "problem",
+            "links": {
+                "associations": [
+                    {
+                        "to_memory_id": "target-fact",
+                        "relation_type": "matures_into",
+                    }
+                ]
+            },
+            "evidence_refs": ["session://1"],
+        },
+    }
+    non_mature_target_payload = {
+        "memory": {
+            "text": "Half-formed idea that points at another frontier.",
+            "scope": "repo",
+            "kind": "frontier",
+            "links": {
+                "associations": [
+                    {
+                        "to_memory_id": "target-frontier",
+                        "relation_type": "matures_into",
+                    }
+                ]
+            },
+            "evidence_refs": ["session://1"],
+        },
+    }
+
+    non_frontier_result = handle_create(
+        non_frontier_payload,
+        uow_factory=uow_factory,
+        embedding_provider_factory=lambda: None,
+        embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
+    )
+    non_mature_target_result = handle_create(
+        non_mature_target_payload,
+        uow_factory=uow_factory,
+        embedding_provider_factory=lambda: None,
+        embedding_model="stub-v1",
+        inferred_repo_id="repo-a",
+        defaults={"scope": "repo"},
+    )
+
+    assert non_frontier_result["status"] == "error"
+    assert any(error["field"] == "memory.links.associations.0.relation_type" for error in non_frontier_result["errors"])
+
+    assert non_mature_target_result["status"] == "error"
+    assert any(
+        error["field"] == "memory.links.associations.0.relation_type"
+        for error in non_mature_target_result["errors"]
+    )
+
+
 def test_create_rejects_missing_episode_event_evidence(
     uow_factory: Callable[[], PostgresUnitOfWork],
 ) -> None:

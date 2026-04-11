@@ -51,7 +51,7 @@ def test_failed_tactic_requires_problem_id() -> None:
 def test_non_attempt_kinds_forbid_problem_id() -> None:
     """non-attempt kinds should always reject links.problem_id."""
 
-    for kind in ["problem", "fact", "preference", "change"]:
+    for kind in ["problem", "fact", "preference", "change", "frontier"]:
         request = MemoryCreateRequest.model_validate(
             {
                 "op": "create",

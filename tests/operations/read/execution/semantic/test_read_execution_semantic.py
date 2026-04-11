@@ -110,6 +110,48 @@ def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
     assert "repo-a-problem" not in with_global_ids
 
 
+def test_read_omits_frontier_by_default_and_returns_it_when_explicitly_requested(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+) -> None:
+    """read should always keep frontier out of default reads unless kinds explicitly includes it."""
+
+    seed_read_memory(
+        memory_id="frontier-hit",
+        repo_id="repo-a",
+        scope="repo",
+        kind="frontier",
+        text_value="retrieval frontier idea",
+    )
+    seed_read_memory(
+        memory_id="fact-hit",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="retrieval frontier fact",
+    )
+
+    default_request = make_read_request(
+        repo_id="repo-a",
+        query="retrieval frontier",
+        expand={"semantic_hops": 0},
+    )
+    explicit_frontier_request = make_read_request(
+        repo_id="repo-a",
+        query="retrieval frontier",
+        kinds=["frontier"],
+        expand={"semantic_hops": 0},
+    )
+
+    with uow_factory() as uow:
+        default_result = execute_read_memory(default_request, uow)
+    with uow_factory() as uow:
+        explicit_frontier_result = execute_read_memory(explicit_frontier_request, uow)
+
+    assert "frontier-hit" not in item_ids(default_result)
+    assert item_ids(explicit_frontier_result) == ["frontier-hit"]
+
+
 def test_read_fuses_semantic_and_keyword_direct_hits_without_duplicates(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
@@ -480,4 +522,3 @@ def _execute_read_with_semantic_override(
             active_query_text=request.query,
         )
         return execute_read_memory(request, uow)
-
