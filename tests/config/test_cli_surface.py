@@ -602,7 +602,7 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
             instance_id="i-1",
             instance_mode="live",
             source={"database": "shellbrain", "fingerprint": "abc", "host": "localhost", "port": "5432", "user": "admin"},
-            schema_revision="20260320_0008",
+            schema_revision="20260410_0009",
             created_at="2026-03-19T00:00:00+00:00",
             artifact_filename="artifact.sql.gz",
             artifact_sha256="deadbeef",

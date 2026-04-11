@@ -70,6 +70,6 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert operation_invocations_table is not None
         assert read_summaries_table is not None
         assert usage_command_daily_view is not None
-        assert alembic_version == "20260320_0008"
+        assert alembic_version == "20260410_0009"
     finally:
         drop_temp_database(admin_dsn, db_name)

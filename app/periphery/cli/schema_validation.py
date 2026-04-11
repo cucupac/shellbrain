@@ -8,6 +8,7 @@ from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import (
     BatchUtilityVoteItem,
     EpisodeEventsRequest,
+    MemoryKindValue,
     MemoryBatchUpdateRequest,
     MemoryCreateLinks,
     MemoryCreateRequest,
@@ -27,17 +28,15 @@ class AgentReadRequest(StrictBaseModel):
     mode: Literal["ambient", "targeted"] | None = None
     query: str = Field(min_length=1)
     include_global: bool | None = None
-    kinds: (
-        list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None
-    ) = None
+    kinds: list[MemoryKindValue] | None = Field(default=None, min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
 
     @field_validator("kinds")
     @classmethod
     def _validate_kinds_unique(
         cls,
-        value: list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None,
-    ) -> list[Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]] | None:
+        value: list[MemoryKindValue] | None,
+    ) -> list[MemoryKindValue] | None:
         """This validator enforces unique kinds filters for agent read requests."""
 
         if value is None:
@@ -52,7 +51,7 @@ class AgentCreateBody(StrictBaseModel):
 
     text: str
     scope: Literal["repo", "global"] | None = None
-    kind: Literal["problem", "solution", "failed_tactic", "fact", "preference", "change"]
+    kind: MemoryKindValue
     rationale: str | None = None
     links: MemoryCreateLinks = Field(default_factory=MemoryCreateLinks)
     evidence_refs: list[str] = Field(min_length=1)

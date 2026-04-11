@@ -74,7 +74,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
                 instance_id="inst-live",
                 instance_mode="live",
                 source={"database": "shellbrain_live"},
-                schema_revision="20260320_0008",
+                schema_revision="20260410_0009",
                 created_at="2026-03-19T00:00:00+00:00",
                 artifact_filename="artifact.sql.gz",
                 artifact_sha256="deadbeef",
@@ -113,7 +113,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
             },
         )(),
     )
-    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260410_0009")
 
     report = build_doctor_report(
         app_dsn=APP_LIVE_DSN,
@@ -235,7 +235,7 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
     monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: [])
     monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (machine_config, None))
     monkeypatch.setattr("app.periphery.admin.doctor.fetch_instance_metadata", lambda dsn: None)
-    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260410_0009")
     monkeypatch.setattr(
         "app.periphery.admin.doctor.inspect_host_assets",
         lambda: type(

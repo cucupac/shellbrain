@@ -38,6 +38,7 @@ def test_read_policy_should_always_resolve_missing_read_knobs_from_config(monkey
 
     assert resolved["include_global"] is False
     assert resolved["limit"] == 12
+    assert resolved["kinds"] == ["problem", "solution", "failed_tactic", "fact", "preference", "change"]
     assert resolved["expand"] == {
         "semantic_hops": 1,
         "include_problem_links": False,

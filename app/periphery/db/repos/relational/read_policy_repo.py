@@ -150,7 +150,24 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 *self._visibility_filters(repo_id=repo_id, include_global=include_global, kinds=kinds),
             )
         )
-        union_stmt = union_all(from_stmt, reverse_associated_stmt).subquery()
+        reverse_matures_into_stmt = (
+            select(
+                association_edges.c.from_memory_id.label("memory_id"),
+                association_edges.c.relation_type,
+                association_edges.c.strength,
+                literal("association").label("expansion_type"),
+            )
+            .select_from(association_edges.join(memories, memories.c.id == association_edges.c.from_memory_id))
+            .where(
+                association_edges.c.repo_id == repo_id,
+                association_edges.c.to_memory_id == anchor_memory_id,
+                association_edges.c.relation_type == "matures_into",
+                association_edges.c.state != "deprecated",
+                association_edges.c.strength >= min_strength,
+                *self._visibility_filters(repo_id=repo_id, include_global=include_global, kinds=kinds),
+            )
+        )
+        union_stmt = union_all(from_stmt, reverse_associated_stmt, reverse_matures_into_stmt).subquery()
         stmt = (
             select(
                 union_stmt.c.memory_id,

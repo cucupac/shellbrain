@@ -39,7 +39,7 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
             notes=None,
         ),
     )
-    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260410_0009")
     monkeypatch.setattr(
         "app.periphery.admin.backup.fingerprint_summary",
         lambda dsn: {
@@ -91,7 +91,7 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
             notes=None,
         ),
     )
-    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260410_0009")
     monkeypatch.setattr(
         "app.periphery.admin.backup.fingerprint_summary",
         lambda dsn: {
@@ -136,7 +136,7 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
             notes=None,
         ),
     )
-    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260320_0008")
+    monkeypatch.setattr("app.periphery.admin.backup._fetch_schema_revision", lambda dsn: "20260410_0009")
     monkeypatch.setattr(
         "app.periphery.admin.backup.fingerprint_summary",
         lambda dsn: {
@@ -196,7 +196,7 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
         "instance_id": "inst-live",
         "instance_mode": "live",
         "source": {"database": "shellbrain_live", "fingerprint": "fp-live", "host": "localhost", "port": "5432", "user": "shellbrain_admin"},
-        "schema_revision": "20260320_0008",
+        "schema_revision": "20260410_0009",
         "created_at": "2026-03-19T00:00:00+00:00",
         "artifact_filename": "restore.sql.gz",
         "artifact_sha256": "ignored",

@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Final
 
 
 class MemoryKind(str, Enum):
@@ -13,6 +14,25 @@ class MemoryKind(str, Enum):
     FACT = "fact"
     PREFERENCE = "preference"
     CHANGE = "change"
+    FRONTIER = "frontier"
+
+
+MATURE_MEMORY_KINDS: Final[tuple[MemoryKind, ...]] = (
+    MemoryKind.PROBLEM,
+    MemoryKind.SOLUTION,
+    MemoryKind.FAILED_TACTIC,
+    MemoryKind.FACT,
+    MemoryKind.PREFERENCE,
+    MemoryKind.CHANGE,
+)
+MATURE_MEMORY_KIND_VALUES: Final[tuple[str, ...]] = tuple(kind.value for kind in MATURE_MEMORY_KINDS)
+
+
+def is_mature_memory_kind(kind: MemoryKind | str) -> bool:
+    """Return whether one kind belongs to the mature durable-memory set."""
+
+    normalized_kind = kind if isinstance(kind, MemoryKind) else MemoryKind(kind)
+    return normalized_kind in MATURE_MEMORY_KINDS
 
 
 class MemoryScope(str, Enum):

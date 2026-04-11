@@ -68,3 +68,22 @@ def test_update_accepts_batch_utility_vote_payloads() -> None:
 
     assert errors == []
     assert request is not None
+
+
+def test_update_accepts_matures_into_association_links() -> None:
+    """update requests should always accept matures_into association links."""
+
+    payload = {
+        "memory_id": "frontier-1",
+        "update": {
+            "type": "association_link",
+            "to_memory_id": "fact-1",
+            "relation_type": "matures_into",
+            "evidence_refs": ["session://1"],
+        },
+    }
+
+    request, errors = validate_update_schema(payload)
+
+    assert errors == []
+    assert request is not None
