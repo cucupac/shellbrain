@@ -27,10 +27,10 @@ Shellbrain has two layers:
 2. Otherwise, do not rerun `init` just because a new agent session started. Start with focused `read` queries right away.
 3. If readiness is unclear, inspect with `shellbrain admin doctor` instead of rerunning `init` by reflex.
 4. If `doctor` reports `repair_needed`, rerun `shellbrain init`.
-5. If direct `shellbrain` calls fail in the current Cursor shell, retry through a login shell that sources the user's login profile:
-   - `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'`
-   - `bash -lc 'source ~/.bash_profile >/dev/null 2>&1; shellbrain --help'`
-6. If the wrapped login-shell check still cannot find `shellbrain`, inspect Python's user script directory:
+5. If direct `shellbrain` calls fail in the current Cursor shell, do a one-time login-shell retry that sources the user's login profile and resolves the CLI path:
+   - `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain'`
+   - `bash -lc 'source ~/.bash_profile >/dev/null 2>&1; command -v shellbrain'`
+6. Do not keep sourcing the login profile on every Shellbrain command. Once `shellbrain` is visible, use plain `shellbrain ...`. If the host tool keeps starting fresh shells without your login PATH, reuse the absolute path returned by `command -v shellbrain` instead of re-sourcing the profile on every call. If the one-time login-shell retry still cannot find `shellbrain`, inspect Python's user script directory:
    - `python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))"`
 7. Resolve the target repo:
    - use the current working directory when already inside the repo
