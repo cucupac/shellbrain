@@ -84,21 +84,23 @@ shellbrain admin migrate
 shellbrain admin doctor
 ```
 
-In Codex Desktop and similar tool shells, use a login shell retry first:
+In Codex Desktop and similar tool shells, do a one-time login-shell retry first if direct `shellbrain` calls fail:
 
 ```bash
-zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
+zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain'
 ```
 
 If the host shell is bash instead of zsh, use:
 
 ```bash
-bash -lc 'source ~/.bash_profile >/dev/null 2>&1; shellbrain --help'
+bash -lc 'source ~/.bash_profile >/dev/null 2>&1; command -v shellbrain'
 ```
 
 Fish PATH setup is written to `~/.config/fish/conf.d/shellbrain.fish`; open a new fish session and run `shellbrain --help`.
 
-If the wrapped login-shell check still cannot find `shellbrain`, inspect Python's user script directory:
+Do not keep sourcing the login profile on every Shellbrain command. Sourcing is only necessary when a fresh tool shell does not yet have the login PATH needed to find the CLI. Once `shellbrain` is visible, use plain `shellbrain ...`. If the host tool keeps starting fresh shells without your login PATH, reuse the absolute path returned by `command -v shellbrain` instead of re-sourcing the profile on every call.
+
+If the one-time login-shell retry still cannot find `shellbrain`, inspect Python's user script directory:
 
 ```bash
 python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))"
@@ -108,10 +110,10 @@ If that directory contains `shellbrain`, call it directly or add that directory 
 
 The repo Dockerfile is for packaging and development smoke coverage. It is not the end-user runtime path.
 
-Then use the same wrapper shape for real commands when needed:
+Steady-state usage, once the CLI is visible, should look like:
 
 ```bash
-zsh -lc "source ~/.zprofile >/dev/null 2>&1; shellbrain read --json '{\"query\":\"Have we seen this migration lock timeout before?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\"]}'"
+shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
 ```
 
 ## Repo Targeting

@@ -43,13 +43,13 @@ Use Shellbrain normally after `doctor` shows the machine bootstrap is `ready` an
 
 If `doctor` reports `repair_needed`, rerun `shellbrain init` instead of trying to patch Shellbrain manually.
 
-In Codex desktop and similar tool shells, if direct `shellbrain` calls fail in the current session, retry through a login shell that sources `~/.zprofile`:
+In Codex desktop and similar tool shells, if direct `shellbrain` calls fail in the current session, do a one-time login-shell retry that sources `~/.zprofile` and resolves the CLI path:
 
 ```bash
-zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'
+zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain'
 ```
 
-Assume Shellbrain comes from a one-time machine install. Do not rerun `init` just because a new agent starts. If direct calls fail in the current Codex session, keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper for Shellbrain invocations before declaring Shellbrain blocked. Only if the wrapped check fails should you ask the operator to restore the machine-level install.
+Assume Shellbrain comes from a one-time machine install. Do not rerun `init` just because a new agent starts. Do not keep sourcing the login profile on every Shellbrain command. The login-shell step is only a one-time availability and PATH check when direct calls fail. Once `shellbrain` is visible, use plain `shellbrain ...`. If the host tool keeps starting fresh shells without your login PATH, resolve the absolute path once with `command -v shellbrain` and reuse that path for later invocations. Only if the one-time login-shell retry fails should you ask the operator to restore the machine-level install.
 
 Drop into the advanced/operator path only when `doctor` says the managed runtime is blocked.
 
@@ -228,7 +228,7 @@ Important modeling pattern for changed truth:
   Do not rerun `init`. Start with `read`. Use `doctor` only if readiness is unclear.
 
 - `shellbrain: command not found`
-  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; shellbrain --help'` first. Only if that still fails should you ask the operator to restore the one-time machine install.
+  Retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain'` first. Do not keep prefixing every Shellbrain command with profile sourcing. Only if that still fails should you ask the operator to restore the one-time machine install.
 
 - `shellbrain init` fails or `doctor` shows `repair_needed`
   Rerun `shellbrain init`. That is the normal repair path.

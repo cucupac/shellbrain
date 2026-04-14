@@ -54,10 +54,34 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
         "what should I know about this repo?",
         "sysconfig.get_path('scripts', 'posix_user')",
         "~/.bash_profile",
+        "Do not keep sourcing the login profile on every Shellbrain command.",
     ]
 
     for phrase in required_phrases:
         assert all(phrase in text for text in texts)
+
+
+def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> None:
+    """The longer workflow docs should forbid per-command profile sourcing."""
+
+    repo_root = Path(__file__).resolve().parents[2]
+    external_quickstart = _read_text(repo_root / "docs" / "external-quickstart.md")
+    session_workflow = _read_text(
+        repo_root
+        / "app"
+        / "onboarding_assets"
+        / "codex"
+        / "shellbrain-session-start"
+        / "references"
+        / "session-workflow.md"
+    )
+
+    required_phrase = "Do not keep sourcing the login profile on every Shellbrain command."
+
+    assert required_phrase in external_quickstart
+    assert required_phrase in session_workflow
+    assert "Then use the same wrapper shape for real commands when needed:" not in external_quickstart
+    assert "keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper" not in session_workflow
 
 
 def test_cli_help_should_share_the_short_protocol() -> None:
