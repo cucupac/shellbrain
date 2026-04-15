@@ -714,9 +714,13 @@ def _run_admin_command(args: argparse.Namespace) -> int:
     """Execute one admin command."""
 
     if args.admin_command == "migrate":
-        from app.boot.migrations import upgrade_database
+        from app.boot.migrations import DatabaseRevisionAheadOfInstalledPackageError, upgrade_database
 
-        upgrade_database()
+        try:
+            upgrade_database()
+        except DatabaseRevisionAheadOfInstalledPackageError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
         print("Applied shellbrain schema migrations to head.")
         return 0
 

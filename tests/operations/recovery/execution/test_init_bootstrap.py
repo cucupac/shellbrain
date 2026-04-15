@@ -131,6 +131,53 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: P
     assert marked == ["managed port already claimed"]
 
 
+def test_run_init_should_block_cleanly_when_installed_package_is_older_than_database_revision(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    """init should report one blocked conflict instead of leaking an Alembic traceback on schema-version mismatch."""
+
+    from app.boot.migrations import DatabaseRevisionAheadOfInstalledPackageError
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    initial_config = _machine_config(bootstrap_state="provisioning", last_error=None)
+    marked: list[str] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
+    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
+    monkeypatch.setattr(
+        "app.boot.migrations.upgrade_database",
+        lambda: (_ for _ in ()).throw(
+            DatabaseRevisionAheadOfInstalledPackageError(
+                "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."
+            )
+        ),
+    )
+    monkeypatch.setattr(init_module, "_mark_repair_needed", lambda message: marked.append(message))
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=False,
+        skip_model_download=False,
+        skip_host_assets=True,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
+    assert result.lines == ["Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."]
+    assert marked == ["Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."]
+
+
 def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path, monkeypatch) -> None:
     """plain init should succeed outside a repo and defer repo registration until first use."""
 
