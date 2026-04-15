@@ -54,6 +54,18 @@ def build_doctor_report(
     disk = shutil.disk_usage(home_root if home_root.exists() else home_root.parent)
     repo_report = _build_repo_report(repo_root=repo_root)
     host_integrations = inspect_host_assets()
+    cursor_statusline = getattr(
+        host_integrations,
+        "cursor_statusline",
+        {
+            "installed": False,
+            "managed": False,
+            "malformed": False,
+            "path": None,
+            "command_executable": None,
+            "executable_exists": None,
+        },
+    )
     runtime_warnings = _runtime_warnings(machine_config)
 
     report: dict[str, Any] = {
@@ -88,6 +100,7 @@ def build_doctor_report(
             "claude_startup_guidance": host_integrations.claude_startup_guidance,
             "claude_skill": host_integrations.claude_skill,
             "cursor_skill": host_integrations.cursor_skill,
+            "cursor_statusline": cursor_statusline,
             "claude_global_hook": host_integrations.claude_global_hook,
         },
         "repo": repo_report,

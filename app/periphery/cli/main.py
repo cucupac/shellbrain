@@ -230,6 +230,15 @@ _ANALYTICS_HELP = dedent(
     """
 )
 
+_BACKFILL_TOKEN_USAGE_HELP = dedent(
+    """\
+    Backfill normalized model-token telemetry from Shellbrain-linked host session files.
+
+    Example:
+      shellbrain admin backfill-token-usage
+    """
+)
+
 _METRICS_HELP = dedent(
     """\
     Generate one lightweight repo-scoped metrics snapshot, write local artifacts, and open a static dashboard.
@@ -469,6 +478,13 @@ def build_parser() -> argparse.ArgumentParser:
         type=int,
         default=2,
         help="Number of trailing days to include in the report. Defaults to 2.",
+    )
+    admin_subparsers.add_parser(
+        "backfill-token-usage",
+        help="Backfill normalized token usage from linked host session files.",
+        description="Backfill normalized token usage from Shellbrain-linked host session files.",
+        epilog=_BACKFILL_TOKEN_USAGE_HELP,
+        formatter_class=_HelpFormatter,
     )
     install_hook_parser = admin_subparsers.add_parser(
         "install-claude-hook",
@@ -769,6 +785,14 @@ def _run_admin_command(args: argparse.Namespace) -> int:
             raise RuntimeError("Shellbrain database is not configured. Run `shellbrain init` first.")
         report = build_analytics_report(engine=get_engine(dsn), days=int(args.days))
         print(json.dumps(report, indent=2, sort_keys=True))
+        return 0
+
+    if args.admin_command == "backfill-token-usage":
+        from app.boot.db import get_engine_instance
+        from app.periphery.admin.model_usage_backfill import backfill_model_usage
+
+        summary = backfill_model_usage(engine=get_engine_instance())
+        print(json.dumps(summary.to_payload(), indent=2, sort_keys=True))
         return 0
 
     repo_root = _resolve_admin_repo_root(getattr(args, "repo_root", None))

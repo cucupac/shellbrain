@@ -51,6 +51,12 @@ def test_read_should_always_append_one_read_summary_row_with_effective_request_m
     assert row["explicit_related_count"] == 1
     assert row["implicit_related_count"] == 1
     assert row["total_returned"] == 3
+    assert row["pack_char_count"] > 0
+    assert row["pack_token_estimate"] > 0
+    assert row["pack_token_estimate_method"] == "json_compact_chars_div4_v1"
+    assert row["direct_token_estimate"] > 0
+    assert row["explicit_related_token_estimate"] > 0
+    assert row["implicit_related_token_estimate"] > 0
 
 
 def test_read_should_always_append_one_read_result_item_row_per_returned_memory_in_display_order(
@@ -143,6 +149,12 @@ def test_read_should_always_record_zero_results_true_when_the_context_pack_is_em
     assert rows[0]["direct_count"] == 0
     assert rows[0]["explicit_related_count"] == 0
     assert rows[0]["implicit_related_count"] == 0
+    assert rows[0]["pack_char_count"] > 0
+    assert rows[0]["pack_token_estimate"] > 0
+    assert rows[0]["pack_token_estimate_method"] == "json_compact_chars_div4_v1"
+    assert rows[0]["direct_token_estimate"] == 0
+    assert rows[0]["explicit_related_token_estimate"] == 0
+    assert rows[0]["implicit_related_token_estimate"] == 0
 
 
 def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) -> None:

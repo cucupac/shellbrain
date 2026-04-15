@@ -353,6 +353,45 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
     assert "Codex skill: installed at /tmp/codex" in capsys.readouterr().out
 
 
+def test_admin_backfill_token_usage_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """admin backfill-token-usage help should explain the retroactive telemetry path."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["admin", "backfill-token-usage", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "Backfill normalized token usage" in output
+    assert "backfill-token-usage" in output
+
+
+def test_admin_backfill_token_usage_should_print_the_summary(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
+    """admin backfill-token-usage should render the backfill summary as JSON."""
+
+    monkeypatch.setattr("app.boot.db.get_engine_instance", lambda: "engine")
+    monkeypatch.setattr(
+        "app.periphery.admin.model_usage_backfill.backfill_model_usage",
+        lambda **kwargs: type(
+            "Summary",
+            (),
+            {
+                "to_payload": lambda self: {
+                    "sessions_examined": 3,
+                    "sessions_with_records": 2,
+                    "records_attempted": 5,
+                }
+            },
+        )(),
+    )
+
+    exit_code = cli_main.main(["admin", "backfill-token-usage"])
+
+    assert exit_code == 0
+    output = capsys.readouterr().out
+    assert '"sessions_examined": 3' in output
+    assert '"records_attempted": 5' in output
+
+
 def test_admin_analytics_should_print_the_report(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
     """admin analytics should render the built analytics report as JSON."""
 

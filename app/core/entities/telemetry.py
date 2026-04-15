@@ -66,6 +66,12 @@ class ReadSummaryRecord:
     implicit_related_count: int
     total_returned: int
     zero_results: bool
+    pack_char_count: int | None
+    pack_token_estimate: int | None
+    pack_token_estimate_method: str | None
+    direct_token_estimate: int | None
+    explicit_related_token_estimate: int | None
+    implicit_related_token_estimate: int | None
     created_at: datetime
 
 
@@ -150,3 +156,30 @@ class EpisodeSyncToolTypeRecord:
     sync_run_id: str
     tool_type: str
     event_count: int
+
+
+@dataclass(frozen=True)
+class ModelUsageRecord:
+    """One normalized host model-usage event tied to a repo session."""
+
+    id: str
+    repo_id: str
+    thread_id: str | None
+    episode_id: str | None
+    host_app: str
+    host_session_key: str
+    host_usage_key: str
+    source_kind: str
+    occurred_at: datetime
+    agent_role: str
+    provider: str | None
+    model_id: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    reasoning_output_tokens: int | None
+    cached_input_tokens_total: int | None
+    cache_read_input_tokens: int | None
+    cache_creation_input_tokens: int | None
+    capture_quality: str
+    raw_usage_json: dict[str, Any] = field(default_factory=dict)
+    created_at: datetime | None = None

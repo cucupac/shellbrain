@@ -157,6 +157,54 @@ def normalize_claude_code_transcript(
     return events
 
 
+def extract_claude_code_model_usage(
+    *,
+    host_session_key: str,
+    transcript_path: Path,
+) -> list[dict[str, Any]]:
+    """Extract per-request token usage from one Claude Code transcript."""
+
+    rows: list[dict[str, Any]] = []
+    seen_usage_keys: set[str] = set()
+    with transcript_path.open(encoding="utf-8") as handle:
+        for line_number, raw_line in enumerate(handle, start=1):
+            raw_line = raw_line.rstrip("\n")
+            if not raw_line:
+                continue
+            payload = json.loads(raw_line)
+            if payload.get("type") != "assistant":
+                continue
+            message = payload.get("message", {})
+            usage = message.get("usage")
+            if not isinstance(usage, dict):
+                continue
+            host_usage_key = str(payload.get("requestId") or payload.get("uuid") or _fallback_key(payload, raw_line, line_number))
+            if host_usage_key in seen_usage_keys:
+                continue
+            seen_usage_keys.add(host_usage_key)
+            cache_read_input_tokens = usage.get("cache_read_input_tokens")
+            cache_creation_input_tokens = usage.get("cache_creation_input_tokens")
+            rows.append(
+                {
+                    "host_usage_key": host_usage_key,
+                    "source_kind": "claude_transcript",
+                    "occurred_at": str(payload.get("timestamp") or ""),
+                    "agent_role": "foreground",
+                    "provider": "anthropic",
+                    "model_id": message.get("model") if isinstance(message.get("model"), str) else None,
+                    "input_tokens": usage.get("input_tokens"),
+                    "output_tokens": usage.get("output_tokens"),
+                    "reasoning_output_tokens": 0,
+                    "cached_input_tokens_total": _coerce_int(cache_read_input_tokens) + _coerce_int(cache_creation_input_tokens),
+                    "cache_read_input_tokens": cache_read_input_tokens,
+                    "cache_creation_input_tokens": cache_creation_input_tokens,
+                    "capture_quality": "exact",
+                    "raw_usage_json": usage,
+                }
+            )
+    return rows
+
+
 def _read_metadata(metadata_path: Path) -> dict[str, Any]:
     """Read one Claude Code local session metadata file."""
 
@@ -385,3 +433,18 @@ def _fallback_key(payload: dict[str, Any], raw_line: str, line_number: int) -> s
         return explicit
     digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
     return f"claude-line-{line_number}-{digest}"
+
+
+def _coerce_int(value: Any) -> int:
+    """Return a non-negative integer from a Claude usage field."""
+
+    if isinstance(value, int):
+        return max(value, 0)
+    if isinstance(value, float):
+        return max(int(value), 0)
+    if isinstance(value, str) and value.strip():
+        try:
+            return max(int(value), 0)
+        except ValueError:
+            return 0
+    return 0

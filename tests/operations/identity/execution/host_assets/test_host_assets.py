@@ -29,6 +29,7 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     claude_review_root = home_root / ".claude" / "skills" / "shellbrain-usage-review"
     cursor_skill_root = cursor_home / "skills" / "shellbrain-session-start"
     cursor_review_root = cursor_home / "skills" / "shellbrain-usage-review"
+    cursor_cli_config_path = cursor_home / "cli-config.json"
     claude_settings_path = home_root / ".claude" / "settings.json"
 
     assert codex_agents_path.exists()
@@ -40,12 +41,14 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     assert (claude_review_root / "SKILL.md").exists()
     assert (cursor_skill_root / "SKILL.md").exists()
     assert (cursor_review_root / "SKILL.md").exists()
+    assert cursor_cli_config_path.exists()
     assert claude_settings_path.exists()
     assert inspection.codex_startup_guidance["managed"] is True
     assert inspection.codex_skill["managed"] is True
     assert inspection.claude_startup_guidance["managed"] is True
     assert inspection.claude_skill["managed"] is True
     assert inspection.cursor_skill["managed"] is True
+    assert inspection.cursor_statusline["managed"] is True
     assert inspection.claude_global_hook["managed"] is True
     assert inspection.claude_global_hook["command_executable"] == str(Path(sys.executable).resolve())
     assert inspection.claude_global_hook["executable_exists"] is True
@@ -57,6 +60,7 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     assert any(line.startswith("Claude skill (shellbrain-usage-review): installed at ") for line in result.lines)
     assert any(line.startswith("Cursor skill (shellbrain-session-start): installed at ") for line in result.lines)
     assert any(line.startswith("Cursor skill (shellbrain-usage-review): installed at ") for line in result.lines)
+    assert any(line.startswith("Cursor statusline: installed at ") for line in result.lines)
     assert any(line.startswith("Claude global hook: installed at ") for line in result.lines)
 
 
@@ -186,6 +190,29 @@ def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without
         f"Cursor skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
     )
     assert any(line.startswith("Cursor skill (shellbrain-usage-review): installed at ") for line in result.lines)
+    assert any(line.startswith("Cursor statusline: installed at ") for line in result.lines)
+
+
+def test_install_host_assets_should_not_overwrite_unmanaged_cursor_statusline_without_force(monkeypatch, tmp_path: Path) -> None:
+    """Cursor installs should skip unmanaged statusLine config unless force is requested."""
+
+    home_root = tmp_path / "home"
+    cursor_home = home_root / ".cursor"
+    config_path = cursor_home / "cli-config.json"
+    config_path.parent.mkdir(parents=True)
+    config_path.write_text(
+        '{"statusLine":{"type":"command","command":"~/custom-statusline.sh"}}\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("HOME", str(home_root))
+    monkeypatch.setenv("CURSOR_HOME", str(cursor_home))
+
+    result = install_host_assets(host_mode="cursor", force=False)
+
+    assert any(
+        line == f"Cursor statusline: skipped (unmanaged statusLine exists in {config_path}; rerun with --force to replace)"
+        for line in result.lines
+    )
 
 
 def test_install_host_assets_should_update_managed_codex_skill_idempotently(monkeypatch, tmp_path: Path) -> None:
