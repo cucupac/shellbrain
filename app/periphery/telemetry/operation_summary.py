@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import json
 from typing import Any
 
 from app.core.contracts.errors import ErrorCode
@@ -97,6 +98,8 @@ def build_read_summary_records(
             )
             ordinal += 1
 
+    pack_size = estimate_read_pack_size(pack=pack)
+
     summary = ReadSummaryRecord(
         invocation_id=invocation_id,
         query_text=request.query,
@@ -110,9 +113,29 @@ def build_read_summary_records(
         implicit_related_count=len(implicit_related),
         total_returned=len(items),
         zero_results=len(items) == 0,
+        pack_char_count=int(pack_size["pack_char_count"]),
+        pack_token_estimate=int(pack_size["pack_token_estimate"]),
+        pack_token_estimate_method=str(pack_size["pack_token_estimate_method"]),
+        direct_token_estimate=int(pack_size["direct_token_estimate"]),
+        explicit_related_token_estimate=int(pack_size["explicit_related_token_estimate"]),
+        implicit_related_token_estimate=int(pack_size["implicit_related_token_estimate"]),
         created_at=datetime.now(timezone.utc),
     )
     return summary, items
+
+
+def estimate_read_pack_size(*, pack: dict[str, Any]) -> dict[str, int | str]:
+    """Estimate one read-pack footprint with one stable local heuristic."""
+
+    serialized_pack = _compact_json(pack)
+    return {
+        "pack_char_count": len(serialized_pack),
+        "pack_token_estimate": _estimate_tokens_from_text(serialized_pack),
+        "pack_token_estimate_method": "json_compact_chars_div4_v1",
+        "direct_token_estimate": _estimate_section_tokens(pack.get("direct")),
+        "explicit_related_token_estimate": _estimate_section_tokens(pack.get("explicit_related")),
+        "implicit_related_token_estimate": _estimate_section_tokens(pack.get("implicit_related")),
+    }
 
 
 def build_write_summary_records(
@@ -297,3 +320,27 @@ def _optional_string(value: object) -> str | None:
     """Return a string value or None when the field is absent."""
 
     return str(value) if isinstance(value, str) else None
+
+
+def _estimate_section_tokens(section: Any) -> int:
+    """Estimate tokens for one pack section while treating empty sections as zero."""
+
+    if isinstance(section, list) and not section:
+        return 0
+    if section in (None, {}):
+        return 0
+    return _estimate_tokens_from_text(_compact_json(section))
+
+
+def _estimate_tokens_from_text(text: str) -> int:
+    """Return one stable local token estimate from compact text length."""
+
+    if not text:
+        return 0
+    return (len(text) + 3) // 4
+
+
+def _compact_json(value: Any) -> str:
+    """Render one deterministic compact JSON string for token estimation."""
+
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)

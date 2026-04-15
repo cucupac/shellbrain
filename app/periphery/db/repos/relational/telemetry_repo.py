@@ -6,11 +6,13 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 from sqlalchemy import delete, func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.entities.guidance import PendingUtilityCandidate
 from app.core.entities.telemetry import (
     EpisodeSyncRunRecord,
     EpisodeSyncToolTypeRecord,
+    ModelUsageRecord,
     OperationInvocationRecord,
     ReadResultItemRecord,
     ReadSummaryRecord,
@@ -22,6 +24,7 @@ from app.core.interfaces.repos import ITelemetryRepo
 from app.periphery.db.models.telemetry import (
     episode_sync_runs,
     episode_sync_tool_types,
+    model_usage,
     operation_invocations,
     read_invocation_summaries,
     read_result_items,
@@ -86,6 +89,21 @@ class TelemetryRepo(ITelemetryRepo):
         self._session.execute(episode_sync_runs.insert().values(**asdict(run)))
         if tool_types:
             self._session.execute(episode_sync_tool_types.insert(), [asdict(item) for item in tool_types])
+
+    def insert_model_usage(self, records: tuple[ModelUsageRecord, ...] | list[ModelUsageRecord]) -> None:
+        """Append normalized model-usage rows idempotently."""
+
+        if not records:
+            return
+        rows = []
+        for record in records:
+            payload = asdict(record)
+            if payload["created_at"] is None:
+                payload["created_at"] = datetime.now(timezone.utc)
+            rows.append(payload)
+        statement = pg_insert(model_usage).values(rows)
+        statement = statement.on_conflict_do_nothing(constraint="uq_model_usage_host_session_usage")
+        self._session.execute(statement)
 
     def update_operation_polling(self, invocation_id: str, *, attempted: bool, started: bool) -> None:
         """Patch poller-start bookkeeping on an existing invocation row."""

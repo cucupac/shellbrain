@@ -158,6 +158,38 @@ def test_episode_sync_runs_should_always_record_tool_type_counts_from_the_normal
     assert rows[0]["event_count"] == 1
 
 
+def test_events_should_always_append_model_usage_rows_for_inline_sync(
+    codex_transcript_fixture: dict[str, object],
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    assert_relation_exists,
+    fetch_relation_rows,
+) -> None:
+    """events should always persist normalized model usage after inline transcript sync."""
+
+    result = handle_events(
+        {},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={
+            "codex": list(codex_transcript_fixture["search_roots"]),
+            "claude_code": [],
+        },
+    )
+
+    assert result["status"] == "ok"
+    assert_relation_exists("model_usage")
+    rows = fetch_relation_rows("model_usage", order_by="occurred_at ASC, host_usage_key ASC")
+
+    assert len(rows) == 1
+    assert rows[0]["repo_id"] == "shellbrain"
+    assert rows[0]["host_app"] == "codex"
+    assert rows[0]["input_tokens"] == 1200
+    assert rows[0]["output_tokens"] == 90
+    assert rows[0]["cached_input_tokens_total"] == 300
+    assert rows[0]["reasoning_output_tokens"] == 25
+
+
 def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_cursor(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -223,3 +255,32 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
     assert discovery_calls["cursor"] >= 2
     assert len(sync_calls) == 1
     assert sync_calls[0]["host_app"] == "cursor"
+
+
+def test_poller_sync_should_always_append_model_usage_rows(
+    codex_transcript_fixture: dict[str, object],
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+    assert_relation_exists,
+    fetch_relation_rows,
+) -> None:
+    """poller sync should always persist normalized model usage rows."""
+
+    monkeypatch.setattr("app.periphery.episodes.poller.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.periphery.episodes.poller.acquire_poller_lock", lambda **kwargs: _NoOpLock())
+    monkeypatch.setattr("app.periphery.episodes.poller.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
+    monkeypatch.setattr("app.periphery.episodes.poller.POLL_INTERVAL_SECONDS", 0)
+    monkeypatch.setattr("app.periphery.episodes.poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr(
+        "app.periphery.episodes.poller.default_search_roots",
+        lambda *, repo_root, host_app: list(codex_transcript_fixture["search_roots"]) if host_app == "codex" else [],
+    )
+
+    run_episode_poller(repo_id="shellbrain", repo_root=Path.cwd().resolve())
+
+    assert_relation_exists("model_usage")
+    rows = fetch_relation_rows("model_usage", order_by="occurred_at ASC, host_usage_key ASC")
+
+    assert len(rows) == 1
+    assert rows[0]["host_app"] == "codex"
+    assert rows[0]["source_kind"] == "codex_transcript"

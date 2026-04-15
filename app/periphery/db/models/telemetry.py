@@ -1,6 +1,6 @@
 """SQLAlchemy Core tables for low-overhead usage telemetry storage."""
 
-from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, String, Table, Text, text
+from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Index, Integer, String, Table, Text, UniqueConstraint, and_, text
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 
 from app.periphery.db.models.metadata import metadata
@@ -54,6 +54,12 @@ read_invocation_summaries = Table(
     Column("implicit_related_count", Integer, nullable=False),
     Column("total_returned", Integer, nullable=False),
     Column("zero_results", Boolean, nullable=False),
+    Column("pack_char_count", Integer),
+    Column("pack_token_estimate", Integer),
+    Column("pack_token_estimate_method", String),
+    Column("direct_token_estimate", Integer),
+    Column("explicit_related_token_estimate", Integer),
+    Column("implicit_related_token_estimate", Integer),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
 )
 
@@ -155,6 +161,33 @@ episode_sync_tool_types = Table(
     Column("event_count", Integer, nullable=False),
 )
 
+model_usage = Table(
+    "model_usage",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column("repo_id", String, nullable=False),
+    Column("thread_id", String),
+    Column("episode_id", String),
+    Column("host_app", String, nullable=False),
+    Column("host_session_key", String, nullable=False),
+    Column("host_usage_key", String, nullable=False),
+    Column("source_kind", String, nullable=False),
+    Column("occurred_at", TIMESTAMP(timezone=True), nullable=False),
+    Column("agent_role", String, nullable=False, server_default=text("'foreground'")),
+    Column("provider", String),
+    Column("model_id", String),
+    Column("input_tokens", BigInteger),
+    Column("output_tokens", BigInteger),
+    Column("reasoning_output_tokens", BigInteger),
+    Column("cached_input_tokens_total", BigInteger),
+    Column("cache_read_input_tokens", BigInteger),
+    Column("cache_creation_input_tokens", BigInteger),
+    Column("capture_quality", String, nullable=False, server_default=text("'exact'")),
+    Column("raw_usage_json", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
+    UniqueConstraint("host_app", "host_session_key", "host_usage_key", name="uq_model_usage_host_session_usage"),
+)
+
 Index("idx_operation_invocations_repo_created_at", operation_invocations.c.repo_id, operation_invocations.c.created_at)
 Index("idx_operation_invocations_command_created_at", operation_invocations.c.command, operation_invocations.c.created_at)
 Index(
@@ -162,6 +195,17 @@ Index(
     operation_invocations.c.selected_thread_id,
     operation_invocations.c.created_at,
     postgresql_where=operation_invocations.c.selected_thread_id.is_not(None),
+)
+Index(
+    "idx_operation_invocations_successful_read_thread_created_at",
+    operation_invocations.c.repo_id,
+    operation_invocations.c.selected_thread_id,
+    operation_invocations.c.created_at,
+    postgresql_where=and_(
+        operation_invocations.c.command == "read",
+        operation_invocations.c.outcome == "ok",
+        operation_invocations.c.selected_thread_id.is_not(None),
+    ),
 )
 Index("idx_read_result_items_memory_invocation", read_result_items.c.memory_id, read_result_items.c.invocation_id)
 Index(
@@ -172,3 +216,11 @@ Index(
 )
 Index("idx_episode_sync_runs_repo_host_created_at", episode_sync_runs.c.repo_id, episode_sync_runs.c.host_app, episode_sync_runs.c.created_at)
 Index("idx_episode_sync_runs_thread_created_at", episode_sync_runs.c.thread_id, episode_sync_runs.c.created_at)
+Index("idx_model_usage_repo_thread_occurred_at", model_usage.c.repo_id, model_usage.c.thread_id, model_usage.c.occurred_at)
+Index(
+    "idx_model_usage_repo_host_session_occurred_at",
+    model_usage.c.repo_id,
+    model_usage.c.host_app,
+    model_usage.c.host_session_key,
+    model_usage.c.occurred_at,
+)

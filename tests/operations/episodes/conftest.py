@@ -77,6 +77,22 @@ def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "summary": "pytest failed",
             "text": "1 failed, 127 passed",
         },
+        {
+            "timestamp": "2026-03-12T01:44:31Z",
+            "type": "event_msg",
+            "payload": {
+                "type": "token_count",
+                "info": {
+                    "last_token_usage": {
+                        "input_tokens": 1200,
+                        "cached_input_tokens": 300,
+                        "output_tokens": 90,
+                        "reasoning_output_tokens": 25,
+                    },
+                    "model_context_window": 258400,
+                },
+            },
+        },
     ]
     _write_jsonl(transcript_path, [session_meta, *entries])
     return {
@@ -135,8 +151,15 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "timestamp": "2026-03-12T02:01:15Z",
             "type": "assistant",
             "message": {
+                "model": "claude-opus-4-6",
                 "role": "assistant",
                 "content": [{"type": "text", "text": "I will inspect the workflow."}],
+                "usage": {
+                    "input_tokens": 80,
+                    "cache_creation_input_tokens": 20,
+                    "cache_read_input_tokens": 10,
+                    "output_tokens": 12,
+                },
             },
         },
         {
@@ -234,6 +257,12 @@ def cursor_transcript_fixture(tmp_path: Path) -> dict[str, object]:
                 "createdAt": 1_774_450_802_000,
                 "type": 2,
                 "text": "I will inspect the workflow.",
+                "requestId": "cursor-request-1",
+                "model": "claude-3-7-sonnet",
+                "tokenCount": {
+                    "inputTokens": 44,
+                    "outputTokens": 11,
+                },
             },
             f"bubbleId:{composer_id}:{rich_text_bubble_id}": {
                 "bubbleId": rich_text_bubble_id,
@@ -262,7 +291,13 @@ def cursor_transcript_fixture(tmp_path: Path) -> dict[str, object]:
                 "bubbleId": tool_bubble_id,
                 "createdAt": 1_774_450_804_000,
                 "type": 2,
+                "requestId": "cursor-request-2",
+                "model": "claude-3-7-sonnet",
                 "text": "The test run failed.",
+                "tokenCount": {
+                    "inputTokens": 30,
+                    "outputTokens": 8,
+                },
                 "toolResults": [
                     {
                         "toolName": "Bash",

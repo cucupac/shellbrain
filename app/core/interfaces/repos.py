@@ -12,6 +12,7 @@ from app.core.entities.memory import Memory
 from app.core.entities.telemetry import (
     EpisodeSyncRunRecord,
     EpisodeSyncToolTypeRecord,
+    ModelUsageRecord,
     OperationInvocationRecord,
     ReadResultItemRecord,
     ReadSummaryRecord,
@@ -274,6 +275,10 @@ class ITelemetryRepo(ABC):
         tool_types: Sequence[EpisodeSyncToolTypeRecord],
     ) -> None:
         """This method appends one sync-run row and its per-tool aggregates."""
+
+    @abstractmethod
+    def insert_model_usage(self, records: Sequence[ModelUsageRecord]) -> None:
+        """This method appends normalized model-usage rows idempotently."""
 
     @abstractmethod
     def update_operation_polling(self, invocation_id: str, *, attempted: bool, started: bool) -> None:

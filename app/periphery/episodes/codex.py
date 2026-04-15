@@ -144,6 +144,51 @@ def normalize_codex_transcript(*, host_session_key: str, transcript_path: Path) 
     return events
 
 
+def extract_codex_model_usage(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
+    """Extract per-call token usage from one Codex transcript."""
+
+    rows: list[dict[str, Any]] = []
+    with transcript_path.open(encoding="utf-8") as handle:
+        for line_number, raw_line in enumerate(handle, start=1):
+            raw_line = raw_line.rstrip("\n")
+            if not raw_line:
+                continue
+            payload = json.loads(raw_line)
+            if payload.get("type") != "event_msg":
+                continue
+            item = payload.get("payload", {})
+            if item.get("type") != "token_count":
+                continue
+            info = item.get("info")
+            if not isinstance(info, dict):
+                continue
+            usage = info.get("last_token_usage")
+            if not isinstance(usage, dict):
+                continue
+            rows.append(
+                {
+                    "host_usage_key": _usage_key(raw_line=raw_line, line_number=line_number, prefix="codex-token-count"),
+                    "source_kind": "codex_transcript",
+                    "occurred_at": str(payload.get("timestamp") or ""),
+                    "agent_role": "foreground",
+                    "provider": "openai",
+                    "model_id": None,
+                    "input_tokens": usage.get("input_tokens"),
+                    "output_tokens": usage.get("output_tokens"),
+                    "reasoning_output_tokens": usage.get("reasoning_output_tokens"),
+                    "cached_input_tokens_total": usage.get("cached_input_tokens"),
+                    "cache_read_input_tokens": 0,
+                    "cache_creation_input_tokens": 0,
+                    "capture_quality": "exact",
+                    "raw_usage_json": {
+                        "last_token_usage": usage,
+                        "model_context_window": info.get("model_context_window"),
+                    },
+                }
+            )
+    return rows
+
+
 def _normalize_simple_message(payload: dict[str, Any], *, host_session_key: str) -> dict[str, Any] | None:
     """Normalize the synthetic message shape used by tests."""
 
@@ -421,3 +466,10 @@ def _hash_event(payload: dict[str, Any]) -> str:
 
     encoded = json.dumps(payload, sort_keys=True)
     return hashlib.sha1(encoded.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+
+
+def _usage_key(*, raw_line: str, line_number: int, prefix: str) -> str:
+    """Build one stable usage key for a transcript line."""
+
+    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+    return f"{prefix}-{line_number}-{digest}"

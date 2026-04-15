@@ -138,6 +138,58 @@ def normalize_cursor_transcript(*, host_session_key: str, transcript_path: Path)
     return events
 
 
+def extract_cursor_model_usage(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
+    """Extract per-bubble token usage from one Cursor global state database."""
+
+    composer = _read_cursor_json(transcript_path, f"composerData:{host_session_key}")
+    if not isinstance(composer, dict):
+        raise FileNotFoundError(
+            f"Cursor transcript source for session '{host_session_key}' could not be found."
+        )
+
+    generating_ids = {
+        bubble_id
+        for bubble_id in composer.get("generatingBubbleIds", [])
+        if isinstance(bubble_id, str) and bubble_id
+    }
+    rows: list[dict[str, Any]] = []
+    for header in composer.get("fullConversationHeadersOnly", []):
+        if not isinstance(header, dict):
+            continue
+        bubble_id = header.get("bubbleId")
+        if not isinstance(bubble_id, str) or not bubble_id or bubble_id in generating_ids:
+            continue
+        bubble = _read_cursor_json(transcript_path, f"bubbleId:{host_session_key}:{bubble_id}")
+        if not isinstance(bubble, dict):
+            continue
+        token_count = bubble.get("tokenCount")
+        if not isinstance(token_count, dict):
+            continue
+        model_id = _cursor_model_id(bubble)
+        rows.append(
+            {
+                "host_usage_key": str(_first_string(bubble, ("requestId", "responseId", "conversationRequestId")) or bubble_id),
+                "source_kind": "cursor_state_vscdb",
+                "occurred_at": _timestamp_to_iso(bubble.get("createdAt")),
+                "agent_role": "foreground",
+                "provider": _provider_from_model_id(model_id),
+                "model_id": model_id,
+                "input_tokens": token_count.get("inputTokens", token_count.get("input_tokens")),
+                "output_tokens": token_count.get("outputTokens", token_count.get("output_tokens")),
+                "reasoning_output_tokens": token_count.get("reasoningOutputTokens", token_count.get("reasoning_output_tokens")),
+                "cached_input_tokens_total": token_count.get("cachedInputTokens", token_count.get("cached_input_tokens")),
+                "cache_read_input_tokens": token_count.get("cacheReadInputTokens", token_count.get("cache_read_input_tokens")),
+                "cache_creation_input_tokens": token_count.get("cacheCreationInputTokens", token_count.get("cache_creation_input_tokens")),
+                "capture_quality": "exact",
+                "raw_usage_json": {
+                    "tokenCount": token_count,
+                    "bubbleId": bubble_id,
+                },
+            }
+        )
+    return rows
+
+
 def _cursor_user_roots(search_roots: Sequence[Path]) -> list[Path]:
     """Normalize search roots into Cursor user roots."""
 
@@ -658,6 +710,33 @@ def _timestamp_to_iso(value: Any) -> str:
     if epoch_seconds is None:
         return ""
     return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _cursor_model_id(bubble: dict[str, Any]) -> str | None:
+    """Extract one model identifier from a Cursor bubble when present."""
+
+    direct = _first_string(bubble, ("model", "modelId"))
+    if direct is not None:
+        return direct
+    model_info = bubble.get("modelInfo")
+    if isinstance(model_info, dict):
+        return _first_string(model_info, ("id", "model", "modelId"))
+    return None
+
+
+def _provider_from_model_id(model_id: str | None) -> str | None:
+    """Infer the model provider from one Cursor-exposed model identifier."""
+
+    if model_id is None:
+        return None
+    lowered = model_id.lower()
+    if lowered.startswith("claude"):
+        return "anthropic"
+    if lowered.startswith(("gpt", "o1", "o3", "o4", "codex")) or "openai" in lowered:
+        return "openai"
+    if lowered.startswith("gemini"):
+        return "google"
+    return None
 
 
 def sys_platform_linux() -> bool:

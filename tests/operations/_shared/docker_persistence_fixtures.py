@@ -74,6 +74,7 @@ class IsolatedDockerPostgres:
         self.password = f"shellbrain_{self.identifier}"
         self.data_dir = self.base_dir / "postgres-data"
         self.dump_dir = self.base_dir / "dump"
+        self.shellbrain_home = self.base_dir / ".shellbrain-home"
         self._engine = None
         self._session_factory = None
         self._sentinel = SentinelDataset(
@@ -119,6 +120,7 @@ class IsolatedDockerPostgres:
             env_overrides={
                 "SHELLBRAIN_DB_DSN": self.dsn,
                 "SHELLBRAIN_DB_ADMIN_DSN": self.dsn,
+                "SHELLBRAIN_HOME": str(self.shellbrain_home),
                 "SHELLBRAIN_INSTANCE_MODE": "test",
             },
         )

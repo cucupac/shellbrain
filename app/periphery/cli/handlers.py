@@ -26,6 +26,7 @@ from app.core.use_cases.manage_session_state import SessionStateManager
 from app.core.use_cases.create_memory import execute_create_memory
 from app.core.use_cases.read_memory import execute_read_memory
 from app.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
+from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
 from app.core.use_cases.record_operation_telemetry import record_operation_telemetry
 from app.core.use_cases.sync_episode import sync_episode
 from app.core.use_cases.update_memory import execute_update_memory
@@ -46,6 +47,7 @@ from app.periphery.cli.schema_validation import (
     validate_update_schema,
 )
 from app.periphery.episodes.normalization import normalize_host_transcript
+from app.periphery.episodes.model_usage import collect_model_usage_records_for_session
 from app.periphery.identity.resolver import (
     discover_untrusted_events_candidate,
     resolve_caller_identity,
@@ -305,6 +307,7 @@ def handle_events(
     selection_summary = SessionSelectionSummary()
     sync_run = None
     sync_tool_types = ()
+    model_usage_records = ()
     try:
         agent_request, errors = validate_events_schema(payload)
         if errors:
@@ -392,6 +395,19 @@ def handle_events(
                         system_event_count=int(sync_result["system_event_count"]),
                         tool_type_counts=dict(sync_result["tool_type_counts"]),
                     )
+                    try:
+                        model_usage_records = tuple(
+                            collect_model_usage_records_for_session(
+                                repo_id=request.repo_id,
+                                host_app=str(source.host_app),
+                                host_session_key=str(source.host_session_key),
+                                thread_id=str(sync_result["thread_id"]),
+                                episode_id=str(sync_result["episode_id"]),
+                                transcript_path=Path(str(sync_result["transcript_path"])),
+                            )
+                        )
+                    except Exception:
+                        model_usage_records = ()
                 except Exception as exc:
                     error_stage = "sync"
                     result = _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
@@ -436,6 +452,7 @@ def handle_events(
         selection_summary=selection_summary,
         sync_run=sync_run,
         sync_tool_types=sync_tool_types,
+        model_usage_records=model_usage_records,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result
@@ -653,6 +670,7 @@ def _persist_operation_telemetry_best_effort(
     selection_summary: SessionSelectionSummary | None = None,
     sync_run=None,
     sync_tool_types=(),
+    model_usage_records=(),
     total_latency_ms: int | None = None,
 ) -> None:
     """Persist invocation telemetry in a second best-effort transaction."""
@@ -715,6 +733,11 @@ def _persist_operation_telemetry_best_effort(
                     uow=telemetry_uow,
                     run=sync_run,
                     tool_types=sync_tool_types,
+                )
+            if model_usage_records:
+                record_model_usage_telemetry(
+                    uow=telemetry_uow,
+                    records=tuple(model_usage_records),
                 )
     except Exception:
         return

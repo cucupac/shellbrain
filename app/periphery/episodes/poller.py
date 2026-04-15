@@ -13,7 +13,9 @@ from uuid import uuid4
 
 from app.boot.use_cases import get_uow_factory
 from app.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
+from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
 from app.core.use_cases.sync_episode import sync_episode_from_host
+from app.periphery.episodes.model_usage import collect_model_usage_records_for_session
 from app.periphery.episodes.poller_lock import acquire_poller_lock, write_poller_pid_artifact
 from app.periphery.episodes.source_discovery import (
     SUPPORTED_HOSTS,
@@ -122,6 +124,19 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
                         last_successful_sync_at=_utc_now().isoformat(),
                         last_error=None,
                     )
+                    try:
+                        model_usage_records = tuple(
+                            collect_model_usage_records_for_session(
+                                repo_id=repo_id,
+                                host_app=host_app,
+                                host_session_key=str(candidate["host_session_key"]),
+                                thread_id=str(sync_result["thread_id"]),
+                                episode_id=str(sync_result["episode_id"]),
+                                transcript_path=Path(str(sync_result["transcript_path"])),
+                            )
+                        )
+                    except Exception:
+                        model_usage_records = ()
                     _record_sync_telemetry_best_effort(
                         uow_factory=uow_factory,
                         repo_id=repo_id,
@@ -141,6 +156,7 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
                         tool_event_count=int(sync_result["tool_event_count"]),
                         system_event_count=int(sync_result["system_event_count"]),
                         tool_type_counts=dict(sync_result["tool_type_counts"]),
+                        model_usage_records=model_usage_records,
                     )
                     saw_change = True
                 except Exception as exc:
@@ -170,6 +186,7 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
                         tool_event_count=0,
                         system_event_count=0,
                         tool_type_counts={},
+                        model_usage_records=(),
                     )
 
             if saw_change:
@@ -279,6 +296,7 @@ def _record_sync_telemetry_best_effort(
     tool_event_count: int,
     system_event_count: int,
     tool_type_counts: dict[str, int],
+    model_usage_records=(),
 ) -> None:
     """Persist one poller sync-run row without affecting the poller loop."""
 
@@ -307,6 +325,11 @@ def _record_sync_telemetry_best_effort(
         )
         with uow_factory() as uow:
             record_episode_sync_telemetry(uow=uow, run=run, tool_types=tool_types)
+            if model_usage_records:
+                record_model_usage_telemetry(
+                    uow=uow,
+                    records=tuple(model_usage_records),
+                )
     except Exception:
         return
 
