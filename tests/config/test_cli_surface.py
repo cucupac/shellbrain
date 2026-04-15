@@ -566,6 +566,27 @@ def test_admin_migrate_should_invoke_packaged_migration_runner(
     assert "Applied shellbrain schema migrations to head." in capsys.readouterr().out
 
 
+def test_admin_migrate_should_fail_cleanly_when_installed_package_is_older_than_database_revision(
+    monkeypatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """admin migrate should print one clear message when the database revision is newer than this package."""
+
+    from app.boot.migrations import DatabaseRevisionAheadOfInstalledPackageError
+
+    monkeypatch.setattr(
+        "app.boot.migrations.upgrade_database",
+        lambda: (_ for _ in ()).throw(
+            DatabaseRevisionAheadOfInstalledPackageError("Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012.")
+        ),
+    )
+
+    exit_code = cli_main.main(["admin", "migrate"])
+
+    assert exit_code == 1
+    assert "cannot manage database revision 20260415_0012" in capsys.readouterr().err
+
+
 def test_operational_command_should_fail_cleanly_when_app_role_is_unsafe(
     monkeypatch,
     tmp_path: Path,

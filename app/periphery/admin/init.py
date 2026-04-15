@@ -469,10 +469,13 @@ def _reconcile_database(config: MachineConfig) -> tuple[bool, MachineConfig]:
 def _apply_schema_migrations(config: MachineConfig) -> bool:
     """Apply packaged schema migrations to the configured Shellbrain database."""
 
-    from app.boot.migrations import upgrade_database
+    from app.boot.migrations import DatabaseRevisionAheadOfInstalledPackageError, upgrade_database
 
     before_revision = _fetch_schema_revision(config.database.admin_dsn)
-    upgrade_database()
+    try:
+        upgrade_database()
+    except DatabaseRevisionAheadOfInstalledPackageError as exc:
+        raise InitConflictError(str(exc)) from exc
     after_revision = _fetch_schema_revision(config.database.admin_dsn)
     return before_revision != after_revision
 
