@@ -4,6 +4,7 @@ from typing import Any, Literal
 
 from pydantic import Field, ValidationError, field_validator
 
+from app.core.contracts.concepts import ConceptCommandRequest
 from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import (
     BatchUtilityVoteItem,
@@ -13,11 +14,18 @@ from app.core.contracts.requests import (
     MemoryCreateLinks,
     MemoryCreateRequest,
     MemoryReadRequest,
+    ReadConceptsExpandRequest,
     MemoryUpdateRequest,
     StrictBaseModel,
     UpdatePayload,
     UtilityVoteUpdate,
 )
+
+
+class AgentReadExpandRequest(StrictBaseModel):
+    """Agent-facing read expansion controls."""
+
+    concepts: ReadConceptsExpandRequest | None = None
 
 
 class AgentReadRequest(StrictBaseModel):
@@ -30,6 +38,7 @@ class AgentReadRequest(StrictBaseModel):
     include_global: bool | None = None
     kinds: list[MemoryKindValue] | None = Field(default=None, min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
+    expand: AgentReadExpandRequest | None = None
 
     @field_validator("kinds")
     @classmethod
@@ -196,5 +205,14 @@ def validate_internal_update_contract(
         if "updates" in payload:
             return MemoryBatchUpdateRequest.model_validate(payload), []
         return MemoryUpdateRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_concept_schema(payload: dict[str, Any]) -> tuple[ConceptCommandRequest | None, list[ErrorDetail]]:
+    """Validate and parse concept endpoint payloads."""
+
+    try:
+        return ConceptCommandRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)

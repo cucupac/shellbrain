@@ -110,8 +110,33 @@ def test_read_kinds_accept_frontier() -> None:
     assert request is not None
 
 
+def test_read_accepts_concept_expansion_at_agent_interface() -> None:
+    """read requests should accept worker-facing concept expansion controls."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {
+            "concepts": {
+                "mode": "explicit",
+                "refs": ["deposit-addresses"],
+                "facets": ["groundings"],
+                "max_auto": 2,
+            }
+        },
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert errors == []
+    assert request is not None
+    assert request.expand is not None
+    assert request.expand.concepts is not None
+    assert request.expand.concepts.mode == "explicit"
+
+
 def test_read_rejects_hidden_expansion_override_knobs_at_agent_interface() -> None:
-    """read requests should always reject hidden expansion override knobs at the agent interface."""
+    """read requests should reject hidden memory expansion knobs at the agent interface."""
 
     payload = {
         "op": "read",
@@ -128,4 +153,84 @@ def test_read_rejects_hidden_expansion_override_knobs_at_agent_interface() -> No
 
     assert request is None
     fields = {error.field for error in errors}
-    assert "expand" in fields
+    assert "expand.semantic_hops" in fields
+
+
+def test_read_rejects_explicit_concept_expansion_without_refs() -> None:
+    """explicit concept expansion should require at least one concept ref."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {"concepts": {"mode": "explicit"}},
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert errors
+
+
+def test_read_rejects_invalid_concept_facets() -> None:
+    """concept facets should stay inside the ratified progressive-disclosure set."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {"concepts": {"mode": "explicit", "refs": ["deposit-addresses"], "facets": ["files"]}},
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert errors
+
+
+def test_read_rejects_concept_max_auto_above_hard_cap() -> None:
+    """auto concept selection should enforce the hard max cap."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {"concepts": {"mode": "auto", "max_auto": 6}},
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert errors
+
+
+def test_read_rejects_too_many_explicit_concept_refs() -> None:
+    """explicit concept expansion should enforce the same hard concept cap."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {
+            "concepts": {
+                "mode": "explicit",
+                "refs": ["one", "two", "three", "four", "five", "six"],
+            }
+        },
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert errors
+
+
+def test_read_rejects_blank_explicit_concept_refs() -> None:
+    """explicit concept refs should be real refs, not blank strings."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {"concepts": {"mode": "explicit", "refs": [""]}},
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert errors

@@ -72,6 +72,8 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
                 usage_problem_read_roi_view = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.usage_read_before_solve_roi');")
                 usage_read_before_solve_roi_view = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.concepts');")
+                concepts_table = cur.fetchone()[0]
                 cur.execute("SELECT version_num FROM alembic_version;")
                 alembic_version = cur.fetchone()[0]
 
@@ -82,6 +84,7 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert usage_session_tokens_view is not None
         assert usage_problem_read_roi_view is not None
         assert usage_read_before_solve_roi_view is not None
-        assert alembic_version == "20260415_0012"
+        assert concepts_table is not None
+        assert alembic_version == "20260422_0014"
     finally:
         drop_temp_database(admin_dsn, db_name)

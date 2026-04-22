@@ -2,6 +2,7 @@
 
 from app.periphery.db.models import (
     associations,
+    concepts,
     episodes,
     evidence,
     experiences,
@@ -13,6 +14,6 @@ from app.periphery.db.models import (
 from app.periphery.db.models.metadata import metadata
 
 
-_ = (associations, episodes, evidence, experiences, instance_metadata, memories, telemetry, utility)
+_ = (associations, concepts, episodes, evidence, experiences, instance_metadata, memories, telemetry, utility)
 
 target_metadata = metadata
