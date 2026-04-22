@@ -20,15 +20,31 @@ def test_read_context_pack_should_always_return_grouped_sections_under_data_pack
     assert "pack" in result.data
 
 
-def test_read_context_pack_should_always_order_sections_as_meta_direct_explicit_related_then_implicit_related(
+def test_read_context_pack_should_always_order_sections_as_meta_direct_explicit_related_implicit_then_concepts(
     uow_factory: Callable[[], PostgresUnitOfWork],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """read context pack should always order sections as meta, direct, explicit_related, then implicit_related."""
+    """read context pack should always order sections as meta, memory sections, then concepts."""
 
     result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
 
-    assert list(result.data["pack"].keys()) == ["meta", "direct", "explicit_related", "implicit_related"]
+    assert list(result.data["pack"].keys()) == ["meta", "direct", "explicit_related", "implicit_related", "concepts"]
+
+
+def test_read_context_pack_should_always_include_stable_concepts_section(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """read context pack should always include a stable concepts section."""
+
+    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
+
+    assert result.data["pack"]["concepts"] == {
+        "mode": "auto",
+        "items": [],
+        "missing_refs": [],
+        "guidance": "No strong concept match found.",
+    }
 
 
 def test_read_context_pack_should_never_echo_the_request_query_in_meta(

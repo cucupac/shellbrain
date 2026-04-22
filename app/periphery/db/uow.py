@@ -5,6 +5,7 @@ from collections.abc import Callable
 from app.core.interfaces.retrieval import IVectorSearch
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.periphery.db.repos.relational.associations_repo import AssociationsRepo
+from app.periphery.db.repos.relational.concepts_repo import ConceptsRepo
 from app.periphery.db.repos.relational.episodes_repo import EpisodesRepo
 from app.periphery.db.repos.relational.evidence_repo import EvidenceRepo
 from app.periphery.db.repos.relational.experiences_repo import ExperiencesRepo
@@ -42,6 +43,7 @@ class PostgresUnitOfWork(IUnitOfWork):
         self.memories = MemoriesRepo(self._session)
         self.experiences = ExperiencesRepo(self._session)
         self.associations = AssociationsRepo(self._session)
+        self.concepts = ConceptsRepo(self._session)
         self.utility = UtilityRepo(self._session)
         self.episodes = EpisodesRepo(self._session)
         self.evidence = EvidenceRepo(self._session)

@@ -60,6 +60,10 @@ read_invocation_summaries = Table(
     Column("direct_token_estimate", Integer),
     Column("explicit_related_token_estimate", Integer),
     Column("implicit_related_token_estimate", Integer),
+    Column("concept_count", Integer),
+    Column("concept_token_estimate", Integer),
+    Column("concept_refs_returned", JSONB),
+    Column("concept_facets_returned", JSONB),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
 )
 

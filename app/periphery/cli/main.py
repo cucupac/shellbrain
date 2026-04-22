@@ -115,9 +115,28 @@ _READ_HELP = dedent(
       - `direct`
       - `explicit_related`
       - `implicit_related`
+      - `concepts`
 
     Example:
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
+      shellbrain read --json '{"query":"debug deposit address refund failure","expand":{"concepts":{"mode":"explicit","refs":["deposit-addresses"],"facets":["groundings"]}}}'
+    """
+)
+
+_CONCEPT_HELP = dedent(
+    """\
+    Internal JSON-first endpoint for Shellbrain concept graph substrate operations.
+
+    This endpoint is intended for tests, manual seeding, and future librarian integration.
+    Normal worker agents should continue using `read`, `events`, `create`, and `update`.
+
+    Phase 1 supports:
+      - mode: apply
+      - mode: show
+
+    Examples:
+      shellbrain concept --json '{"schema_version":"concept.v1","mode":"apply","actions":[{"type":"upsert_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
+      shellbrain concept --json '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses","include":["claims","preview_concept"]}'
     """
 )
 
@@ -405,6 +424,16 @@ def build_parser() -> argparse.ArgumentParser:
     _add_repo_context_arguments(read_parser, suppress_default=True)
     _add_payload_arguments(read_parser)
 
+    concept_parser = subparsers.add_parser(
+        "concept",
+        help="Internal JSON-first concept graph endpoint.",
+        description="Apply or inspect typed concept graph substrate records.",
+        epilog=_CONCEPT_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(concept_parser, suppress_default=True)
+    _add_payload_arguments(concept_parser)
+
     events_parser = subparsers.add_parser(
         "events",
         help="Inspect recent host transcript events.",
@@ -667,7 +696,7 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
     from app.boot.create_policy import get_create_hydration_defaults
     from app.boot.read_policy import get_read_hydration_defaults
     from app.boot.use_cases import get_embedding_model, get_embedding_provider_factory, get_uow_factory
-    from app.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
+    from app.periphery.cli.handlers import handle_concept, handle_create, handle_events, handle_read, handle_update
     from app.periphery.telemetry import get_operation_telemetry_context
 
     uow_factory = get_uow_factory()
@@ -688,6 +717,14 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             uow_factory=uow_factory,
             inferred_repo_id=repo_context.repo_id,
             defaults=get_read_hydration_defaults(),
+            telemetry_context=get_operation_telemetry_context(),
+            repo_root=repo_context.repo_root,
+        )
+    if command == "concept":
+        return handle_concept(
+            payload,
+            uow_factory=uow_factory,
+            inferred_repo_id=repo_context.repo_id,
             telemetry_context=get_operation_telemetry_context(),
             repo_root=repo_context.repo_root,
         )

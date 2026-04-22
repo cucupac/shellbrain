@@ -119,12 +119,16 @@ def build_read_summary_records(
         direct_token_estimate=int(pack_size["direct_token_estimate"]),
         explicit_related_token_estimate=int(pack_size["explicit_related_token_estimate"]),
         implicit_related_token_estimate=int(pack_size["implicit_related_token_estimate"]),
+        concept_count=int(pack_size["concept_count"]),
+        concept_token_estimate=int(pack_size["concept_token_estimate"]),
+        concept_refs_returned=list(pack_size["concept_refs_returned"]),
+        concept_facets_returned=list(pack_size["concept_facets_returned"]),
         created_at=datetime.now(timezone.utc),
     )
     return summary, items
 
 
-def estimate_read_pack_size(*, pack: dict[str, Any]) -> dict[str, int | str]:
+def estimate_read_pack_size(*, pack: dict[str, Any]) -> dict[str, int | str | list[str]]:
     """Estimate one read-pack footprint with one stable local heuristic."""
 
     serialized_pack = _compact_json(pack)
@@ -135,6 +139,10 @@ def estimate_read_pack_size(*, pack: dict[str, Any]) -> dict[str, int | str]:
         "direct_token_estimate": _estimate_section_tokens(pack.get("direct")),
         "explicit_related_token_estimate": _estimate_section_tokens(pack.get("explicit_related")),
         "implicit_related_token_estimate": _estimate_section_tokens(pack.get("implicit_related")),
+        "concept_count": _concept_count(pack.get("concepts")),
+        "concept_token_estimate": _estimate_section_tokens(pack.get("concepts")),
+        "concept_refs_returned": _concept_refs(pack.get("concepts")),
+        "concept_facets_returned": _concept_facets(pack.get("concepts")),
     }
 
 
@@ -330,6 +338,44 @@ def _estimate_section_tokens(section: Any) -> int:
     if section in (None, {}):
         return 0
     return _estimate_tokens_from_text(_compact_json(section))
+
+
+def _concept_count(section: Any) -> int:
+    """Return the number of concept items in one concept pack section."""
+
+    if not isinstance(section, dict):
+        return 0
+    items = section.get("items")
+    return len(items) if isinstance(items, list) else 0
+
+
+def _concept_refs(section: Any) -> list[str]:
+    """Return concept refs rendered in one concept pack section."""
+
+    if not isinstance(section, dict):
+        return []
+    items = section.get("items")
+    if not isinstance(items, list):
+        return []
+    return [str(item["ref"]) for item in items if isinstance(item, dict) and "ref" in item]
+
+
+def _concept_facets(section: Any) -> list[str]:
+    """Return requested concept facets rendered in one concept pack section."""
+
+    if not isinstance(section, dict):
+        return []
+    facets: set[str] = set()
+    items = section.get("items")
+    if not isinstance(items, list):
+        return []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        for facet in ("claims", "relations", "groundings", "memory_links", "evidence"):
+            if facet in item:
+                facets.add(facet)
+    return sorted(facets)
 
 
 def _estimate_tokens_from_text(text: str) -> int:

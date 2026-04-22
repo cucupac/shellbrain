@@ -4,6 +4,7 @@ from app.core.contracts.requests import MemoryReadRequest
 from app.core.contracts.responses import OperationResult
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.core.policies.read_policy.pipeline import build_context_pack
+from app.core.use_cases.read_concepts import append_concepts_to_pack
 
 
 def execute_read_memory(request: MemoryReadRequest, uow: IUnitOfWork) -> OperationResult:
@@ -17,5 +18,11 @@ def execute_read_memory(request: MemoryReadRequest, uow: IUnitOfWork) -> Operati
         semantic_retrieval=uow.semantic_retrieval,
         read_policy=uow.read_policy,
         vector_search=uow.vector_search,
+    )
+    context_pack = append_concepts_to_pack(
+        pack=context_pack,
+        request=request,
+        concepts=uow.concepts,
+        memories=uow.memories,
     )
     return OperationResult(status="ok", data={"pack": context_pack})

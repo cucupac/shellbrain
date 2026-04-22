@@ -7,6 +7,7 @@ import json
 
 import pytest
 
+from app.core.contracts.responses import OperationResult
 from app.periphery.cli.handlers import handle_read
 from app.periphery.db.uow import PostgresUnitOfWork
 
@@ -57,6 +58,10 @@ def test_read_should_always_append_one_read_summary_row_with_effective_request_m
     assert row["direct_token_estimate"] > 0
     assert row["explicit_related_token_estimate"] > 0
     assert row["implicit_related_token_estimate"] > 0
+    assert row["concept_count"] == 0
+    assert row["concept_token_estimate"] > 0
+    assert _normalize_jsonish(row["concept_refs_returned"]) == []
+    assert _normalize_jsonish(row["concept_facets_returned"]) == []
 
 
 def test_read_should_always_append_one_read_result_item_row_per_returned_memory_in_display_order(
@@ -155,6 +160,58 @@ def test_read_should_always_record_zero_results_true_when_the_context_pack_is_em
     assert rows[0]["direct_token_estimate"] == 0
     assert rows[0]["explicit_related_token_estimate"] == 0
     assert rows[0]["implicit_related_token_estimate"] == 0
+    assert rows[0]["concept_count"] == 0
+    assert rows[0]["concept_token_estimate"] > 0
+
+
+def test_read_summary_should_record_concept_context_telemetry(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+    fetch_relation_rows,
+) -> None:
+    """read summary telemetry should capture concept-context cost fields."""
+
+    monkeypatch.setattr(
+        "app.periphery.cli.handlers.execute_read_memory",
+        lambda request, uow: OperationResult(
+            status="ok",
+            data={
+                "pack": {
+                    "meta": {"mode": "targeted", "limit": 8, "counts": {"direct": 0, "explicit_related": 0, "implicit_related": 0}},
+                    "direct": [],
+                    "explicit_related": [],
+                    "implicit_related": [],
+                    "concepts": {
+                        "mode": "explicit",
+                        "items": [
+                            {
+                                "ref": "deposit-addresses",
+                                "name": "Deposit Addresses",
+                                "kind": "domain",
+                                "orientation": "Deposit address orientation.",
+                                "groundings": [{"role": "implementation"}],
+                            }
+                        ],
+                        "missing_refs": [],
+                        "guidance": "Use expand payloads.",
+                    },
+                }
+            },
+        ),
+    )
+
+    result = handle_read(
+        {"query": "concept telemetry", "mode": "targeted"},
+        uow_factory=uow_factory,
+        inferred_repo_id="repo-a",
+    )
+
+    assert result["status"] == "ok"
+    rows = fetch_relation_rows("read_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    assert rows[0]["concept_count"] == 1
+    assert rows[0]["concept_token_estimate"] > 0
+    assert _normalize_jsonish(rows[0]["concept_refs_returned"]) == ["deposit-addresses"]
+    assert _normalize_jsonish(rows[0]["concept_facets_returned"]) == ["groundings"]
 
 
 def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) -> None:

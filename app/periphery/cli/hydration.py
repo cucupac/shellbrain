@@ -132,3 +132,11 @@ def hydrate_update_payload(payload: dict[str, Any], *, inferred_repo_id: str) ->
     merged.setdefault("op", "update")
     merged.setdefault("repo_id", inferred_repo_id)
     return merged
+
+
+def hydrate_concept_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
+    """Hydrate concept endpoint payloads with inferred repo defaults."""
+
+    merged = dict(payload)
+    merged.setdefault("repo_id", inferred_repo_id)
+    return merged

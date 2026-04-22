@@ -2,17 +2,55 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 MemoryKindValue = Literal["problem", "solution", "failed_tactic", "fact", "preference", "change", "frontier"]
 AssociationRelationValue = Literal["depends_on", "associated_with", "matures_into"]
+ConceptReadFacetValue = Literal["claims", "relations", "groundings", "memory_links", "evidence"]
 
 
 class StrictBaseModel(BaseModel):
     """This base model enforces strict schemas by rejecting unknown fields."""
 
     model_config = ConfigDict(extra="forbid")
+
+
+class ReadConceptsExpandRequest(StrictBaseModel):
+    """This model defines concept-context read expansion controls."""
+
+    mode: Literal["auto", "none", "explicit"] = "auto"
+    refs: list[str] = Field(default_factory=list, max_length=5)
+    facets: list[ConceptReadFacetValue] = Field(default_factory=list, max_length=5)
+    max_auto: int = Field(default=2, ge=1, le=5)
+
+    @field_validator("refs")
+    @classmethod
+    def _validate_refs_unique(cls, value: list[str]) -> list[str]:
+        """This validator enforces unique concept refs."""
+
+        if any(not ref.strip() for ref in value):
+            raise ValueError("concept refs must be non-empty")
+        if len(value) != len(set(value)):
+            raise ValueError("concept refs must be unique")
+        return value
+
+    @field_validator("facets")
+    @classmethod
+    def _validate_facets_unique(cls, value: list[ConceptReadFacetValue]) -> list[ConceptReadFacetValue]:
+        """This validator enforces unique concept facets."""
+
+        if len(value) != len(set(value)):
+            raise ValueError("concept facets must be unique")
+        return value
+
+    @model_validator(mode="after")
+    def _validate_explicit_refs(self) -> "ReadConceptsExpandRequest":
+        """Require explicit concept refs when explicit mode is requested."""
+
+        if self.mode == "explicit" and not self.refs:
+            raise ValueError("expand.concepts.mode=explicit requires refs")
+        return self
 
 
 class ReadExpandRequest(StrictBaseModel):
@@ -24,6 +62,7 @@ class ReadExpandRequest(StrictBaseModel):
     include_association_links: bool | None = None
     max_association_depth: int | None = Field(default=None, ge=1, le=4)
     min_association_strength: float | None = Field(default=None, ge=0.0, le=1.0)
+    concepts: ReadConceptsExpandRequest = Field(default_factory=ReadConceptsExpandRequest)
 
 
 class MemoryReadRequest(StrictBaseModel):

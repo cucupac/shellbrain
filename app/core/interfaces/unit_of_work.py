@@ -5,6 +5,7 @@ from typing import Self
 
 from app.core.interfaces.repos import (
     IAssociationsRepo,
+    IConceptsRepo,
     IEpisodesRepo,
     IEvidenceRepo,
     IExperiencesRepo,
@@ -24,6 +25,7 @@ class IUnitOfWork(ABC):
     memories: IMemoriesRepo
     experiences: IExperiencesRepo
     associations: IAssociationsRepo
+    concepts: IConceptsRepo
     utility: IUtilityRepo
     episodes: IEpisodesRepo
     evidence: IEvidenceRepo

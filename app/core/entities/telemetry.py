@@ -72,6 +72,10 @@ class ReadSummaryRecord:
     direct_token_estimate: int | None
     explicit_related_token_estimate: int | None
     implicit_related_token_estimate: int | None
+    concept_count: int | None
+    concept_token_estimate: int | None
+    concept_refs_returned: list[str] | None
+    concept_facets_returned: list[str] | None
     created_at: datetime
 
 

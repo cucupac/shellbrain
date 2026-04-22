@@ -210,6 +210,44 @@ def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]
     assert "Avoid generic prompts" in output
     assert "explicit_related" in output
     assert "implicit_related" in output
+    assert "concepts" in output
+    assert "deposit-addresses" in output
+
+
+def test_concept_help_should_describe_internal_json_endpoint(capsys: pytest.CaptureFixture[str]) -> None:
+    """concept help should keep the worker-facing contract small and JSON-first."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["concept", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "Internal JSON-first endpoint" in output
+    assert "Normal worker agents should continue using" in output
+    assert "shellbrain concept --json" in output
+    assert "--json-file" in output
+
+
+def test_concept_parser_should_accept_json_and_json_file(tmp_path: Path) -> None:
+    """concept should use the same single-payload-source shape as other operational commands."""
+
+    parser = cli_main.build_parser()
+
+    inline_args = parser.parse_args(
+        [
+            "concept",
+            "--json",
+            '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}',
+        ]
+    )
+    assert inline_args.command == "concept"
+    assert inline_args.json_text
+
+    payload_file = tmp_path / "concept.json"
+    payload_file.write_text('{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}', encoding="utf-8")
+    file_args = parser.parse_args(["concept", "--json-file", str(payload_file)])
+    assert file_args.command == "concept"
+    assert cli_main._load_payload(file_args.json_text, file_args.json_file)["mode"] == "show"
 
 
 def test_events_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:

@@ -11,6 +11,7 @@ from app.boot.create_policy import get_create_hydration_defaults, get_create_pol
 from app.boot.read_policy import get_read_hydration_defaults
 from app.boot.update_policy import get_update_policy_settings, validate_update_policy_settings
 from app.core.contracts.errors import ErrorCode, ErrorDetail
+from app.core.contracts.concepts import ConceptCommandRequest
 from app.core.contracts.requests import (
     EpisodeEventsRequest,
     MemoryBatchUpdateRequest,
@@ -24,6 +25,7 @@ from app.core.entities.telemetry import OperationDispatchTelemetryContext, Sessi
 from app.core.use_cases.build_guidance import build_pending_utility_guidance
 from app.core.use_cases.manage_session_state import SessionStateManager
 from app.core.use_cases.create_memory import execute_create_memory
+from app.core.use_cases.manage_concepts import execute_concept_command
 from app.core.use_cases.read_memory import execute_read_memory
 from app.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
 from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
@@ -32,12 +34,14 @@ from app.core.use_cases.sync_episode import sync_episode
 from app.core.use_cases.update_memory import execute_update_memory
 from app.periphery.cli.hydration import (
     hydrate_create_payload,
+    hydrate_concept_payload,
     hydrate_events_payload,
     hydrate_read_payload,
     hydrate_update_payload,
 )
 from app.periphery.cli.schema_validation import (
     validate_create_schema,
+    validate_concept_schema,
     validate_events_schema,
     validate_internal_create_contract,
     validate_internal_events_contract,
@@ -206,6 +210,54 @@ def handle_create(
     assert result is not None
     _persist_operation_telemetry_best_effort(
         command="create",
+        uow_factory=uow_factory,
+        repo_id=inferred_repo_id,
+        telemetry_context=resolved_telemetry_context,
+        result=result,
+        error_stage=error_stage,
+        request=request,
+        agent_payload=payload,
+        total_latency_ms=int((perf_counter() - started_at) * 1000),
+    )
+    return result
+
+
+def handle_concept(
+    payload: dict,
+    *,
+    uow_factory,
+    inferred_repo_id: str,
+    telemetry_context: OperationDispatchTelemetryContext | None = None,
+    repo_root: Path | None = None,
+):
+    """Validate and dispatch a concept endpoint payload."""
+
+    started_at = perf_counter()
+    resolved_repo_root = (repo_root or Path.cwd()).resolve()
+    resolved_telemetry_context = _ensure_telemetry_context(telemetry_context=telemetry_context, repo_root=resolved_repo_root)
+    request: ConceptCommandRequest | None = None
+    result: dict | None = None
+    error_stage: str | None = None
+    try:
+        hydrated_payload = hydrate_concept_payload(payload, inferred_repo_id=inferred_repo_id)
+        request, errors = validate_concept_schema(hydrated_payload)
+        if errors:
+            error_stage = infer_error_stage_from_errors(_dump_errors(errors), default_stage="schema_validation")
+            result = _error_response(errors)
+        else:
+            assert request is not None
+            with uow_factory() as uow:
+                result = execute_concept_command(request, uow).model_dump(mode="python")
+    except ValueError as exc:
+        error_stage = "semantic_validation"
+        result = _error_response([ErrorDetail(code=ErrorCode.SEMANTIC_ERROR, message=str(exc))])
+    except Exception as exc:  # pragma: no cover - defensive fallback envelope
+        error_stage = "internal_error"
+        result = _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
+
+    assert result is not None
+    _persist_operation_telemetry_best_effort(
+        command="concept",
         uow_factory=uow_factory,
         repo_id=inferred_repo_id,
         telemetry_context=resolved_telemetry_context,
