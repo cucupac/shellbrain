@@ -66,12 +66,20 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
                 usage_command_daily_view = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.model_usage');")
                 model_usage_table = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.problem_runs');")
+                problem_runs_table = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.usage_session_tokens');")
                 usage_session_tokens_view = cur.fetchone()[0]
-                cur.execute("SELECT to_regclass('public.usage_problem_read_roi');")
-                usage_problem_read_roi_view = cur.fetchone()[0]
-                cur.execute("SELECT to_regclass('public.usage_read_before_solve_roi');")
-                usage_read_before_solve_roi_view = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.usage_problem_tokens');")
+                usage_problem_tokens_view = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.usage_problem_tokens_legacy');")
+                usage_problem_tokens_legacy_view = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.usage_problem_read_roi_legacy');")
+                usage_problem_read_roi_legacy_view = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.usage_read_before_solve_roi_legacy');")
+                usage_read_before_solve_roi_legacy_view = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.usage_problem_run_tokens');")
+                usage_problem_run_tokens_view = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.concepts');")
                 concepts_table = cur.fetchone()[0]
                 cur.execute("SELECT version_num FROM alembic_version;")
@@ -81,10 +89,14 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert read_summaries_table is not None
         assert usage_command_daily_view is not None
         assert model_usage_table is not None
+        assert problem_runs_table is not None
         assert usage_session_tokens_view is not None
-        assert usage_problem_read_roi_view is not None
-        assert usage_read_before_solve_roi_view is not None
+        assert usage_problem_tokens_view is None
+        assert usage_problem_tokens_legacy_view is not None
+        assert usage_problem_read_roi_legacy_view is not None
+        assert usage_read_before_solve_roi_legacy_view is not None
+        assert usage_problem_run_tokens_view is not None
         assert concepts_table is not None
-        assert alembic_version == "20260422_0014"
+        assert alembic_version == "20260422_0015"
     finally:
         drop_temp_database(admin_dsn, db_name)

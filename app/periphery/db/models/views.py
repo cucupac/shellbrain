@@ -616,6 +616,218 @@ GROUP BY repo_id, solve_window, read_cohort;
 """
 
 
+USAGE_PROBLEM_TOKENS_LEGACY_SQL = USAGE_PROBLEM_TOKENS_SQL.replace(
+    "CREATE OR REPLACE VIEW usage_problem_tokens AS",
+    "CREATE OR REPLACE VIEW usage_problem_tokens_legacy AS",
+)
+USAGE_PROBLEM_READ_ROI_LEGACY_SQL = (
+    USAGE_PROBLEM_READ_ROI_SQL.replace(
+        "CREATE OR REPLACE VIEW usage_problem_read_roi AS",
+        "CREATE OR REPLACE VIEW usage_problem_read_roi_legacy AS",
+    )
+    .replace("FROM usage_problem_tokens upt", "FROM usage_problem_tokens_legacy upt")
+)
+USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL = (
+    USAGE_READ_BEFORE_SOLVE_ROI_SQL.replace(
+        "CREATE OR REPLACE VIEW usage_read_before_solve_roi AS",
+        "CREATE OR REPLACE VIEW usage_read_before_solve_roi_legacy AS",
+    )
+    .replace("FROM usage_problem_read_roi", "FROM usage_problem_read_roi_legacy")
+)
+
+
+USAGE_PROBLEM_RUN_TOKENS_SQL = """
+CREATE OR REPLACE VIEW usage_problem_run_tokens AS
+WITH session_quality AS (
+  SELECT
+    repo_id,
+    host_app,
+    host_session_key,
+    BOOL_OR(capture_quality = 'exact') AS has_exact_rows,
+    BOOL_OR(
+      capture_quality = 'exact'
+      AND (
+        COALESCE(input_tokens, 0) > 0
+        OR COALESCE(output_tokens, 0) > 0
+        OR COALESCE(cached_input_tokens_total, 0) > 0
+        OR COALESCE(reasoning_output_tokens, 0) > 0
+      )
+    ) AS has_nonzero_exact_rows,
+    BOOL_OR(capture_quality = 'estimated') AS has_estimated_rows
+  FROM model_usage
+  GROUP BY repo_id, host_app, host_session_key
+),
+preferred_rows AS (
+  SELECT mu.*
+  FROM model_usage mu
+  JOIN session_quality sq
+    ON sq.repo_id = mu.repo_id
+   AND sq.host_app = mu.host_app
+   AND sq.host_session_key = mu.host_session_key
+  WHERE (
+    sq.has_nonzero_exact_rows
+    AND mu.capture_quality = 'exact'
+  ) OR (
+    NOT sq.has_nonzero_exact_rows
+    AND mu.capture_quality = 'estimated'
+  ) OR (
+    NOT sq.has_nonzero_exact_rows
+    AND NOT sq.has_estimated_rows
+    AND sq.has_exact_rows
+    AND mu.capture_quality = 'exact'
+  )
+),
+eligible_runs AS (
+  SELECT *
+  FROM problem_runs
+  WHERE status IN ('closed', 'abandoned')
+    AND closed_at IS NOT NULL
+),
+run_usage AS (
+  SELECT
+    prun.id AS problem_run_id,
+    COUNT(mu.id)::INTEGER AS usage_row_count,
+    COUNT(mu.id) FILTER (WHERE mu.capture_quality = 'exact')::INTEGER AS exact_usage_row_count,
+    COUNT(mu.id) FILTER (WHERE mu.capture_quality = 'estimated')::INTEGER AS estimated_usage_row_count,
+    COALESCE(SUM(mu.input_tokens), 0)::BIGINT AS input_tokens,
+    COALESCE(SUM(mu.output_tokens), 0)::BIGINT AS output_tokens,
+    COALESCE(SUM(mu.reasoning_output_tokens), 0)::BIGINT AS reasoning_output_tokens,
+    COALESCE(SUM(mu.cached_input_tokens_total), 0)::BIGINT AS cached_input_tokens_total,
+    COALESCE(SUM(mu.cache_read_input_tokens), 0)::BIGINT AS cache_read_input_tokens,
+    COALESCE(SUM(mu.cache_creation_input_tokens), 0)::BIGINT AS cache_creation_input_tokens,
+    COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)::BIGINT AS foreground_worker_input_tokens,
+    COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)::BIGINT AS foreground_worker_output_tokens,
+    (
+      COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)
+      + COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)
+    )::BIGINT AS foreground_worker_fresh_work_tokens,
+    (
+      COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)
+      + COALESCE(SUM(mu.cached_input_tokens_total) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)
+      + COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role IN ('foreground', 'worker')), 0)
+    )::BIGINT AS foreground_worker_all_tokens_including_cache,
+    COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role = 'librarian'), 0)::BIGINT AS librarian_input_tokens,
+    COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role = 'librarian'), 0)::BIGINT AS librarian_output_tokens,
+    (
+      COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role = 'librarian'), 0)
+      + COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role = 'librarian'), 0)
+    )::BIGINT AS librarian_fresh_work_tokens,
+    (
+      COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role = 'librarian'), 0)
+      + COALESCE(SUM(mu.cached_input_tokens_total) FILTER (WHERE mu.agent_role = 'librarian'), 0)
+      + COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role = 'librarian'), 0)
+    )::BIGINT AS librarian_all_tokens_including_cache,
+    COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)::BIGINT AS other_role_input_tokens,
+    COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)::BIGINT AS other_role_output_tokens,
+    (
+      COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)
+      + COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)
+    )::BIGINT AS other_role_fresh_work_tokens,
+    (
+      COALESCE(SUM(mu.input_tokens) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)
+      + COALESCE(SUM(mu.cached_input_tokens_total) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)
+      + COALESCE(SUM(mu.output_tokens) FILTER (WHERE mu.agent_role NOT IN ('foreground', 'worker', 'librarian')), 0)
+    )::BIGINT AS other_role_all_tokens_including_cache
+  FROM eligible_runs prun
+  LEFT JOIN preferred_rows mu
+    ON mu.repo_id = prun.repo_id
+   AND mu.occurred_at >= prun.opened_at
+   AND mu.occurred_at <= prun.closed_at
+   AND (
+      (
+        prun.host_app IS NOT NULL
+        AND prun.host_session_key IS NOT NULL
+        AND mu.host_app = prun.host_app
+        AND mu.host_session_key = prun.host_session_key
+      )
+      OR (
+        (prun.host_app IS NULL OR prun.host_session_key IS NULL)
+        AND prun.thread_id IS NOT NULL
+        AND mu.thread_id = prun.thread_id
+      )
+   )
+  GROUP BY prun.id
+),
+run_reads AS (
+  SELECT
+    prun.id AS problem_run_id,
+    COUNT(oi.id)::INTEGER AS shellbrain_read_count,
+    COALESCE(SUM(ris.pack_token_estimate), 0)::BIGINT AS shellbrain_pack_tokens,
+    COALESCE(SUM(ris.concept_token_estimate), 0)::BIGINT AS shellbrain_concept_tokens
+  FROM eligible_runs prun
+  LEFT JOIN operation_invocations oi
+    ON oi.repo_id = prun.repo_id
+   AND oi.command = 'read'
+   AND oi.outcome = 'ok'
+   AND oi.created_at >= prun.opened_at
+   AND oi.created_at <= prun.closed_at
+   AND (
+      (
+        prun.host_app IS NOT NULL
+        AND prun.host_session_key IS NOT NULL
+        AND oi.selected_host_app = prun.host_app
+        AND oi.selected_host_session_key = prun.host_session_key
+      )
+      OR (
+        (prun.host_app IS NULL OR prun.host_session_key IS NULL)
+        AND prun.thread_id IS NOT NULL
+        AND oi.selected_thread_id = prun.thread_id
+      )
+   )
+  LEFT JOIN read_invocation_summaries ris ON ris.invocation_id = oi.id
+  GROUP BY prun.id
+)
+SELECT
+  prun.id AS problem_run_id,
+  prun.repo_id,
+  prun.thread_id,
+  prun.host_app,
+  prun.host_session_key,
+  prun.status,
+  prun.opened_at,
+  prun.closed_at,
+  EXTRACT(EPOCH FROM (prun.closed_at - prun.opened_at))::DOUBLE PRECISION AS duration_seconds,
+  prun.problem_memory_id,
+  prun.solution_memory_id,
+  ru.usage_row_count,
+  ru.exact_usage_row_count,
+  ru.estimated_usage_row_count,
+  ru.input_tokens,
+  ru.output_tokens,
+  ru.reasoning_output_tokens,
+  ru.cached_input_tokens_total,
+  ru.cache_read_input_tokens,
+  ru.cache_creation_input_tokens,
+  (
+    ru.input_tokens
+    + ru.output_tokens
+  )::BIGINT AS fresh_work_tokens,
+  (
+    ru.input_tokens
+    + ru.cached_input_tokens_total
+    + ru.output_tokens
+  )::BIGINT AS all_tokens_including_cache,
+  ru.foreground_worker_input_tokens,
+  ru.foreground_worker_output_tokens,
+  ru.foreground_worker_fresh_work_tokens,
+  ru.foreground_worker_all_tokens_including_cache,
+  ru.librarian_input_tokens,
+  ru.librarian_output_tokens,
+  ru.librarian_fresh_work_tokens,
+  ru.librarian_all_tokens_including_cache,
+  ru.other_role_input_tokens,
+  ru.other_role_output_tokens,
+  ru.other_role_fresh_work_tokens,
+  ru.other_role_all_tokens_including_cache,
+  rr.shellbrain_read_count,
+  rr.shellbrain_pack_tokens,
+  rr.shellbrain_concept_tokens
+FROM eligible_runs prun
+JOIN run_usage ru ON ru.problem_run_id = prun.id
+JOIN run_reads rr ON rr.problem_run_id = prun.id;
+"""
+
+
 USAGE_TOKEN_CAPTURE_HEALTH_SQL = """
 CREATE OR REPLACE VIEW usage_token_capture_health AS
 WITH synced_sessions AS (

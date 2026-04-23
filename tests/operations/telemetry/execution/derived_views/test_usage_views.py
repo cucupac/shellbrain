@@ -6,6 +6,7 @@ import json
 
 import pytest
 from sqlalchemy import text
+from sqlalchemy.exc import IntegrityError
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -421,12 +422,581 @@ def test_usage_session_tokens_should_fall_back_to_estimated_rows_when_exact_curs
     assert health_rows[0]["cursor_zero_only_sessions"] == 1
 
 
-def test_usage_problem_tokens_should_sum_usage_between_problem_creation_and_first_solution_and_latest_solution_when_only_one_solution_exists(
+def test_problem_runs_schema_should_enforce_window_constraints_and_rename_proxy_views(
+    integration_engine,
+    assert_relation_exists,
+) -> None:
+    """problem_runs should exist as the explicit run-window substrate and old proxy views should be legacy only."""
+
+    assert_relation_exists("problem_runs")
+    assert_relation_exists("usage_problem_tokens_legacy")
+    assert_relation_exists("usage_problem_read_roi_legacy")
+    assert_relation_exists("usage_read_before_solve_roi_legacy")
+    assert_relation_exists("usage_problem_run_tokens")
+
+    with integration_engine.connect() as conn:
+        old_proxy_view = conn.execute(text("SELECT to_regclass('public.usage_problem_tokens');")).scalar_one()
+        old_roi_view = conn.execute(text("SELECT to_regclass('public.usage_problem_read_roi');")).scalar_one()
+        old_aggregate_view = conn.execute(text("SELECT to_regclass('public.usage_read_before_solve_roi');")).scalar_one()
+        indexes = {
+            row["indexname"]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT indexname
+                    FROM pg_indexes
+                    WHERE schemaname = 'public'
+                      AND tablename = 'problem_runs'
+                    """
+                )
+            ).mappings()
+        }
+        constraints = {
+            row["conname"]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT conname
+                    FROM pg_constraint
+                    WHERE conrelid = 'public.problem_runs'::regclass
+                    """
+                )
+            ).mappings()
+        }
+
+    assert old_proxy_view is None
+    assert old_roi_view is None
+    assert old_aggregate_view is None
+    assert {
+        "idx_problem_runs_repo_thread_window",
+        "idx_problem_runs_repo_host_session_window",
+        "idx_problem_runs_repo_status_opened_at",
+        "idx_problem_runs_problem_memory",
+        "idx_problem_runs_solution_memory",
+    }.issubset(indexes)
+    assert {
+        "ck_problem_runs_status",
+        "ck_problem_runs_opened_by",
+        "ck_problem_runs_closed_by",
+        "ck_problem_runs_closed_after_opened",
+        "ck_problem_runs_status_closed_at",
+    }.issubset(constraints)
+
+    invalid_rows = [
+        {
+            "id": "run-open-with-closed-at",
+            "status": "open",
+            "opened_at": "2026-03-18T10:00:00+00:00",
+            "closed_at": "2026-03-18T10:01:00+00:00",
+        },
+        {
+            "id": "run-closed-without-closed-at",
+            "status": "closed",
+            "opened_at": "2026-03-18T10:00:00+00:00",
+            "closed_at": None,
+        },
+        {
+            "id": "run-closed-before-opened",
+            "status": "closed",
+            "opened_at": "2026-03-18T10:02:00+00:00",
+            "closed_at": "2026-03-18T10:01:00+00:00",
+        },
+    ]
+    for row in invalid_rows:
+        with pytest.raises(IntegrityError):
+            with integration_engine.begin() as conn:
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO problem_runs (
+                          id,
+                          repo_id,
+                          thread_id,
+                          host_app,
+                          host_session_key,
+                          status,
+                          opened_at,
+                          closed_at,
+                          opened_by,
+                          closed_by
+                        ) VALUES (
+                          :id,
+                          'telemetry-repo',
+                          'codex:problem-run',
+                          'codex',
+                          'problem-run-session',
+                          :status,
+                          :opened_at,
+                          :closed_at,
+                          'librarian',
+                          'librarian'
+                        )
+                        """
+                    ),
+                    row,
+                )
+
+
+def test_usage_problem_run_tokens_should_sum_run_windows_split_agent_roles_and_read_pack_costs(
     integration_engine,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """usage_problem_tokens should expose identical first/latest metrics when one solution exists."""
+    """usage_problem_run_tokens should use explicit run boundaries instead of memory creation windows."""
+
+    with integration_engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO problem_runs (
+                  id,
+                  repo_id,
+                  thread_id,
+                  host_app,
+                  host_session_key,
+                  status,
+                  opened_at,
+                  closed_at,
+                  opened_by,
+                  closed_by
+                ) VALUES
+                  (
+                    'problem-run-host',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    'codex',
+                    'problem-run-session',
+                    'closed',
+                    '2026-03-18T10:00:00+00:00',
+                    '2026-03-18T10:05:00+00:00',
+                    'librarian',
+                    'librarian'
+                  ),
+                  (
+                    'problem-run-thread-fallback',
+                    'telemetry-repo',
+                    'cursor:problem-run',
+                    NULL,
+                    NULL,
+                    'abandoned',
+                    '2026-03-18T11:00:00+00:00',
+                    '2026-03-18T11:05:00+00:00',
+                    'librarian',
+                    'librarian'
+                  ),
+                  (
+                    'problem-run-open',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    'codex',
+                    'problem-run-session',
+                    'open',
+                    '2026-03-18T12:00:00+00:00',
+                    NULL,
+                    'librarian',
+                    NULL
+                  )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO model_usage (
+                    id,
+                    repo_id,
+                    thread_id,
+                    episode_id,
+                    host_app,
+                    host_session_key,
+                    host_usage_key,
+                    source_kind,
+                    occurred_at,
+                    agent_role,
+                    provider,
+                    model_id,
+                    input_tokens,
+                    output_tokens,
+                    reasoning_output_tokens,
+                    cached_input_tokens_total,
+                    cache_read_input_tokens,
+                    cache_creation_input_tokens,
+                    capture_quality,
+                    raw_usage_json
+                ) VALUES
+                  (
+                    'run-usage-before',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    NULL,
+                    'codex',
+                    'problem-run-session',
+                    'usage-before',
+                    'codex_transcript',
+                    '2026-03-18T09:59:59+00:00',
+                    'foreground',
+                    'openai',
+                    NULL,
+                    999,
+                    999,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'exact',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-usage-foreground',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    NULL,
+                    'codex',
+                    'problem-run-session',
+                    'usage-foreground',
+                    'codex_transcript',
+                    '2026-03-18T10:01:00+00:00',
+                    'foreground',
+                    'openai',
+                    NULL,
+                    100,
+                    20,
+                    5,
+                    10,
+                    0,
+                    0,
+                    'exact',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-usage-librarian',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    NULL,
+                    'codex',
+                    'problem-run-session',
+                    'usage-librarian',
+                    'codex_transcript',
+                    '2026-03-18T10:02:00+00:00',
+                    'librarian',
+                    'openai',
+                    NULL,
+                    30,
+                    10,
+                    2,
+                    5,
+                    0,
+                    0,
+                    'exact',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-usage-other',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    NULL,
+                    'codex',
+                    'problem-run-session',
+                    'usage-other',
+                    'codex_transcript',
+                    '2026-03-18T10:03:00+00:00',
+                    'observer',
+                    'openai',
+                    NULL,
+                    7,
+                    3,
+                    0,
+                    2,
+                    0,
+                    0,
+                    'exact',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-usage-estimated-shadow',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    NULL,
+                    'codex',
+                    'problem-run-session',
+                    'usage-estimated-shadow',
+                    'cursor_statusline_sidecar',
+                    '2026-03-18T10:04:00+00:00',
+                    'foreground',
+                    'openai',
+                    NULL,
+                    500,
+                    500,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'estimated',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-usage-after',
+                    'telemetry-repo',
+                    'codex:problem-run',
+                    NULL,
+                    'codex',
+                    'problem-run-session',
+                    'usage-after',
+                    'codex_transcript',
+                    '2026-03-18T10:05:01+00:00',
+                    'foreground',
+                    'openai',
+                    NULL,
+                    999,
+                    999,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'exact',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-thread-exact-zero',
+                    'telemetry-repo',
+                    'cursor:problem-run',
+                    NULL,
+                    'cursor',
+                    'cursor-problem-run-session',
+                    'cursor-zero',
+                    'cursor_state_vscdb',
+                    '2026-03-18T11:01:00+00:00',
+                    'foreground',
+                    'anthropic',
+                    NULL,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'exact',
+                    '{}'::jsonb
+                  ),
+                  (
+                    'run-thread-estimated',
+                    'telemetry-repo',
+                    'cursor:problem-run',
+                    NULL,
+                    'cursor',
+                    'cursor-problem-run-session',
+                    'cursor-estimated',
+                    'cursor_statusline_sidecar',
+                    '2026-03-18T11:02:00+00:00',
+                    'foreground',
+                    'anthropic',
+                    NULL,
+                    40,
+                    10,
+                    0,
+                    0,
+                    0,
+                    0,
+                    'estimated',
+                    '{}'::jsonb
+                  )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO operation_invocations (
+                    id,
+                    command,
+                    repo_id,
+                    repo_root,
+                    no_sync,
+                    selected_host_app,
+                    selected_host_session_key,
+                    selected_thread_id,
+                    selected_episode_id,
+                    matching_candidate_count,
+                    selection_ambiguous,
+                    outcome,
+                    error_stage,
+                    error_code,
+                    error_message,
+                    total_latency_ms,
+                    poller_start_attempted,
+                    poller_started,
+                    created_at
+                ) VALUES
+                  (
+                    'run-read-inside',
+                    'read',
+                    'telemetry-repo',
+                    '/tmp/telemetry-repo',
+                    FALSE,
+                    'codex',
+                    'problem-run-session',
+                    'codex:problem-run',
+                    NULL,
+                    1,
+                    FALSE,
+                    'ok',
+                    NULL,
+                    NULL,
+                    NULL,
+                    8,
+                    FALSE,
+                    FALSE,
+                    '2026-03-18T10:02:30+00:00'
+                  ),
+                  (
+                    'run-read-after',
+                    'read',
+                    'telemetry-repo',
+                    '/tmp/telemetry-repo',
+                    FALSE,
+                    'codex',
+                    'problem-run-session',
+                    'codex:problem-run',
+                    NULL,
+                    1,
+                    FALSE,
+                    'ok',
+                    NULL,
+                    NULL,
+                    NULL,
+                    8,
+                    FALSE,
+                    FALSE,
+                    '2026-03-18T10:05:01+00:00'
+                  )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO read_invocation_summaries (
+                    invocation_id,
+                    query_text,
+                    mode,
+                    requested_limit,
+                    effective_limit,
+                    include_global,
+                    kinds_filter,
+                    direct_count,
+                    explicit_related_count,
+                    implicit_related_count,
+                    total_returned,
+                    zero_results,
+                    pack_char_count,
+                    pack_token_estimate,
+                    pack_token_estimate_method,
+                    direct_token_estimate,
+                    explicit_related_token_estimate,
+                    implicit_related_token_estimate,
+                    concept_count,
+                    concept_token_estimate,
+                    concept_refs_returned,
+                    concept_facets_returned
+                ) VALUES
+                  (
+                    'run-read-inside',
+                    'inside read',
+                    'targeted',
+                    8,
+                    8,
+                    TRUE,
+                    '["problem"]'::jsonb,
+                    1,
+                    0,
+                    0,
+                    1,
+                    FALSE,
+                    200,
+                    50,
+                    'json_compact_chars_div4_v1',
+                    20,
+                    0,
+                    0,
+                    1,
+                    12,
+                    '["deposit-addresses"]'::jsonb,
+                    '["claims"]'::jsonb
+                  ),
+                  (
+                    'run-read-after',
+                    'after read',
+                    'targeted',
+                    8,
+                    8,
+                    TRUE,
+                    '["problem"]'::jsonb,
+                    1,
+                    0,
+                    0,
+                    1,
+                    FALSE,
+                    800,
+                    200,
+                    'json_compact_chars_div4_v1',
+                    80,
+                    0,
+                    0,
+                    1,
+                    40,
+                    '["deposit-addresses"]'::jsonb,
+                    '["claims"]'::jsonb
+                  )
+                """
+            )
+        )
+
+    assert_relation_exists("usage_problem_run_tokens")
+    rows = fetch_relation_rows(
+        "usage_problem_run_tokens",
+        where_sql="repo_id = :repo_id",
+        params={"repo_id": "telemetry-repo"},
+        order_by="problem_run_id ASC",
+    )
+
+    assert [row["problem_run_id"] for row in rows] == ["problem-run-host", "problem-run-thread-fallback"]
+
+    host_row = rows[0]
+    assert host_row["status"] == "closed"
+    assert host_row["duration_seconds"] == 300
+    assert host_row["usage_row_count"] == 3
+    assert host_row["exact_usage_row_count"] == 3
+    assert host_row["estimated_usage_row_count"] == 0
+    assert host_row["input_tokens"] == 137
+    assert host_row["output_tokens"] == 33
+    assert host_row["reasoning_output_tokens"] == 7
+    assert host_row["cached_input_tokens_total"] == 17
+    assert host_row["fresh_work_tokens"] == 170
+    assert host_row["all_tokens_including_cache"] == 187
+    assert host_row["foreground_worker_fresh_work_tokens"] == 120
+    assert host_row["foreground_worker_all_tokens_including_cache"] == 130
+    assert host_row["librarian_fresh_work_tokens"] == 40
+    assert host_row["librarian_all_tokens_including_cache"] == 45
+    assert host_row["other_role_fresh_work_tokens"] == 10
+    assert host_row["other_role_all_tokens_including_cache"] == 12
+    assert host_row["shellbrain_read_count"] == 1
+    assert host_row["shellbrain_pack_tokens"] == 50
+    assert host_row["shellbrain_concept_tokens"] == 12
+
+    fallback_row = rows[1]
+    assert fallback_row["status"] == "abandoned"
+    assert fallback_row["usage_row_count"] == 1
+    assert fallback_row["exact_usage_row_count"] == 0
+    assert fallback_row["estimated_usage_row_count"] == 1
+    assert fallback_row["fresh_work_tokens"] == 50
+
+
+def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_and_first_solution_and_latest_solution_when_only_one_solution_exists(
+    integration_engine,
+    assert_relation_exists,
+    fetch_relation_rows,
+) -> None:
+    """usage_problem_tokens_legacy should expose identical first/latest metrics when one solution exists."""
 
     with integration_engine.begin() as conn:
         conn.execute(
@@ -552,9 +1122,9 @@ def test_usage_problem_tokens_should_sum_usage_between_problem_creation_and_firs
             )
         )
 
-    assert_relation_exists("usage_problem_tokens")
+    assert_relation_exists("usage_problem_tokens_legacy")
     rows = fetch_relation_rows(
-        "usage_problem_tokens",
+        "usage_problem_tokens_legacy",
         where_sql="repo_id = :repo_id AND problem_id = :problem_id",
         params={"repo_id": "telemetry-repo", "problem_id": "problem-1"},
     )
@@ -570,12 +1140,12 @@ def test_usage_problem_tokens_should_sum_usage_between_problem_creation_and_firs
     assert rows[0]["latest_all_tokens_including_cache"] == 130
 
 
-def test_usage_problem_tokens_should_expose_first_and_latest_solution_metrics_when_multiple_solutions_exist(
+def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_metrics_when_multiple_solutions_exist(
     integration_engine,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """usage_problem_tokens and usage_problem_read_roi should work across first and latest multi-solution windows."""
+    """usage_problem_tokens_legacy and usage_problem_read_roi_legacy should work across first and latest multi-solution windows."""
 
     with integration_engine.begin() as conn:
         conn.execute(
@@ -861,9 +1431,9 @@ def test_usage_problem_tokens_should_expose_first_and_latest_solution_metrics_wh
             )
         )
 
-    assert_relation_exists("usage_problem_tokens")
+    assert_relation_exists("usage_problem_tokens_legacy")
     rows = fetch_relation_rows(
-        "usage_problem_tokens",
+        "usage_problem_tokens_legacy",
         where_sql="repo_id = :repo_id AND problem_id = :problem_id",
         params={"repo_id": "telemetry-repo", "problem_id": "problem-2"},
     )
@@ -878,9 +1448,9 @@ def test_usage_problem_tokens_should_expose_first_and_latest_solution_metrics_wh
     assert rows[0]["latest_fresh_work_tokens"] == 180
     assert rows[0]["latest_all_tokens_including_cache"] == 195
 
-    assert_relation_exists("usage_problem_read_roi")
+    assert_relation_exists("usage_problem_read_roi_legacy")
     roi_rows = fetch_relation_rows(
-        "usage_problem_read_roi",
+        "usage_problem_read_roi_legacy",
         where_sql="repo_id = :repo_id AND problem_id = :problem_id",
         params={"repo_id": "telemetry-repo", "problem_id": "problem-2"},
     )
@@ -906,12 +1476,12 @@ def test_usage_problem_tokens_should_expose_first_and_latest_solution_metrics_wh
     assert roi_rows[0]["read_cohort_before_latest_solution"] == "nonzero"
 
 
-def test_usage_read_before_solve_roi_should_bucket_none_zero_only_and_nonzero_read_cohorts(
+def test_usage_read_before_solve_roi_legacy_should_bucket_none_zero_only_and_nonzero_read_cohorts(
     integration_engine,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """usage_read_before_solve_roi should aggregate per-repo cohorts across first and latest solve windows."""
+    """usage_read_before_solve_roi_legacy should aggregate per-repo cohorts across first and latest solve windows."""
 
     with integration_engine.begin() as conn:
         _insert_problem_with_solution_and_optional_read(
@@ -948,9 +1518,9 @@ def test_usage_read_before_solve_roi_should_bucket_none_zero_only_and_nonzero_re
             implicit_tokens=20,
         )
 
-    assert_relation_exists("usage_read_before_solve_roi")
+    assert_relation_exists("usage_read_before_solve_roi_legacy")
     rows = fetch_relation_rows(
-        "usage_read_before_solve_roi",
+        "usage_read_before_solve_roi_legacy",
         where_sql="repo_id = :repo_id",
         params={"repo_id": "telemetry-repo"},
         order_by="solve_window ASC, read_cohort ASC",
