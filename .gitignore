@@ -83,9 +83,11 @@ temp/
 .cache/
 .local/
 .shellbrain/
+.shellbrain-run/
 .shellbrain-home/
 .shellbrain-home-test/
 .hf/
+.migration-live-backups/
 
 # Databases, dumps, and local persistence
 *.db
