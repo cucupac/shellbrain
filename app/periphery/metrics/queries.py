@@ -8,6 +8,29 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 
+def fetch_metrics_repo_ids(*, conn: Connection) -> list[str]:
+    """Return all repo identifiers that have metrics-relevant telemetry."""
+
+    rows = conn.execute(
+        text(
+            """
+            SELECT repo_id
+            FROM (
+              SELECT DISTINCT repo_id FROM operation_invocations
+              UNION
+              SELECT DISTINCT repo_id FROM memories
+              UNION
+              SELECT DISTINCT repo_id FROM episode_sync_runs
+            ) repo_ids
+            WHERE repo_id IS NOT NULL
+              AND repo_id <> ''
+            ORDER BY repo_id ASC;
+            """
+        )
+    ).mappings()
+    return [str(row["repo_id"]) for row in rows]
+
+
 def fetch_daily_utility_rows(
     *,
     conn: Connection,
