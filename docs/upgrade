@@ -337,9 +337,9 @@ fi
 PY_VERSION=$($PY -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')")
 echo "using $PY ($PY_VERSION)"
 
-$PY -m pip install --user --upgrade --break-system-packages shellbrain 2>/dev/null \
-  || $PY -m pip install --user --upgrade shellbrain 2>/dev/null \
-  || $PY -m pip install --upgrade shellbrain
+$PY -m pip install --user --upgrade --no-cache-dir --break-system-packages shellbrain 2>/dev/null \
+  || $PY -m pip install --user --upgrade --no-cache-dir shellbrain 2>/dev/null \
+  || $PY -m pip install --upgrade --no-cache-dir shellbrain
 
 SHELLBRAIN=""
 USER_BIN=$($PY -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))" 2>/dev/null)
@@ -374,13 +374,22 @@ if [ -n "$USER_BIN" ] && [ -d "$USER_BIN" ]; then
   fi
 fi
 
-echo ""
-echo "re-initializing..."
-echo "  shellbrain init will ask how it should store data."
-echo "  default: let shellbrain set up local PostgreSQL + pgvector for you."
-echo "  advanced: use an existing PostgreSQL + pgvector database."
-echo ""
-run_shellbrain_init_with_recovery
+SHELLBRAIN_HOME="${SHELLBRAIN_HOME:-$HOME/.shellbrain}"
+MACHINE_CONFIG="$SHELLBRAIN_HOME/config.toml"
+
+if [ -f "$MACHINE_CONFIG" ] && grep -q 'bootstrap_state = "ready"' "$MACHINE_CONFIG" 2>/dev/null; then
+  echo ""
+  echo "machine already initialized — refreshing host assets."
+  "$SHELLBRAIN" init 2>/dev/null || true
+else
+  echo ""
+  echo "re-initializing..."
+  echo "  shellbrain init will ask how it should store data."
+  echo "  default: let shellbrain set up local PostgreSQL + pgvector for you."
+  echo "  advanced: use an existing PostgreSQL + pgvector database."
+  echo ""
+  run_shellbrain_init_with_recovery
+fi
 
 echo ""
 echo "next: start a repo session in codex or claude code."
