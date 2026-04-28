@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy.engine import Engine
 
 from app.periphery.metrics.queries import (
+    fetch_metrics_repo_ids,
     fetch_daily_events_before_write_rows,
     fetch_daily_followthrough_rows,
     fetch_daily_utility_rows,
@@ -19,6 +20,13 @@ from app.periphery.metrics.queries import (
 
 _REAL_DATETIME = datetime
 _CONFIDENCE_ORDER = {"low": 0, "medium": 1, "high": 2}
+
+
+def list_metrics_repo_ids(*, engine: Engine) -> list[str]:
+    """Return repo ids that have metrics-relevant telemetry in this Shellbrain database."""
+
+    with engine.connect() as conn:
+        return fetch_metrics_repo_ids(conn=conn)
 
 
 def build_metrics_snapshot(*, engine: Engine, repo_id: str, days: int) -> dict[str, Any]:

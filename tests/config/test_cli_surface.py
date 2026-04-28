@@ -83,7 +83,7 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "shellbrain upgrade" in output
     assert "pipx upgrade shellbrain && shellbrain init" in output
     assert "shellbrain init" in output
-    assert "shellbrain metrics --days 30" in output
+    assert "shellbrain metrics" in output
     assert "--repo-root" in output
     assert "--no-sync" not in output
     assert "create" in output
@@ -179,23 +179,24 @@ def test_metrics_help_should_include_one_example(capsys: pytest.CaptureFixture[s
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "lightweight repo-scoped metrics snapshot" in output
-    assert "shellbrain metrics --days 30" in output
-    assert "--no-open" in output
+    assert "browse repos with arrow keys" in output
+    assert "shellbrain metrics" in output
+    assert "--days" not in output
+    assert "--no-open" not in output
 
 
-def test_metrics_parser_should_default_to_30_days_and_support_no_open() -> None:
-    """metrics parser should expose the product defaults without extra flags."""
+def test_metrics_parser_should_reject_days_and_no_open_flags() -> None:
+    """metrics parser should reject removed legacy flags."""
 
     parser = cli_main.build_parser()
 
-    default_args = parser.parse_args(["metrics"])
-    assert default_args.days == 30
-    assert default_args.no_open is False
+    with pytest.raises(SystemExit) as days_exc:
+        parser.parse_args(["metrics", "--days", "14"])
+    assert days_exc.value.code == 2
 
-    explicit_args = parser.parse_args(["metrics", "--days", "14", "--no-open"])
-    assert explicit_args.days == 14
-    assert explicit_args.no_open is True
+    with pytest.raises(SystemExit) as no_open_exc:
+        parser.parse_args(["metrics", "--no-open"])
+    assert no_open_exc.value.code == 2
 
 
 def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
