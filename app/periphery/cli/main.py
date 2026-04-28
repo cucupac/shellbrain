@@ -260,7 +260,7 @@ _BACKFILL_TOKEN_USAGE_HELP = dedent(
 
 _METRICS_HELP = dedent(
     """\
-    Generate lightweight metrics snapshots, write local artifacts, and browse repos with arrow keys.
+    Generate lightweight metrics snapshots, write local artifacts, and open one browser dashboard that switches repos with arrow keys.
 
     Example:
       shellbrain metrics
@@ -385,7 +385,7 @@ def build_parser() -> argparse.ArgumentParser:
     metrics_parser = subparsers.add_parser(
         "metrics",
         help="Browse Shellbrain metrics across repos.",
-        description="Generate local metrics snapshots and browse one repo at a time in the terminal.",
+        description="Generate local metrics snapshots and open one browser dashboard for all repos.",
         epilog=_METRICS_HELP,
         formatter_class=_HelpFormatter,
     )
@@ -869,10 +869,9 @@ def _run_metrics_command(args: argparse.Namespace) -> int:
         from app.boot.admin_db import get_optional_admin_db_dsn
         from app.boot.db import get_optional_db_dsn
         from app.periphery.db.engine import get_engine
-        from app.periphery.metrics.artifacts import write_metrics_artifacts
+        from app.periphery.metrics.artifacts import write_metrics_artifacts, write_metrics_index_artifact
         from app.periphery.metrics.browser import open_metrics_dashboard
-        from app.periphery.metrics.pager import present_metrics_repo_pager
-        from app.periphery.metrics.render_html import render_metrics_dashboard
+        from app.periphery.metrics.render_html import render_metrics_browser_dashboard, render_metrics_dashboard
         from app.periphery.metrics.service import build_metrics_snapshot, list_metrics_repo_ids
 
         if bool(getattr(args, "repo_id", None) or getattr(args, "repo_root", None) or getattr(args, "no_sync", False)):
@@ -901,11 +900,17 @@ def _run_metrics_command(args: argparse.Namespace) -> int:
             paths = write_metrics_artifacts(repo_id=repo_id, snapshot=snapshot, html=html)
             entries.append({"snapshot": snapshot, "paths": paths})
 
+        overview_path = write_metrics_index_artifact(
+            html=render_metrics_browser_dashboard([entry["snapshot"] for entry in entries])
+        )
+        opened_dashboard = bool(open_metrics_dashboard(overview_path))
         print(f"Generated Shellbrain metrics for {len(entries)} repos")
         print(f"Window: last {window_days} days")
         print("Artifacts: updated in place")
-        print("Browser: press 'o' in the viewer to open the current dashboard")
-        present_metrics_repo_pager(entries=entries, open_dashboard=open_metrics_dashboard)
+        if opened_dashboard:
+            print("Browser: opened dashboard; use left/right arrow keys in the browser to switch repos")
+        else:
+            print(f"Browser: could not open automatically; open {overview_path}")
         return 0
     except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)

@@ -14,12 +14,18 @@ from app.boot.home import get_shellbrain_home
 _NON_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
+def get_metrics_root_dir() -> Path:
+    """Return the machine-owned root directory for metrics browser artifacts."""
+
+    return get_shellbrain_home() / "reports" / "metrics"
+
+
 def get_metrics_artifact_dir(*, repo_id: str) -> Path:
     """Return the machine-owned artifact directory for one repo's metrics outputs."""
 
     normalized = _NON_ALNUM.sub("-", repo_id.lower()).strip("-") or "repo"
     digest = hashlib.sha1(repo_id.encode("utf-8")).hexdigest()[:8]
-    return get_shellbrain_home() / "reports" / "metrics" / f"{normalized}-{digest}"
+    return get_metrics_root_dir() / f"{normalized}-{digest}"
 
 
 def write_metrics_artifacts(*, repo_id: str, snapshot: dict[str, Any], html: str) -> dict[str, Path]:
@@ -42,3 +48,14 @@ def write_metrics_artifacts(*, repo_id: str, snapshot: dict[str, Any], html: str
         "md_path": md_path,
         "html_path": html_path,
     }
+
+
+def write_metrics_index_artifact(*, html: str) -> Path:
+    """Write the combined browser dashboard for all repo metrics snapshots."""
+
+    artifact_dir = get_metrics_root_dir()
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
+    html_path = artifact_dir / "index.html"
+    html_path.write_text(html, encoding="utf-8")
+    return html_path

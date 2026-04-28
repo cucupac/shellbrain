@@ -4,7 +4,12 @@ from __future__ import annotations
 
 import json
 
-from app.periphery.metrics.artifacts import get_metrics_artifact_dir, write_metrics_artifacts
+from app.periphery.metrics.artifacts import (
+    get_metrics_artifact_dir,
+    get_metrics_root_dir,
+    write_metrics_artifacts,
+    write_metrics_index_artifact,
+)
 
 
 def test_write_metrics_artifacts_should_write_and_overwrite_latest_outputs(monkeypatch, tmp_path) -> None:
@@ -50,3 +55,15 @@ def test_get_metrics_artifact_dir_should_normalize_repo_ids(monkeypatch, tmp_pat
 
     assert artifact_dir.parent == shellbrain_home / "reports" / "metrics"
     assert artifact_dir.name.startswith("github-com-example-repo-")
+
+
+def test_write_metrics_index_artifact_should_write_root_browser_dashboard(monkeypatch, tmp_path) -> None:
+    """The combined browser dashboard should live at the metrics root."""
+
+    shellbrain_home = tmp_path / "shellbrain-home"
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(shellbrain_home))
+
+    html_path = write_metrics_index_artifact(html="<html><body>overview</body></html>")
+
+    assert html_path == get_metrics_root_dir() / "index.html"
+    assert html_path.read_text(encoding="utf-8") == "<html><body>overview</body></html>"

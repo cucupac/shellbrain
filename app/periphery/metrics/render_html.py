@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from html import escape
-from typing import Any
+from typing import Any, Sequence
 
 
 _PAGE_CSS = """
@@ -220,8 +220,265 @@ body {
 """
 
 
+_BROWSER_CSS = """
+.browser-shell {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 24px 28px 64px;
+}
+
+.browser-masthead {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-end;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.browser-masthead h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+
+.browser-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.browser-keyhint {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.repo-tab-row {
+  margin-top: 18px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.repo-tab {
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  padding: 8px 12px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+.repo-tab.is-active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.repo-browser {
+  margin-top: 20px;
+}
+
+.repo-panel[hidden] {
+  display: none !important;
+}
+"""
+
+
+_BROWSER_SCRIPT = """
+<script>
+(() => {
+  const panels = Array.from(document.querySelectorAll(".repo-panel"));
+  const tabs = Array.from(document.querySelectorAll(".repo-tab"));
+  const position = document.getElementById("repo-position");
+  const status = document.getElementById("repo-status");
+  if (!panels.length) {
+    return;
+  }
+
+  let index = 0;
+
+  const show = (nextIndex) => {
+    index = (nextIndex + panels.length) % panels.length;
+    panels.forEach((panel, panelIndex) => {
+      const active = panelIndex === index;
+      panel.hidden = !active;
+      panel.setAttribute("aria-hidden", active ? "false" : "true");
+    });
+    tabs.forEach((tab, tabIndex) => {
+      const active = tabIndex === index;
+      tab.classList.toggle("is-active", active);
+      tab.setAttribute("aria-pressed", active ? "true" : "false");
+      tab.tabIndex = active ? 0 : -1;
+    });
+
+    const activePanel = panels[index];
+    const repoId = activePanel.dataset.repoId || "";
+    const tone = activePanel.dataset.tone || "neutral";
+    const statusText = activePanel.dataset.status || "unknown";
+
+    if (position) {
+      position.textContent = `${index + 1} / ${panels.length}`;
+    }
+    if (status) {
+      status.className = `pill ${tone}`;
+      status.textContent = statusText.replaceAll("_", " ");
+      status.setAttribute("aria-label", `${repoId} status ${statusText}`);
+    }
+    document.title = `Shellbrain Metrics - ${repoId}`;
+    if (window.history && window.history.replaceState) {
+      window.history.replaceState(null, "", `#repo-${index + 1}`);
+    }
+  };
+
+  document.addEventListener("keydown", (event) => {
+    if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) {
+      return;
+    }
+
+    const target = event.target;
+    const tagName = target && target.tagName ? target.tagName.toLowerCase() : "";
+    if (tagName === "input" || tagName === "textarea" || tagName === "select") {
+      return;
+    }
+    if (target && target.isContentEditable) {
+      return;
+    }
+
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      show(index + 1);
+    }
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      show(index - 1);
+    }
+  });
+
+  tabs.forEach((tab, tabIndex) => {
+    tab.addEventListener("click", () => show(tabIndex));
+  });
+
+  const hashMatch = window.location.hash.match(/^#repo-(\\d+)$/);
+  if (hashMatch) {
+    const parsed = Number(hashMatch[1]);
+    if (!Number.isNaN(parsed) && parsed >= 1 && parsed <= panels.length) {
+      index = parsed - 1;
+    }
+  }
+
+  show(index);
+})();
+</script>
+"""
+
+
 def render_metrics_dashboard(snapshot: dict[str, Any]) -> str:
     """Render one self-contained HTML dashboard from a metrics snapshot."""
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shellbrain Metrics</title>
+  <link rel="icon" href="data:,">
+  <style>{_PAGE_CSS}</style>
+</head>
+<body>
+  <div class="shell">
+    {_render_snapshot_content(snapshot)}
+  </div>
+</body>
+</html>
+"""
+
+
+def render_metrics_browser_dashboard(snapshots: Sequence[dict[str, Any]]) -> str:
+    """Render one browser dashboard that switches repos with in-page arrow-key navigation."""
+
+    normalized = [snapshot for snapshot in snapshots if isinstance(snapshot, dict)]
+    if not normalized:
+        return """<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shellbrain Metrics</title>
+  <link rel="icon" href="data:,">
+  <style>body{font-family:system-ui,sans-serif;padding:24px}</style>
+</head>
+<body><p>No metrics snapshots are available.</p></body>
+</html>
+"""
+
+    first_snapshot = normalized[0]
+    tabs = "".join(
+        f"<button type=\"button\" class=\"repo-tab{' is-active' if index == 0 else ''}\" aria-pressed=\"{'true' if index == 0 else 'false'}\">{escape(str(snapshot['repo_id']))}</button>"
+        for index, snapshot in enumerate(normalized)
+    )
+    panels = "".join(
+        _render_browser_panel(snapshot=snapshot, index=index)
+        for index, snapshot in enumerate(normalized)
+    )
+    first_tone = _tone_for_status(str(first_snapshot["status"]))
+
+    return f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shellbrain Metrics - {escape(str(first_snapshot["repo_id"]))}</title>
+  <link rel="icon" href="data:,">
+  <style>{_PAGE_CSS}{_BROWSER_CSS}</style>
+</head>
+<body>
+  <div class="browser-shell">
+    <header class="browser-masthead">
+      <div>
+        <p class="eyebrow">Shellbrain Metrics</p>
+        <h1>All Repos</h1>
+        <div class="subtle">Opened automatically. Use the left and right arrow keys in this page to switch repos.</div>
+      </div>
+      <div class="browser-meta">
+        <span id="repo-position" class="pill neutral">1 / {len(normalized)}</span>
+        <span id="repo-status" class="pill {first_tone}">{escape(str(first_snapshot["status"]).replace("_", " "))}</span>
+      </div>
+    </header>
+    <div class="browser-keyhint">Left/Right arrow keys switch repos in this page. No terminal input is required.</div>
+    <nav class="repo-tab-row" aria-label="Tracked repos">
+      {tabs}
+    </nav>
+    <main class="repo-browser">
+      {panels}
+    </main>
+  </div>
+  {_BROWSER_SCRIPT}
+</body>
+</html>
+"""
+
+
+def _render_browser_panel(*, snapshot: dict[str, Any], index: int) -> str:
+    """Render one repo panel for the multi-repo browser dashboard."""
+
+    tone = _tone_for_status(str(snapshot["status"]))
+    hidden_attr = "" if index == 0 else " hidden"
+    return f"""
+    <section class="repo-panel" data-repo-id="{escape(str(snapshot["repo_id"]))}" data-status="{escape(str(snapshot["status"]))}" data-tone="{tone}" aria-hidden="{'false' if index == 0 else 'true'}"{hidden_attr}>
+      {_render_snapshot_content(snapshot)}
+    </section>
+    """
+
+
+def _render_snapshot_content(snapshot: dict[str, Any]) -> str:
+    """Render the shared snapshot content used by single-repo and multi-repo dashboards."""
 
     status_tone = _tone_for_status(str(snapshot["status"]))
     alert_html = ""
@@ -238,17 +495,7 @@ def render_metrics_dashboard(snapshot: dict[str, Any]) -> str:
     generated_at = escape(str(snapshot["generated_at"]).replace("T", " ").replace("+00:00", " UTC"))
     current_window = snapshot["current_window"]
 
-    return f"""<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Shellbrain Metrics</title>
-  <link rel="icon" href="data:,">
-  <style>{_PAGE_CSS}</style>
-</head>
-<body>
-  <div class="shell">
+    return f"""
     <section class="status-strip {status_tone}">
       <div>
         <p class="eyebrow">Shellbrain Metrics</p>
@@ -279,10 +526,7 @@ def render_metrics_dashboard(snapshot: dict[str, Any]) -> str:
         {metric_cards}
       </section>
     </main>
-  </div>
-</body>
-</html>
-"""
+    """
 
 
 def _render_metric_card(metric: dict[str, Any]) -> str:
