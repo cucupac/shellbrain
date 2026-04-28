@@ -259,6 +259,44 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_pa
     assert call_order == ["reconcile", "migrate", "embeddings"]
 
 
+def test_run_init_should_noop_when_machine_already_ready(tmp_path: Path, monkeypatch) -> None:
+    """init should short-circuit to noop when machine config is already in ready state."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    ready_config = _machine_config(bootstrap_state="ready", readiness_state="ready", last_error=None)
+    host_asset_calls: list[str] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (ready_config, None))
+    monkeypatch.setattr(init_module, "load_repo_registration_for_target", lambda repo_root: None)
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_dependencies",
+        lambda: (_ for _ in ()).throw(AssertionError("should not check Docker when already ready")),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "install_host_assets",
+        lambda host_mode, force: (host_asset_calls.append("installed") or _FakeHostAssetsResult()),
+    )
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=True,
+        skip_model_download=False,
+        skip_host_assets=False,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_NOOP
+    assert result.exit_code == 0
+    assert host_asset_calls == ["installed"]
+
+
 def test_external_init_should_skip_managed_container_setup(monkeypatch, tmp_path: Path) -> None:
     """external init should not require Docker-backed managed runtime helpers."""
 
@@ -421,6 +459,12 @@ def _external_machine_config(
             last_error=last_error,
         ),
     )
+
+
+class _FakeHostAssetsResult:
+    """Stub for HostAssetInstallResult."""
+
+    lines: list[str] = []
 
 
 class _FakeCursor:

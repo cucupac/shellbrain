@@ -132,6 +132,15 @@ def run_init(
                 config_corruption_recovered = True
                 mutated_machine = True
 
+            if (
+                machine_config is not None
+                and machine_config.bootstrap_state == BOOTSTRAP_STATE_READY
+                and not config_corruption_recovered
+            ):
+                if not skip_host_assets:
+                    notes.extend(install_host_assets(host_mode="auto", force=False).lines)
+                return InitResult(outcome=INIT_OUTCOME_NOOP, lines=notes)
+
             selection = resolve_storage_selection(
                 existing_config=machine_config,
                 storage_flag=storage,
