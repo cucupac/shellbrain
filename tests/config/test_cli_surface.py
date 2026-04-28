@@ -179,7 +179,7 @@ def test_metrics_help_should_include_one_example(capsys: pytest.CaptureFixture[s
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "browse repos with arrow keys" in output
+    assert "browser dashboard" in output
     assert "shellbrain metrics" in output
     assert "--days" not in output
     assert "--no-open" not in output

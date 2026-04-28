@@ -1,8 +1,8 @@
-"""Unit coverage for the static metrics dashboard renderer."""
+"""Unit coverage for the metrics dashboard renderers."""
 
 from __future__ import annotations
 
-from app.periphery.metrics.render_html import render_metrics_dashboard
+from app.periphery.metrics.render_html import render_metrics_browser_dashboard, render_metrics_dashboard
 
 
 def test_render_metrics_dashboard_should_embed_styles_and_limit_metric_cards() -> None:
@@ -39,6 +39,61 @@ def test_render_metrics_dashboard_should_embed_styles_and_limit_metric_cards() -
     assert "Daily value" in html
     assert "7-day rolling average" in html
     assert "Zero baseline" in html
+
+
+def test_render_metrics_browser_dashboard_should_embed_repo_switcher_script() -> None:
+    """The combined browser dashboard should switch repos inside the page with arrow keys."""
+
+    snapshots = [
+        {
+            "repo_id": "github.com/example/one",
+            "generated_at": "2026-03-27T15:00:00+00:00",
+            "window_days": 30,
+            "current_window": {
+                "start_at": "2026-02-26T00:00:00+00:00",
+                "end_at": "2026-03-27T15:00:00+00:00",
+            },
+            "previous_window": {
+                "start_at": "2026-01-28T09:00:00+00:00",
+                "end_at": "2026-02-26T00:00:00+00:00",
+            },
+            "status": "healthy",
+            "confidence": "medium",
+            "headline": "Repo one is healthy.",
+            "alerts": [],
+            "metrics": [_metric(name="Metric 1")],
+            "summary_md": "Repo one summary.",
+        },
+        {
+            "repo_id": "github.com/example/two",
+            "generated_at": "2026-03-27T15:00:00+00:00",
+            "window_days": 30,
+            "current_window": {
+                "start_at": "2026-02-26T00:00:00+00:00",
+                "end_at": "2026-03-27T15:00:00+00:00",
+            },
+            "previous_window": {
+                "start_at": "2026-01-28T09:00:00+00:00",
+                "end_at": "2026-02-26T00:00:00+00:00",
+            },
+            "status": "slipping",
+            "confidence": "medium",
+            "headline": "Repo two is slipping.",
+            "alerts": [],
+            "metrics": [_metric(name="Metric 2")],
+            "summary_md": "Repo two summary.",
+        },
+    ]
+
+    html = render_metrics_browser_dashboard(snapshots)
+
+    assert "<script>" in html
+    assert "ArrowRight" in html
+    assert "ArrowLeft" in html
+    assert "No terminal input is required." in html
+    assert html.count('class="repo-panel"') == 2
+    assert "github.com/example/one" in html
+    assert "github.com/example/two" in html
 
 
 def _metric(*, name: str) -> dict[str, object]:

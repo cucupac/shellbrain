@@ -8,8 +8,8 @@ from pathlib import Path
 from app.periphery.cli import main as cli_main
 
 
-def test_metrics_command_should_generate_all_repo_artifacts_and_launch_viewer(monkeypatch, tmp_path, capsys) -> None:
-    """The no-option metrics command should build per-repo artifacts and invoke the terminal viewer."""
+def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_dashboard(monkeypatch, tmp_path, capsys) -> None:
+    """The no-option metrics command should build per-repo artifacts and open one browser dashboard."""
 
     shellbrain_home = tmp_path / "shellbrain-home"
     monkeypatch.setenv("SHELLBRAIN_HOME", str(shellbrain_home))
@@ -32,21 +32,18 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_viewer(mo
         lambda path: opened.append(path) or True,
     )
 
-    viewer_calls: list[dict[str, object]] = []
-    monkeypatch.setattr(
-        "app.periphery.metrics.pager.present_metrics_repo_pager",
-        lambda **kwargs: viewer_calls.append(kwargs),
-    )
-
     exit_code = cli_main.main(["metrics"])
     output = capsys.readouterr().out
     artifact_root = shellbrain_home / "reports" / "metrics"
+    overview_path = artifact_root / "index.html"
     json_paths = sorted(artifact_root.rglob("latest.json"))
     md_paths = sorted(artifact_root.rglob("latest.md"))
     html_paths = sorted(artifact_root.rglob("dashboard.html"))
 
     assert exit_code == 0
-    assert opened == []
+    assert len(opened) == 1
+    assert opened[0] == overview_path
+    assert overview_path.exists()
     assert len(json_paths) == 2
     assert len(md_paths) == 2
     assert len(html_paths) == 2
@@ -54,25 +51,23 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_viewer(mo
     assert repo_ids == {"github.com/example/one", "github.com/example/two"}
     assert all("Utility score trend" in path.read_text(encoding="utf-8") for path in md_paths)
     assert all("<style>" in path.read_text(encoding="utf-8") for path in html_paths)
-    assert len(viewer_calls) == 1
-    assert len(viewer_calls[0]["entries"]) == 2
-    assert callable(viewer_calls[0]["open_dashboard"])
+    overview_html = overview_path.read_text(encoding="utf-8")
+    assert "Left/Right arrow keys switch repos in this page" in overview_html
+    assert "github.com/example/one" in overview_html
+    assert "github.com/example/two" in overview_html
     assert "Generated Shellbrain metrics for 2 repos" in output
     assert "Window: last 30 days" in output
-    assert "Browser: press 'o' in the viewer to open the current dashboard" in output
+    assert "Browser: opened dashboard; use left/right arrow keys in the browser to switch repos" in output
+
+
 def test_metrics_command_should_print_empty_message_when_no_repo_metrics_exist(monkeypatch, capsys) -> None:
-    """No telemetry repos should return a clean message and no viewer launch."""
+    """No telemetry repos should return a clean message and no browser launch."""
 
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
     monkeypatch.setattr("app.periphery.metrics.service.list_metrics_repo_ids", lambda **_kwargs: [])
-    monkeypatch.setattr(
-        "app.periphery.metrics.pager.present_metrics_repo_pager",
-        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("viewer should not run when no repos are present")),
-    )
-
     exit_code = cli_main.main(["metrics"])
     output = capsys.readouterr().out
 
