@@ -4,7 +4,7 @@ from app.core.contracts.requests import MemoryReadRequest
 from app.core.contracts.responses import OperationResult
 from app.core.entities.settings import ReadPolicySettings, ThresholdSettings, default_read_policy_settings, default_threshold_settings
 from app.core.interfaces.unit_of_work import IUnitOfWork
-from app.core.policies.read_policy.pipeline import build_context_pack
+from app.core.use_cases.memory_retrieval.context_pack_pipeline import build_context_pack
 from app.core.use_cases.memory_retrieval.read_concepts import append_concepts_to_pack
 
 

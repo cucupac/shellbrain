@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.startup.operations import handle_create, handle_events
+from app.startup.agent_operations import handle_create, handle_events
 from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
 
 

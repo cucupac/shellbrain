@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from app.startup.jobs import run_episode_poller
+from app.startup.episode_poller import run_episode_poller
 
 
 def main() -> int:

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-import app.startup.admin_init as init_module
+import app.startup.admin_initialize as init_module
 from app.infrastructure.runtime import managed_runtime
 from app.infrastructure.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
 from app.infrastructure.local_state.repo_registration_store import RepoRegistration
@@ -30,12 +30,12 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path:
     captured_stub: dict[str, str | None] = {}
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, "corrupt toml"))
     monkeypatch.setattr(init_module, "backup_corrupt_machine_config", lambda: preserved)
     monkeypatch.setattr(init_module, "_recover_machine_config_from_docker", lambda: None)
-    monkeypatch.setattr("app.startup.admin_init.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
+    monkeypatch.setattr("app.startup.admin_initialize.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -76,7 +76,7 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     )
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
@@ -84,7 +84,7 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "_backup_before_repair", lambda config: backup_calls.append(config.machine_instance_id))
-    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: True)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
@@ -114,7 +114,7 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: P
     marked: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
@@ -155,14 +155,14 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
     marked: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
-    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(
         "app.startup.migrations.upgrade_database",
@@ -198,14 +198,14 @@ def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path
     register_calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
-    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
@@ -235,14 +235,14 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_pa
     call_order: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
-    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(
         init_module,
         "_reconcile_database",
@@ -278,7 +278,7 @@ def test_run_init_should_noop_when_machine_already_ready(tmp_path: Path, monkeyp
     host_asset_calls: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (ready_config, None))
     monkeypatch.setattr(init_module, "load_repo_registration_for_target", lambda repo_root: None)
@@ -317,7 +317,7 @@ def test_external_init_should_skip_managed_container_setup(monkeypatch, tmp_path
     saved: list[MachineConfig] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
-    monkeypatch.setattr(init_module, "_acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, None))
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")))
@@ -329,7 +329,7 @@ def test_external_init_should_skip_managed_container_setup(monkeypatch, tmp_path
         "_ensure_managed_container",
         lambda config: (_ for _ in ()).throw(AssertionError("unexpected managed container step")),
     )
-    monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
     monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))

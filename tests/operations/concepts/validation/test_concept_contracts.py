@@ -1,6 +1,6 @@
 """Request-shape contracts for the concept endpoint."""
 
-from app.core.contracts.agent_requests import validate_concept_schema
+from app.entrypoints.cli.protocol.payload_validation import validate_concept_schema
 
 
 def test_concept_apply_should_accept_typed_batch_actions_with_inline_evidence() -> None:

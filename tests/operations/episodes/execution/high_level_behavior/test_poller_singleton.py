@@ -116,7 +116,7 @@ def test_launcher_does_not_spawn_when_an_active_lock_exists(tmp_path: Path, monk
     def _unexpected_spawn(*args, **kwargs):
         raise AssertionError("launcher should not spawn a second poller while the lock is active")
 
-    monkeypatch.setattr("app.startup.episode_sync_launcher.subprocess.Popen", _unexpected_spawn)
+    monkeypatch.setattr("app.infrastructure.process.episode_sync_launcher.subprocess.Popen", _unexpected_spawn)
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is False
 
@@ -136,7 +136,7 @@ def test_launcher_spawns_when_no_active_lock_exists(tmp_path: Path, monkeypatch)
         calls.append((command, kwargs))
         return _FakeProcess()
 
-    monkeypatch.setattr("app.startup.episode_sync_launcher.subprocess.Popen", _fake_popen)
+    monkeypatch.setattr("app.infrastructure.process.episode_sync_launcher.subprocess.Popen", _fake_popen)
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is True
     assert len(calls) == 1

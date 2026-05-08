@@ -8,6 +8,7 @@ from app.core.contracts.requests import MemoryReadRequest, ReadConceptsExpandReq
 from app.core.entities.concepts import Concept, ConceptClaim, ConceptLifecycleStatus, ConceptMemoryLink
 from app.core.entities.memory import Memory
 from app.core.interfaces.repos import IConceptsRepo, IMemoriesRepo
+from app.core.policies.concepts.search import rank_concept_search_rows
 
 
 AVAILABLE_FACETS = ("claims", "relations", "groundings", "memory_links", "evidence")
@@ -93,7 +94,11 @@ def _auto_concept_items(
         candidate["score"] += 10.0 * _status_multiplier(status) * max(confidence, 0.1)
         _append_linked_memory_reason(candidate["why"], link_match)
 
-    for query_match in concepts.search_concepts_by_text(repo_id=request.repo_id, query=request.query, limit=20):
+    for query_match in rank_concept_search_rows(
+        concepts.list_concept_search_rows(repo_id=request.repo_id),
+        query=request.query,
+        limit=20,
+    ):
         concept_id = str(query_match["concept_id"])
         candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
         candidate["score"] += float(query_match.get("score") or 1.0)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 import json
 
-from app.startup.jobs import sync_episode_from_host
+from app.infrastructure.process.episode_poller import sync_episode_from_host
 from app.infrastructure.db.models.episodes import episode_events, episodes
 from app.infrastructure.db.uow import PostgresUnitOfWork
 

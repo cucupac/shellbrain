@@ -37,8 +37,8 @@ _TOP_LEVEL_HELP = dedent(
       - `read` retrieves durable memories related to the concrete problem or subproblem.
       - `recall` returns a compact read-only brief from targeted Shellbrain retrieval.
       - `events` inspects episodic transcript evidence from the active session.
-      - `create` authors durable memories from that evidence.
-      - `update` records utility, truth-evolution links, and explicit associations.
+      - `memory add` authors durable memories from that evidence.
+      - `memory update` records utility, truth-evolution links, and explicit associations.
 
     Typical workflow:
       0. `shellbrain init` is the one-time machine bootstrap and repair command. The website installer already runs it for you.
@@ -56,8 +56,8 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain recall --json '{"query":"What context matters for this migration lock timeout?"}'
       shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
       shellbrain events --json '{"limit":10}'
-      shellbrain create --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
-      shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-124"]}}'
+      shellbrain memory add --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
+      shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-124"]}}'
       shellbrain admin migrate
       shellbrain admin backup create
       shellbrain admin doctor
@@ -92,7 +92,7 @@ _CREATE_HELP = dedent(
     `solution` and `failed_tactic` require `memory.links.problem_id`.
 
     Example:
-      shellbrain create --json '{"memory":{"text":"The staging DB migration needs a 30s lock timeout","kind":"fact","evidence_refs":["evt-123"]}}'
+      shellbrain memory add --json '{"memory":{"text":"The staging DB migration needs a 30s lock timeout","kind":"fact","evidence_refs":["evt-123"]}}'
     """
 )
 
@@ -132,15 +132,16 @@ _CONCEPT_HELP = dedent(
     Internal JSON-first endpoint for Shellbrain concept graph substrate operations.
 
     This endpoint is intended for tests, manual seeding, and future librarian integration.
-    Normal worker agents should continue using `read`, `events`, `create`, and `update`.
+    Working agents should use `recall`. Internal agents may use `read`, `events`,
+    `memory add`, `memory update`, `concept add`, and `concept update`.
 
     Phase 1 supports:
       - mode: apply
       - mode: show
 
     Examples:
-      shellbrain concept --json '{"schema_version":"concept.v1","mode":"apply","actions":[{"type":"upsert_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
-      shellbrain concept --json '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses","include":["claims","preview_concept"]}'
+      shellbrain concept add --json '{"schema_version":"concept.v1","mode":"apply","actions":[{"type":"upsert_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses","include":["claims","preview_concept"]}'
     """
 )
 
@@ -166,7 +167,7 @@ _UPDATE_HELP = dedent(
       - `association_link`
 
     Example:
-      shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-456"]}}'
+      shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-456"]}}'
     """
 )
 
@@ -383,16 +384,6 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
 
-    create_parser = subparsers.add_parser(
-        "create",
-        help="Legacy alias for `memory add`.",
-        description="Legacy alias for `shellbrain memory add`.",
-        epilog=_CREATE_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    _add_repo_context_arguments(create_parser, suppress_default=True)
-    _add_payload_arguments(create_parser)
-
     read_parser = subparsers.add_parser(
         "read",
         help="Read Shellbrain context without mutating state.",
@@ -421,12 +412,23 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
     _add_repo_context_arguments(concept_parser, suppress_default=True)
-    _add_payload_arguments(concept_parser, required=False)
-    concept_subparsers = concept_parser.add_subparsers(dest="concept_command", metavar="concept-command")
-    concept_add_parser = concept_subparsers.add_parser("add", help="Add concept graph records.")
+    concept_subparsers = concept_parser.add_subparsers(dest="concept_command", required=True, metavar="concept-command")
+    concept_add_parser = concept_subparsers.add_parser(
+        "add",
+        help="Add concept graph records.",
+        description="Add typed concept graph records.",
+        epilog=_CONCEPT_HELP,
+        formatter_class=_HelpFormatter,
+    )
     _add_repo_context_arguments(concept_add_parser, suppress_default=True)
     _add_payload_arguments(concept_add_parser)
-    concept_update_parser = concept_subparsers.add_parser("update", help="Update concept graph records.")
+    concept_update_parser = concept_subparsers.add_parser(
+        "update",
+        help="Update concept graph records.",
+        description="Update typed concept graph records.",
+        epilog=_CONCEPT_HELP,
+        formatter_class=_HelpFormatter,
+    )
     _add_repo_context_arguments(concept_update_parser, suppress_default=True)
     _add_payload_arguments(concept_update_parser)
 
@@ -440,16 +442,6 @@ def build_parser() -> argparse.ArgumentParser:
     _add_repo_context_arguments(events_parser, suppress_default=True)
     _add_payload_arguments(events_parser)
 
-    update_parser = subparsers.add_parser(
-        "update",
-        help="Legacy alias for `memory update`.",
-        description="Legacy alias for `shellbrain memory update`.",
-        epilog=_UPDATE_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    _add_repo_context_arguments(update_parser, suppress_default=True)
-    _add_payload_arguments(update_parser)
-
     memory_parser = subparsers.add_parser(
         "memory",
         help="Internal memory write endpoints.",
@@ -459,10 +451,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(memory_parser, suppress_default=True)
     memory_subparsers = memory_parser.add_subparsers(dest="memory_command", required=True, metavar="memory-command")
-    memory_add_parser = memory_subparsers.add_parser("add", help="Add one durable memory from explicit evidence.")
+    memory_add_parser = memory_subparsers.add_parser(
+        "add",
+        help="Add one durable memory from explicit evidence.",
+        description="Add one durable memory from explicit evidence.",
+        epilog=_CREATE_HELP,
+        formatter_class=_HelpFormatter,
+    )
     _add_repo_context_arguments(memory_add_parser, suppress_default=True)
     _add_payload_arguments(memory_add_parser)
-    memory_update_parser = memory_subparsers.add_parser("update", help="Update one durable memory from explicit evidence.")
+    memory_update_parser = memory_subparsers.add_parser(
+        "update",
+        help="Update one durable memory from explicit evidence.",
+        description="Update one durable memory from explicit evidence.",
+        epilog=_UPDATE_HELP,
+        formatter_class=_HelpFormatter,
+    )
     _add_repo_context_arguments(memory_update_parser, suppress_default=True)
     _add_payload_arguments(memory_update_parser)
 

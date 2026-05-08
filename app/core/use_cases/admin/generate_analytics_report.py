@@ -8,7 +8,7 @@ import math
 import re
 from typing import Any
 
-from app.core.policies.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
+from app.core.observability.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
 
 
 _MAX_STRENGTHS = 3

@@ -146,11 +146,11 @@ def _execute_stubbed_read(
     """Execute one read call with deterministic scored candidates for JSON-shape tests."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
         lambda semantic, keyword: [
             {
                 "memory_id": "direct-1",
@@ -163,7 +163,7 @@ def _execute_stubbed_read(
         ],
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {
@@ -189,7 +189,7 @@ def _execute_stubbed_read(
         },
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.score_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
 

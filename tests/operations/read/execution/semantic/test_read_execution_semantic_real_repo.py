@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.policies.read_policy.expansion import expand_candidates
+from app.core.use_cases.memory_retrieval.expansion import expand_candidates
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 

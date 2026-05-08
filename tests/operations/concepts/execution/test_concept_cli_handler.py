@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from app.startup.operations import handle_concept
+from app.startup.agent_operations import handle_concept
 from app.infrastructure.db.models.concepts import concepts
 from app.infrastructure.db.uow import PostgresUnitOfWork
 

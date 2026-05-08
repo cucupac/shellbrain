@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.startup.operations import handle_create, handle_events, handle_read
+from app.startup.agent_operations import handle_create, handle_events, handle_read
 
 
 def test_create_solution_should_emit_pending_utility_votes_guidance_when_session_has_unrated_retrieved_memories(

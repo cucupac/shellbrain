@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Final
 
+from app.core.entities.ids import MemoryId, RepoId
+
 
 class MemoryKind(str, Enum):
     """This enum defines ratified atomic shellbrain kinds."""
@@ -46,8 +48,8 @@ class MemoryScope(str, Enum):
 class Memory:
     """This dataclass models an immutable shellbrain record."""
 
-    id: str
-    repo_id: str
+    id: MemoryId
+    repo_id: RepoId
     scope: MemoryScope
     kind: MemoryKind
     text: str

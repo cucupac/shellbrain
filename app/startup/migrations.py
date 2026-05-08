@@ -12,6 +12,7 @@ from alembic.script.revision import ResolutionError
 
 from app.startup.admin_db import get_admin_db_dsn, get_backup_dir, get_backup_mirror_dir, get_instance_mode_default
 from app.startup.db import get_optional_db_dsn
+from app.infrastructure.postgres_admin.connection import database_has_shellbrain_objects, fetch_schema_revision
 from app.infrastructure.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
 from app.infrastructure.postgres_admin.instance_guard import ensure_instance_metadata, fetch_instance_metadata
 from app.infrastructure.postgres_admin.privileges import reconcile_app_role_privileges
@@ -29,7 +30,7 @@ def upgrade_database(revision: str = "head") -> None:
     with as_file(files("migrations")) as migrations_path:
         config.set_main_option("script_location", str(migrations_path))
         script = ScriptDirectory.from_config(config)
-        if _database_has_shellbrain_objects(admin_dsn):
+        if database_has_shellbrain_objects(admin_dsn):
             _assert_database_revision_is_known(admin_dsn=admin_dsn, script=script)
             backup_and_verify_before_destructive_action(
                 admin_dsn=admin_dsn,
@@ -50,30 +51,10 @@ def upgrade_database(revision: str = "head") -> None:
         reconcile_app_role_privileges(admin_dsn=admin_dsn, app_dsn=app_dsn)
 
 
-def _database_has_shellbrain_objects(admin_dsn: str) -> bool:
-    """Return whether the target database already contains Shellbrain-managed tables."""
-
-    import psycopg
-
-    with psycopg.connect(admin_dsn.replace("+psycopg", "")) as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                SELECT EXISTS (
-                  SELECT 1
-                  FROM information_schema.tables
-                  WHERE table_schema = 'public'
-                    AND table_name IN ('memories', 'episodes', 'episode_events', 'operation_invocations')
-                )
-                """
-            )
-            return bool(cur.fetchone()[0])
-
-
 def _assert_database_revision_is_known(*, admin_dsn: str, script: ScriptDirectory) -> None:
     """Fail early with a user-facing error when the database revision is newer than this package."""
 
-    current_revision = _fetch_database_revision(admin_dsn)
+    current_revision = fetch_schema_revision(admin_dsn)
     if current_revision is None:
         return
     try:
@@ -87,23 +68,6 @@ def _assert_database_revision_is_known(*, admin_dsn: str, script: ScriptDirector
             "Upgrade Shellbrain to a build that includes this revision, then rerun `shellbrain init` or "
             "`shellbrain admin migrate`."
         ) from exc
-
-
-def _fetch_database_revision(admin_dsn: str) -> str | None:
-    """Return the current alembic revision when present."""
-
-    import psycopg
-
-    try:
-        with psycopg.connect(admin_dsn.replace("+psycopg", "")) as conn:
-            with conn.cursor() as cur:
-                cur.execute("SELECT version_num FROM alembic_version")
-                row = cur.fetchone()
-    except psycopg.Error:
-        return None
-    if row is None or row[0] is None:
-        return None
-    return str(row[0])
 
 
 def _installed_shellbrain_version() -> str:

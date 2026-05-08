@@ -8,6 +8,19 @@ from pathlib import Path
 import app.entrypoints.cli.main as cli_main
 
 
+class _FakeConnection:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc) -> None:
+        return None
+
+
+class _FakeEngine:
+    def connect(self) -> _FakeConnection:
+        return _FakeConnection()
+
+
 def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_dashboard(monkeypatch, tmp_path, capsys) -> None:
     """The no-option metrics command should build per-repo artifacts and open one browser dashboard."""
 
@@ -16,13 +29,13 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_d
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: object())
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: _FakeEngine())
     monkeypatch.setattr(
-        "app.startup.metrics.list_metrics_repo_ids",
+        "app.core.use_cases.metrics.generate_dashboard.list_metrics_repo_ids",
         lambda **_kwargs: ["github.com/example/one", "github.com/example/two"],
     )
     monkeypatch.setattr(
-        "app.startup.metrics.build_metrics_snapshot",
+        "app.core.use_cases.metrics.generate_dashboard.build_metrics_snapshot",
         lambda **kwargs: _snapshot(repo_id=str(kwargs["repo_id"])),
     )
 
@@ -66,8 +79,8 @@ def test_metrics_command_should_print_empty_message_when_no_repo_metrics_exist(m
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: object())
-    monkeypatch.setattr("app.startup.metrics.list_metrics_repo_ids", lambda **_kwargs: [])
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: _FakeEngine())
+    monkeypatch.setattr("app.core.use_cases.metrics.generate_dashboard.list_metrics_repo_ids", lambda **_kwargs: [])
     exit_code = cli_main.main(["metrics"])
     output = capsys.readouterr().out
 
@@ -81,7 +94,7 @@ def test_metrics_command_should_reject_global_repo_target_options(monkeypatch, c
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: object())
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: _FakeEngine())
 
     exit_code = cli_main.main(["--repo-id", "github.com/example/repo", "metrics"])
     error = capsys.readouterr().err

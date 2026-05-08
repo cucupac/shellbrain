@@ -6,7 +6,7 @@ from collections.abc import Callable
 import os
 from pathlib import Path
 
-from app.startup.operations import handle_events
+from app.startup.agent_operations import handle_events
 from app.infrastructure.db.models.episodes import episode_events
 from app.infrastructure.db.uow import PostgresUnitOfWork
 

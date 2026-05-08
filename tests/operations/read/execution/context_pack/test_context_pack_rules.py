@@ -1,6 +1,6 @@
 """Read execution contracts for context-pack builder selection rules."""
 
-from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
+from app.core.policies.memory_read_policy.context_pack_builder import assemble_context_pack
 
 
 def test_context_pack_builder_should_always_fill_targeted_quotas_in_direct_first_order() -> None:

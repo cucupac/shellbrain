@@ -87,17 +87,17 @@ shellbrain events --json '{"limit":10}'
 Read returned ids from `data.events[].id`.
 
 `events` inspects normalized episodic evidence. Those ids are the canonical grounding for durable writes.
-`events` is a hard rule before evidence-bearing `create` and `update`.
+`events` is a hard rule before evidence-bearing `memory add` and `memory update`.
 
 When caller identity is trusted, `events` reads from the exact caller thread instead of guessing from the repo alone.
 `shellbrain init` normally installs Claude integration through the global Shellbrain SessionStart hook in `~/.claude/settings.json`. Use `shellbrain admin install-claude-hook --repo-root ...` only when you intentionally need the repo-local override path.
 
-## Create
+## Memory Add
 
-Minimal create:
+Minimal memory add:
 
 ```bash
-shellbrain create --json '{"memory":{"text":"Deploy failed because APP_ENV was unset","kind":"problem","evidence_refs":["evt-123"]}}'
+shellbrain memory add --json '{"memory":{"text":"Deploy failed because APP_ENV was unset","kind":"problem","evidence_refs":["evt-123"]}}'
 ```
 
 Notes:
@@ -108,7 +108,7 @@ Notes:
 - `problem`, `fact`, `preference`, and `change` do not accept `links.problem_id`.
 - `evidence_refs` must contain stored `episode_event` ids returned by `events`.
 
-When to use each create kind:
+When to use each memory kind:
 
 - `problem`:
   the obstacle or failure mode
@@ -123,14 +123,14 @@ When to use each create kind:
 - `change`:
   something that invalidates or revises prior truth
 
-## Update
+## Memory Update
 
 ### Archive State
 
 Archive or unarchive an existing memory:
 
 ```bash
-shellbrain update --json '{"memory_id":"mem-123","update":{"type":"archive_state","archived":true}}'
+shellbrain memory update --json '{"memory_id":"mem-123","update":{"type":"archive_state","archived":true}}'
 ```
 
 ### Utility Vote
@@ -138,7 +138,7 @@ shellbrain update --json '{"memory_id":"mem-123","update":{"type":"archive_state
 Record whether something helped solve a problem:
 
 ```bash
-shellbrain update --json '{"memory_id":"mem-123","update":{"type":"utility_vote","problem_id":"mem-problem","vote":1.0,"evidence_refs":["evt-123"]}}'
+shellbrain memory update --json '{"memory_id":"mem-123","update":{"type":"utility_vote","problem_id":"mem-problem","vote":1.0,"evidence_refs":["evt-123"]}}'
 ```
 
 Use `utility_vote` after solving a problem to judge whether a retrieved memory was actually useful or misleading in that specific context.
@@ -146,7 +146,7 @@ Use `utility_vote` after solving a problem to judge whether a retrieved memory w
 Batch utility votes are also supported:
 
 ```bash
-shellbrain update --json '{"updates":[{"memory_id":"mem-123","update":{"type":"utility_vote","problem_id":"mem-problem","vote":1.0,"evidence_refs":["evt-123"]}},{"memory_id":"mem-456","update":{"type":"utility_vote","problem_id":"mem-problem","vote":-0.25,"evidence_refs":["evt-123"]}}]}'
+shellbrain memory update --json '{"updates":[{"memory_id":"mem-123","update":{"type":"utility_vote","problem_id":"mem-problem","vote":1.0,"evidence_refs":["evt-123"]}},{"memory_id":"mem-456","update":{"type":"utility_vote","problem_id":"mem-problem","vote":-0.25,"evidence_refs":["evt-123"]}}]}'
 ```
 
 Vote semantics:
@@ -163,13 +163,13 @@ Vote semantics:
 Link an older fact to a newer fact through a change memory:
 
 ```bash
-shellbrain update --json '{"memory_id":"mem-change","update":{"type":"fact_update_link","old_fact_id":"mem-old-fact","new_fact_id":"mem-new-fact","evidence_refs":["evt-123"]}}'
+shellbrain memory update --json '{"memory_id":"mem-change","update":{"type":"fact_update_link","old_fact_id":"mem-old-fact","new_fact_id":"mem-new-fact","evidence_refs":["evt-123"]}}'
 ```
 
 Use this when ground truth changed:
 
-1. create a `change` memory
-2. create the replacement `fact`
+1. add a `change` memory
+2. add the replacement `fact`
 3. connect the old and new facts through `fact_update_link`
 
 ### Association Link
@@ -177,7 +177,7 @@ Use this when ground truth changed:
 Link two memories explicitly:
 
 ```bash
-shellbrain update --json '{"memory_id":"mem-123","update":{"type":"association_link","to_memory_id":"mem-456","relation_type":"associated_with","evidence_refs":["evt-123"]}}'
+shellbrain memory update --json '{"memory_id":"mem-123","update":{"type":"association_link","to_memory_id":"mem-456","relation_type":"associated_with","evidence_refs":["evt-123"]}}'
 ```
 
 Use `association_link` when two memories are similar or one depends on the other in a way you want future retrieval to preserve explicitly. This is the explicit side of associative memory; semantic-neighbor expansion remains the implicit side.

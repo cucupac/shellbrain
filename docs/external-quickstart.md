@@ -142,16 +142,16 @@ Even in advanced/operator environments, the usage model stays the same: Shellbra
 shellbrain events --json '{"limit":10}'
 ```
 
-8. Use returned `episode_event` ids verbatim in `create` or evidence-bearing `update`.
+8. Use returned `episode_event` ids verbatim in `memory add` or evidence-bearing `memory update`.
 9. At session end, normalize the work into durable memories and record `utility_vote` updates.
 
 Examples:
 
 ```bash
-shellbrain create --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
-shellbrain create --json '{"memory":{"text":"Increasing lock_timeout to 30s fixed the migration","kind":"solution","links":{"problem_id":"mem-problem-123"},"evidence_refs":["evt-124"]}}'
-shellbrain create --json '{"memory":{"text":"Retrying the migration without changing the timeout failed again","kind":"failed_tactic","links":{"problem_id":"mem-problem-123"},"evidence_refs":["evt-125"]}}'
-shellbrain update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"rationale":"This prior fix led directly to the right timeout change.","evidence_refs":["evt-126"]}}'
+shellbrain memory add --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
+shellbrain memory add --json '{"memory":{"text":"Increasing lock_timeout to 30s fixed the migration","kind":"solution","links":{"problem_id":"mem-problem-123"},"evidence_refs":["evt-124"]}}'
+shellbrain memory add --json '{"memory":{"text":"Retrying the migration without changing the timeout failed again","kind":"failed_tactic","links":{"problem_id":"mem-problem-123"},"evidence_refs":["evt-125"]}}'
+shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"rationale":"This prior fix led directly to the right timeout change.","evidence_refs":["evt-126"]}}'
 ```
 
 ## Host Integration
@@ -176,7 +176,7 @@ shellbrain admin install-claude-hook --repo-root /path/to/repo
 ## Repo Registration
 
 - Repo registration is no longer part of the initial machine bootstrap requirement.
-- On first real `read`, `events`, `create`, or `update` inside a git repo, Shellbrain auto-registers that repo at the git root.
+- On first real `read`, `events`, `memory add`, or `memory update` inside a git repo, Shellbrain auto-registers that repo at the git root.
 - If you run Shellbrain outside a git repo, it does not auto-register arbitrary directories like `~`.
 - Use `--repo-root` and `--repo-id` when you need to target or override repo identity explicitly.
 

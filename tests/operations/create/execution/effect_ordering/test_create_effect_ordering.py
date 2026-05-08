@@ -1,6 +1,7 @@
 """Effect-ordering contracts for create execution."""
 
-from app.core.policies.create_policy.pipeline import build_create_plan
+from app.core.contracts.planned_effects import CreatePlanIds, EffectType
+from app.core.policies.memory_create_policy.plan import build_create_plan
 
 
 def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type() -> None:
@@ -29,15 +30,20 @@ def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type()
     }
 
     expected_effect_types = [
-        "memory.create",
-        "memory_embedding.upsert",
-        "memory_evidence.attach",
-        "problem_attempt.create",
-        "association.upsert_and_observe",
+        EffectType.MEMORY_CREATE,
+        EffectType.MEMORY_EMBEDDING_UPSERT,
+        EffectType.MEMORY_EVIDENCE_ATTACH,
+        EffectType.PROBLEM_ATTEMPT_CREATE,
+        EffectType.ASSOCIATION_UPSERT_AND_OBSERVE,
     ]
 
-    first_plan = build_create_plan(payload, embedding_model="stub-v1")
-    second_plan = build_create_plan(payload, embedding_model="stub-v1")
+    plan_ids = CreatePlanIds(
+        memory_id="memory-1",
+        association_edge_ids=("edge-1",),
+        association_observation_ids=("observation-1",),
+    )
+    first_plan = build_create_plan(payload, plan_ids=plan_ids, embedding_model="stub-v1")
+    second_plan = build_create_plan(payload, plan_ids=plan_ids, embedding_model="stub-v1")
 
-    assert [effect["effect_type"] for effect in first_plan] == expected_effect_types
-    assert [effect["effect_type"] for effect in second_plan] == expected_effect_types
+    assert [effect.effect_type for effect in first_plan] == expected_effect_types
+    assert [effect.effect_type for effect in second_plan] == expected_effect_types

@@ -1,6 +1,6 @@
 """Threshold-config usage contracts for retrieval boot helpers."""
 
-from app.core.policies.read_policy.seed_retrieval import retrieve_seeds
+from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
 
 
 class _StubSemanticRetrieval:
@@ -15,13 +15,13 @@ class _StubSemanticRetrieval:
 
 
 class _StubKeywordRetrieval:
-    """Stub keyword repo returning deterministic candidate rows."""
+    """Stub keyword corpus repo returning deterministic text rows."""
 
-    def query_keyword(self, **kwargs):
+    def list_keyword_corpus(self, **kwargs):
         _ = kwargs
         return [
-            {"memory_id": "keyword-keep", "score": 0.9},
-            {"memory_id": "keyword-drop", "score": 0.1},
+            {"memory_id": "keyword-keep", "text": "rollback issue"},
+            {"memory_id": "keyword-drop", "text": "rollback"},
         ]
 
 
@@ -29,7 +29,7 @@ def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thre
     """seed retrieval should always apply configured semantic and keyword thresholds."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.seed_retrieval.get_threshold_settings",
+        "app.core.use_cases.memory_retrieval.seed_retrieval.get_threshold_settings",
         lambda: {"semantic_threshold": 0.5, "keyword_threshold": 0.5},
     )
 
@@ -47,4 +47,5 @@ def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thre
     )
 
     assert seeds["semantic"] == [{"memory_id": "semantic-keep", "score": 0.8}]
-    assert seeds["keyword"] == [{"memory_id": "keyword-keep", "score": 0.9}]
+    assert [candidate["memory_id"] for candidate in seeds["keyword"]] == ["keyword-keep"]
+    assert float(seeds["keyword"][0]["score"]) >= 0.5

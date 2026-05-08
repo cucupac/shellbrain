@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.startup.operations import handle_events, handle_update
+from app.startup.agent_operations import handle_events, handle_update
 
 
 def test_update_batch_should_apply_multiple_utility_votes_and_clear_pending_candidates(

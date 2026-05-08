@@ -66,7 +66,7 @@ def run_admin_command(
 
     if args.admin_command == "doctor":
         from app.startup.admin_db import get_backup_dir, get_optional_admin_db_dsn
-        from app.startup.admin_doctor import build_doctor_report
+        from app.startup.admin_diagnose import build_doctor_report
         from app.startup.db import get_optional_db_dsn
 
         report = build_doctor_report(
