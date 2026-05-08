@@ -32,7 +32,6 @@ from app.core.entities.concepts import (
     ConceptSourceKind,
     ConceptStatus,
     GraphPatch,
-    GraphPatchStatus,
 )
 from app.core.interfaces.repos import IConceptsRepo
 from app.periphery.db.models.concepts import (

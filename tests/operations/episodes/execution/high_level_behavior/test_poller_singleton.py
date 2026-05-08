@@ -6,8 +6,8 @@ import json
 from pathlib import Path
 import socket
 
-from app.periphery.episodes.launcher import ensure_episode_sync_started
-from app.periphery.episodes.poller_lock import acquire_poller_lock, inspect_poller_lock
+from app.startup.episode_sync_launcher import ensure_episode_sync_started
+from app.periphery.local_state.poller_lock import acquire_poller_lock, inspect_poller_lock
 
 
 def test_first_poller_lock_acquisition_writes_owner_metadata(tmp_path: Path) -> None:
@@ -66,7 +66,7 @@ def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("app.periphery.episodes.poller_lock._is_process_running", lambda pid: pid != 999_999)
+    monkeypatch.setattr("app.periphery.local_state.poller_lock._is_process_running", lambda pid: pid != 999_999)
 
     handle = acquire_poller_lock(repo_id="repo-a", repo_root=repo_root)
 
@@ -97,7 +97,7 @@ def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path
     def _raise_permission_error(_pid: int, _signal: int) -> None:
         raise PermissionError(1, "Operation not permitted")
 
-    monkeypatch.setattr("app.periphery.episodes.poller_lock.os.kill", _raise_permission_error)
+    monkeypatch.setattr("app.periphery.local_state.poller_lock.os.kill", _raise_permission_error)
 
     inspection = inspect_poller_lock(repo_root=repo_root)
 
@@ -116,7 +116,7 @@ def test_launcher_does_not_spawn_when_an_active_lock_exists(tmp_path: Path, monk
     def _unexpected_spawn(*args, **kwargs):
         raise AssertionError("launcher should not spawn a second poller while the lock is active")
 
-    monkeypatch.setattr("app.periphery.episodes.launcher.subprocess.Popen", _unexpected_spawn)
+    monkeypatch.setattr("app.startup.episode_sync_launcher.subprocess.Popen", _unexpected_spawn)
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is False
 
@@ -136,12 +136,12 @@ def test_launcher_spawns_when_no_active_lock_exists(tmp_path: Path, monkeypatch)
         calls.append((command, kwargs))
         return _FakeProcess()
 
-    monkeypatch.setattr("app.periphery.episodes.launcher.subprocess.Popen", _fake_popen)
+    monkeypatch.setattr("app.startup.episode_sync_launcher.subprocess.Popen", _fake_popen)
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is True
     assert len(calls) == 1
     command, kwargs = calls[0]
-    assert command[1:3] == ["-m", "app.periphery.episodes.poller"]
+    assert command[1:3] == ["-m", "app.entrypoints.jobs.episode_sync"]
     assert command[-2:] == ["--repo-root", str(repo_root.resolve())]
     assert kwargs["cwd"] == repo_root.resolve()
 

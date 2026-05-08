@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import sys
 
-from app.periphery.identity.claude_hook_install import install_claude_hook, inspect_claude_hook
+from app.periphery.host_identity.claude_hook_install import install_claude_hook, inspect_claude_hook
 
 
 def test_claude_hook_install_should_write_one_repo_local_settings_file_with_shellbrain_identity_exports(tmp_path: Path) -> None:
@@ -111,7 +111,7 @@ def test_claude_hook_inspection_should_report_missing_managed_interpreter(tmp_pa
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "/tmp/missing-shellbrain-python -m app.periphery.identity.claude_runtime session-start # shellbrain-managed:session-start",
+                                    "command": "/tmp/missing-shellbrain-python -m app.periphery.host_identity.claude_runtime session-start # shellbrain-managed:session-start",
                                 }
                             ],
                         }

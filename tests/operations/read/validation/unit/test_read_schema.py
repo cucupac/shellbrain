@@ -1,6 +1,6 @@
 """Schema contracts for read-path requests."""
 
-from app.periphery.cli.schema_validation import validate_read_schema
+from app.core.contracts.agent_requests import validate_read_schema
 
 
 def test_read_rejects_unknown_fields() -> None:

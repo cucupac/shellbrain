@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.periphery.telemetry.operation_summary import estimate_read_pack_size
+from app.core.policies.telemetry.operation_summary import estimate_read_pack_size
 
 
 def test_estimate_read_pack_size_should_always_be_stable_for_the_same_input_pack() -> None:

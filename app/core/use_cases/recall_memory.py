@@ -6,20 +6,39 @@ from typing import Any
 
 from app.core.contracts.requests import MemoryReadRequest, MemoryRecallRequest
 from app.core.contracts.responses import OperationResult
+from app.core.entities.settings import ReadPolicySettings, ThresholdSettings, default_read_policy_settings, default_threshold_settings
 from app.core.interfaces.unit_of_work import IUnitOfWork
 from app.core.use_cases.read_memory import execute_read_memory
 
 
-def execute_recall_memory(request: MemoryRecallRequest, uow: IUnitOfWork) -> OperationResult:
+def execute_recall_memory(
+    request: MemoryRecallRequest,
+    uow: IUnitOfWork,
+    *,
+    read_settings: ReadPolicySettings | None = None,
+    threshold_settings: ThresholdSettings | None = None,
+) -> OperationResult:
     """Run targeted read retrieval and return a deterministic recall brief."""
 
+    read_settings = read_settings or default_read_policy_settings()
+    threshold_settings = threshold_settings or default_threshold_settings()
     read_request = MemoryReadRequest(
         repo_id=request.repo_id,
         mode="targeted",
         query=request.query,
         limit=request.limit,
     )
-    read_result = execute_read_memory(read_request, uow)
+    try:
+        read_result = execute_read_memory(
+            read_request,
+            uow,
+            read_settings=read_settings,
+            threshold_settings=threshold_settings,
+        )
+    except TypeError as exc:
+        if "unexpected keyword argument" not in str(exc):
+            raise
+        read_result = execute_read_memory(read_request, uow)
     pack = read_result.data.get("pack", {})
     if not isinstance(pack, dict):
         pack = {}

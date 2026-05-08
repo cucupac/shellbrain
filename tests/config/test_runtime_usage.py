@@ -2,11 +2,11 @@
 
 from pathlib import Path
 
-from app.boot.embeddings import get_embedding_provider
-from app.boot.admin_db import get_admin_db_dsn, get_optional_admin_db_dsn, should_fail_on_unsafe_app_role
-from app.boot.db import get_db_dsn
+from app.startup.embeddings import get_embedding_provider
+from app.startup.admin_db import get_admin_db_dsn, get_optional_admin_db_dsn, should_fail_on_unsafe_app_role
+from app.startup.db import get_db_dsn
 from app.config.loader import YamlConfigProvider
-from app.periphery.admin.machine_state import (
+from app.periphery.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,
@@ -24,8 +24,8 @@ def test_db_boot_should_always_resolve_the_runtime_configured_dsn_env(monkeypatc
         def get_runtime(self) -> dict[str, object]:
             return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN", "admin_dsn_env": "CUSTOM_ADMIN_DSN"}}
 
-    monkeypatch.setattr("app.boot.db.get_config_provider", lambda: _FakeProvider())
-    monkeypatch.setattr("app.boot.db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (None, None))
     monkeypatch.setenv("CUSTOM_MEMORY_DSN", "postgresql://configured-dsn")
 
     assert get_db_dsn() == "postgresql://configured-dsn"
@@ -40,8 +40,8 @@ def test_admin_db_boot_should_always_resolve_the_runtime_configured_admin_dsn_en
         def get_runtime(self) -> dict[str, object]:
             return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN", "admin_dsn_env": "CUSTOM_ADMIN_DSN"}}
 
-    monkeypatch.setattr("app.boot.admin_db.get_config_provider", lambda: _FakeProvider())
-    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.startup.admin_db.try_load_machine_config", lambda: (None, None))
     monkeypatch.setenv("CUSTOM_ADMIN_DSN", "postgresql://configured-admin-dsn")
 
     assert get_admin_db_dsn() == "postgresql://configured-admin-dsn"
@@ -56,8 +56,8 @@ def test_admin_db_boot_should_fail_when_runtime_admin_dsn_key_is_missing(monkeyp
         def get_runtime(self) -> dict[str, object]:
             return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN"}}
 
-    monkeypatch.setattr("app.boot.admin_db.get_config_provider", lambda: _FakeProvider())
-    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.startup.admin_db.try_load_machine_config", lambda: (None, None))
 
     try:
         get_admin_db_dsn()
@@ -76,8 +76,8 @@ def test_admin_db_boot_should_fail_when_runtime_admin_dsn_env_is_unset(monkeypat
         def get_runtime(self) -> dict[str, object]:
             return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN", "admin_dsn_env": "CUSTOM_ADMIN_DSN"}}
 
-    monkeypatch.setattr("app.boot.admin_db.get_config_provider", lambda: _FakeProvider())
-    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.startup.admin_db.try_load_machine_config", lambda: (None, None))
     monkeypatch.delenv("CUSTOM_ADMIN_DSN", raising=False)
 
     try:
@@ -91,7 +91,7 @@ def test_admin_db_boot_should_fail_when_runtime_admin_dsn_env_is_unset(monkeypat
 def test_optional_admin_db_dsn_should_return_none_when_machine_config_is_corrupt(monkeypatch) -> None:
     """optional admin db boot should suppress unreadable machine config errors."""
 
-    monkeypatch.setattr("app.boot.admin_db.try_load_machine_config", lambda: (None, "corrupt toml"))
+    monkeypatch.setattr("app.startup.admin_db.try_load_machine_config", lambda: (None, "corrupt toml"))
 
     assert get_optional_admin_db_dsn() is None
 
@@ -136,7 +136,7 @@ def test_db_boot_should_prefer_machine_config_over_legacy_env(monkeypatch) -> No
         ),
     )
 
-    monkeypatch.setattr("app.boot.db.try_load_machine_config", lambda: (machine_config, None))
+    monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (machine_config, None))
     monkeypatch.setenv("SHELLBRAIN_DB_DSN", "postgresql://legacy-env")
 
     assert get_db_dsn() == "postgresql+psycopg://machine-app@localhost:55432/shellbrain"
@@ -145,7 +145,7 @@ def test_db_boot_should_prefer_machine_config_over_legacy_env(monkeypatch) -> No
 def test_db_boot_should_fail_cleanly_when_machine_config_is_corrupt(monkeypatch) -> None:
     """db boot should direct the user to rerun init when machine config is corrupt."""
 
-    monkeypatch.setattr("app.boot.db.try_load_machine_config", lambda: (None, "corrupt toml"))
+    monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (None, "corrupt toml"))
 
     try:
         get_db_dsn()
@@ -209,9 +209,9 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(monke
         ),
     )
 
-    monkeypatch.setattr("app.boot.embeddings.get_config_provider", lambda: _FakeConfigProvider())
-    monkeypatch.setattr("app.boot.embeddings.load_machine_config", lambda: machine_config)
-    monkeypatch.setattr("app.boot.embeddings.SentenceTransformersEmbeddingProvider", _FakeProvider)
+    monkeypatch.setattr("app.startup.embeddings.get_config_provider", lambda: _FakeConfigProvider())
+    monkeypatch.setattr("app.startup.embeddings.load_machine_config", lambda: machine_config)
+    monkeypatch.setattr("app.startup.embeddings.SentenceTransformersEmbeddingProvider", _FakeProvider)
 
     provider = get_embedding_provider()
 
@@ -266,7 +266,7 @@ def test_db_boot_should_support_external_machine_config(monkeypatch) -> None:
         ),
     )
 
-    monkeypatch.setattr("app.boot.db.try_load_machine_config", lambda: (machine_config, None))
+    monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (machine_config, None))
 
     assert get_db_dsn() == "postgresql+psycopg://shellbrain_app:app_secret@db.example.com:5432/shellbrain"
 

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from app.periphery.admin import storage_setup
-from app.periphery.admin.init_errors import InitConflictError, InitDependencyError
-from app.periphery.admin.machine_state import (
+from app.periphery.postgres_admin import storage_setup
+from app.core.entities.admin_errors import InitConflictError, InitDependencyError
+from app.periphery.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,

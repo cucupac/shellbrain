@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.periphery.admin.agent_behavior_analysis import _parse_checkpoint_lines
+from app.core.use_cases.metrics.agent_behavior_analysis import _parse_checkpoint_lines
 
 
 def test_parse_checkpoint_lines_should_detect_embedded_sb_checkpoints() -> None:

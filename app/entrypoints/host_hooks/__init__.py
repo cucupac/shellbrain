@@ -1,0 +1,2 @@
+"""Host hook entrypoints."""
+

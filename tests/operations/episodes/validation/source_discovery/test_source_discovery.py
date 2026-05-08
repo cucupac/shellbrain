@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from app.periphery.episodes.cursor import list_cursor_sessions_for_repo
-from app.periphery.episodes.source_discovery import resolve_host_transcript_source
+from app.periphery.host_transcripts.cursor import list_cursor_sessions_for_repo
+from app.periphery.host_transcripts.source_discovery import resolve_host_transcript_source
 
 
 def test_codex_source_resolution_finds_rollout_transcript_from_thread_id(

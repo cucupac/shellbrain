@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.read_policy import resolve_read_payload_defaults
+from app.core.entities.settings import ReadPolicySettings, ThresholdSettings, default_read_policy_settings, default_threshold_settings
 from app.core.interfaces.repos import IKeywordRetrievalRepo, IMemoriesRepo, IReadPolicyRepo, ISemanticRetrievalRepo
 from app.core.interfaces.retrieval import IVectorSearch
 from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
@@ -20,22 +20,37 @@ def build_context_pack(
     semantic_retrieval: ISemanticRetrievalRepo,
     read_policy: IReadPolicyRepo,
     vector_search: IVectorSearch | None,
+    read_settings: ReadPolicySettings | None = None,
+    threshold_settings: ThresholdSettings | None = None,
 ) -> dict[str, Any]:
     """This function orchestrates ratified read-policy stages into a final pack."""
 
-    payload = _resolve_read_defaults(payload)
+    read_settings = read_settings or default_read_policy_settings()
+    threshold_settings = threshold_settings or default_threshold_settings()
+    payload = read_settings.resolve_payload_defaults(payload)
     seeds = retrieve_seeds(
         payload,
         semantic_retrieval=semantic_retrieval,
         keyword_retrieval=keyword_retrieval,
         vector_search=vector_search,
+        thresholds=threshold_settings,
     )
-    direct_candidates = fuse_with_rrf(seeds["semantic"], seeds["keyword"])
+    try:
+        direct_candidates = fuse_with_rrf(
+            seeds["semantic"],
+            seeds["keyword"],
+            retrieval_defaults=read_settings.retrieval_defaults(),
+        )
+    except TypeError as exc:
+        if "unexpected keyword argument" not in str(exc):
+            raise
+        direct_candidates = fuse_with_rrf(seeds["semantic"], seeds["keyword"])
     expanded_candidates = expand_candidates(
         direct_candidates,
         payload,
         read_policy=read_policy,
         semantic_retrieval=semantic_retrieval,
+        read_settings=read_settings,
     )
     bucketed_candidates = {
         "direct": direct_candidates,
@@ -43,14 +58,8 @@ def build_context_pack(
         "implicit": expanded_candidates["implicit"],
     }
     scored_candidates = score_candidates(bucketed_candidates, payload)
-    pack = assemble_context_pack(scored_candidates, payload)
+    pack = assemble_context_pack(scored_candidates, payload, read_settings=read_settings)
     return _hydrate_pack_items(pack, memories)
-
-
-def _resolve_read_defaults(payload: dict[str, Any]) -> dict[str, Any]:
-    """Resolve mode-based read defaults for callers that omit a limit."""
-
-    return resolve_read_payload_defaults(payload)
 
 
 def _hydrate_pack_items(pack: dict[str, Any], memories: IMemoriesRepo) -> dict[str, Any]:

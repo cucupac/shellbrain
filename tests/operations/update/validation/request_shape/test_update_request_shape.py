@@ -1,6 +1,6 @@
 """Request-shape contracts for update-path requests."""
 
-from app.periphery.cli.schema_validation import validate_update_schema
+from app.core.contracts.agent_requests import validate_update_schema
 
 
 def test_update_rejects_unknown_update_type() -> None:

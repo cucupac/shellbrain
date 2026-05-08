@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.core.entities.session_state import SessionState
-from app.periphery.session_state.file_store import FileSessionStateStore
+from app.periphery.local_state.session_state_file_store import FileSessionStateStore
 
 
 def test_session_state_save_should_update_in_place_without_temp_file_leaks(repo_with_shellbrain_state) -> None:

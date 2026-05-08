@@ -6,8 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from app.periphery.cli import main as cli_main
-from app.periphery.cli.hydration import RepoContext, resolve_repo_context
+import app.entrypoints.cli.main as cli_main
+import app.entrypoints.cli.parser as cli_parser
+from app.startup.repo_context import RepoContext, resolve_repo_context
 
 
 def test_resolve_repo_context_infers_repo_id_from_explicit_repo_root(tmp_path: Path) -> None:
@@ -54,8 +55,8 @@ def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(mo
     subdir = repo_root / "subdir"
     subdir.mkdir(parents=True)
     monkeypatch.chdir(subdir)
-    monkeypatch.setattr("app.periphery.cli.hydration.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
-    monkeypatch.setattr("app.periphery.admin.repo_state.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
+    monkeypatch.setattr("app.startup.repo_context.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
+    monkeypatch.setattr("app.periphery.local_state.repo_registration_store.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
 
     context = resolve_repo_context(repo_root_arg=None, repo_id_arg=None)
 
@@ -100,7 +101,7 @@ def test_shellbrain_version_should_print_the_installed_version(
 ) -> None:
     """top-level version should print the installed package version without requiring a command."""
 
-    monkeypatch.setattr(cli_main, "_installed_shellbrain_version", lambda: "9.9.9")
+    monkeypatch.setattr(cli_parser, "_installed_shellbrain_version", lambda: "9.9.9")
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["--version"])
@@ -137,7 +138,7 @@ def test_init_should_forward_storage_flags_to_run_init(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(cli_main, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root)
     monkeypatch.setattr(cli_main, "_should_register_repo_during_init", lambda **kwargs: False)
     monkeypatch.setattr(
-        "app.periphery.admin.init.run_init",
+        "app.startup.admin_init.run_init",
         lambda **kwargs: captured.update(kwargs)
         or type("Result", (), {"outcome": "initialized", "lines": ["ok"], "exit_code": 0})(),
     )
@@ -397,7 +398,7 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
     """admin install-host-assets should print the installer result lines."""
 
     monkeypatch.setattr(
-        "app.periphery.onboarding.host_assets.install_host_assets",
+        "app.periphery.host_assets.install_host_assets",
         lambda **kwargs: type("Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]})(),
     )
 
@@ -422,9 +423,9 @@ def test_admin_backfill_token_usage_help_should_include_one_example(capsys: pyte
 def test_admin_backfill_token_usage_should_print_the_summary(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
     """admin backfill-token-usage should render the backfill summary as JSON."""
 
-    monkeypatch.setattr("app.boot.db.get_engine_instance", lambda: "engine")
+    monkeypatch.setattr("app.startup.db.get_engine_instance", lambda: "engine")
     monkeypatch.setattr(
-        "app.periphery.admin.model_usage_backfill.backfill_model_usage",
+        "app.startup.model_usage_backfill.backfill_model_usage",
         lambda **kwargs: type(
             "Summary",
             (),
@@ -449,11 +450,11 @@ def test_admin_backfill_token_usage_should_print_the_summary(monkeypatch, capsys
 def test_admin_analytics_should_print_the_report(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
     """admin analytics should render the built analytics report as JSON."""
 
-    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql://app")
-    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: None)
+    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://app")
+    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda dsn: f"engine:{dsn}")
     monkeypatch.setattr(
-        "app.periphery.admin.analytics.build_analytics_report",
+        "app.startup.analytics.build_analytics_report",
         lambda **kwargs: {
             "window": {"days": kwargs["days"]},
             "summary": {"overall_health": "healthy"},
@@ -629,7 +630,7 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
 def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:
     """upgrade should delegate to the hosted upgrader and propagate its exit code."""
 
-    monkeypatch.setattr("app.periphery.admin.upgrade.run_upgrade", lambda: 23)
+    monkeypatch.setattr("app.periphery.runtime.upgrade.run_upgrade", lambda: 23)
 
     exit_code = cli_main.main(["upgrade"])
 
@@ -644,7 +645,7 @@ def test_admin_migrate_should_invoke_packaged_migration_runner(
 
     calls: list[str] = []
 
-    monkeypatch.setattr("app.boot.migrations.upgrade_database", lambda: calls.append("migrated"))
+    monkeypatch.setattr("app.startup.migrations.upgrade_database", lambda: calls.append("migrated"))
 
     exit_code = cli_main.main(["admin", "migrate"])
 
@@ -659,10 +660,10 @@ def test_admin_migrate_should_fail_cleanly_when_installed_package_is_older_than_
 ) -> None:
     """admin migrate should print one clear message when the database revision is newer than this package."""
 
-    from app.boot.migrations import DatabaseRevisionAheadOfInstalledPackageError
+    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError
 
     monkeypatch.setattr(
-        "app.boot.migrations.upgrade_database",
+        "app.startup.migrations.upgrade_database",
         lambda: (_ for _ in ()).throw(
             DatabaseRevisionAheadOfInstalledPackageError("Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012.")
         ),
@@ -708,15 +709,15 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
 ) -> None:
     """Disposable test instances should not hard-fail operational commands for unsafe roles."""
 
-    from app.periphery.admin.instance_guard import InstanceMetadataRecord
+    from app.periphery.postgres_admin.instance_guard import InstanceMetadataRecord
 
-    monkeypatch.setattr("app.boot.db.get_db_dsn", lambda: "postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test")
+    monkeypatch.setattr("app.startup.db.get_db_dsn", lambda: "postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test")
     monkeypatch.setattr(
-        "app.periphery.admin.instance_guard.inspect_role_safety",
+        "app.periphery.postgres_admin.instance_guard.inspect_role_safety",
         lambda dsn: ["Current DSN role is superuser-capable."] if dsn else [],
     )
     monkeypatch.setattr(
-        "app.periphery.admin.instance_guard.fetch_instance_metadata",
+        "app.periphery.postgres_admin.instance_guard.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="instance-1",
             instance_mode="test",
@@ -737,13 +738,13 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 ) -> None:
     """admin backup create should print the created manifest as JSON."""
 
-    from app.periphery.admin.backup import BackupManifest
+    from app.periphery.postgres_admin.logical_backup import BackupManifest
 
-    monkeypatch.setattr("app.boot.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
-    monkeypatch.setattr("app.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
-    monkeypatch.setattr("app.boot.admin_db.get_backup_mirror_dir", lambda: None)
+    monkeypatch.setattr("app.startup.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
+    monkeypatch.setattr("app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
+    monkeypatch.setattr("app.startup.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
-        "app.periphery.admin.backup.create_backup",
+        "app.periphery.postgres_admin.logical_backup.create_backup",
         lambda **kwargs: BackupManifest(
             backup_id="b-1",
             instance_id="i-1",
@@ -770,11 +771,11 @@ def test_admin_doctor_should_print_structured_report(
 ) -> None:
     """admin doctor should print one JSON safety report."""
 
-    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app_user:app_password@localhost:5432/test_app")
-    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
-    monkeypatch.setattr("app.boot.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
+    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app_user:app_password@localhost:5432/test_app")
+    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
+    monkeypatch.setattr("app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.build_doctor_report",
+        "app.startup.admin_doctor.build_doctor_report",
         lambda **kwargs: {"instance": {"instance_mode": "live"}, "backup_count": 1},
     )
 
@@ -791,13 +792,13 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 ) -> None:
     """init should print the stable outcome prefix and forward the mapped exit code."""
 
-    from app.periphery.admin.init import InitResult
+    from app.startup.admin_init import InitResult
 
     repo_root = tmp_path / "init-repo"
     repo_root.mkdir()
 
     monkeypatch.setattr(
-        "app.periphery.admin.init.run_init",
+        "app.startup.admin_init.run_init",
         lambda **kwargs: InitResult(
             outcome="repaired",
             lines=["Managed instance: shellbrain-postgres-test", "Repo: example/repo"],
@@ -815,7 +816,7 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatch, tmp_path: Path) -> None:
     """init should register immediately when one explicit repo root is provided."""
 
-    from app.periphery.admin.init import InitResult
+    from app.startup.admin_init import InitResult
 
     repo_root = tmp_path / "init-explicit-repo"
     repo_root.mkdir()
@@ -825,7 +826,7 @@ def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatc
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("app.periphery.admin.init.run_init", _fake_run_init)
+    monkeypatch.setattr("app.startup.admin_init.run_init", _fake_run_init)
 
     exit_code = cli_main.main(["init", "--repo-root", str(repo_root)])
 
@@ -836,7 +837,7 @@ def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatc
 def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None:
     """init should forward the no-host-assets flag into the init runner."""
 
-    from app.periphery.admin.init import InitResult
+    from app.startup.admin_init import InitResult
 
     repo_root = tmp_path / "init-no-host-assets"
     repo_root.mkdir()
@@ -846,7 +847,7 @@ def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("app.periphery.admin.init.run_init", _fake_run_init)
+    monkeypatch.setattr("app.startup.admin_init.run_init", _fake_run_init)
 
     exit_code = cli_main.main(["init", "--repo-root", str(repo_root), "--no-host-assets"])
 
@@ -862,11 +863,11 @@ def test_ensure_repo_registration_for_operation_should_register_when_machine_sta
     calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(
-        "app.periphery.admin.machine_state.try_load_machine_config",
+        "app.periphery.local_state.machine_config_store.try_load_machine_config",
         lambda: (type("Config", (), {"machine_instance_id": "inst-1"})(), None),
     )
     monkeypatch.setattr(
-        "app.periphery.admin.repo_state.register_repo_for_target",
+        "app.periphery.local_state.repo_registration_store.register_repo_for_target",
         lambda **kwargs: calls.append(kwargs) or (None, True),
     )
 
@@ -892,7 +893,7 @@ def test_ensure_repo_registration_for_operation_should_skip_when_no_registration
     """operational commands should not auto-register arbitrary non-git directories by default."""
 
     monkeypatch.setattr(
-        "app.periphery.admin.repo_state.register_repo_for_target",
+        "app.periphery.local_state.repo_registration_store.register_repo_for_target",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("register_repo_for_target should not be called")),
     )
 

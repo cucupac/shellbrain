@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from app.periphery.cli.handlers import handle_concept
+from app.startup.operations import handle_concept
 from app.periphery.db.models.concepts import concepts
 from app.periphery.db.uow import PostgresUnitOfWork
 

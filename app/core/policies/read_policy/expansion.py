@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.read_policy import resolve_read_payload_defaults
+from app.core.entities.settings import ReadPolicySettings, default_read_policy_settings
 from app.core.interfaces.repos import IReadPolicyRepo, ISemanticRetrievalRepo
 
 
@@ -12,10 +12,12 @@ def expand_candidates(
     *,
     read_policy: IReadPolicyRepo,
     semantic_retrieval: ISemanticRetrievalRepo,
+    read_settings: ReadPolicySettings | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """This function expands direct candidates via explicit links and semantic neighbors."""
 
-    payload = resolve_read_payload_defaults(payload)
+    read_settings = read_settings or default_read_policy_settings()
+    payload = read_settings.resolve_payload_defaults(payload)
     explicit: list[dict[str, Any]] = []
     implicit: list[dict[str, Any]] = []
     expand = payload["expand"]

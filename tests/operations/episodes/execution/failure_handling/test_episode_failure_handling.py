@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.core.use_cases.sync_episode import sync_episode_from_host
+from app.entrypoints.jobs.episode_sync import sync_episode_from_host
 from app.periphery.db.uow import PostgresUnitOfWork
 
 

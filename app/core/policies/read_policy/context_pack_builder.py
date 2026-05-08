@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.read_policy import resolve_read_limit, resolve_read_quotas
+from app.core.entities.settings import ReadPolicySettings, default_read_policy_settings
 
 
 _BUCKET_ORDER = ("direct", "explicit", "implicit")
@@ -14,12 +14,18 @@ _SECTION_NAMES = {
 _BUCKET_PRIORITY = {bucket_name: index for index, bucket_name in enumerate(_BUCKET_ORDER)}
 
 
-def assemble_context_pack(scored_candidates: dict[str, list[dict[str, Any]]], payload: dict[str, Any]) -> dict[str, Any]:
+def assemble_context_pack(
+    scored_candidates: dict[str, list[dict[str, Any]]],
+    payload: dict[str, Any],
+    *,
+    read_settings: ReadPolicySettings | None = None,
+) -> dict[str, Any]:
     """This function assembles a final context pack from bucketed candidate groups."""
 
+    read_settings = read_settings or default_read_policy_settings()
     mode = str(payload["mode"])
-    limit = resolve_read_limit(mode=mode, explicit_limit=payload.get("limit"))
-    quotas = resolve_read_quotas(mode=mode)
+    limit = read_settings.resolve_limit(mode=mode, explicit_limit=payload.get("limit"))
+    quotas = read_settings.resolve_quotas(mode=mode)
     sorted_buckets = {
         bucket_name: sorted(
             scored_candidates.get(bucket_name, []),

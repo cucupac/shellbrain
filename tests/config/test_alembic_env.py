@@ -24,8 +24,8 @@ def _load_env_module(monkeypatch):
     monkeypatch.setattr(alembic_context, "configure", lambda **kwargs: None, raising=False)
     monkeypatch.setattr(alembic_context, "begin_transaction", lambda: nullcontext(), raising=False)
     monkeypatch.setattr(alembic_context, "run_migrations", lambda: None, raising=False)
-    sys.modules.pop("app.migrations.env", None)
-    module = importlib.import_module("app.migrations.env")
+    sys.modules.pop("migrations.env", None)
+    module = importlib.import_module("migrations.env")
     return importlib.reload(module)
 
 

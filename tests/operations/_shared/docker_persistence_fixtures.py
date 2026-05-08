@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.periphery.cli.handlers import handle_create
+from app.startup.operations import handle_create
 from app.periphery.db.engine import get_engine
 from app.periphery.db.models.evidence import evidence_refs
 from app.periphery.db.models.episodes import episode_events, episodes
@@ -116,7 +116,7 @@ class IsolatedDockerPostgres:
         """Apply packaged schema migrations against the isolated database."""
 
         self._run_repo_command(
-            [_resolve_python_executable(), "-m", "app.periphery.cli.main", "admin", "migrate"],
+            [_resolve_python_executable(), "-m", "app.entrypoints.cli.main", "admin", "migrate"],
             env_overrides={
                 "SHELLBRAIN_DB_DSN": self.dsn,
                 "SHELLBRAIN_DB_ADMIN_DSN": self.dsn,

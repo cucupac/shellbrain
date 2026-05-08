@@ -7,7 +7,7 @@ import pytest
 
 from app.core.contracts.errors import ErrorCode
 from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.cli.handlers import handle_read
+from app.startup.operations import handle_read
 from app.periphery.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
 from app.periphery.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request

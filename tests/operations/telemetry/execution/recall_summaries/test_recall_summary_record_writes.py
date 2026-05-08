@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import text
 
 from app.core.contracts.responses import OperationResult
-from app.periphery.cli.handlers import handle_recall
+from app.startup.operations import handle_recall
 from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")

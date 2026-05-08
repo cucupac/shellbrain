@@ -5,10 +5,19 @@ from __future__ import annotations
 from contextlib import nullcontext
 from pathlib import Path
 
-from app.periphery.admin import init as init_module
-from app.periphery.admin import managed_runtime
-from app.periphery.admin.machine_state import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
-from app.periphery.admin.repo_state import RepoRegistration
+import pytest
+
+import app.startup.admin_init as init_module
+from app.periphery.runtime import managed_runtime
+from app.periphery.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
+from app.periphery.local_state.repo_registration_store import RepoRegistration
+
+
+@pytest.fixture(autouse=True)
+def _isolate_machine_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Prevent init failure paths from mutating the real machine config."""
+
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path / "shellbrain-home"))
 
 
 def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path: Path, monkeypatch) -> None:
@@ -26,7 +35,7 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path:
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, "corrupt toml"))
     monkeypatch.setattr(init_module, "backup_corrupt_machine_config", lambda: preserved)
     monkeypatch.setattr(init_module, "_recover_machine_config_from_docker", lambda: None)
-    monkeypatch.setattr("app.periphery.admin.init.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
+    monkeypatch.setattr("app.startup.admin_init.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -137,7 +146,7 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
 ) -> None:
     """init should report one blocked conflict instead of leaking an Alembic traceback on schema-version mismatch."""
 
-    from app.boot.migrations import DatabaseRevisionAheadOfInstalledPackageError
+    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -156,7 +165,7 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
     monkeypatch.setattr(init_module, "_wait_for_postgres", lambda admin_dsn: None)
     monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(
-        "app.boot.migrations.upgrade_database",
+        "app.startup.migrations.upgrade_database",
         lambda: (_ for _ in ()).throw(
             DatabaseRevisionAheadOfInstalledPackageError(
                 "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."

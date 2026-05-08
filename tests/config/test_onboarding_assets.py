@@ -4,13 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.periphery.cli import main as cli_main
+import app.entrypoints.cli.parser as cli_parser
 
 
 def _read_text(path: Path) -> str:
     """Read one UTF-8 text file from the repository."""
 
     return path.read_text(encoding="utf-8")
+
+
+def _onboarding_assets_root() -> Path:
+    return Path(__file__).resolve().parents[2] / "onboarding_assets"
 
 
 def test_readme_should_teach_the_installer_first_happy_path() -> None:
@@ -35,11 +39,12 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
     """The longer agent-facing surfaces should teach the same Shellbrain mental model."""
 
     repo_root = Path(__file__).resolve().parents[2]
+    assets_root = _onboarding_assets_root()
     texts = [
         _read_text(repo_root / "docs" / "external-quickstart.md"),
-        _read_text(repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start" / "SKILL.md"),
-        _read_text(repo_root / "app" / "onboarding_assets" / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"),
-        _read_text(repo_root / "app" / "onboarding_assets" / "cursor" / "skills" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(assets_root / "codex" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(assets_root / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(assets_root / "cursor" / "skills" / "shellbrain-session-start" / "SKILL.md"),
     ]
 
     required_phrases = [
@@ -67,9 +72,7 @@ def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_ti
     repo_root = Path(__file__).resolve().parents[2]
     external_quickstart = _read_text(repo_root / "docs" / "external-quickstart.md")
     session_workflow = _read_text(
-        repo_root
-        / "app"
-        / "onboarding_assets"
+        _onboarding_assets_root()
         / "codex"
         / "shellbrain-session-start"
         / "references"
@@ -87,7 +90,7 @@ def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_ti
 def test_cli_help_should_share_the_short_protocol() -> None:
     """Top-level CLI help should still match the condensed taught workflow."""
 
-    help_text = cli_main._TOP_LEVEL_HELP
+    help_text = cli_parser._TOP_LEVEL_HELP
 
     required_phrases = [
         "case-based memory system",
@@ -113,8 +116,7 @@ def test_cli_help_should_share_the_short_protocol() -> None:
 def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
     """The packaged Codex skill should include Codex UI metadata."""
 
-    repo_root = Path(__file__).resolve().parents[2]
-    openai_yaml = _read_text(repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start" / "agents" / "openai.yaml")
+    openai_yaml = _read_text(_onboarding_assets_root() / "codex" / "shellbrain-session-start" / "agents" / "openai.yaml")
 
     assert 'display_name: "Shellbrain Session Start"' in openai_yaml
     assert 'icon_large: "./assets/shellbrain_logo.png"' in openai_yaml
@@ -124,8 +126,7 @@ def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
 def test_packaged_codex_asset_should_include_required_files() -> None:
     """The packaged Codex asset should include the files needed by the host."""
 
-    repo_root = Path(__file__).resolve().parents[2]
-    packaged_skill_root = repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-session-start"
+    packaged_skill_root = _onboarding_assets_root() / "codex" / "shellbrain-session-start"
 
     relative_paths = [
         Path("SKILL.md"),
@@ -144,17 +145,16 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
 def test_packaged_startup_guidance_assets_should_exist_for_codex_and_claude() -> None:
     """The packaged startup guidance blocks should ship for the managed startup-layer install."""
 
-    repo_root = Path(__file__).resolve().parents[2]
+    assets_root = _onboarding_assets_root()
 
-    assert (repo_root / "app" / "onboarding_assets" / "codex" / "AGENTS.md").is_file()
-    assert (repo_root / "app" / "onboarding_assets" / "claude" / "CLAUDE.md").is_file()
+    assert (assets_root / "codex" / "AGENTS.md").is_file()
+    assert (assets_root / "claude" / "CLAUDE.md").is_file()
 
 
 def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons() -> None:
     """The secondary packaged Codex skill should also ship icon metadata and assets."""
 
-    repo_root = Path(__file__).resolve().parents[2]
-    packaged_skill_root = repo_root / "app" / "onboarding_assets" / "codex" / "shellbrain-usage-review"
+    packaged_skill_root = _onboarding_assets_root() / "codex" / "shellbrain-usage-review"
     openai_yaml = _read_text(packaged_skill_root / "agents" / "openai.yaml")
 
     assert 'display_name: "Shellbrain Usage Review"' in openai_yaml
@@ -167,8 +167,7 @@ def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons(
 def test_packaged_cursor_skill_should_include_the_required_skill_file() -> None:
     """The packaged Cursor skill should ship the SKILL.md file consumed by Cursor."""
 
-    repo_root = Path(__file__).resolve().parents[2]
-    packaged_skill_root = repo_root / "app" / "onboarding_assets" / "cursor" / "skills" / "shellbrain-session-start"
+    packaged_skill_root = _onboarding_assets_root() / "cursor" / "skills" / "shellbrain-session-start"
 
     assert (packaged_skill_root / "SKILL.md").is_file()
 

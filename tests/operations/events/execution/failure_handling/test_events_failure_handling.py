@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from app.periphery.cli.handlers import handle_events
+from app.startup.operations import handle_events
 from app.periphery.db.uow import PostgresUnitOfWork
 
 

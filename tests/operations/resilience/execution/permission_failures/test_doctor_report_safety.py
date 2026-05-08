@@ -5,11 +5,11 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from app.periphery.admin.backup import BackupManifest
-from app.periphery.admin.doctor import build_doctor_report
-from app.periphery.admin.instance_guard import InstanceMetadataRecord
-from app.periphery.admin.machine_state import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig
-from app.periphery.onboarding.host_assets import install_host_assets
+from app.periphery.postgres_admin.logical_backup import BackupManifest
+from app.startup.admin_doctor import build_doctor_report
+from app.periphery.postgres_admin.instance_guard import InstanceMetadataRecord
+from app.periphery.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig
+from app.periphery.host_assets import install_host_assets
 
 APP_LIVE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
 ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
@@ -18,11 +18,11 @@ ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/
 def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Path) -> None:
     """doctor should still produce one report when the app DSN is not configured."""
 
-    monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: ["warn"] if dsn else [])
-    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_doctor.list_backups", lambda backup_root: [])
+    monkeypatch.setattr("app.startup.admin_doctor.inspect_role_safety", lambda dsn: ["warn"] if dsn else [])
+    monkeypatch.setattr("app.startup.admin_doctor.try_load_machine_config", lambda: (None, None))
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.inspect_host_assets",
+        "app.startup.admin_doctor.inspect_host_assets",
         lambda: type(
             "HostInspection",
             (),
@@ -37,7 +37,7 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
         )(),
     )
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.fetch_instance_metadata",
+        "app.startup.admin_doctor.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode="live",
@@ -67,7 +67,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
     """doctor should summarize backup age and both role-safety channels."""
 
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.list_backups",
+        "app.startup.admin_doctor.list_backups",
         lambda backup_root: [
             BackupManifest(
                 backup_id="b-1",
@@ -84,7 +84,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
         ],
     )
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.fetch_instance_metadata",
+        "app.startup.admin_doctor.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="inst-live",
             instance_mode="live",
@@ -94,12 +94,12 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
         ),
     )
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.inspect_role_safety",
+        "app.startup.admin_doctor.inspect_role_safety",
         lambda dsn: ["unsafe"] if "app" in dsn else ["admin-ok"],
     )
-    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_doctor.try_load_machine_config", lambda: (None, None))
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.inspect_host_assets",
+        "app.startup.admin_doctor.inspect_host_assets",
         lambda: type(
             "HostInspection",
             (),
@@ -113,7 +113,7 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
             },
         )(),
     )
-    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr("app.startup.admin_doctor._fetch_schema_revision", lambda dsn: "20260410_0009")
 
     report = build_doctor_report(
         app_dsn=APP_LIVE_DSN,
@@ -137,10 +137,10 @@ def test_doctor_report_should_surface_the_managed_claude_hook_interpreter(monkey
     codex_home = home_root / ".codex"
     monkeypatch.setenv("HOME", str(home_root))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
-    monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (None, None))
-    monkeypatch.setattr("app.periphery.admin.doctor.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr("app.startup.admin_doctor.list_backups", lambda backup_root: [])
+    monkeypatch.setattr("app.startup.admin_doctor.inspect_role_safety", lambda dsn: [])
+    monkeypatch.setattr("app.startup.admin_doctor.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_doctor.fetch_instance_metadata", lambda dsn: None)
 
     install_host_assets(host_mode="claude", force=False)
 
@@ -172,7 +172,7 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
         "hooks": [
           {
             "type": "command",
-            "command": "/tmp/missing-shellbrain-python -m app.periphery.identity.claude_runtime session-start # shellbrain-managed:session-start"
+            "command": "/tmp/missing-shellbrain-python -m app.periphery.host_identity.claude_runtime session-start # shellbrain-managed:session-start"
           }
         ]
       }
@@ -184,10 +184,10 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
     )
     monkeypatch.setenv("HOME", str(home_root))
     monkeypatch.setenv("CODEX_HOME", str(home_root / ".codex"))
-    monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (None, None))
-    monkeypatch.setattr("app.periphery.admin.doctor.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr("app.startup.admin_doctor.list_backups", lambda backup_root: [])
+    monkeypatch.setattr("app.startup.admin_doctor.inspect_role_safety", lambda dsn: [])
+    monkeypatch.setattr("app.startup.admin_doctor.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.admin_doctor.fetch_instance_metadata", lambda dsn: None)
 
     report = build_doctor_report(
         app_dsn=None,
@@ -231,13 +231,13 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
         ),
     )
 
-    monkeypatch.setattr("app.periphery.admin.doctor.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.inspect_role_safety", lambda dsn: [])
-    monkeypatch.setattr("app.periphery.admin.doctor.try_load_machine_config", lambda: (machine_config, None))
-    monkeypatch.setattr("app.periphery.admin.doctor.fetch_instance_metadata", lambda dsn: None)
-    monkeypatch.setattr("app.periphery.admin.doctor._fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr("app.startup.admin_doctor.list_backups", lambda backup_root: [])
+    monkeypatch.setattr("app.startup.admin_doctor.inspect_role_safety", lambda dsn: [])
+    monkeypatch.setattr("app.startup.admin_doctor.try_load_machine_config", lambda: (machine_config, None))
+    monkeypatch.setattr("app.startup.admin_doctor.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr("app.startup.admin_doctor._fetch_schema_revision", lambda dsn: "20260410_0009")
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.inspect_host_assets",
+        "app.startup.admin_doctor.inspect_host_assets",
         lambda: type(
             "HostInspection",
             (),
@@ -252,7 +252,7 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
         )(),
     )
     monkeypatch.setattr(
-        "app.periphery.admin.doctor.external_runtime.inspect_runtime",
+        "app.startup.admin_doctor.external_runtime.inspect_runtime",
         lambda admin_dsn: ["External PostgreSQL database must have the pgvector extension installed."],
     )
 
