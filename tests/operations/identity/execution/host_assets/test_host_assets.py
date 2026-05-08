@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from app.periphery.onboarding.host_assets import inspect_host_assets, install_host_assets
+from app.periphery.host_assets import inspect_host_assets, install_host_assets
 
 
 def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cursor_set(monkeypatch, tmp_path: Path) -> None:
@@ -145,7 +145,6 @@ def test_install_host_assets_should_adopt_legacy_markerless_codex_shellbrain_ski
     skill_root = codex_home / "skills" / "shellbrain-session-start"
     source_root = (
         Path(__file__).resolve().parents[5]
-        / "app"
         / "onboarding_assets"
         / "codex"
         / "shellbrain-session-start"

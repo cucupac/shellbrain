@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.periphery.metrics.render_html import render_metrics_browser_dashboard, render_metrics_dashboard
+from app.periphery.reporting.metrics.render_html import render_metrics_browser_dashboard, render_metrics_dashboard
 
 
 def test_render_metrics_dashboard_should_embed_styles_and_limit_metric_cards() -> None:

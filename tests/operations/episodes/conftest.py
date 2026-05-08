@@ -8,7 +8,7 @@ import sqlite3
 
 import pytest
 
-from tests.operations._shared.integration_db_fixtures import (
+from tests.operations._shared.integration_db_fixtures import (  # noqa: F401
     admin_db_dsn,
     clear_host_runtime_identity,
     clear_database,

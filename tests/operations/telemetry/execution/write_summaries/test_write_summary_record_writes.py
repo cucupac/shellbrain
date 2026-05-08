@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from app.core.entities.memory import MemoryKind, MemoryScope
 import pytest
-from app.periphery.cli.handlers import handle_create, handle_update
+from app.startup.operations import handle_create, handle_update
 from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")

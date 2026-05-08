@@ -14,7 +14,7 @@ from app.periphery.db.models.telemetry import (
     write_invocation_summaries,
 )
 from app.periphery.db.models.utility import utility_observations
-from app.periphery.metrics import service as metrics_service
+import app.startup.metrics as metrics_service
 
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")

@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from app.periphery.cli.handlers import handle_create, handle_events
-from app.periphery.session_state.file_store import FileSessionStateStore
+from app.startup.operations import handle_create, handle_events
+from app.periphery.local_state.session_state_file_store import FileSessionStateStore
 
 
 def test_create_problem_should_set_current_problem_id_in_trusted_session_state(

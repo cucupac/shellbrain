@@ -1,0 +1,2 @@
+"""PostgreSQL administration adapters."""
+

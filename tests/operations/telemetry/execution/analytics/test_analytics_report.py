@@ -6,7 +6,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.periphery.admin import analytics as analytics_module
+import app.startup.analytics as analytics_module
 from app.periphery.db.models.telemetry import (
     episode_sync_runs,
     operation_invocations,

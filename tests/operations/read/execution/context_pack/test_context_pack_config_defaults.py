@@ -1,7 +1,7 @@
 """Read execution contracts for context-pack YAML-backed defaults."""
 
-from app.boot.config import get_config_provider
-from app.boot.retrieval import get_retrieval_defaults
+from app.startup.config import get_config_provider
+from app.startup.retrieval import get_retrieval_defaults
 from app.core.policies.read_policy.context_pack_builder import assemble_context_pack
 
 

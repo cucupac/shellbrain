@@ -8,7 +8,7 @@ import json
 import pytest
 
 from app.core.contracts.responses import OperationResult
-from app.periphery.cli.handlers import handle_read
+from app.startup.operations import handle_read
 from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -172,7 +172,7 @@ def test_read_summary_should_record_concept_context_telemetry(
     """read summary telemetry should capture concept-context cost fields."""
 
     monkeypatch.setattr(
-        "app.periphery.cli.handlers.execute_read_memory",
+        "app.core.use_cases.operations.handlers.execute_read_memory",
         lambda request, uow: OperationResult(
             status="ok",
             data={

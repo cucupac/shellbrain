@@ -1,7 +1,7 @@
 """Semantic contracts for update-path requests."""
 
 from app.core.contracts.requests import MemoryUpdateRequest
-from app.periphery.validation.semantic_validation import validate_update_semantics
+from app.core.policies.validation.semantic_validation import validate_update_semantics
 
 
 def test_update_association_rejects_self_link() -> None:

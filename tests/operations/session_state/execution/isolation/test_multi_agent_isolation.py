@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from app.core.entities.session_state import SessionState
-from app.periphery.session_state.file_store import FileSessionStateStore
+from app.periphery.local_state.session_state_file_store import FileSessionStateStore
 
 
 def test_multi_agent_isolation_should_keep_distinct_session_state_files_per_caller_id(repo_with_shellbrain_state: Path) -> None:

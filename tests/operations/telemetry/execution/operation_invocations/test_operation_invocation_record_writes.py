@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from app.core.entities.memory import MemoryKind, MemoryScope
-import app.periphery.cli.main as cli_main
-from app.periphery.cli.handlers import handle_create, handle_events, handle_read, handle_update
+import app.entrypoints.cli.main as cli_main
+from app.startup.operations import handle_create, handle_events, handle_read, handle_update
 from app.periphery.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -184,7 +184,7 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
     repo_root = tmp_path / "telemetry-no-sync-repo"
     repo_root.mkdir()
     _stub_read_pipeline(monkeypatch, zero_results=False)
-    monkeypatch.setattr("app.boot.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
     monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
     monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: None)
 

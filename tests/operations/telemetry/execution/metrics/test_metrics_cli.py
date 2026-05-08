@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.periphery.cli import main as cli_main
+import app.entrypoints.cli.main as cli_main
 
 
 def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_dashboard(monkeypatch, tmp_path, capsys) -> None:
@@ -14,21 +14,21 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_d
     shellbrain_home = tmp_path / "shellbrain-home"
     monkeypatch.setenv("SHELLBRAIN_HOME", str(shellbrain_home))
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
-    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
-    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: None)
+    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
+    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
     monkeypatch.setattr(
-        "app.periphery.metrics.service.list_metrics_repo_ids",
+        "app.startup.metrics.list_metrics_repo_ids",
         lambda **_kwargs: ["github.com/example/one", "github.com/example/two"],
     )
     monkeypatch.setattr(
-        "app.periphery.metrics.service.build_metrics_snapshot",
+        "app.startup.metrics.build_metrics_snapshot",
         lambda **kwargs: _snapshot(repo_id=str(kwargs["repo_id"])),
     )
 
     opened: list[Path] = []
     monkeypatch.setattr(
-        "app.periphery.metrics.browser.open_metrics_dashboard",
+        "app.periphery.reporting.metrics.browser.open_metrics_dashboard",
         lambda path: opened.append(path) or True,
     )
 
@@ -64,10 +64,10 @@ def test_metrics_command_should_print_empty_message_when_no_repo_metrics_exist(m
     """No telemetry repos should return a clean message and no browser launch."""
 
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
-    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
-    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: None)
+    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
+    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
-    monkeypatch.setattr("app.periphery.metrics.service.list_metrics_repo_ids", lambda **_kwargs: [])
+    monkeypatch.setattr("app.startup.metrics.list_metrics_repo_ids", lambda **_kwargs: [])
     exit_code = cli_main.main(["metrics"])
     output = capsys.readouterr().out
 
@@ -79,8 +79,8 @@ def test_metrics_command_should_reject_global_repo_target_options(monkeypatch, c
     """Metrics should fail fast when legacy repo targeting options are passed globally."""
 
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
-    monkeypatch.setattr("app.boot.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
-    monkeypatch.setattr("app.boot.admin_db.get_optional_admin_db_dsn", lambda: None)
+    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
+    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
 
     exit_code = cli_main.main(["--repo-id", "github.com/example/repo", "metrics"])

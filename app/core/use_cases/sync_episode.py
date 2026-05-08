@@ -74,42 +74,6 @@ def sync_episode(
     }
 
 
-def sync_episode_from_host(
-    *,
-    repo_id: str,
-    host_app: str,
-    host_session_key: str,
-    uow: IUnitOfWork,
-    search_roots,
-    last_known_path=None,
-) -> dict[str, Any]:
-    """Backward-compatible host sync wrapper used by existing callers."""
-
-    from app.periphery.episodes.normalization import normalize_host_transcript
-    from app.periphery.episodes.source_discovery import resolve_host_transcript_source
-
-    transcript_path = resolve_host_transcript_source(
-        host_app=host_app,
-        host_session_key=host_session_key,
-        search_roots=search_roots,
-        last_known_path=last_known_path,
-    )
-    normalized_events = normalize_host_transcript(
-        host_app=host_app,
-        host_session_key=host_session_key,
-        transcript_path=transcript_path,
-    )
-    return sync_episode(
-        repo_id=repo_id,
-        host_app=host_app,
-        host_session_key=host_session_key,
-        thread_id=f"{host_app}:{host_session_key}",
-        transcript_path=str(transcript_path),
-        normalized_events=normalized_events,
-        uow=uow,
-    )
-
-
 def _parse_timestamp(value: str) -> datetime:
     """Parse one host timestamp into a timezone-aware datetime."""
 

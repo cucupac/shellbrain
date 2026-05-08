@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from threading import Barrier
 
-from app.core.use_cases.sync_episode import sync_episode_from_host
+from app.entrypoints.jobs.episode_sync import sync_episode_from_host
 from app.periphery.db.models.episodes import episode_events, episodes
 from app.periphery.db.uow import PostgresUnitOfWork
 

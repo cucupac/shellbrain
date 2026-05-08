@@ -29,7 +29,7 @@ from tests.operations.episodes.conftest import claude_code_transcript_fixture, c
 
 
 @pytest.fixture
-def telemetry_db_reset(integration_admin_engine, db_dsn):
+def telemetry_db_reset(integration_admin_engine, db_dsn):  # noqa: F811
     """Truncate all relational tables before one DB-backed telemetry test."""
 
     assert_destructive_test_setup_allowed(db_dsn)

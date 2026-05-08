@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.periphery.admin.backup import restore_backup, verify_backup
+from app.periphery.postgres_admin.logical_backup import restore_backup, verify_backup
 
 ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
 

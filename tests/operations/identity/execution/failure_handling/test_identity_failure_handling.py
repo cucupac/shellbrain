@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.periphery.identity.resolver import resolve_caller_identity, resolve_trusted_events_source
+from app.periphery.host_identity.resolver import resolve_caller_identity, resolve_trusted_events_source
 
 
 def test_identity_failure_handling_should_return_host_hook_missing_when_claude_runtime_is_detected_without_trusted_shellbrain_identity(

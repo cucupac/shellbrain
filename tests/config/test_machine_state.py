@@ -5,12 +5,11 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from app.periphery.admin.machine_state import (
+from app.periphery.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,
     MachineConfig,
-    ManagedInstanceState,
     load_machine_config,
     save_machine_config,
 )

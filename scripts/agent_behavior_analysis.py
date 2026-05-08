@@ -8,9 +8,9 @@ from datetime import datetime, timezone
 import json
 import sys
 
-from app.boot.admin_db import get_optional_admin_db_dsn
-from app.boot.db import get_optional_db_dsn
-from app.periphery.admin.agent_behavior_analysis import build_agent_behavior_report
+from app.startup.admin_db import get_optional_admin_db_dsn
+from app.startup.db import get_optional_db_dsn
+from app.core.use_cases.metrics.agent_behavior_analysis import build_agent_behavior_report
 from app.periphery.db.engine import get_engine
 
 

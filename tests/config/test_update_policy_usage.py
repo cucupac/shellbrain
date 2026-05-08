@@ -1,13 +1,13 @@
 """Update-policy config usage contracts for normalized gate loading."""
 
-from app.boot.update_policy import get_update_policy_settings
+from app.startup.update_policy import get_update_policy_settings
 
 
 def test_update_policy_should_expose_configured_gate_list(monkeypatch) -> None:
     """update policy should always expose its configured gate list."""
 
     monkeypatch.setattr(
-        "app.boot.update_policy.get_config_provider",
+        "app.startup.update_policy.get_config_provider",
         lambda: type(
             "_StubConfigProvider",
             (),

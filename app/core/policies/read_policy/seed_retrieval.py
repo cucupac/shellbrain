@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from app.boot.thresholds import get_threshold_settings
+from app.core.entities.settings import ThresholdSettings, default_threshold_settings
 from app.core.interfaces.repos import IKeywordRetrievalRepo, ISemanticRetrievalRepo
 from app.core.interfaces.retrieval import IVectorSearch
 
@@ -13,6 +13,7 @@ def retrieve_seeds(
     semantic_retrieval: ISemanticRetrievalRepo,
     keyword_retrieval: IKeywordRetrievalRepo,
     vector_search: IVectorSearch | None,
+    thresholds: ThresholdSettings | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """This function retrieves initial semantic and keyword candidate seeds."""
 
@@ -26,8 +27,7 @@ def retrieve_seeds(
         if vector_search is not None
         else []
     )
-    thresholds = get_threshold_settings()
-
+    thresholds = thresholds or _coerce_threshold_settings(get_threshold_settings())
     semantic = [
         candidate
         for candidate in semantic_retrieval.query_semantic(
@@ -37,7 +37,7 @@ def retrieve_seeds(
             kinds=kinds,
             limit=limit,
         )
-        if float(candidate["score"]) >= thresholds["semantic_threshold"]
+        if float(candidate["score"]) >= thresholds.semantic_threshold
     ]
     keyword = [
         candidate
@@ -49,6 +49,21 @@ def retrieve_seeds(
             kinds=kinds,
             limit=limit,
         )
-        if float(candidate["score"]) >= thresholds["keyword_threshold"]
+        if float(candidate["score"]) >= thresholds.keyword_threshold
     ]
     return {"semantic": semantic, "keyword": keyword}
+
+
+def get_threshold_settings() -> dict[str, float]:
+    """Compatibility seam for direct retrieval-stage tests."""
+
+    return default_threshold_settings().to_dict()
+
+
+def _coerce_threshold_settings(settings: ThresholdSettings | dict[str, float]) -> ThresholdSettings:
+    if isinstance(settings, ThresholdSettings):
+        return settings
+    return ThresholdSettings(
+        semantic_threshold=float(settings["semantic_threshold"]),
+        keyword_threshold=float(settings["keyword_threshold"]),
+    )

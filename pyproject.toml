@@ -19,19 +19,22 @@ dependencies = [
 ]
 
 [project.scripts]
-shellbrain = "app.periphery.cli.main:main"
+shellbrain = "app.entrypoints.cli.main:main"
 
 [tool.setuptools.packages.find]
-include = ["app*"]
+include = ["app*", "migrations*", "onboarding_assets*"]
 
 [tool.setuptools.package-data]
 app = [
   "config/defaults/*.yaml",
-  "migrations/__init__.py",
-  "migrations/env.py",
-  "migrations/versions/*.py",
-  "onboarding_assets/**/*.md",
-  "onboarding_assets/**/*.yaml",
-  "onboarding_assets/**/*.png",
-  "onboarding_assets/**/*.svg",
+]
+migrations = [
+  "env.py",
+  "versions/*.py",
+]
+onboarding_assets = [
+  "**/*.md",
+  "**/*.yaml",
+  "**/*.png",
+  "**/*.svg",
 ]

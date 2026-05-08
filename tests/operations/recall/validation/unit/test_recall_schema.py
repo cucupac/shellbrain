@@ -1,6 +1,6 @@
 """Schema contracts for minimal recall requests."""
 
-from app.periphery.cli.schema_validation import validate_recall_schema
+from app.core.contracts.agent_requests import validate_recall_schema
 
 
 def test_recall_accepts_query_only() -> None:

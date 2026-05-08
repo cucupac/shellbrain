@@ -1,18 +1,23 @@
 """This module defines reciprocal-rank fusion helpers for direct seed ranking."""
 
-from typing import Any
+from typing import Any, Mapping
 
-from app.boot.retrieval import get_retrieval_defaults
+from app.core.entities.settings import default_read_policy_settings
 
 
-def fuse_with_rrf(semantic: list[dict[str, Any]], keyword: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def fuse_with_rrf(
+    semantic: list[dict[str, Any]],
+    keyword: list[dict[str, Any]],
+    *,
+    retrieval_defaults: Mapping[str, float] | None = None,
+) -> list[dict[str, Any]]:
     """This function merges lane candidates using reciprocal-rank fusion."""
 
-    defaults = get_retrieval_defaults()
-    k_rrf = defaults["k_rrf"]
+    retrieval_defaults = retrieval_defaults or default_read_policy_settings().retrieval_defaults()
+    k_rrf = float(retrieval_defaults["k_rrf"])
     lane_weights = {
-        "semantic": defaults["semantic_weight"],
-        "keyword": defaults["keyword_weight"],
+        "semantic": float(retrieval_defaults["semantic_weight"]),
+        "keyword": float(retrieval_defaults["keyword_weight"]),
     }
     fused: dict[str, dict[str, Any]] = {}
 

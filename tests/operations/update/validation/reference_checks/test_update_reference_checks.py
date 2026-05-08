@@ -5,7 +5,7 @@ from collections.abc import Callable
 from app.core.contracts.requests import MemoryUpdateRequest
 from app.core.entities.memory import MemoryKind, MemoryScope
 from app.periphery.db.uow import PostgresUnitOfWork
-from app.periphery.validation.integrity_validation import validate_update_integrity
+from app.core.policies.validation.integrity_validation import validate_update_integrity
 
 
 def test_update_requires_visible_target_memory(

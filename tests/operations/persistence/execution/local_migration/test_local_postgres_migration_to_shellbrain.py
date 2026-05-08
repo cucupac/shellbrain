@@ -16,7 +16,7 @@ import pytest
 
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.periphery.cli.handlers import handle_create
+from app.startup.operations import handle_create
 from app.periphery.db.engine import get_engine
 from app.periphery.db.session import get_session_factory
 from app.periphery.db.uow import PostgresUnitOfWork
@@ -187,7 +187,7 @@ def _run_packaged_migrations(repo_root: Path, dsn: str, *, backup_dir: Path) -> 
     shellbrain_home = backup_dir.parent / ".shellbrain-home"
     shellbrain_home.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "app.periphery.cli.main", "admin", "migrate"],
+        [sys.executable, "-m", "app.entrypoints.cli.main", "admin", "migrate"],
         check=True,
         cwd=repo_root,
         env={
