@@ -16,7 +16,7 @@ import pytest
 
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.startup.operations import handle_create
+from app.startup.agent_operations import handle_create
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.db.uow import PostgresUnitOfWork

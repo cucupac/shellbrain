@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from pathlib import Path
 
-from app.startup.operations import handle_events
+from app.startup.agent_operations import handle_events
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 

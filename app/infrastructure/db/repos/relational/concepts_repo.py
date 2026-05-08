@@ -526,12 +526,9 @@ class ConceptsRepo(IConceptsRepo):
         )
         return [dict(row) for row in rows]
 
-    def search_concepts_by_text(self, *, repo_id: str, query: str, limit: int) -> Sequence[dict[str, Any]]:
-        """Return deterministic concept matches for query text."""
+    def list_concept_search_rows(self, *, repo_id: str) -> Sequence[dict[str, Any]]:
+        """Return active concept text rows for core query matching."""
 
-        normalized_query = _normalize_text(query)
-        if not normalized_query:
-            return []
         concept_rows = (
             self._session.execute(
                 select(concepts).where(
@@ -557,49 +554,44 @@ class ConceptsRepo(IConceptsRepo):
             .mappings()
             .all()
         )
-        matches: dict[str, dict[str, Any]] = {}
+        search_rows: list[dict[str, Any]] = []
         for row in concept_rows:
             concept_id = str(row["id"])
-            _maybe_add_text_match(
-                matches,
-                concept_id=concept_id,
-                normalized_query=normalized_query,
-                normalized_value=_normalize_text(str(row["slug"])),
-                display_value=str(row["slug"]),
-                reason="query_slug",
-                score=3.0,
+            search_rows.append(
+                {
+                    "concept_id": concept_id,
+                    "field": "slug",
+                    "text": str(row["slug"]),
+                    "display": str(row["slug"]),
+                }
             )
-            _maybe_add_text_match(
-                matches,
-                concept_id=concept_id,
-                normalized_query=normalized_query,
-                normalized_value=_normalize_text(str(row["name"])),
-                display_value=str(row["name"]),
-                reason="query_name",
-                score=3.0,
+            search_rows.append(
+                {
+                    "concept_id": concept_id,
+                    "field": "name",
+                    "text": str(row["name"]),
+                    "display": str(row["name"]),
+                }
             )
         for row in alias_rows:
-            _maybe_add_text_match(
-                matches,
-                concept_id=str(row["concept_id"]),
-                normalized_query=normalized_query,
-                normalized_value=str(row["normalized_alias"]),
-                display_value=str(row["alias"]),
-                reason="query_alias",
-                score=4.0,
+            search_rows.append(
+                {
+                    "concept_id": str(row["concept_id"]),
+                    "field": "alias",
+                    "text": str(row["normalized_alias"]),
+                    "display": str(row["alias"]),
+                }
             )
         for row in claim_rows:
-            _maybe_add_text_match(
-                matches,
-                concept_id=str(row["concept_id"]),
-                normalized_query=normalized_query,
-                normalized_value=str(row["normalized_text"]),
-                display_value=str(row["text"]),
-                reason="query_claim",
-                score=2.0,
+            search_rows.append(
+                {
+                    "concept_id": str(row["concept_id"]),
+                    "field": "claim",
+                    "text": str(row["normalized_text"]),
+                    "display": str(row["text"]),
+                }
             )
-        ranked = sorted(matches.values(), key=lambda item: (-float(item["score"]), str(item["concept_id"])))
-        return ranked[:limit]
+        return search_rows
 
 
 def _lifecycle_values(lifecycle: ConceptLifecycle, now: datetime) -> dict[str, Any]:
@@ -742,32 +734,3 @@ def _normalize_text(value: str) -> str:
     """Normalize natural keys for aliases and claim text."""
 
     return " ".join(value.strip().lower().split())
-
-
-def _maybe_add_text_match(
-    matches: dict[str, dict[str, Any]],
-    *,
-    concept_id: str,
-    normalized_query: str,
-    normalized_value: str,
-    display_value: str,
-    reason: str,
-    score: float,
-) -> None:
-    """Record a query match when query text overlaps a concept field."""
-
-    if not normalized_value:
-        return
-    terms = [term for term in normalized_query.split() if len(term) >= 3]
-    matches_exact_phrase = normalized_value in normalized_query or normalized_query in normalized_value
-    matches_terms = bool(terms) and all(term in normalized_value for term in terms[:4])
-    if not matches_exact_phrase and not matches_terms:
-        return
-    existing = matches.get(concept_id)
-    if existing is None or score > float(existing["score"]):
-        matches[concept_id] = {
-            "concept_id": concept_id,
-            "reason": reason,
-            "matched": display_value,
-            "score": score,
-        }

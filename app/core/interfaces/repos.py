@@ -151,8 +151,8 @@ class IConceptsRepo(ABC):
         """This method returns concept-link matches for displayed memory ids."""
 
     @abstractmethod
-    def search_concepts_by_text(self, *, repo_id: str, query: str, limit: int) -> Sequence[dict[str, Any]]:
-        """This method returns deterministic concept matches for query text."""
+    def list_concept_search_rows(self, *, repo_id: str) -> Sequence[dict[str, Any]]:
+        """This method returns active concept text rows for query matching."""
 
 
 class IEpisodesRepo(ABC):
@@ -267,27 +267,24 @@ class ISemanticRetrievalRepo(ABC):
 
 
 class IKeywordRetrievalRepo(ABC):
-    """This interface defines keyword-lane retrieval against the lexical relevance engine."""
+    """This interface defines keyword-lane corpus access."""
 
     @abstractmethod
-    def query_keyword(
+    def list_keyword_corpus(
         self,
         *,
         repo_id: str,
-        mode: str,
         include_global: bool,
-        query_text: str,
         kinds: Sequence[str] | None,
-        limit: int,
     ) -> Sequence[dict[str, Any]]:
-        """This method returns lexical retrieval candidates with scores."""
+        """This method returns visible text rows for lexical ranking."""
 
 
 class IReadPolicyRepo(ABC):
     """This interface defines read-path visibility and explicit expansion queries."""
 
     @abstractmethod
-    def list_problem_attempt_neighbors(
+    def list_problem_attempt_rows(
         self,
         *,
         repo_id: str,
@@ -295,10 +292,10 @@ class IReadPolicyRepo(ABC):
         anchor_memory_id: str,
         kinds: Sequence[str] | None,
     ) -> Sequence[dict[str, Any]]:
-        """This method returns visible problem-attempt neighbors for an anchor memory."""
+        """This method returns problem-attempt rows touching an anchor plus visible participants."""
 
     @abstractmethod
-    def list_fact_update_neighbors(
+    def list_fact_update_rows(
         self,
         *,
         repo_id: str,
@@ -306,19 +303,18 @@ class IReadPolicyRepo(ABC):
         anchor_memory_id: str,
         kinds: Sequence[str] | None,
     ) -> Sequence[dict[str, Any]]:
-        """This method returns visible fact-update neighbors for an anchor memory."""
+        """This method returns fact-update rows touching an anchor plus visible participants."""
 
     @abstractmethod
-    def list_association_neighbors(
+    def list_association_edge_rows(
         self,
         *,
         repo_id: str,
         include_global: bool,
         anchor_memory_id: str,
         kinds: Sequence[str] | None,
-        min_strength: float,
     ) -> Sequence[dict[str, Any]]:
-        """This method returns visible association neighbors for an anchor memory."""
+        """This method returns visible active association edge rows touching an anchor."""
 
 
 class ITelemetryRepo(ABC):

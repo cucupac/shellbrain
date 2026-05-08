@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.policies.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
+from app.core.observability.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
 
 
 def test_operation_failure_classification_should_cover_known_categories() -> None:

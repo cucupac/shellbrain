@@ -20,7 +20,7 @@ from sqlalchemy import select
 
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.startup.operations import handle_create
+from app.startup.agent_operations import handle_create
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.models.evidence import evidence_refs
 from app.infrastructure.db.models.episodes import episode_events, episodes

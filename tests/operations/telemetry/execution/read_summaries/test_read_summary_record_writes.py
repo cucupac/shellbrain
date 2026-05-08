@@ -8,7 +8,7 @@ import json
 import pytest
 
 from app.core.contracts.responses import OperationResult
-from app.startup.operations import handle_read
+from app.startup.agent_operations import handle_read
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -172,7 +172,7 @@ def test_read_summary_should_record_concept_context_telemetry(
     """read summary telemetry should capture concept-context cost fields."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.operation_flow.execute_read_memory",
+        "app.core.use_cases.agent_operations.flow_common.execute_read_memory",
         lambda request, uow: OperationResult(
             status="ok",
             data={
@@ -218,11 +218,11 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     """Patch the read pipeline to return deterministic summary rows."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
         lambda semantic, keyword: []
         if zero_results
         else [
@@ -237,7 +237,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         ],
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {"explicit": [], "implicit": []}
         if zero_results
         else {
@@ -265,7 +265,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         },
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.score_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
 

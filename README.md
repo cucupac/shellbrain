@@ -57,11 +57,11 @@ The agent handles everything from there — reading prior context, gathering evi
 
 **`events`** syncs the active transcript. Returns episode event ids to cite as evidence. Run before every write.
 
-**`create`** writes one durable memory. At least one evidence reference required.
+**`memory add`** writes one durable memory. At least one evidence reference required.
 
-**`update`** records utility votes, truth-evolution links, explicit associations, or archive state.
+**`memory update`** records utility votes, truth-evolution links, explicit associations, or archive state.
 
-The rhythm: `read` first, `events` before writes, `create`/`update` at session end. *Do not rerun `shellbrain init` every session.*
+The rhythm: `read` first, `events` before writes, `memory add`/`memory update` at session end. *Do not rerun `shellbrain init` every session.*
 
 ---
 

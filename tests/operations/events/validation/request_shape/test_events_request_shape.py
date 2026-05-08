@@ -1,7 +1,7 @@
 """Request-shape contracts for the events operation."""
 
-from app.core.contracts.request_hydration import hydrate_events_payload
-from app.core.contracts.agent_requests import validate_events_schema
+from app.entrypoints.cli.protocol.hydration import hydrate_events_payload
+from app.entrypoints.cli.protocol.payload_validation import validate_events_schema
 
 
 def test_events_accepts_optional_limit() -> None:

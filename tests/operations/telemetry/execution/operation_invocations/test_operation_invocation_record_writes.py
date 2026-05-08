@@ -9,7 +9,7 @@ import pytest
 
 from app.core.entities.memory import MemoryKind, MemoryScope
 import app.entrypoints.cli.main as cli_main
-from app.startup.operations import handle_create, handle_events, handle_read, handle_update
+from app.startup.agent_operations import handle_create, handle_events, handle_read, handle_update
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -256,11 +256,11 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     """Patch the read pipeline to return deterministic candidate sets."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
         lambda semantic, keyword: []
         if zero_results
         else [
@@ -275,7 +275,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         ],
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {"explicit": [], "implicit": []}
         if zero_results
         else {
@@ -294,6 +294,6 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         },
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.score_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )

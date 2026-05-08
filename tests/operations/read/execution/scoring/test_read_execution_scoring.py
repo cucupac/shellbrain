@@ -5,9 +5,9 @@ from collections.abc import Callable
 import pytest
 
 from app.core.contracts.requests import MemoryReadRequest
-from app.core.policies.read_policy.expansion import expand_candidates
-from app.core.policies.read_policy.fusion_rrf import fuse_with_rrf
-from app.core.policies.read_policy.scoring import score_candidates
+from app.core.use_cases.memory_retrieval.expansion import expand_candidates
+from app.core.policies.memory_read_policy.fusion_rrf import fuse_with_rrf
+from app.core.policies.memory_read_policy.scoring import score_candidates
 from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
@@ -308,11 +308,11 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
     """read scoring should always order competing expanded candidates via the scoring stage."""
 
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.retrieve_seeds",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.fuse_with_rrf",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
         lambda semantic, keyword: [
             {
                 "memory_id": "anchor",
@@ -326,7 +326,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
         ],
     )
     monkeypatch.setattr(
-        "app.core.policies.read_policy.pipeline.expand_candidates",
+        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {

@@ -150,18 +150,6 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
         from app.entrypoints.cli.endpoints.internal_agent.concepts.update import run
 
         return run(payload, **kwargs)
-    if command == "create":
-        from app.entrypoints.cli.legacy import run_create_alias
-
-        return run_create_alias(payload, **kwargs)
-    if command == "update":
-        from app.entrypoints.cli.legacy import run_update_alias
-
-        return run_update_alias(payload, **kwargs)
-    if command == "concept":
-        from app.entrypoints.cli.legacy import run_concept_alias
-
-        return run_concept_alias(payload, **kwargs)
     raise ValueError(f"Unsupported command: {command}")
 
 

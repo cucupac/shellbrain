@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from app.core.entities.ids import AssociationEdgeId, Confidence, EpisodeId, MemoryId, RepoId, Salience
+
 
 class AssociationRelationType(str, Enum):
     """This enum defines ratified formal association relation types."""
@@ -32,14 +34,14 @@ class AssociationState(str, Enum):
 class AssociationEdge:
     """This dataclass models a formal association edge between two memories."""
 
-    id: str
-    repo_id: str
-    from_memory_id: str
-    to_memory_id: str
+    id: AssociationEdgeId
+    repo_id: RepoId
+    from_memory_id: MemoryId
+    to_memory_id: MemoryId
     relation_type: AssociationRelationType
     source_mode: AssociationSourceMode = AssociationSourceMode.AGENT
     state: AssociationState = AssociationState.TENTATIVE
-    strength: float = 0.0
+    strength: Confidence = Confidence(0.0)
 
 
 @dataclass(kw_only=True)
@@ -47,13 +49,13 @@ class AssociationObservation:
     """This dataclass models an immutable reinforcement observation for associations."""
 
     id: str
-    repo_id: str
-    from_memory_id: str
-    to_memory_id: str
+    repo_id: RepoId
+    from_memory_id: MemoryId
+    to_memory_id: MemoryId
     relation_type: AssociationRelationType
     source: str
-    valence: float
-    salience: float = 0.5
-    edge_id: str | None = None
-    problem_id: str | None = None
-    episode_id: str | None = None
+    valence: Confidence
+    salience: Salience = Salience(0.5)
+    edge_id: AssociationEdgeId | None = None
+    problem_id: MemoryId | None = None
+    episode_id: EpisodeId | None = None

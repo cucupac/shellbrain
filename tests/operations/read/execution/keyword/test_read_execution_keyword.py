@@ -2,6 +2,8 @@
 
 from collections.abc import Callable
 
+from app.core.entities.settings import ThresholdSettings
+from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -48,7 +50,8 @@ def test_keyword_lane_prefers_high_coverage_partial_matches_over_generic_partial
     )
 
     with uow_factory() as uow:
-        candidates = uow.keyword_retrieval.query_keyword(
+        candidates = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="targeted",
             include_global=True,
@@ -85,7 +88,8 @@ def test_keyword_lane_applies_stricter_coverage_gate_for_ambient_reads_than_targ
     )
 
     with uow_factory() as uow:
-        targeted = uow.keyword_retrieval.query_keyword(
+        targeted = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="targeted",
             include_global=True,
@@ -93,7 +97,8 @@ def test_keyword_lane_applies_stricter_coverage_gate_for_ambient_reads_than_targ
             kinds=None,
             limit=10,
         )
-        ambient = uow.keyword_retrieval.query_keyword(
+        ambient = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="ambient",
             include_global=True,
@@ -128,7 +133,8 @@ def test_keyword_lane_uses_bm25_to_prefer_denser_shorter_matches(
     )
 
     with uow_factory() as uow:
-        candidates = uow.keyword_retrieval.query_keyword(
+        candidates = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="targeted",
             include_global=True,
@@ -163,7 +169,8 @@ def test_keyword_lane_applies_visibility_scope_kind_and_archived_filters_before_
         )
 
     with uow_factory() as uow:
-        without_global = uow.keyword_retrieval.query_keyword(
+        without_global = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="targeted",
             include_global=False,
@@ -171,7 +178,8 @@ def test_keyword_lane_applies_visibility_scope_kind_and_archived_filters_before_
             kinds=["fact"],
             limit=20,
         )
-        with_global = uow.keyword_retrieval.query_keyword(
+        with_global = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="targeted",
             include_global=True,
@@ -206,7 +214,8 @@ def test_keyword_lane_keeps_tie_breaking_deterministic_by_memory_id(
     )
 
     with uow_factory() as uow:
-        candidates = uow.keyword_retrieval.query_keyword(
+        candidates = _query_keyword(
+            uow,
             repo_id="repo-a",
             mode="targeted",
             include_global=True,
@@ -222,3 +231,40 @@ def _candidate_ids(candidates) -> list[str]:
     """Extract ordered shellbrain identifiers from keyword candidate rows."""
 
     return [str(candidate["memory_id"]) for candidate in candidates]
+
+
+def _query_keyword(
+    uow: PostgresUnitOfWork,
+    *,
+    repo_id: str,
+    mode: str,
+    include_global: bool,
+    query_text: str,
+    kinds,
+    limit: int,
+) -> list[dict[str, object]]:
+    """Run keyword ranking through the core retrieval use case."""
+
+    seeds = retrieve_seeds(
+        {
+            "repo_id": repo_id,
+            "mode": mode,
+            "query": query_text,
+            "include_global": include_global,
+            "kinds": kinds,
+            "limit": limit,
+        },
+        semantic_retrieval=_NoSemanticRetrieval(),
+        keyword_retrieval=uow.keyword_retrieval,
+        vector_search=None,
+        thresholds=ThresholdSettings(semantic_threshold=0.0, keyword_threshold=0.0),
+    )
+    return list(seeds["keyword"])
+
+
+class _NoSemanticRetrieval:
+    """Semantic retrieval stub for keyword-only tests."""
+
+    def query_semantic(self, **kwargs):
+        _ = kwargs
+        return []

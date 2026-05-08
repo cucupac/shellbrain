@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from app.core.entities.memory import MemoryKind, MemoryScope
-from app.startup.operations import handle_create
+from app.startup.agent_operations import handle_create
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 

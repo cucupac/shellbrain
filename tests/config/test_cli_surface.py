@@ -87,10 +87,9 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "shellbrain metrics" in output
     assert "--repo-root" in output
     assert "--no-sync" not in output
-    assert "create" in output
     assert "read" in output
     assert "recall" in output
-    assert "update" in output
+    assert "memory" in output
     assert "events" in output
     assert "upgrade" in output
 
@@ -138,7 +137,7 @@ def test_init_should_forward_storage_flags_to_run_init(monkeypatch, tmp_path: Pa
     monkeypatch.setattr(cli_main, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root)
     monkeypatch.setattr(cli_main, "_should_register_repo_during_init", lambda **kwargs: False)
     monkeypatch.setattr(
-        "app.startup.admin_init.run_init",
+        "app.startup.admin_initialize.run_init",
         lambda **kwargs: captured.update(kwargs)
         or type("Result", (), {"outcome": "initialized", "lines": ["ok"], "exit_code": 0})(),
     )
@@ -240,30 +239,47 @@ def test_concept_help_should_describe_internal_json_endpoint(capsys: pytest.Capt
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "Internal JSON-first endpoint" in output
-    assert "Normal worker agents should continue using" in output
-    assert "shellbrain concept --json" in output
-    assert "--json-file" in output
+    assert "Internal agents may use" in output
+    assert "shellbrain concept add --json" in output
+    assert "shellbrain concept update --json" in output
+    with pytest.raises(SystemExit) as add_exc:
+        cli_main.main(["concept", "add", "--help"])
+    assert add_exc.value.code == 0
+    assert "--json-file" in capsys.readouterr().out
 
 
-def test_concept_parser_should_accept_json_and_json_file(tmp_path: Path) -> None:
+def test_concept_parser_should_require_add_or_update_and_accept_payloads(tmp_path: Path) -> None:
     """concept should use the same single-payload-source shape as other operational commands."""
 
     parser = cli_main.build_parser()
 
+    with pytest.raises(SystemExit) as bare_exc:
+        parser.parse_args(
+            [
+                "concept",
+                "--json",
+                '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}',
+            ]
+        )
+    assert bare_exc.value.code == 2
+
     inline_args = parser.parse_args(
         [
             "concept",
+            "add",
             "--json",
             '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}',
         ]
     )
     assert inline_args.command == "concept"
+    assert inline_args.concept_command == "add"
     assert inline_args.json_text
 
     payload_file = tmp_path / "concept.json"
     payload_file.write_text('{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}', encoding="utf-8")
-    file_args = parser.parse_args(["concept", "--json-file", str(payload_file)])
+    file_args = parser.parse_args(["concept", "update", "--json-file", str(payload_file)])
     assert file_args.command == "concept"
+    assert file_args.concept_command == "update"
     assert cli_main._load_payload(file_args.json_text, file_args.json_file)["mode"] == "show"
 
 
@@ -279,28 +295,28 @@ def test_events_help_should_include_one_example(capsys: pytest.CaptureFixture[st
     assert "inline transcript sync" in output
 
 
-def test_create_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
-    """create help should explain memory-kind choice and attempt-link rules."""
+def test_memory_add_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """memory add help should explain memory-kind choice and attempt-link rules."""
 
     with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["create", "--help"])
+        cli_main.main(["memory", "add", "--help"])
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "shellbrain create --json" in output
+    assert "shellbrain memory add --json" in output
     assert "failed_tactic" in output
     assert "memory.links.problem_id" in output
 
 
-def test_update_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
-    """update help should expose the supported update types."""
+def test_memory_update_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+    """memory update help should expose the supported update types."""
 
     with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["update", "--help"])
+        cli_main.main(["memory", "update", "--help"])
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "shellbrain update --json" in output
+    assert "shellbrain memory update --json" in output
     assert "utility_vote" in output
     assert "-1.0" in output
     assert "positive = helpful" in output
@@ -775,7 +791,7 @@ def test_admin_doctor_should_print_structured_report(
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
     monkeypatch.setattr("app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
     monkeypatch.setattr(
-        "app.startup.admin_doctor.build_doctor_report",
+        "app.startup.admin_diagnose.build_doctor_report",
         lambda **kwargs: {"instance": {"instance_mode": "live"}, "backup_count": 1},
     )
 
@@ -792,13 +808,13 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 ) -> None:
     """init should print the stable outcome prefix and forward the mapped exit code."""
 
-    from app.startup.admin_init import InitResult
+    from app.startup.admin_initialize import InitResult
 
     repo_root = tmp_path / "init-repo"
     repo_root.mkdir()
 
     monkeypatch.setattr(
-        "app.startup.admin_init.run_init",
+        "app.startup.admin_initialize.run_init",
         lambda **kwargs: InitResult(
             outcome="repaired",
             lines=["Managed instance: shellbrain-postgres-test", "Repo: example/repo"],
@@ -816,7 +832,7 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatch, tmp_path: Path) -> None:
     """init should register immediately when one explicit repo root is provided."""
 
-    from app.startup.admin_init import InitResult
+    from app.startup.admin_initialize import InitResult
 
     repo_root = tmp_path / "init-explicit-repo"
     repo_root.mkdir()
@@ -826,7 +842,7 @@ def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatc
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("app.startup.admin_init.run_init", _fake_run_init)
+    monkeypatch.setattr("app.startup.admin_initialize.run_init", _fake_run_init)
 
     exit_code = cli_main.main(["init", "--repo-root", str(repo_root)])
 
@@ -837,7 +853,7 @@ def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatc
 def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None:
     """init should forward the no-host-assets flag into the init runner."""
 
-    from app.startup.admin_init import InitResult
+    from app.startup.admin_initialize import InitResult
 
     repo_root = tmp_path / "init-no-host-assets"
     repo_root.mkdir()
@@ -847,7 +863,7 @@ def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("app.startup.admin_init.run_init", _fake_run_init)
+    monkeypatch.setattr("app.startup.admin_initialize.run_init", _fake_run_init)
 
     exit_code = cli_main.main(["init", "--repo-root", str(repo_root), "--no-host-assets"])
 
