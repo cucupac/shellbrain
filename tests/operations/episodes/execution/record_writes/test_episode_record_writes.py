@@ -8,9 +8,9 @@ import json
 from pathlib import Path
 from threading import Barrier
 
-from app.entrypoints.jobs.episode_sync import sync_episode_from_host
-from app.periphery.db.models.episodes import episode_events, episodes
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.startup.jobs import sync_episode_from_host
+from app.infrastructure.db.models.episodes import episode_events, episodes
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_first_episode_import_creates_one_episode_and_ordered_episode_events(

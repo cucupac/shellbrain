@@ -4,8 +4,8 @@ from collections.abc import Callable
 
 from app.core.contracts.requests import MemoryReadRequest
 from app.core.interfaces.retrieval import IVectorSearch
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 

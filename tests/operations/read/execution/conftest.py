@@ -12,10 +12,10 @@ from sqlalchemy.engine import Engine
 
 from app.core.entities.memory import MemoryKind, MemoryScope
 from app.core.interfaces.retrieval import IVectorSearch
-from app.periphery.db.models.associations import association_edges
-from app.periphery.db.models.experiences import fact_updates, problem_attempts
-from app.periphery.db.models.memories import memories, memory_embeddings
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.models.associations import association_edges
+from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
+from app.infrastructure.db.models.memories import memories, memory_embeddings
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 from tests.operations._shared.integration_db_fixtures import *  # noqa: F401,F403
 

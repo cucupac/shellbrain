@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.periphery.postgres_admin.logical_backup import BackupManifest
-from app.periphery.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
+from app.infrastructure.postgres_admin.logical_backup import BackupManifest
+from app.infrastructure.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
 
 ADMIN_TEST_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
 
@@ -35,8 +35,8 @@ def test_destructive_guard_should_create_and_verify_backup(monkeypatch, tmp_path
         calls.append(("verify", kwargs))
         return manifest
 
-    monkeypatch.setattr("app.periphery.postgres_admin.destructive_guard.create_backup", _fake_create_backup)
-    monkeypatch.setattr("app.periphery.postgres_admin.destructive_guard.verify_backup", _fake_verify_backup)
+    monkeypatch.setattr("app.infrastructure.postgres_admin.destructive_guard.create_backup", _fake_create_backup)
+    monkeypatch.setattr("app.infrastructure.postgres_admin.destructive_guard.verify_backup", _fake_verify_backup)
 
     result = backup_and_verify_before_destructive_action(
         admin_dsn=ADMIN_TEST_DSN,

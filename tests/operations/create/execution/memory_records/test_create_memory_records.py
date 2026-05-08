@@ -5,10 +5,10 @@ from collections.abc import Callable
 from app.core.contracts.requests import MemoryCreateRequest
 from app.core.entities.memory import MemoryKind, MemoryScope
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.db.models.experiences import problem_attempts
-from app.periphery.db.models.memories import memories
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memories.create_memory import execute_create_memory
+from app.infrastructure.db.models.experiences import problem_attempts
+from app.infrastructure.db.models.memories import memories
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_create_problem_persists_memory_without_problem_attempt(

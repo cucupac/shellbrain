@@ -8,9 +8,9 @@ from pathlib import Path
 import pytest
 
 import app.startup.admin_init as init_module
-from app.periphery.runtime import managed_runtime
-from app.periphery.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
-from app.periphery.local_state.repo_registration_store import RepoRegistration
+from app.infrastructure.runtime import managed_runtime
+from app.infrastructure.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
+from app.infrastructure.local_state.repo_registration_store import RepoRegistration
 
 
 @pytest.fixture(autouse=True)

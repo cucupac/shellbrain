@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Sequence
 from uuid import uuid4
 
 from app.entrypoints.cli.parser import build_parser
-from app.startup.repo_context import resolve_repo_context
 
 if TYPE_CHECKING:
     from app.startup.repo_context import RepoContext
@@ -34,35 +33,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if args.command == "init":
         try:
-            from app.startup.admin_init import run_init
+            from app.entrypoints.cli.endpoints.human.init import run as run_init_endpoint
 
-            repo_root = _resolve_admin_repo_root(getattr(args, "repo_root", None))
+            return run_init_endpoint(
+                args,
+                resolve_admin_repo_root=_resolve_admin_repo_root,
+                should_register_repo=_should_register_repo_during_init,
+            )
         except ValueError as exc:
             parser.error(str(exc))
             return 2
-        result = run_init(
-            repo_root=repo_root,
-            repo_id_override=getattr(args, "repo_id", None),
-            register_repo_now=_should_register_repo_during_init(
-                repo_root=repo_root,
-                repo_root_arg=getattr(args, "repo_root", None),
-                repo_id_arg=getattr(args, "repo_id", None),
-            ),
-            skip_model_download=bool(getattr(args, "skip_model_download", False)),
-            skip_host_assets=bool(getattr(args, "no_host_assets", False)),
-            storage=getattr(args, "storage", None),
-            admin_dsn=getattr(args, "admin_dsn", None),
-        )
-        print(f"Outcome: {result.outcome}")
-        for line in result.lines:
-            print(line)
-        return result.exit_code
 
     if args.command == "upgrade":
-        # architecture-compat: direct-periphery - upgrade remains an externally visible CLI adapter.
-        from app.periphery.runtime.upgrade import run_upgrade
+        from app.entrypoints.cli.endpoints.human.upgrade import run as run_upgrade_endpoint
 
-        return run_upgrade()
+        return run_upgrade_endpoint()
 
     if args.command == "metrics":
         return _run_metrics_command(args)
@@ -72,9 +57,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     try:
         from app.core.entities.runtime_context import RuntimeContext
-        # architecture-compat: direct-periphery - CLI seeds telemetry context from host identity adapters.
-        from app.periphery.host_identity.resolver import resolve_caller_identity
-        from app.startup.runtime_context import reset_operation_telemetry_context, set_operation_telemetry_context
+        from app.startup.repo_context import resolve_repo_context
 
         repo_context = resolve_repo_context(
             repo_root_arg=getattr(args, "repo_root", None),
@@ -85,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
         return 2
 
-    caller_identity_resolution = resolve_caller_identity()
+    caller_identity_resolution = _resolve_cli_caller_identity()
     operation_context = RuntimeContext(
         invocation_id=str(uuid4()),
         repo_root=str(repo_context.repo_root),
@@ -93,7 +76,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         caller_identity=caller_identity_resolution.caller_identity,
         caller_identity_error=caller_identity_resolution.error,
     )
-    token = set_operation_telemetry_context(operation_context)
+    token = _set_cli_operation_context(operation_context)
     try:
         try:
             _warn_or_fail_on_unsafe_app_role()
@@ -101,7 +84,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 repo_context=repo_context,
                 repo_id_override=getattr(args, "repo_id", None),
             )
-            result = _dispatch_operation_command(args.command, payload, repo_context)
+            result = _dispatch_operation_command(_operation_route_command(args), payload, repo_context)
             _print_operation_result(result)
             if result.get("status") == "ok":
                 if getattr(args, "no_sync", False):
@@ -122,26 +105,70 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(str(exc), file=sys.stderr)
             return 1
     finally:
-        reset_operation_telemetry_context(token)
+        _reset_cli_operation_context(token)
+
+
+def _operation_route_command(args: argparse.Namespace) -> str:
+    """Map parsed CLI syntax to one endpoint route key."""
+
+    if args.command == "memory":
+        return f"memory:{args.memory_command}"
+    if args.command == "concept" and getattr(args, "concept_command", None):
+        return f"concept:{args.concept_command}"
+    return str(args.command)
 
 
 def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_context: RepoContext) -> dict[str, Any]:
     """Resolve runtime dependencies lazily and execute one operational command."""
 
-    from app.entrypoints.cli.commands.memory import dispatch_operation_command
+    kwargs = {"repo_id": repo_context.repo_id, "repo_root": repo_context.repo_root}
+    if command == "recall":
+        from app.entrypoints.cli.endpoints.working_agent.recall import run
 
-    return dispatch_operation_command(
-        command,
-        payload,
-        repo_id=repo_context.repo_id,
-        repo_root=repo_context.repo_root,
-    )
+        return run(payload, **kwargs)
+    if command == "read":
+        from app.entrypoints.cli.endpoints.internal_agent.read import run
+
+        return run(payload, **kwargs)
+    if command == "events":
+        from app.entrypoints.cli.endpoints.internal_agent.events import run
+
+        return run(payload, **kwargs)
+    if command == "memory:add":
+        from app.entrypoints.cli.endpoints.internal_agent.memories.add import run
+
+        return run(payload, **kwargs)
+    if command == "memory:update":
+        from app.entrypoints.cli.endpoints.internal_agent.memories.update import run
+
+        return run(payload, **kwargs)
+    if command == "concept:add":
+        from app.entrypoints.cli.endpoints.internal_agent.concepts.add import run
+
+        return run(payload, **kwargs)
+    if command == "concept:update":
+        from app.entrypoints.cli.endpoints.internal_agent.concepts.update import run
+
+        return run(payload, **kwargs)
+    if command == "create":
+        from app.entrypoints.cli.legacy import run_create_alias
+
+        return run_create_alias(payload, **kwargs)
+    if command == "update":
+        from app.entrypoints.cli.legacy import run_update_alias
+
+        return run_update_alias(payload, **kwargs)
+    if command == "concept":
+        from app.entrypoints.cli.legacy import run_concept_alias
+
+        return run_concept_alias(payload, **kwargs)
+    raise ValueError(f"Unsupported command: {command}")
 
 
 def _run_admin_command(args: argparse.Namespace) -> int:
     """Execute one admin command."""
 
-    from app.entrypoints.cli.commands.admin import run_admin_command
+    from app.entrypoints.cli.endpoints.human.admin import run_admin_command
 
     return run_admin_command(
         args,
@@ -154,7 +181,7 @@ def _run_admin_command(args: argparse.Namespace) -> int:
 def _run_metrics_command(args: argparse.Namespace) -> int:
     """Generate metrics snapshots and artifacts for one or many repos."""
 
-    from app.entrypoints.cli.commands.metrics import run_metrics_command
+    from app.entrypoints.cli.endpoints.human.metrics import run_metrics_command
 
     return run_metrics_command(args, warn_or_fail_on_unsafe_app_role=_warn_or_fail_on_unsafe_app_role)
 
@@ -162,7 +189,7 @@ def _run_metrics_command(args: argparse.Namespace) -> int:
 def _print_operation_result(result: dict[str, Any]) -> None:
     """Render one operation result as JSON for agent consumption."""
 
-    from app.entrypoints.cli.presenter_json import render
+    from app.entrypoints.cli.presenters.json import render
 
     print(render(result))
 
@@ -208,36 +235,48 @@ def _resolve_admin_repo_root(repo_root_arg: str | None) -> Path:
 def _should_register_repo_during_init(*, repo_root: Path, repo_root_arg: str | None, repo_id_arg: str | None) -> bool:
     """Return whether init should register one repo immediately."""
 
-    # architecture-compat: direct-periphery - init registration probes local repo state.
-    from app.periphery.local_state.repo_registration_store import load_repo_registration_for_target, resolve_git_root
+    from app.startup.cli import should_register_repo_during_init
 
-    if repo_root_arg is not None or repo_id_arg is not None:
-        return True
-    if resolve_git_root(repo_root) is not None:
-        return True
-    return load_repo_registration_for_target(repo_root) is not None
+    return should_register_repo_during_init(
+        repo_root=repo_root,
+        repo_root_arg=repo_root_arg,
+        repo_id_arg=repo_id_arg,
+    )
+
+
+def _resolve_cli_caller_identity():
+    """Resolve caller identity through startup wiring."""
+
+    from app.startup.cli import resolve_cli_caller_identity
+
+    return resolve_cli_caller_identity()
+
+
+def _set_cli_operation_context(context):
+    """Set operation telemetry context through startup wiring."""
+
+    from app.startup.cli import set_cli_operation_context
+
+    return set_cli_operation_context(context)
+
+
+def _reset_cli_operation_context(token) -> None:
+    """Reset operation telemetry context through startup wiring."""
+
+    from app.startup.cli import reset_cli_operation_context
+
+    reset_cli_operation_context(token)
 
 
 def _ensure_repo_registration_for_operation(*, repo_context: RepoContext, repo_id_override: str | None) -> None:
     """Best-effort auto-registration of one repo before a real Shellbrain operation."""
 
-    if repo_context.registration_root is None:
-        return
-    try:
-        # architecture-compat: direct-periphery - operation startup registers local repo state.
-        from app.periphery.local_state.machine_config_store import try_load_machine_config
-        from app.periphery.local_state.repo_registration_store import register_repo_for_target
+    from app.startup.cli import ensure_repo_registration_for_operation
 
-        machine_config, machine_error = try_load_machine_config()
-        if machine_error is not None or machine_config is None:
-            return
-        register_repo_for_target(
-            repo_root=repo_context.registration_root,
-            machine_instance_id=machine_config.machine_instance_id,
-            explicit_repo_id=repo_id_override,
-        )
-    except Exception:
-        return
+    ensure_repo_registration_for_operation(
+        registration_root=repo_context.registration_root,
+        repo_id_override=repo_id_override,
+    )
 
 
 def _managed_backup_kwargs(machine_config, machine_error: str | None) -> dict[str, Any]:
@@ -271,23 +310,9 @@ def _managed_restore_kwargs(managed_backup_kwargs: dict[str, Any]) -> dict[str, 
 def _warn_or_fail_on_unsafe_app_role() -> None:
     """Emit one warning, or fail in strict mode, when the app DSN is overprivileged."""
 
-    from app.startup.admin_db import should_fail_on_unsafe_app_role
-    from app.startup.db import get_db_dsn
-    # architecture-compat: direct-periphery - safety check reads concrete instance metadata.
-    from app.periphery.postgres_admin.instance_guard import SCRATCH, TEST, fetch_instance_metadata, inspect_role_safety
+    from app.startup.cli import warn_or_fail_on_unsafe_app_role
 
-    dsn = get_db_dsn()
-    warnings = inspect_role_safety(dsn)
-    if not warnings:
-        return
-    message = "Unsafe Shellbrain app-role configuration:\n- " + "\n- ".join(warnings)
-    metadata = fetch_instance_metadata(dsn)
-    if metadata is not None and metadata.instance_mode in {TEST, SCRATCH}:
-        print(message, file=sys.stderr)
-        return
-    if should_fail_on_unsafe_app_role():
-        raise ValueError(message)
-    print(message, file=sys.stderr)
+    warn_or_fail_on_unsafe_app_role()
 
 
 if __name__ == "__main__":

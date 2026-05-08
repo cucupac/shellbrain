@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.periphery.host_transcripts.claude_code import extract_claude_code_model_usage
-from app.periphery.host_transcripts.codex import extract_codex_model_usage
-from app.periphery.host_transcripts.cursor import extract_cursor_model_usage
-from app.periphery.host_transcripts.model_usage import collect_model_usage_records_for_session
+from app.infrastructure.host_transcripts.claude_code import extract_claude_code_model_usage
+from app.infrastructure.host_transcripts.codex import extract_codex_model_usage
+from app.infrastructure.host_transcripts.cursor import extract_cursor_model_usage
+from app.infrastructure.host_transcripts.model_usage import collect_model_usage_records_for_session
 
 
 def test_codex_extractor_should_read_last_token_usage_from_token_count_events(

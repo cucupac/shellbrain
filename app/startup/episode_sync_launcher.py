@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from app.periphery.local_state.poller_lock import inspect_poller_lock
+from app.infrastructure.local_state.poller_lock import inspect_poller_lock
 
 
 def ensure_episode_sync_started(*, repo_id: str, repo_root: Path) -> bool:

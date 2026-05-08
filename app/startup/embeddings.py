@@ -1,10 +1,10 @@
 """This module defines boot-time wiring for embedding provider construction."""
 
-from app.periphery.local_state.paths import get_machine_models_dir
+from app.infrastructure.local_state.paths import get_machine_models_dir
 from app.startup.config import get_config_provider
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.periphery.local_state.machine_config_store import load_machine_config
-from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from app.infrastructure.local_state.machine_config_store import load_machine_config
+from app.infrastructure.embeddings.local_provider import SentenceTransformersEmbeddingProvider
 
 
 def _get_embedding_config() -> dict:

@@ -11,7 +11,7 @@ import sys
 from app.startup.admin_db import get_optional_admin_db_dsn
 from app.startup.db import get_optional_db_dsn
 from app.core.use_cases.metrics.agent_behavior_analysis import build_agent_behavior_report
-from app.periphery.db.engine import get_engine
+from app.infrastructure.db.engine import get_engine
 
 
 def main(argv: list[str] | None = None) -> int:

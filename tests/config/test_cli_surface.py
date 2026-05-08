@@ -56,7 +56,7 @@ def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(mo
     subdir.mkdir(parents=True)
     monkeypatch.chdir(subdir)
     monkeypatch.setattr("app.startup.repo_context.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
-    monkeypatch.setattr("app.periphery.local_state.repo_registration_store.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
+    monkeypatch.setattr("app.infrastructure.local_state.repo_registration_store.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
 
     context = resolve_repo_context(repo_root_arg=None, repo_id_arg=None)
 
@@ -398,7 +398,7 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
     """admin install-host-assets should print the installer result lines."""
 
     monkeypatch.setattr(
-        "app.periphery.host_assets.install_host_assets",
+        "app.infrastructure.host_assets.install_host_assets",
         lambda **kwargs: type("Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]})(),
     )
 
@@ -452,7 +452,7 @@ def test_admin_analytics_should_print_the_report(monkeypatch, capsys: pytest.Cap
 
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://app")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda dsn: f"engine:{dsn}")
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda dsn: f"engine:{dsn}")
     monkeypatch.setattr(
         "app.startup.analytics.build_analytics_report",
         lambda **kwargs: {
@@ -630,7 +630,7 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
 def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:
     """upgrade should delegate to the hosted upgrader and propagate its exit code."""
 
-    monkeypatch.setattr("app.periphery.runtime.upgrade.run_upgrade", lambda: 23)
+    monkeypatch.setattr("app.infrastructure.runtime.upgrade.run_upgrade", lambda: 23)
 
     exit_code = cli_main.main(["upgrade"])
 
@@ -709,15 +709,15 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
 ) -> None:
     """Disposable test instances should not hard-fail operational commands for unsafe roles."""
 
-    from app.periphery.postgres_admin.instance_guard import InstanceMetadataRecord
+    from app.infrastructure.postgres_admin.instance_guard import InstanceMetadataRecord
 
     monkeypatch.setattr("app.startup.db.get_db_dsn", lambda: "postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test")
     monkeypatch.setattr(
-        "app.periphery.postgres_admin.instance_guard.inspect_role_safety",
+        "app.infrastructure.postgres_admin.instance_guard.inspect_role_safety",
         lambda dsn: ["Current DSN role is superuser-capable."] if dsn else [],
     )
     monkeypatch.setattr(
-        "app.periphery.postgres_admin.instance_guard.fetch_instance_metadata",
+        "app.infrastructure.postgres_admin.instance_guard.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="instance-1",
             instance_mode="test",
@@ -738,13 +738,13 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 ) -> None:
     """admin backup create should print the created manifest as JSON."""
 
-    from app.periphery.postgres_admin.logical_backup import BackupManifest
+    from app.infrastructure.postgres_admin.logical_backup import BackupManifest
 
     monkeypatch.setattr("app.startup.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
     monkeypatch.setattr("app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
     monkeypatch.setattr("app.startup.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
-        "app.periphery.postgres_admin.logical_backup.create_backup",
+        "app.infrastructure.postgres_admin.logical_backup.create_backup",
         lambda **kwargs: BackupManifest(
             backup_id="b-1",
             instance_id="i-1",
@@ -863,11 +863,11 @@ def test_ensure_repo_registration_for_operation_should_register_when_machine_sta
     calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(
-        "app.periphery.local_state.machine_config_store.try_load_machine_config",
+        "app.infrastructure.local_state.machine_config_store.try_load_machine_config",
         lambda: (type("Config", (), {"machine_instance_id": "inst-1"})(), None),
     )
     monkeypatch.setattr(
-        "app.periphery.local_state.repo_registration_store.register_repo_for_target",
+        "app.infrastructure.local_state.repo_registration_store.register_repo_for_target",
         lambda **kwargs: calls.append(kwargs) or (None, True),
     )
 
@@ -893,7 +893,7 @@ def test_ensure_repo_registration_for_operation_should_skip_when_no_registration
     """operational commands should not auto-register arbitrary non-git directories by default."""
 
     monkeypatch.setattr(
-        "app.periphery.local_state.repo_registration_store.register_repo_for_target",
+        "app.infrastructure.local_state.repo_registration_store.register_repo_for_target",
         lambda **kwargs: (_ for _ in ()).throw(AssertionError("register_repo_for_target should not be called")),
     )
 

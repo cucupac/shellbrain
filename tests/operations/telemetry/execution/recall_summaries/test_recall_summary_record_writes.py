@@ -9,7 +9,7 @@ from sqlalchemy import text
 
 from app.core.contracts.responses import OperationResult
 from app.startup.operations import handle_recall
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -218,7 +218,7 @@ def _stub_internal_read(monkeypatch: pytest.MonkeyPatch, *, pack: dict) -> dict[
         captured["request"] = request
         return OperationResult(status="ok", data={"pack": pack})
 
-    monkeypatch.setattr("app.core.use_cases.recall_memory.execute_read_memory", _fake_execute_read_memory)
+    monkeypatch.setattr("app.core.use_cases.memory_retrieval.recall_memory.execute_read_memory", _fake_execute_read_memory)
     return captured
 
 

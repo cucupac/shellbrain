@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 
-from app.periphery.reporting.metrics.artifacts import (
+from app.infrastructure.reporting.metrics.artifacts import (
     get_metrics_artifact_dir,
     get_metrics_root_dir,
     write_metrics_artifacts,

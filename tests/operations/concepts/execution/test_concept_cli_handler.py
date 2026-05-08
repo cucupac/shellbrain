@@ -4,8 +4,8 @@ from collections.abc import Callable
 from pathlib import Path
 
 from app.startup.operations import handle_concept
-from app.periphery.db.models.concepts import concepts
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.models.concepts import concepts
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_concept_handler_should_apply_json_payload(

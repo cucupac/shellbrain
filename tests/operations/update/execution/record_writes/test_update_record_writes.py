@@ -3,11 +3,11 @@
 from collections.abc import Callable
 
 from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.update_memory import execute_update_memory
-from app.periphery.db.models.associations import association_edge_evidence, association_edges, association_observations
-from app.periphery.db.models.experiences import fact_updates
-from app.periphery.db.models.utility import utility_observations
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memories.update_memory import execute_update_memory
+from app.infrastructure.db.models.associations import association_edge_evidence, association_edges, association_observations
+from app.infrastructure.db.models.experiences import fact_updates
+from app.infrastructure.db.models.utility import utility_observations
+from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.update._execution_helpers import make_update_request, snapshot_related_update_counts
 
 

@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.periphery.db.models.views import CURRENT_FACT_SNAPSHOT_SQL
+from app.infrastructure.db.models.views import CURRENT_FACT_SNAPSHOT_SQL
 
 
 revision = "20260312_0003"

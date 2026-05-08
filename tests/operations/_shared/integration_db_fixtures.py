@@ -18,10 +18,10 @@ from sqlalchemy.sql import Selectable
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.entities.memory import Memory, MemoryKind, MemoryScope
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.periphery.db.engine import get_engine
-from app.periphery.db.models.registry import target_metadata
-from app.periphery.db.session import get_session_factory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.engine import get_engine
+from app.infrastructure.db.models.registry import target_metadata
+from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations._shared.destructive_guardrail_fixtures import (
     assert_destructive_test_setup_allowed,
     assert_test_database_is_disposable,

@@ -10,8 +10,8 @@ import pytest
 
 from app.core.entities.episodes import EpisodeStatus
 from app.core.use_cases.metrics.agent_behavior_analysis import build_agent_behavior_report
-from app.periphery.db.models.episodes import episode_events, episodes
-from app.periphery.db.models.telemetry import operation_invocations, read_invocation_summaries, write_invocation_summaries
+from app.infrastructure.db.models.episodes import episode_events, episodes
+from app.infrastructure.db.models.telemetry import operation_invocations, read_invocation_summaries, write_invocation_summaries
 
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")

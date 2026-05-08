@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-# architecture-compat: direct-periphery - external hook entrypoint delegates to runtime adapter.
-from app.periphery.host_identity.cursor_statusline import main
+from app.startup.host_hooks import run_cursor_statusline
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    raise SystemExit(run_cursor_statusline())

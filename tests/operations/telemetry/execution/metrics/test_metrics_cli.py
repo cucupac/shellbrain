@@ -16,7 +16,7 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_d
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: object())
     monkeypatch.setattr(
         "app.startup.metrics.list_metrics_repo_ids",
         lambda **_kwargs: ["github.com/example/one", "github.com/example/two"],
@@ -28,7 +28,7 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_d
 
     opened: list[Path] = []
     monkeypatch.setattr(
-        "app.periphery.reporting.metrics.browser.open_metrics_dashboard",
+        "app.infrastructure.reporting.metrics.browser.open_metrics_dashboard",
         lambda path: opened.append(path) or True,
     )
 
@@ -66,7 +66,7 @@ def test_metrics_command_should_print_empty_message_when_no_repo_metrics_exist(m
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: object())
     monkeypatch.setattr("app.startup.metrics.list_metrics_repo_ids", lambda **_kwargs: [])
     exit_code = cli_main.main(["metrics"])
     output = capsys.readouterr().out
@@ -81,7 +81,7 @@ def test_metrics_command_should_reject_global_repo_target_options(monkeypatch, c
     monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://metrics-test")
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.periphery.db.engine.get_engine", lambda _dsn: object())
+    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda _dsn: object())
 
     exit_code = cli_main.main(["--repo-id", "github.com/example/repo", "metrics"])
     error = capsys.readouterr().err

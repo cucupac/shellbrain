@@ -6,9 +6,9 @@ import pytest
 
 from app.core.contracts.requests import MemoryCreateRequest
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.create_memory import execute_create_memory
+from app.core.use_cases.memories.create_memory import execute_create_memory
 from app.startup.operations import handle_create
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 class _FailingEmbeddingProvider(IEmbeddingProvider):

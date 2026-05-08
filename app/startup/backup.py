@@ -8,11 +8,11 @@ from app.core.entities.backups import BackupManifest, BackupTarget
 from app.core.use_cases.admin.create_backup import create_backup as create_backup_use_case
 from app.core.use_cases.admin.restore_backup import restore_backup as restore_backup_use_case
 from app.core.use_cases.admin.verify_backup import verify_backup as verify_backup_use_case
-from app.periphery.postgres_admin import logical_backup
+from app.infrastructure.postgres_admin import logical_backup
 
 
 def create_backup(**kwargs) -> BackupManifest:
-    """Create a logical backup through core policy and periphery mechanics."""
+    """Create a logical backup through core policy and infrastructure mechanics."""
 
     return create_backup_use_case(create_logical_backup=logical_backup.create_backup, **kwargs)
 
@@ -31,7 +31,7 @@ def verify_backup(**kwargs) -> BackupManifest:
 
 
 def restore_backup(*, target_db: str, **kwargs) -> BackupManifest:
-    """Restore a backup through core safety policy and periphery mechanics."""
+    """Restore a backup through core safety policy and infrastructure mechanics."""
 
     return restore_backup_use_case(
         target=BackupTarget(database_name=target_db),

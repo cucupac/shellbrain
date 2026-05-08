@@ -17,9 +17,9 @@ import pytest
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.interfaces.embeddings import IEmbeddingProvider
 from app.startup.operations import handle_create
-from app.periphery.db.engine import get_engine
-from app.periphery.db.session import get_session_factory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.engine import get_engine
+from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 class _StubEmbeddingProvider(IEmbeddingProvider):

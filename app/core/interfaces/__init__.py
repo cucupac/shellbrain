@@ -1,1 +1,1 @@
-"""This package defines core interface abstractions for periphery adapters."""
+"""This package defines core interface abstractions for infrastructure adapters."""

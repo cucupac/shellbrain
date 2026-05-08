@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.periphery.db.models.views import (
+from app.infrastructure.db.models.views import (
     USAGE_PROBLEM_READ_ROI_LEGACY_SQL,
     USAGE_PROBLEM_RUN_TOKENS_SQL,
     USAGE_PROBLEM_TOKENS_LEGACY_SQL,

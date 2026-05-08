@@ -12,7 +12,7 @@ from sqlalchemy.engine import Engine
 from app.startup.use_cases import get_uow_factory
 from app.core.entities.telemetry import ModelUsageRecord
 from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
-from app.periphery.host_transcripts.model_usage import collect_model_usage_records_for_session
+from app.infrastructure.host_transcripts.model_usage import collect_model_usage_records_for_session
 
 
 @dataclass(frozen=True)

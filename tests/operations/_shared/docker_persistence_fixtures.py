@@ -21,12 +21,12 @@ from sqlalchemy import select
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.interfaces.embeddings import IEmbeddingProvider
 from app.startup.operations import handle_create
-from app.periphery.db.engine import get_engine
-from app.periphery.db.models.evidence import evidence_refs
-from app.periphery.db.models.episodes import episode_events, episodes
-from app.periphery.db.models.memories import memories, memory_embeddings, memory_evidence
-from app.periphery.db.session import get_session_factory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.engine import get_engine
+from app.infrastructure.db.models.evidence import evidence_refs
+from app.infrastructure.db.models.episodes import episode_events, episodes
+from app.infrastructure.db.models.memories import memories, memory_embeddings, memory_evidence
+from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 _READY_TIMEOUT_SECONDS = 60

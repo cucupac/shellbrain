@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import sys
 
-# architecture-compat: direct-periphery - external hook entrypoint delegates to runtime adapter.
-from app.periphery.host_identity.claude_runtime import main
+from app.startup.host_hooks import run_claude_session_start
 
 
 if __name__ == "__main__":
-    raise SystemExit(main(sys.argv[1:]))
+    raise SystemExit(run_claude_session_start(sys.argv[1:]))

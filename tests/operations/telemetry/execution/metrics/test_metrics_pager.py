@@ -5,7 +5,7 @@ from __future__ import annotations
 import io
 from pathlib import Path
 
-from app.periphery.reporting.metrics.pager import present_metrics_repo_pager
+from app.infrastructure.reporting.metrics.pager import present_metrics_repo_pager
 
 
 def test_present_metrics_repo_pager_should_render_all_entries_for_non_interactive_streams(tmp_path: Path) -> None:

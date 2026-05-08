@@ -12,9 +12,9 @@ from alembic.script.revision import ResolutionError
 
 from app.startup.admin_db import get_admin_db_dsn, get_backup_dir, get_backup_mirror_dir, get_instance_mode_default
 from app.startup.db import get_optional_db_dsn
-from app.periphery.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
-from app.periphery.postgres_admin.instance_guard import ensure_instance_metadata, fetch_instance_metadata
-from app.periphery.postgres_admin.privileges import reconcile_app_role_privileges
+from app.infrastructure.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
+from app.infrastructure.postgres_admin.instance_guard import ensure_instance_metadata, fetch_instance_metadata
+from app.infrastructure.postgres_admin.privileges import reconcile_app_role_privileges
 
 
 class DatabaseRevisionAheadOfInstalledPackageError(RuntimeError):

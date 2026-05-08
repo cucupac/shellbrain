@@ -4,8 +4,8 @@ from collections.abc import Callable
 
 from app.core.contracts.concepts import ConceptCommandRequest
 from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.manage_concepts import execute_concept_command
-from app.periphery.db.models.concepts import (
+from app.core.use_cases.concepts.apply_concept_changes import execute_concept_command
+from app.infrastructure.db.models.concepts import (
     anchors,
     concept_claims,
     concept_evidence,
@@ -14,7 +14,7 @@ from app.periphery.db.models.concepts import (
     concept_relations,
     concepts,
 )
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_concept_apply_should_seed_deposit_addresses_canary_and_show_preview(

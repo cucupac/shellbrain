@@ -8,8 +8,8 @@ from app.core.contracts.requests import MemoryReadRequest
 from app.core.policies.read_policy.expansion import expand_candidates
 from app.core.policies.read_policy.fusion_rrf import fuse_with_rrf
 from app.core.policies.read_policy.scoring import score_candidates
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds() -> None:

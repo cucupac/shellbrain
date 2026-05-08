@@ -5,8 +5,8 @@ from collections.abc import Callable
 import pytest
 
 from app.core.contracts.requests import MemoryReadRequest
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_read_context_pack_should_always_return_grouped_sections_under_data_pack(

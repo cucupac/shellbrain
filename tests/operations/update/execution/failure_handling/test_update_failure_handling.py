@@ -5,8 +5,8 @@ from collections.abc import Callable
 import pytest
 
 from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.update_memory import execute_update_memory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memories.update_memory import execute_update_memory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.update._execution_helpers import make_update_request, snapshot_related_update_counts
 
 
