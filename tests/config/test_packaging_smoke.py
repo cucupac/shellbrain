@@ -223,7 +223,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_pa
         assert memories_table is not None
         assert episode_events_table is not None
         assert concepts_table is not None
-        assert alembic_version == "20260422_0015"
+        assert alembic_version == "20260508_0016"
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
         drop_temp_database(admin_dsn, db_name)
@@ -317,7 +317,7 @@ def test_admin_migrate_should_preserve_pre_frontier_data_and_enable_frontier_sup
         with psycopg.connect(raw_package_dsn, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT version_num FROM alembic_version;")
-                assert cur.fetchone()[0] == "20260422_0015"
+                assert cur.fetchone()[0] == "20260508_0016"
 
                 cur.execute("SELECT kind, text FROM memories WHERE id = 'pre0009-problem';")
                 assert cur.fetchone() == ("problem", "pre-frontier problem")

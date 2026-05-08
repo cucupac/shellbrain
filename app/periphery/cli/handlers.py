@@ -13,19 +13,18 @@ from app.boot.update_policy import get_update_policy_settings, validate_update_p
 from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.concepts import ConceptCommandRequest
 from app.core.contracts.requests import (
-    EpisodeEventsRequest,
     MemoryBatchUpdateRequest,
     MemoryCreateRequest,
     MemoryUpdateRequest,
 )
 from app.core.contracts.responses import OperationResult
-from app.core.entities.guidance import GuidanceDecision
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
 from app.core.entities.telemetry import OperationDispatchTelemetryContext, SessionSelectionSummary
 from app.core.use_cases.build_guidance import build_pending_utility_guidance
 from app.core.use_cases.manage_session_state import SessionStateManager
 from app.core.use_cases.create_memory import execute_create_memory
 from app.core.use_cases.manage_concepts import execute_concept_command
+from app.core.use_cases.recall_memory import execute_recall_memory
 from app.core.use_cases.read_memory import execute_read_memory
 from app.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
 from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
@@ -45,9 +44,11 @@ from app.periphery.cli.schema_validation import (
     validate_events_schema,
     validate_internal_create_contract,
     validate_internal_events_contract,
+    validate_internal_recall_contract,
     validate_internal_read_contract,
     validate_internal_update_contract,
     validate_read_schema,
+    validate_recall_schema,
     validate_update_schema,
 )
 from app.periphery.episodes.normalization import normalize_host_transcript
@@ -61,14 +62,12 @@ from app.periphery.session_state.file_store import FileSessionStateStore
 from app.periphery.telemetry import get_operation_telemetry_context
 from app.periphery.telemetry.operation_summary import (
     build_operation_invocation_record,
+    build_recall_summary_records,
     build_read_summary_records,
     build_write_summary_records,
     infer_error_stage_from_errors,
 )
-from app.periphery.telemetry.session_selection import (
-    EventsDiscoveryCandidate,
-    summarize_runtime_selection,
-)
+from app.periphery.telemetry.session_selection import summarize_runtime_selection
 from app.periphery.telemetry.sync_summary import build_episode_sync_records
 from app.periphery.validation.integrity_validation import validate_create_integrity, validate_update_integrity
 from app.periphery.validation.semantic_validation import validate_create_semantics, validate_update_semantics
@@ -330,6 +329,74 @@ def handle_read(
         error_stage=error_stage,
         request=request,
         agent_payload=payload,
+        total_latency_ms=int((perf_counter() - started_at) * 1000),
+    )
+    return result
+
+
+def handle_recall(
+    payload: dict,
+    *,
+    uow_factory,
+    inferred_repo_id: str,
+    telemetry_context: OperationDispatchTelemetryContext | None = None,
+    repo_root: Path | None = None,
+):
+    """Validate and dispatch a minimal read-only recall payload."""
+
+    started_at = perf_counter()
+    resolved_repo_root = (repo_root or Path.cwd()).resolve()
+    resolved_telemetry_context = _ensure_telemetry_context(telemetry_context=telemetry_context, repo_root=resolved_repo_root)
+    session_manager = SessionStateManager(store=FileSessionStateStore())
+    session_manager.load_active_state(
+        repo_root=resolved_repo_root,
+        caller_identity=resolved_telemetry_context.caller_identity,
+    )
+    request = None
+    result: dict | None = None
+    recall_telemetry: dict | None = None
+    error_stage: str | None = None
+    try:
+        agent_request, errors = validate_recall_schema(payload)
+        if errors:
+            error_stage = infer_error_stage_from_errors(_dump_errors(errors), default_stage="schema_validation")
+            result = _error_response(errors)
+        else:
+            assert agent_request is not None
+            hydrated_payload = agent_request.model_dump(mode="python", exclude_none=True)
+            hydrated_payload.setdefault("op", "recall")
+            hydrated_payload.setdefault("repo_id", inferred_repo_id)
+            request, contract_errors = validate_internal_recall_contract(hydrated_payload)
+            if contract_errors:
+                error_stage = infer_error_stage_from_errors(
+                    _dump_errors(contract_errors),
+                    default_stage="contract_validation",
+                )
+                result = _error_response(contract_errors)
+            else:
+                assert request is not None
+                with uow_factory() as uow:
+                    result = execute_recall_memory(request, uow).model_dump(mode="python")
+                data = result.get("data")
+                if isinstance(data, dict):
+                    telemetry_payload = data.pop("_telemetry", None)
+                    if isinstance(telemetry_payload, dict):
+                        recall_telemetry = telemetry_payload
+    except Exception as exc:  # pragma: no cover - defensive fallback envelope
+        error_stage = "internal_error"
+        result = _error_response([ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))])
+
+    assert result is not None
+    _persist_operation_telemetry_best_effort(
+        command="recall",
+        uow_factory=uow_factory,
+        repo_id=inferred_repo_id,
+        telemetry_context=resolved_telemetry_context,
+        result=result,
+        error_stage=error_stage,
+        request=request,
+        agent_payload=payload,
+        recall_telemetry=recall_telemetry,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result
@@ -723,6 +790,7 @@ def _persist_operation_telemetry_best_effort(
     sync_run=None,
     sync_tool_types=(),
     model_usage_records=(),
+    recall_telemetry: dict | None = None,
     total_latency_ms: int | None = None,
 ) -> None:
     """Persist invocation telemetry in a second best-effort transaction."""
@@ -749,6 +817,8 @@ def _persist_operation_telemetry_best_effort(
 
             read_summary = None
             read_items = ()
+            recall_summary = None
+            recall_items = ()
             write_summary = None
             write_items = ()
 
@@ -761,6 +831,20 @@ def _persist_operation_telemetry_best_effort(
                         request=request,
                         pack=pack,
                     )
+
+            if result.get("status") == "ok" and command == "recall" and request is not None:
+                data = result.get("data", {})
+                if isinstance(data, dict) and isinstance(recall_telemetry, dict):
+                    brief = data.get("brief", {})
+                    if isinstance(brief, dict):
+                        fallback_reason = data.get("fallback_reason")
+                        recall_summary, recall_items = build_recall_summary_records(
+                            invocation_id=telemetry_context.invocation_id,
+                            request=request,
+                            recall_telemetry=recall_telemetry,
+                            brief=brief,
+                            fallback_reason=str(fallback_reason) if isinstance(fallback_reason, str) else None,
+                        )
 
             if result.get("status") == "ok" and command in {"create", "update"} and request is not None:
                 planned_side_effects = result.get("data", {}).get("planned_side_effects", [])
@@ -777,6 +861,8 @@ def _persist_operation_telemetry_best_effort(
                 invocation=invocation,
                 read_summary=read_summary,
                 read_items=read_items,
+                recall_summary=recall_summary,
+                recall_items=recall_items,
                 write_summary=write_summary,
                 write_items=write_items,
             )

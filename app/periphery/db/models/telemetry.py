@@ -1,6 +1,20 @@
 """SQLAlchemy Core tables for low-overhead usage telemetry storage."""
 
-from sqlalchemy import BigInteger, Boolean, Column, ForeignKey, Index, Integer, String, Table, Text, UniqueConstraint, and_, text
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+    and_,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 
 from app.periphery.db.models.metadata import metadata
@@ -84,6 +98,54 @@ read_result_items = Table(
     Column("why_included", String, nullable=False),
     Column("anchor_memory_id", String),
     Column("relation_type", String),
+)
+
+recall_invocation_summaries = Table(
+    "recall_invocation_summaries",
+    metadata,
+    Column(
+        "invocation_id",
+        String,
+        ForeignKey("operation_invocations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("query_text", Text, nullable=False),
+    Column("candidate_token_estimate", Integer, nullable=False),
+    Column("brief_token_estimate", Integer, nullable=False),
+    Column("fallback_reason", String),
+    Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
+    CheckConstraint("candidate_token_estimate >= 0", name="ck_recall_candidate_token_estimate_nonnegative"),
+    CheckConstraint("brief_token_estimate >= 0", name="ck_recall_brief_token_estimate_nonnegative"),
+    CheckConstraint(
+        "fallback_reason IS NULL OR fallback_reason = 'no_candidates'",
+        name="ck_recall_fallback_reason",
+    ),
+)
+
+recall_source_items = Table(
+    "recall_source_items",
+    metadata,
+    Column(
+        "invocation_id",
+        String,
+        ForeignKey("operation_invocations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("ordinal", Integer, primary_key=True),
+    Column("source_kind", String, nullable=False),
+    Column("source_id", String, nullable=False),
+    Column("input_section", String, nullable=False),
+    Column("output_section", String),
+    CheckConstraint("ordinal > 0", name="ck_recall_source_items_ordinal_positive"),
+    CheckConstraint("source_kind IN ('memory', 'concept')", name="ck_recall_source_items_source_kind"),
+    CheckConstraint(
+        "input_section IN ('direct', 'explicit_related', 'implicit_related', 'concept_orientation')",
+        name="ck_recall_source_items_input_section",
+    ),
+    CheckConstraint(
+        "output_section IS NULL OR output_section IN ('summary', 'sources')",
+        name="ck_recall_source_items_output_section",
+    ),
 )
 
 write_invocation_summaries = Table(
@@ -212,6 +274,12 @@ Index(
     ),
 )
 Index("idx_read_result_items_memory_invocation", read_result_items.c.memory_id, read_result_items.c.invocation_id)
+Index(
+    "idx_recall_source_items_source_invocation",
+    recall_source_items.c.source_kind,
+    recall_source_items.c.source_id,
+    recall_source_items.c.invocation_id,
+)
 Index(
     "idx_write_effect_items_repo_effect_invocation",
     write_effect_items.c.repo_id,

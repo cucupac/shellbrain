@@ -45,6 +45,7 @@ _TOP_LEVEL_HELP = dedent(
 
     Mental model:
       - `read` retrieves durable memories related to the concrete problem or subproblem.
+      - `recall` returns a compact read-only brief from targeted Shellbrain retrieval.
       - `events` inspects episodic transcript evidence from the active session.
       - `create` authors durable memories from that evidence.
       - `update` records utility, truth-evolution links, and explicit associations.
@@ -62,6 +63,7 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain upgrade
       shellbrain metrics
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
+      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?"}'
       shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
       shellbrain events --json '{"limit":10}'
       shellbrain create --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
@@ -120,6 +122,18 @@ _READ_HELP = dedent(
     Example:
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
       shellbrain read --json '{"query":"debug deposit address refund failure","expand":{"concepts":{"mode":"explicit","refs":["deposit-addresses"],"facets":["groundings"]}}}'
+    """
+)
+
+_RECALL_HELP = dedent(
+    """\
+    Return a compact read-only recall brief.
+
+    Phase 1 accepts only `query` and optional `limit`.
+    It does not mutate memories, concepts, utility observations, or problem runs.
+
+    Example:
+      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?"}'
     """
 )
 
@@ -382,7 +396,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
 
-    metrics_parser = subparsers.add_parser(
+    subparsers.add_parser(
         "metrics",
         help="Browse Shellbrain metrics across repos.",
         description="Generate local metrics snapshots and open one browser dashboard for all repos.",
@@ -409,6 +423,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(read_parser, suppress_default=True)
     _add_payload_arguments(read_parser)
+
+    recall_parser = subparsers.add_parser(
+        "recall",
+        help="Return a compact read-only Shellbrain brief.",
+        description="Return a compact deterministic brief from targeted Shellbrain retrieval.",
+        epilog=_RECALL_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(recall_parser, suppress_default=True)
+    _add_payload_arguments(recall_parser)
 
     concept_parser = subparsers.add_parser(
         "concept",
@@ -682,7 +706,14 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
     from app.boot.create_policy import get_create_hydration_defaults
     from app.boot.read_policy import get_read_hydration_defaults
     from app.boot.use_cases import get_embedding_model, get_embedding_provider_factory, get_uow_factory
-    from app.periphery.cli.handlers import handle_concept, handle_create, handle_events, handle_read, handle_update
+    from app.periphery.cli.handlers import (
+        handle_concept,
+        handle_create,
+        handle_events,
+        handle_read,
+        handle_recall,
+        handle_update,
+    )
     from app.periphery.telemetry import get_operation_telemetry_context
 
     uow_factory = get_uow_factory()
@@ -703,6 +734,14 @@ def _dispatch_operation_command(command: str, payload: dict[str, Any], repo_cont
             uow_factory=uow_factory,
             inferred_repo_id=repo_context.repo_id,
             defaults=get_read_hydration_defaults(),
+            telemetry_context=get_operation_telemetry_context(),
+            repo_root=repo_context.repo_root,
+        )
+    if command == "recall":
+        return handle_recall(
+            payload,
+            uow_factory=uow_factory,
+            inferred_repo_id=repo_context.repo_id,
             telemetry_context=get_operation_telemetry_context(),
             repo_root=repo_context.repo_root,
         )

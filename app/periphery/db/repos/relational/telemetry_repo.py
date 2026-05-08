@@ -14,6 +14,8 @@ from app.core.entities.telemetry import (
     EpisodeSyncToolTypeRecord,
     ModelUsageRecord,
     OperationInvocationRecord,
+    RecallSourceItemRecord,
+    RecallSummaryRecord,
     ReadResultItemRecord,
     ReadSummaryRecord,
     WriteEffectItemRecord,
@@ -26,6 +28,8 @@ from app.periphery.db.models.telemetry import (
     episode_sync_tool_types,
     model_usage,
     operation_invocations,
+    recall_invocation_summaries,
+    recall_source_items,
     read_invocation_summaries,
     read_result_items,
     write_effect_items,
@@ -62,6 +66,22 @@ class TelemetryRepo(ITelemetryRepo):
         self._session.execute(read_invocation_summaries.insert().values(**asdict(summary)))
         if items:
             self._session.execute(read_result_items.insert(), [asdict(item) for item in items])
+
+    def insert_recall_summary(
+        self,
+        summary: RecallSummaryRecord,
+        items: tuple[RecallSourceItemRecord, ...] | list[RecallSourceItemRecord],
+    ) -> None:
+        """Replace one recall summary row and its ordered source items."""
+
+        invocation_id = summary.invocation_id
+        self._session.execute(delete(recall_source_items).where(recall_source_items.c.invocation_id == invocation_id))
+        self._session.execute(
+            delete(recall_invocation_summaries).where(recall_invocation_summaries.c.invocation_id == invocation_id)
+        )
+        self._session.execute(recall_invocation_summaries.insert().values(**asdict(summary)))
+        if items:
+            self._session.execute(recall_source_items.insert(), [asdict(item) for item in items])
 
     def insert_write_summary(
         self,

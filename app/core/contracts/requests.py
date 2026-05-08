@@ -92,6 +92,15 @@ class MemoryReadRequest(StrictBaseModel):
         return value
 
 
+class MemoryRecallRequest(StrictBaseModel):
+    """This model defines the canonical recall request payload."""
+
+    op: Literal["recall"] = "recall"
+    repo_id: str
+    query: str = Field(min_length=1)
+    limit: int | None = Field(default=None, ge=1, le=100)
+
+
 class EpisodeEventsRequest(StrictBaseModel):
     """This model defines the canonical episode-events request payload."""
 
