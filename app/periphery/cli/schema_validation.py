@@ -7,12 +7,12 @@ from pydantic import Field, ValidationError, field_validator
 from app.core.contracts.concepts import ConceptCommandRequest
 from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import (
-    BatchUtilityVoteItem,
     EpisodeEventsRequest,
     MemoryKindValue,
     MemoryBatchUpdateRequest,
     MemoryCreateLinks,
     MemoryCreateRequest,
+    MemoryRecallRequest,
     MemoryReadRequest,
     ReadConceptsExpandRequest,
     MemoryUpdateRequest,
@@ -53,6 +53,13 @@ class AgentReadRequest(StrictBaseModel):
         if len(value) != len(set(value)):
             raise ValueError("kinds must be unique")
         return value
+
+
+class AgentRecallRequest(StrictBaseModel):
+    """Agent-facing recall payload with only the Phase 1 public inputs."""
+
+    query: str = Field(min_length=1)
+    limit: int | None = Field(default=None, ge=1, le=100)
 
 
 class AgentCreateBody(StrictBaseModel):
@@ -147,6 +154,15 @@ def validate_read_schema(payload: dict[str, Any]) -> tuple[AgentReadRequest | No
         return None, _format_validation_errors(exc)
 
 
+def validate_recall_schema(payload: dict[str, Any]) -> tuple[AgentRecallRequest | None, list[ErrorDetail]]:
+    """Validate and parse agent recall payloads into the minimal recall contract."""
+
+    try:
+        return AgentRecallRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
 def validate_events_schema(payload: dict[str, Any]) -> tuple[AgentEventsRequest | None, list[ErrorDetail]]:
     """Validate and parse agent events payloads into the simplified events contract."""
 
@@ -161,6 +177,15 @@ def validate_internal_read_contract(payload: dict[str, Any]) -> tuple[MemoryRead
 
     try:
         return MemoryReadRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_internal_recall_contract(payload: dict[str, Any]) -> tuple[MemoryRecallRequest | None, list[ErrorDetail]]:
+    """Validate one hydrated recall payload against the full internal recall contract."""
+
+    try:
+        return MemoryRecallRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 

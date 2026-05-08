@@ -8,7 +8,6 @@ from app.core.entities.associations import AssociationEdge, AssociationObservati
 from app.core.entities.concepts import (
     Anchor,
     Concept,
-    ConceptAlias,
     ConceptClaim,
     ConceptEvidence,
     ConceptGrounding,
@@ -25,6 +24,8 @@ from app.core.entities.telemetry import (
     EpisodeSyncToolTypeRecord,
     ModelUsageRecord,
     OperationInvocationRecord,
+    RecallSourceItemRecord,
+    RecallSummaryRecord,
     ReadResultItemRecord,
     ReadSummaryRecord,
     WriteEffectItemRecord,
@@ -334,6 +335,14 @@ class ITelemetryRepo(ABC):
         items: Sequence[ReadResultItemRecord],
     ) -> None:
         """This method persists one read summary row and its ordered result items."""
+
+    @abstractmethod
+    def insert_recall_summary(
+        self,
+        summary: RecallSummaryRecord,
+        items: Sequence[RecallSourceItemRecord],
+    ) -> None:
+        """This method persists one recall summary row and its ordered source items."""
 
     @abstractmethod
     def insert_write_summary(

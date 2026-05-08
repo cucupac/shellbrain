@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from app.core.entities.runtime_context import RuntimeContext as OperationDispatchTelemetryContext
+from app.core.entities.runtime_context import RuntimeContext as OperationDispatchTelemetryContext  # noqa: F401
 
 
 @dataclass(frozen=True)
@@ -92,6 +92,30 @@ class ReadResultItemRecord:
     why_included: str
     anchor_memory_id: str | None
     relation_type: str | None
+
+
+@dataclass(frozen=True)
+class RecallSummaryRecord:
+    """One summary row describing a successful recall invocation."""
+
+    invocation_id: str
+    query_text: str
+    candidate_token_estimate: int
+    brief_token_estimate: int
+    fallback_reason: str | None
+    created_at: datetime
+
+
+@dataclass(frozen=True)
+class RecallSourceItemRecord:
+    """One recall candidate source item in stable candidate order."""
+
+    invocation_id: str
+    ordinal: int
+    source_kind: str
+    source_id: str
+    input_section: str
+    output_section: str | None
 
 
 @dataclass(frozen=True)

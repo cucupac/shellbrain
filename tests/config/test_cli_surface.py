@@ -88,6 +88,7 @@ def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixtu
     assert "--no-sync" not in output
     assert "create" in output
     assert "read" in output
+    assert "recall" in output
     assert "update" in output
     assert "events" in output
     assert "upgrade" in output
@@ -213,6 +214,20 @@ def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]
     assert "implicit_related" in output
     assert "concepts" in output
     assert "deposit-addresses" in output
+
+
+def test_recall_help_should_describe_minimal_read_only_contract(capsys: pytest.CaptureFixture[str]) -> None:
+    """recall help should keep the Phase 1 input surface intentionally small."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["recall", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "shellbrain recall --json" in output
+    assert "query" in output
+    assert "optional `limit`" in output
+    assert "does not mutate" in output
 
 
 def test_concept_help_should_describe_internal_json_endpoint(capsys: pytest.CaptureFixture[str]) -> None:
@@ -549,6 +564,39 @@ def test_main_accepts_repo_targeting_flags_after_subcommand(monkeypatch, tmp_pat
     assert resolved_context.repo_root == repo_root.resolve()
     assert resolved_context.repo_id == "repo-after"
     assert resolved_context.registration_root == repo_root.resolve()
+
+
+def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> None:
+    """recall should use the same operational JSON dispatch path as read."""
+
+    repo_root = tmp_path / "recall-repo"
+    repo_root.mkdir()
+    captured: dict[str, object] = {}
+
+    def _fake_dispatch(command: str, payload: dict[str, object], repo_context) -> dict[str, object]:
+        captured["command"] = command
+        captured["payload"] = payload
+        captured["repo_context"] = repo_context
+        return {"status": "ok", "data": {"brief": {"summary": "stub", "sources": []}, "fallback_reason": None}}
+
+    monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
+    monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
+    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: captured.setdefault("result", result))
+    monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: None)
+
+    exit_code = cli_main.main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "recall",
+            "--json",
+            '{"query":"x"}',
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["command"] == "recall"
+    assert captured["payload"] == {"query": "x"}
 
 
 def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> None:
