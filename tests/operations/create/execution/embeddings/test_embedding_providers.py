@@ -5,7 +5,7 @@ import types
 
 import pytest
 
-from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from app.infrastructure.embeddings.local_provider import SentenceTransformersEmbeddingProvider
 
 
 def test_sentence_transformers_provider_uses_local_library_when_available(monkeypatch: pytest.MonkeyPatch) -> None:

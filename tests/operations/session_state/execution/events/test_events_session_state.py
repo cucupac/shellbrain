@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from app.startup.operations import handle_events
-from app.periphery.local_state.session_state_file_store import FileSessionStateStore
+from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
 
 
 def test_events_should_persist_trusted_caller_session_state(

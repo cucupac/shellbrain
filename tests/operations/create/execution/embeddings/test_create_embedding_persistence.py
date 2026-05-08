@@ -10,14 +10,14 @@ from sqlalchemy import select, text
 
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.db.engine import get_engine
-from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
-from app.periphery.db.models.episodes import episode_events, episodes
-from app.periphery.db.models.memories import memory_embeddings
-from app.periphery.db.models.registry import target_metadata
-from app.periphery.db.session import get_session_factory
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memories.create_memory import execute_create_memory
+from app.infrastructure.db.engine import get_engine
+from app.infrastructure.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from app.infrastructure.db.models.episodes import episode_events, episodes
+from app.infrastructure.db.models.memories import memory_embeddings
+from app.infrastructure.db.models.registry import target_metadata
+from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations._shared.destructive_guardrail_fixtures import (
     assert_destructive_test_setup_allowed,
     assert_test_database_is_disposable,

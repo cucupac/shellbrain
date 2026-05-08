@@ -45,15 +45,15 @@ def test_core_does_not_import_edge_packages() -> None:
         "core",
         (
             "app.startup",
-            "app.periphery",
+            "app.infrastructure",
             "app.entrypoints",
         ),
     )
 
 
-def test_periphery_does_not_import_startup_or_entrypoints() -> None:
+def test_infrastructure_does_not_import_startup_or_entrypoints() -> None:
     _assert_no_forbidden_imports(
-        "periphery",
+        "infrastructure",
         (
             "app.startup",
             "app.entrypoints",
@@ -61,17 +61,8 @@ def test_periphery_does_not_import_startup_or_entrypoints() -> None:
     )
 
 
-def test_entrypoints_direct_periphery_imports_are_marked_compatibility_shims() -> None:
-    violations: list[str] = []
-    for path in _python_files(APP_ROOT / "entrypoints"):
-        lines = path.read_text(encoding="utf-8").splitlines()
-        for line_no, module_name in _imported_modules(path):
-            if not module_name.startswith("app.periphery"):
-                continue
-            nearby = "\n".join(lines[max(0, line_no - 3) : line_no])
-            if "architecture-compat: direct-periphery" in nearby:
-                continue
-            rel_path = path.relative_to(REPO_ROOT)
-            violations.append(f"{rel_path}:{line_no} imports {module_name}")
-
-    assert not violations, "Unmarked direct periphery imports from entrypoints:\n" + "\n".join(violations)
+def test_entrypoints_do_not_import_infrastructure_directly() -> None:
+    _assert_no_forbidden_imports(
+        "entrypoints",
+        ("app.infrastructure",),
+    )

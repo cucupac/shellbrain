@@ -6,14 +6,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from app.periphery.db.models.memories import memories
-from app.periphery.db.models.telemetry import (
+from app.infrastructure.db.models.memories import memories
+from app.infrastructure.db.models.telemetry import (
     episode_sync_runs,
     operation_invocations,
     read_invocation_summaries,
     write_invocation_summaries,
 )
-from app.periphery.db.models.utility import utility_observations
+from app.infrastructure.db.models.utility import utility_observations
 import app.startup.metrics as metrics_service
 
 

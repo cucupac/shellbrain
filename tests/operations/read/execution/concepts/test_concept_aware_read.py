@@ -8,10 +8,10 @@ from sqlalchemy.engine import Engine
 from app.core.contracts.concepts import ConceptCommandRequest
 from app.core.entities.concepts import ConceptLifecycleStatus
 from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.manage_concepts import execute_concept_command
-from app.core.use_cases.read_memory import execute_read_memory
-from app.periphery.db.models.concepts import concept_memory_links, concepts
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.concepts.apply_concept_changes import execute_concept_command
+from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.infrastructure.db.models.concepts import concept_memory_links, concepts
+from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import make_read_request
 
 
@@ -289,4 +289,4 @@ def _stub_pack(monkeypatch, *, direct_memory_ids: list[str]) -> None:
         "explicit_related": [],
         "implicit_related": [],
     }
-    monkeypatch.setattr("app.core.use_cases.read_memory.build_context_pack", lambda *args, **kwargs: pack)
+    monkeypatch.setattr("app.core.use_cases.memory_retrieval.read_memory.build_context_pack", lambda *args, **kwargs: pack)

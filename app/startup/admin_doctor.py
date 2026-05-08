@@ -10,18 +10,18 @@ from typing import Any
 
 import psycopg
 
-from app.periphery.local_state.paths import get_shellbrain_home
-from app.periphery.runtime import external_runtime
-from app.periphery.postgres_admin.logical_backup import list_backups
-from app.periphery.postgres_admin.instance_guard import fetch_instance_metadata, fingerprint_summary, inspect_role_safety
-from app.periphery.local_state.machine_config_store import (
+from app.infrastructure.local_state.paths import get_shellbrain_home
+from app.infrastructure.runtime import external_runtime
+from app.infrastructure.postgres_admin.logical_backup import list_backups
+from app.infrastructure.postgres_admin.instance_guard import fetch_instance_metadata, fingerprint_summary, inspect_role_safety
+from app.infrastructure.local_state.machine_config_store import (
     MachineConfig,
     RUNTIME_MODE_EXTERNAL_POSTGRES,
     RUNTIME_MODE_MANAGED_LOCAL,
     try_load_machine_config,
 )
-from app.periphery.local_state.repo_registration_store import IDENTITY_STRENGTH_WEAK_LOCAL, load_repo_registration_for_target, resolve_git_root
-from app.periphery.host_assets import inspect_host_assets
+from app.infrastructure.local_state.repo_registration_store import IDENTITY_STRENGTH_WEAK_LOCAL, load_repo_registration_for_target, resolve_git_root
+from app.infrastructure.host_assets import inspect_host_assets
 
 _LOW_DISK_WARNING_BYTES = 2 * 1024 * 1024 * 1024
 

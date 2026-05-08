@@ -6,7 +6,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from app.startup.operations import handle_events
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_events_errors_clearly_when_no_active_session_exists(

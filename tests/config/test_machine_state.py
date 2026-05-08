@@ -5,7 +5,7 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from app.periphery.local_state.machine_config_store import (
+from app.infrastructure.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,

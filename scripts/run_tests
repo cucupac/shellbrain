@@ -60,7 +60,7 @@ if [[ -z "${SHELLBRAIN_PROTECTED_LIVE_DSN:-}" ]]; then
 import os
 from pathlib import Path
 
-from app.periphery.local_state.machine_config_store import try_load_machine_config
+from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 machine_config_path = Path(os.environ["SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH"]).expanduser().resolve()
 machine_config, machine_error = try_load_machine_config(machine_config_path)
@@ -77,8 +77,8 @@ fi
 import os
 from pathlib import Path
 
-from app.periphery.postgres_admin.instance_guard import assert_disposable_test_dsn, host_port_from_dsn
-from app.periphery.local_state.machine_config_store import try_load_machine_config
+from app.infrastructure.postgres_admin.instance_guard import assert_disposable_test_dsn, host_port_from_dsn
+from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 protected_dsn = os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN") or None
 protected_host_ports: set[tuple[str, int]] = set()
@@ -120,7 +120,7 @@ from urllib.parse import urlparse, urlunparse
 
 import psycopg
 from psycopg import sql
-from app.periphery.postgres_admin.instance_guard import (
+from app.infrastructure.postgres_admin.instance_guard import (
     SCRATCH,
     TEST,
     assert_destructive_allowed,

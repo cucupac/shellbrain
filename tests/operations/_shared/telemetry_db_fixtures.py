@@ -562,7 +562,7 @@ def assert_usage_telemetry_dataset_via_engine(engine: Engine, expected: dict[str
 def seed_usage_telemetry_dataset_via_dsn(dsn: str) -> dict[str, str]:
     """Insert the sentinel telemetry dataset into one explicit SQLAlchemy DSN."""
 
-    from app.periphery.db.engine import get_engine
+    from app.infrastructure.db.engine import get_engine
 
     engine = get_engine(dsn)
     try:
@@ -574,7 +574,7 @@ def seed_usage_telemetry_dataset_via_dsn(dsn: str) -> dict[str, str]:
 def assert_usage_telemetry_dataset_via_dsn(dsn: str, expected: dict[str, str]) -> None:
     """Assert the sentinel telemetry dataset against one explicit SQLAlchemy DSN."""
 
-    from app.periphery.db.engine import get_engine
+    from app.infrastructure.db.engine import get_engine
 
     engine = get_engine(dsn)
     try:

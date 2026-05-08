@@ -2,8 +2,8 @@
 
 from app.startup.db import get_session_factory_instance
 from app.startup.embeddings import get_embedding_provider
-from app.periphery.db.uow import PostgresUnitOfWork
-from app.periphery.embeddings.query_vector_search import EmbeddingBackedVectorSearch
+from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.embeddings.query_vector_search import EmbeddingBackedVectorSearch
 
 
 def get_uow() -> PostgresUnitOfWork:

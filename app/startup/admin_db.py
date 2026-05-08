@@ -7,8 +7,8 @@ from pathlib import Path
 
 from app.startup.dsn_resolution import resolve_database_dsn
 from app.startup.config import get_config_provider
-from app.periphery.local_state.paths import get_machine_backups_dir
-from app.periphery.local_state.machine_config_store import try_load_machine_config
+from app.infrastructure.local_state.paths import get_machine_backups_dir
+from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 
 def get_admin_db_dsn() -> str:

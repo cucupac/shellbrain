@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.periphery.local_state.repo_registration_store import (
+from app.infrastructure.local_state.repo_registration_store import (
     load_repo_registration_for_target,
     resolve_git_root,
     resolve_repo_identity,

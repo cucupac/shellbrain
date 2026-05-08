@@ -7,11 +7,11 @@ from threading import Barrier
 from app.core.contracts.requests import MemoryCreateRequest
 from app.core.entities.memory import MemoryKind, MemoryScope
 from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.create_memory import execute_create_memory
-from app.periphery.db.models.associations import association_edge_evidence, association_edges
-from app.periphery.db.models.evidence import evidence_refs
-from app.periphery.db.models.memories import memory_evidence
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.core.use_cases.memories.create_memory import execute_create_memory
+from app.infrastructure.db.models.associations import association_edge_evidence, association_edges
+from app.infrastructure.db.models.evidence import evidence_refs
+from app.infrastructure.db.models.memories import memory_evidence
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_create_attaches_all_memory_evidence_refs_exactly_once(

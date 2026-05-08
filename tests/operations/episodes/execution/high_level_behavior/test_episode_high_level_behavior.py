@@ -5,9 +5,9 @@ from __future__ import annotations
 from collections.abc import Callable
 import json
 
-from app.entrypoints.jobs.episode_sync import sync_episode_from_host
-from app.periphery.db.models.episodes import episode_events, episodes
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.startup.jobs import sync_episode_from_host
+from app.infrastructure.db.models.episodes import episode_events, episodes
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_codex_and_claude_code_imports_produce_the_same_stored_event_shape_for_equivalent_flows(

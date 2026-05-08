@@ -6,24 +6,24 @@ from pathlib import Path
 
 from app.core.entities.telemetry import OperationDispatchTelemetryContext
 from app.core.entities.settings import CreatePolicySettings, UpdatePolicySettings
-from app.core.use_cases.operations.handlers import (
+from app.core.use_cases.operation_flow import (
     OperationDependencies,
-    handle_concept as _handle_concept,
-    handle_create as _handle_create,
-    handle_events as _handle_events,
-    handle_read as _handle_read,
-    handle_recall as _handle_recall,
-    handle_update as _handle_update,
+    run_concept_changes_operation,
+    run_create_memory_operation,
+    run_read_events_operation,
+    run_read_memory_operation,
+    run_recall_memory_operation,
+    run_update_memory_operation,
 )
-from app.periphery.host_identity.resolver import (
+from app.infrastructure.host_identity.resolver import (
     discover_untrusted_events_candidate,
     resolve_caller_identity,
     resolve_trusted_events_source,
 )
-from app.periphery.host_transcripts.model_usage import collect_model_usage_records_for_session
-from app.periphery.host_transcripts.normalization import normalize_host_transcript
-from app.periphery.host_transcripts.session_selection import summarize_runtime_selection
-from app.periphery.local_state.session_state_file_store import FileSessionStateStore
+from app.infrastructure.host_transcripts.model_usage import collect_model_usage_records_for_session
+from app.infrastructure.host_transcripts.normalization import normalize_host_transcript
+from app.infrastructure.host_transcripts.session_selection import summarize_runtime_selection
+from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
 from app.startup.create_policy import get_typed_create_policy_settings, validate_create_policy_settings
 from app.startup.read_policy import get_read_policy_settings
 from app.startup.runtime_context import get_operation_telemetry_context
@@ -77,7 +77,7 @@ def handle_create(
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    return _handle_create(
+    return run_create_memory_operation(
         payload,
         dependencies=build_operation_dependencies(),
         uow_factory=uow_factory,
@@ -98,7 +98,7 @@ def handle_concept(
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    return _handle_concept(
+    return run_concept_changes_operation(
         payload,
         dependencies=build_operation_dependencies(),
         uow_factory=uow_factory,
@@ -117,7 +117,7 @@ def handle_read(
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    return _handle_read(
+    return run_read_memory_operation(
         payload,
         dependencies=build_operation_dependencies(),
         uow_factory=uow_factory,
@@ -136,7 +136,7 @@ def handle_recall(
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    return _handle_recall(
+    return run_recall_memory_operation(
         payload,
         dependencies=build_operation_dependencies(),
         uow_factory=uow_factory,
@@ -155,7 +155,7 @@ def handle_events(
     search_roots_by_host: dict[str, list[Path]] | None = None,
     telemetry_context: OperationDispatchTelemetryContext | None = None,
 ):
-    return _handle_events(
+    return run_read_events_operation(
         payload,
         dependencies=build_operation_dependencies(),
         uow_factory=uow_factory,
@@ -174,7 +174,7 @@ def handle_update(
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    return _handle_update(
+    return run_update_memory_operation(
         payload,
         dependencies=build_operation_dependencies(),
         uow_factory=uow_factory,

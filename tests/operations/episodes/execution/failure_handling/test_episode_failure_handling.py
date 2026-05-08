@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from app.entrypoints.jobs.episode_sync import sync_episode_from_host
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.startup.jobs import sync_episode_from_host
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_episode_import_surfaces_a_user_actionable_error_when_a_host_source_disappears(

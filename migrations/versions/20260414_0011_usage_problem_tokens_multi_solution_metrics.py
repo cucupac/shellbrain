@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.periphery.db.models.views import USAGE_PROBLEM_TOKENS_SQL
+from app.infrastructure.db.models.views import USAGE_PROBLEM_TOKENS_SQL
 
 revision = "20260414_0011"
 down_revision = "20260414_0010"

@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from app.core.entities.memory import MemoryKind, MemoryScope
 from app.startup.operations import handle_update
-from app.periphery.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
 def test_rejected_update_requests_write_nothing(

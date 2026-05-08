@@ -18,13 +18,13 @@ from typing import Iterator
 
 import psycopg
 
-from app.periphery.local_state.paths import get_machine_lock_path, get_shellbrain_home
-from app.periphery.runtime import external_runtime, managed_runtime
-from app.periphery.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
+from app.infrastructure.local_state.paths import get_machine_lock_path, get_shellbrain_home
+from app.infrastructure.runtime import external_runtime, managed_runtime
+from app.infrastructure.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
 from app.core.entities.admin_errors import InitConflictError, InitDependencyError, InitLockError
 from app.startup.config import get_config_provider
-from app.periphery.postgres_admin.instance_guard import fingerprint_summary
-from app.periphery.local_state.machine_config_store import (
+from app.infrastructure.postgres_admin.instance_guard import fingerprint_summary
+from app.infrastructure.local_state.machine_config_store import (
     BOOTSTRAP_STATE_PROVISIONING,
     BOOTSTRAP_STATE_READY,
     BOOTSTRAP_STATE_REPAIR_NEEDED,
@@ -40,14 +40,14 @@ from app.periphery.local_state.machine_config_store import (
     try_load_machine_config,
     update_bootstrap_state,
 )
-from app.periphery.local_state.repo_registration_store import (
+from app.infrastructure.local_state.repo_registration_store import (
     IDENTITY_STRENGTH_WEAK_LOCAL,
     RepoRegistration,
     load_repo_registration_for_target,
     register_repo_for_target,
 )
-from app.periphery.postgres_admin.storage_setup import resolve_storage_selection
-from app.periphery.host_assets import install_host_assets
+from app.infrastructure.postgres_admin.storage_setup import resolve_storage_selection
+from app.infrastructure.host_assets import install_host_assets
 
 
 INIT_OUTCOME_INITIALIZED = "initialized"
@@ -543,7 +543,7 @@ def _prewarm_embeddings(config: MachineConfig, *, skip_model_download: bool) -> 
 
     os.environ["HF_HOME"] = config.embeddings.cache_path
     Path(config.embeddings.cache_path).mkdir(parents=True, exist_ok=True)
-    from app.periphery.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+    from app.infrastructure.embeddings.local_provider import SentenceTransformersEmbeddingProvider
 
     provider = SentenceTransformersEmbeddingProvider(
         model=config.embeddings.model,

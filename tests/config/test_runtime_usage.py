@@ -6,7 +6,7 @@ from app.startup.embeddings import get_embedding_provider
 from app.startup.admin_db import get_admin_db_dsn, get_optional_admin_db_dsn, should_fail_on_unsafe_app_role
 from app.startup.db import get_db_dsn
 from app.config.loader import YamlConfigProvider
-from app.periphery.local_state.machine_config_store import (
+from app.infrastructure.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,

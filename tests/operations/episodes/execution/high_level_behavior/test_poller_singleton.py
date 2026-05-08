@@ -7,7 +7,7 @@ from pathlib import Path
 import socket
 
 from app.startup.episode_sync_launcher import ensure_episode_sync_started
-from app.periphery.local_state.poller_lock import acquire_poller_lock, inspect_poller_lock
+from app.infrastructure.local_state.poller_lock import acquire_poller_lock, inspect_poller_lock
 
 
 def test_first_poller_lock_acquisition_writes_owner_metadata(tmp_path: Path) -> None:
@@ -66,7 +66,7 @@ def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("app.periphery.local_state.poller_lock._is_process_running", lambda pid: pid != 999_999)
+    monkeypatch.setattr("app.infrastructure.local_state.poller_lock._is_process_running", lambda pid: pid != 999_999)
 
     handle = acquire_poller_lock(repo_id="repo-a", repo_root=repo_root)
 
@@ -97,7 +97,7 @@ def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path
     def _raise_permission_error(_pid: int, _signal: int) -> None:
         raise PermissionError(1, "Operation not permitted")
 
-    monkeypatch.setattr("app.periphery.local_state.poller_lock.os.kill", _raise_permission_error)
+    monkeypatch.setattr("app.infrastructure.local_state.poller_lock.os.kill", _raise_permission_error)
 
     inspection = inspect_poller_lock(repo_root=repo_root)
 

@@ -8,8 +8,8 @@ from pathlib import Path
 import pytest
 
 from app.startup.operations import handle_create, handle_events, handle_read, handle_update
-from app.periphery.db.uow import PostgresUnitOfWork
-from app.entrypoints.jobs.episode_sync import run_episode_poller
+from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.startup.jobs import run_episode_poller
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -200,7 +200,7 @@ def test_unexpected_operational_failures_should_always_append_one_failed_operati
     """unexpected operational failures should always append one failed operation invocation with internal-error stage."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.operations.handlers.execute_read_memory",
+        "app.core.use_cases.operation_flow.execute_read_memory",
         lambda request, uow: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 
@@ -232,17 +232,17 @@ def test_poller_sync_failures_should_always_append_one_failed_episode_sync_run(
 ) -> None:
     """poller sync failures should always append one failed episode sync run."""
 
-    monkeypatch.setattr("app.entrypoints.jobs.episode_sync.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr("app.entrypoints.jobs.episode_sync.acquire_poller_lock", lambda **kwargs: _NoOpLock())
-    monkeypatch.setattr("app.entrypoints.jobs.episode_sync.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
-    monkeypatch.setattr("app.entrypoints.jobs.episode_sync.POLL_INTERVAL_SECONDS", 0)
-    monkeypatch.setattr("app.entrypoints.jobs.episode_sync.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr("app.startup.jobs.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.startup.jobs.acquire_poller_lock", lambda **kwargs: _NoOpLock())
+    monkeypatch.setattr("app.startup.jobs.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
+    monkeypatch.setattr("app.startup.jobs.POLL_INTERVAL_SECONDS", 0)
+    monkeypatch.setattr("app.startup.jobs.IDLE_EXIT_SECONDS", 0)
     monkeypatch.setattr(
-        "app.entrypoints.jobs.episode_sync.default_search_roots",
+        "app.startup.jobs.default_search_roots",
         lambda *, repo_root, host_app: list(codex_transcript_fixture["search_roots"]) if host_app == "codex" else [],
     )
     monkeypatch.setattr(
-        "app.entrypoints.jobs.episode_sync.sync_episode_from_host",
+        "app.startup.jobs.sync_episode_from_host",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 
