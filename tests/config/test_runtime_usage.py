@@ -5,7 +5,7 @@ from pathlib import Path
 from app.startup.embeddings import get_embedding_provider
 from app.startup.admin_db import get_admin_db_dsn, get_optional_admin_db_dsn, should_fail_on_unsafe_app_role
 from app.startup.db import get_db_dsn
-from app.config.loader import YamlConfigProvider
+from app.settings.loader import YamlConfigProvider
 from app.infrastructure.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
@@ -224,7 +224,7 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(monke
 def test_runtime_yaml_should_always_define_database_cli_and_embedding_sections() -> None:
     """runtime yaml should always define database cli and embedding sections."""
 
-    provider = YamlConfigProvider(Path("app/config/defaults"))
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
     runtime = provider.get_runtime()
 
     assert runtime["database"] == {
