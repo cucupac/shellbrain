@@ -9,7 +9,10 @@ from pathlib import Path
 import re
 from typing import Any
 
-from app.infrastructure.host_transcripts.tool_filter import should_keep_tool_result, summarize_tool_result
+from app.infrastructure.host_transcripts.tool_filter import (
+    should_keep_tool_result,
+    summarize_tool_result,
+)
 
 
 def resolve_claude_code_transcript_path(
@@ -30,7 +33,9 @@ def resolve_claude_code_transcript_path(
             metadata = _read_metadata(metadata_path)
             if metadata.get("cliSessionId") != host_session_key:
                 continue
-            transcript_path = _transcript_path_for_metadata(root=root, metadata=metadata)
+            transcript_path = _transcript_path_for_metadata(
+                root=root, metadata=metadata
+            )
             if transcript_path.exists():
                 return transcript_path
 
@@ -53,7 +58,9 @@ def find_latest_claude_code_session_for_repo(
 ) -> dict[str, Any] | None:
     """Return the most recently updated Claude Code session for one repo root."""
 
-    candidates = list_claude_code_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+    candidates = list_claude_code_sessions_for_repo(
+        repo_root=repo_root, search_roots=search_roots
+    )
     if not candidates:
         return None
     return max(candidates, key=lambda candidate: candidate["updated_at"])
@@ -82,7 +89,9 @@ def list_claude_code_sessions_for_repo(
                     continue
             except FileNotFoundError:
                 continue
-            transcript_path = _transcript_path_for_metadata(root=root, metadata=metadata)
+            transcript_path = _transcript_path_for_metadata(
+                root=root, metadata=metadata
+            )
             if not transcript_path.exists():
                 continue
             candidates.append(
@@ -123,7 +132,9 @@ def normalize_claude_code_transcript(
                     events.append(
                         _build_event(
                             host_session_key=host_session_key,
-                            host_event_key=_fallback_key(payload, raw_line, line_number),
+                            host_event_key=_fallback_key(
+                                payload, raw_line, line_number
+                            ),
                             source="assistant",
                             occurred_at=str(payload.get("timestamp") or ""),
                             content_kind="message",
@@ -138,7 +149,9 @@ def normalize_claude_code_transcript(
                     events.append(
                         _build_event(
                             host_session_key=host_session_key,
-                            host_event_key=_fallback_key(payload, raw_line, line_number),
+                            host_event_key=_fallback_key(
+                                payload, raw_line, line_number
+                            ),
                             source="user",
                             occurred_at=str(payload.get("timestamp") or ""),
                             content_kind="message",
@@ -178,7 +191,11 @@ def extract_claude_code_model_usage(
             usage = message.get("usage")
             if not isinstance(usage, dict):
                 continue
-            host_usage_key = str(payload.get("requestId") or payload.get("uuid") or _fallback_key(payload, raw_line, line_number))
+            host_usage_key = str(
+                payload.get("requestId")
+                or payload.get("uuid")
+                or _fallback_key(payload, raw_line, line_number)
+            )
             if host_usage_key in seen_usage_keys:
                 continue
             seen_usage_keys.add(host_usage_key)
@@ -191,11 +208,14 @@ def extract_claude_code_model_usage(
                     "occurred_at": str(payload.get("timestamp") or ""),
                     "agent_role": "foreground",
                     "provider": "anthropic",
-                    "model_id": message.get("model") if isinstance(message.get("model"), str) else None,
+                    "model_id": message.get("model")
+                    if isinstance(message.get("model"), str)
+                    else None,
                     "input_tokens": usage.get("input_tokens"),
                     "output_tokens": usage.get("output_tokens"),
                     "reasoning_output_tokens": 0,
-                    "cached_input_tokens_total": _coerce_int(cache_read_input_tokens) + _coerce_int(cache_creation_input_tokens),
+                    "cached_input_tokens_total": _coerce_int(cache_read_input_tokens)
+                    + _coerce_int(cache_creation_input_tokens),
                     "cache_read_input_tokens": cache_read_input_tokens,
                     "cache_creation_input_tokens": cache_creation_input_tokens,
                     "capture_quality": "exact",
@@ -214,7 +234,9 @@ def _read_metadata(metadata_path: Path) -> dict[str, Any]:
 def _iter_metadata_files(root: Path) -> Iterable[Path]:
     """Yield Claude Code local-session metadata files from bounded search roots."""
 
-    direct_root = root / "Library" / "Application Support" / "Claude" / "claude-code-sessions"
+    direct_root = (
+        root / "Library" / "Application Support" / "Claude" / "claude-code-sessions"
+    )
     if direct_root.exists():
         yield from direct_root.rglob("local_*.json")
         return
@@ -280,7 +302,9 @@ def _extract_user_text_message(payload: dict[str, Any]) -> str:
         return content.strip()
     if not isinstance(content, Iterable) or isinstance(content, (str, bytes)):
         return ""
-    if any(isinstance(item, dict) and item.get("type") == "tool_result" for item in content):
+    if any(
+        isinstance(item, dict) and item.get("type") == "tool_result" for item in content
+    ):
         return ""
     return _extract_claude_text(content)
 
@@ -305,7 +329,9 @@ def _normalize_tool_results(
         if not isinstance(item, dict) or item.get("type") != "tool_result":
             continue
         tool_use_id = item.get("tool_use_id")
-        tool_use = tool_uses.get(str(tool_use_id)) if isinstance(tool_use_id, str) else None
+        tool_use = (
+            tool_uses.get(str(tool_use_id)) if isinstance(tool_use_id, str) else None
+        )
         tool_name = tool_use.get("name") if isinstance(tool_use, dict) else None
         command = _tool_command(tool_use)
         is_error = bool(item.get("is_error"))
@@ -318,7 +344,9 @@ def _normalize_tool_results(
             is_error=is_error,
         ):
             continue
-        host_event_key = str(payload.get("uuid") or _fallback_key(payload, raw_line, line_number))
+        host_event_key = str(
+            payload.get("uuid") or _fallback_key(payload, raw_line, line_number)
+        )
         if isinstance(tool_use_id, str):
             host_event_key = tool_use_id
         events.append(
@@ -329,15 +357,21 @@ def _normalize_tool_results(
                 occurred_at=str(payload.get("timestamp") or ""),
                 content_kind="tool_result",
                 content_text=summarize_tool_result(
-                    tool_name=_normalized_tool_name(tool_name=tool_name, command=command),
+                    tool_name=_normalized_tool_name(
+                        tool_name=tool_name, command=command
+                    ),
                     status="error" if is_error else "ok",
                     text=text,
                     command=command,
                     is_error=is_error,
                 ),
                 extra_fields={
-                    "tool_name": _normalized_tool_name(tool_name=tool_name, command=command),
-                    "status": "error" if is_error else _normalized_tool_status(text=text),
+                    "tool_name": _normalized_tool_name(
+                        tool_name=tool_name, command=command
+                    ),
+                    "status": "error"
+                    if is_error
+                    else _normalized_tool_status(text=text),
                     "is_error": is_error,
                 },
             )
@@ -431,7 +465,9 @@ def _fallback_key(payload: dict[str, Any], raw_line: str, line_number: int) -> s
     explicit = payload.get("uuid")
     if isinstance(explicit, str) and explicit:
         return explicit
-    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[
+        :16
+    ]
     return f"claude-line-{line_number}-{digest}"
 
 

@@ -1,10 +1,12 @@
 """Session idle-expiry contracts."""
 
 from app.core.entities.session_state import SessionState
-from app.core.use_cases.manage_session_state import SessionStateManager
+from app.handlers.session_state import SessionStateManager
 
 
-def test_idle_expiry_should_reset_working_session_fields_after_24_hours(old_timestamp: str) -> None:
+def test_idle_expiry_should_reset_working_session_fields_after_24_hours(
+    old_timestamp: str,
+) -> None:
     """idle expiry should always reset working-session fields after 24 hours."""
 
     state = SessionState(
@@ -22,7 +24,9 @@ def test_idle_expiry_should_reset_working_session_fields_after_24_hours(old_time
         last_guidance_problem_id="problem-1",
     )
 
-    refreshed = SessionStateManager.reset_if_idle(state, now_iso="2026-03-18T12:00:00+00:00")
+    refreshed = SessionStateManager.reset_if_idle(
+        state, now_iso="2026-03-18T12:00:00+00:00"
+    )
 
     assert refreshed.current_problem_id is None
     assert refreshed.last_events_episode_id is None

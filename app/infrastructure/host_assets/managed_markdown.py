@@ -22,7 +22,11 @@ def install_managed_markdown_block(
     block_text = f"{start_marker}\n{source_text.strip()}\n{end_marker}\n"
     if target_path.exists() and target_path.is_dir():
         if not force:
-            return "skipped", target_path, f"unmanaged directory exists at {target_path}; rerun with --force to replace"
+            return (
+                "skipped",
+                target_path,
+                f"unmanaged directory exists at {target_path}; rerun with --force to replace",
+            )
         remove_existing_path(target_path)
 
     status = "installed"
@@ -31,14 +35,26 @@ def install_managed_markdown_block(
             existing_text = target_path.read_text(encoding="utf-8")
         except OSError as exc:
             return "skipped", target_path, f"unable to read {target_path}: {exc}"
-        block_status = managed_block_status(existing_text=existing_text, block_marker=block_marker)
+        block_status = managed_block_status(
+            existing_text=existing_text, block_marker=block_marker
+        )
         if block_status == "malformed":
-            return "skipped", target_path, f"managed block markers are malformed in {target_path}"
+            return (
+                "skipped",
+                target_path,
+                f"managed block markers are malformed in {target_path}",
+            )
         if block_status == "present":
-            next_text = replace_managed_block(existing_text=existing_text, block_marker=block_marker, block_text=block_text)
+            next_text = replace_managed_block(
+                existing_text=existing_text,
+                block_marker=block_marker,
+                block_text=block_text,
+            )
             status = "updated"
         else:
-            next_text = append_managed_block(existing_text=existing_text, block_text=block_text)
+            next_text = append_managed_block(
+                existing_text=existing_text, block_text=block_text
+            )
     else:
         next_text = block_text
     target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -46,7 +62,9 @@ def install_managed_markdown_block(
     return status, target_path, None
 
 
-def inspect_managed_markdown_block(*, target_path: Path, block_marker: str) -> dict[str, object]:
+def inspect_managed_markdown_block(
+    *, target_path: Path, block_marker: str
+) -> dict[str, object]:
     """Inspect whether one startup file contains one Shellbrain-managed markdown block."""
 
     resolved_path = target_path.expanduser().resolve()
@@ -76,7 +94,9 @@ def inspect_managed_markdown_block(*, target_path: Path, block_marker: str) -> d
             "managed": False,
             "malformed": True,
         }
-    status = managed_block_status(existing_text=existing_text, block_marker=block_marker)
+    status = managed_block_status(
+        existing_text=existing_text, block_marker=block_marker
+    )
     return {
         "path": str(resolved_path),
         "file_exists": True,
@@ -98,18 +118,26 @@ def managed_block_status(*, existing_text: str, block_marker: str) -> str:
     start_marker, end_marker = markdown_markers(block_marker)
     has_start = start_marker in existing_text
     has_end = end_marker in existing_text
-    if has_start and has_end and existing_text.index(start_marker) < existing_text.index(end_marker):
+    if (
+        has_start
+        and has_end
+        and existing_text.index(start_marker) < existing_text.index(end_marker)
+    ):
         return "present"
     if has_start or has_end:
         return "malformed"
     return "absent"
 
 
-def replace_managed_block(*, existing_text: str, block_marker: str, block_text: str) -> str:
+def replace_managed_block(
+    *, existing_text: str, block_marker: str, block_text: str
+) -> str:
     """Replace one existing managed markdown block in a file."""
 
     start_marker, end_marker = markdown_markers(block_marker)
-    pattern = re.compile(rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}\n?", flags=re.DOTALL)
+    pattern = re.compile(
+        rf"{re.escape(start_marker)}.*?{re.escape(end_marker)}\n?", flags=re.DOTALL
+    )
     return pattern.sub(block_text, existing_text, count=1)
 
 

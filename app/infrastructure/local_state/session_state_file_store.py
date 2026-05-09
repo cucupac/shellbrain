@@ -10,7 +10,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from app.core.entities.session_state import SessionState
-from app.core.interfaces.session_state_store import ISessionStateStore
+from app.core.ports.session_state_store import ISessionStateStore
 
 
 class FileSessionStateStore(ISessionStateStore):
@@ -31,10 +31,14 @@ class FileSessionStateStore(ISessionStateStore):
     def save(self, *, repo_root: Path, state: SessionState) -> None:
         """Persist one caller state under its canonical caller id."""
 
-        path = self._path_for(repo_root=repo_root, caller_id=state.caller_id, host_app=state.host_app)
+        path = self._path_for(
+            repo_root=repo_root, caller_id=state.caller_id, host_app=state.host_app
+        )
         path.parent.mkdir(parents=True, exist_ok=True)
         payload = json.dumps(asdict(state), indent=2, sort_keys=True)
-        with NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as handle:
+        with NamedTemporaryFile(
+            "w", encoding="utf-8", dir=path.parent, delete=False
+        ) as handle:
             handle.write(payload)
             temp_path = Path(handle.name)
         os.replace(temp_path, path)
@@ -81,7 +85,9 @@ class FileSessionStateStore(ISessionStateStore):
             deleted.append(state.caller_id)
         return deleted
 
-    def _path_for(self, *, repo_root: Path, caller_id: str, host_app: str | None = None) -> Path:
+    def _path_for(
+        self, *, repo_root: Path, caller_id: str, host_app: str | None = None
+    ) -> Path:
         """Return the storage path for one caller id."""
 
         repo_root = Path(repo_root).resolve()

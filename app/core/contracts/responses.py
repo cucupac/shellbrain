@@ -1,15 +1,11 @@
-"""This module defines standardized response envelopes for operation results."""
+"""Core response payload contracts."""
 
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel, Field
 
-from app.core.contracts.errors import ErrorDetail
 
+class UseCaseResult(BaseModel):
+    """Typed payload returned by core use cases before handler wrapping."""
 
-class OperationResult(BaseModel):
-    """This model defines a deterministic response envelope for all operations."""
-
-    status: Literal["ok", "error"]
     data: dict[str, Any] = Field(default_factory=dict)
-    errors: list[ErrorDetail] = Field(default_factory=list)

@@ -58,22 +58,39 @@ def inspect_poller_lock(*, repo_root: Path) -> PollerLockInspection:
     lock_root = _lock_root(resolved_repo_root)
     owner_path = lock_root / _OWNER_FILENAME
     if not lock_root.exists():
-        return PollerLockInspection(lock_root=lock_root, owner_path=owner_path, status="unlocked", owner=None)
+        return PollerLockInspection(
+            lock_root=lock_root, owner_path=owner_path, status="unlocked", owner=None
+        )
     if not lock_root.is_dir():
-        return PollerLockInspection(lock_root=lock_root, owner_path=owner_path, status="stale", owner=None)
+        return PollerLockInspection(
+            lock_root=lock_root, owner_path=owner_path, status="stale", owner=None
+        )
 
     owner = _read_owner_payload(owner_path)
-    if owner is None or not _owner_payload_is_well_formed(owner=owner, repo_root=resolved_repo_root):
-        return PollerLockInspection(lock_root=lock_root, owner_path=owner_path, status="stale", owner=owner)
+    if owner is None or not _owner_payload_is_well_formed(
+        owner=owner, repo_root=resolved_repo_root
+    ):
+        return PollerLockInspection(
+            lock_root=lock_root, owner_path=owner_path, status="stale", owner=owner
+        )
 
     hostname = str(owner["hostname"])
     if hostname != _current_hostname():
-        return PollerLockInspection(lock_root=lock_root, owner_path=owner_path, status="foreign_active", owner=owner)
+        return PollerLockInspection(
+            lock_root=lock_root,
+            owner_path=owner_path,
+            status="foreign_active",
+            owner=owner,
+        )
 
     pid = int(owner["pid"])
     if _is_process_running(pid):
-        return PollerLockInspection(lock_root=lock_root, owner_path=owner_path, status="active", owner=owner)
-    return PollerLockInspection(lock_root=lock_root, owner_path=owner_path, status="stale", owner=owner)
+        return PollerLockInspection(
+            lock_root=lock_root, owner_path=owner_path, status="active", owner=owner
+        )
+    return PollerLockInspection(
+        lock_root=lock_root, owner_path=owner_path, status="stale", owner=owner
+    )
 
 
 def acquire_poller_lock(*, repo_id: str, repo_root: Path) -> PollerLockHandle | None:
@@ -99,7 +116,9 @@ def acquire_poller_lock(*, repo_id: str, repo_root: Path) -> PollerLockHandle | 
             return None
 
         try:
-            owner_path.write_text(json.dumps(owner, indent=2, sort_keys=True), encoding="utf-8")
+            owner_path.write_text(
+                json.dumps(owner, indent=2, sort_keys=True), encoding="utf-8"
+            )
         except Exception:
             _remove_path(lock_root)
             raise
@@ -139,7 +158,9 @@ def write_poller_pid_artifact(*, repo_root: Path) -> Path:
     runtime_dir = resolved_repo_root / ".shellbrain"
     runtime_dir.mkdir(parents=True, exist_ok=True)
     pid_path = runtime_dir / _PID_FILENAME
-    pid_path.write_text(json.dumps({"pid": os.getpid()}, indent=2, sort_keys=True), encoding="utf-8")
+    pid_path.write_text(
+        json.dumps({"pid": os.getpid()}, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return pid_path
 
 
@@ -184,7 +205,9 @@ def _owner_payload_is_well_formed(*, owner: dict[str, object], repo_root: Path) 
     )
 
 
-def _remove_stale_lock(*, lock_root: Path, expected_owner: dict[str, object] | None) -> None:
+def _remove_stale_lock(
+    *, lock_root: Path, expected_owner: dict[str, object] | None
+) -> None:
     """Remove one stale lock only when the current stale owner still matches the expected state."""
 
     if not lock_root.exists():

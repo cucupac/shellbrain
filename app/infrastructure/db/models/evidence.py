@@ -15,5 +15,7 @@ evidence_refs = Table(
     Column("episode_event_id", String, ForeignKey("episode_events.id"), nullable=True),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
     UniqueConstraint("repo_id", "ref", name="uq_evidence_repo_ref"),
-    UniqueConstraint("repo_id", "episode_event_id", name="uq_evidence_repo_episode_event"),
+    UniqueConstraint(
+        "repo_id", "episode_event_id", name="uq_evidence_repo_episode_event"
+    ),
 )

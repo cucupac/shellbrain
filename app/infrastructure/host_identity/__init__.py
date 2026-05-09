@@ -1,2 +1,1 @@
 """Host identity adapters."""
-

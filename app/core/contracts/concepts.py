@@ -5,15 +5,21 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
-from pydantic import Field, model_validator
+from pydantic import Field, field_validator, model_validator
 
 from app.core.contracts.requests import StrictBaseModel
 
 
-ConceptKindValue = Literal["domain", "capability", "process", "entity", "rule", "component"]
+ConceptKindValue = Literal[
+    "domain", "capability", "process", "entity", "rule", "component"
+]
 ConceptStatusValue = Literal["active", "deprecated", "archived"]
-ConceptRelationPredicateValue = Literal["contains", "involves", "precedes", "constrains", "depends_on"]
-ConceptClaimTypeValue = Literal["definition", "behavior", "invariant", "failure_mode", "usage_note", "open_question"]
+ConceptRelationPredicateValue = Literal[
+    "contains", "involves", "precedes", "constrains", "depends_on"
+]
+ConceptClaimTypeValue = Literal[
+    "definition", "behavior", "invariant", "failure_mode", "usage_note", "open_question"
+]
 AnchorKindValue = Literal[
     "file",
     "symbol",
@@ -47,7 +53,9 @@ ConceptMemoryLinkRoleValue = Literal[
     "contradicted",
     "warned_about",
 ]
-ConceptEvidenceKindValue = Literal["anchor", "memory", "commit", "transcript", "test", "manual"]
+ConceptEvidenceKindValue = Literal[
+    "anchor", "memory", "commit", "transcript", "test", "manual"
+]
 ConceptSourceKindValue = Literal[
     "commit",
     "file_hash",
@@ -59,7 +67,9 @@ ConceptSourceKindValue = Literal[
     "runtime_trace",
 ]
 ConceptCreatedByValue = Literal["worker", "librarian", "manual", "import"]
-ConceptShowIncludeValue = Literal["claims", "relations", "groundings", "memory_links", "preview_concept"]
+ConceptShowIncludeValue = Literal[
+    "claims", "relations", "groundings", "memory_links", "preview_concept"
+]
 
 
 class ConceptEvidencePayload(StrictBaseModel):
@@ -100,16 +110,38 @@ class ConceptLifecycleActionFields(StrictBaseModel):
     created_by: ConceptCreatedByValue = "manual"
 
 
-class UpsertConceptAction(StrictBaseModel):
-    """Create or update a concept container and aliases."""
+class AddConceptAction(StrictBaseModel):
+    """Create one concept container and aliases."""
 
-    type: Literal["upsert_concept"]
+    type: Literal["add_concept"]
     slug: str = Field(min_length=1)
     name: str = Field(min_length=1)
     kind: ConceptKindValue
     status: ConceptStatusValue = "active"
     scope_note: str | None = None
     aliases: list[str] = Field(default_factory=list)
+
+
+class UpdateConceptAction(StrictBaseModel):
+    """Update one existing concept container and add aliases."""
+
+    type: Literal["update_concept"]
+    concept: str = Field(min_length=1)
+    name: str | None = Field(default=None, min_length=1)
+    kind: ConceptKindValue | None = None
+    status: ConceptStatusValue | None = None
+    scope_note: str | None = None
+    aliases: list[str] | None = None
+
+    @model_validator(mode="after")
+    def _validate_has_update(self) -> "UpdateConceptAction":
+        """Require at least one mutable field."""
+
+        if not (
+            self.model_fields_set & {"name", "kind", "status", "scope_note", "aliases"}
+        ):
+            raise ValueError("update_concept requires at least one field to update")
+        return self
 
 
 class AddRelationAction(ConceptLifecycleActionFields):
@@ -132,10 +164,10 @@ class AddClaimAction(ConceptLifecycleActionFields):
     evidence: list[ConceptEvidencePayload] = Field(min_length=1)
 
 
-class UpsertAnchorAction(StrictBaseModel):
+class EnsureAnchorAction(StrictBaseModel):
     """Create or fetch a real-world anchor by canonical locator."""
 
-    type: Literal["upsert_anchor"]
+    type: Literal["ensure_anchor"]
     kind: AnchorKindValue
     locator: dict[str, Any] = Field(default_factory=dict)
 
@@ -179,34 +211,64 @@ class LinkMemoryAction(ConceptLifecycleActionFields):
     evidence: list[ConceptEvidencePayload] = Field(min_length=1)
 
 
-ConceptAction = Annotated[
-    UpsertConceptAction | AddRelationAction | AddClaimAction | UpsertAnchorAction | AddGroundingAction | LinkMemoryAction,
+ConceptAddAction = AddConceptAction
+
+
+ConceptUpdateAction = Annotated[
+    UpdateConceptAction
+    | AddRelationAction
+    | AddClaimAction
+    | EnsureAnchorAction
+    | AddGroundingAction
+    | LinkMemoryAction,
     Field(discriminator="type"),
 ]
 
 
-class ConceptCommandRequest(StrictBaseModel):
-    """Canonical concept endpoint request."""
+class ConceptAddRequest(StrictBaseModel):
+    """Canonical concept-add request."""
 
     schema_version: Literal["concept.v1"]
-    mode: Literal["apply", "show"]
     repo_id: str
-    actions: list[ConceptAction] | None = None
-    concept: str | None = None
-    include: list[ConceptShowIncludeValue] = Field(default_factory=list)
+    actions: list[ConceptAddAction] = Field(min_length=1)
 
     @model_validator(mode="after")
-    def _validate_mode_fields(self) -> "ConceptCommandRequest":
-        """Enforce mode-specific request fields."""
+    def _validate_unique_slugs(self) -> "ConceptAddRequest":
+        """Reject duplicate concept slugs within one add batch."""
 
-        if self.mode == "apply":
-            if not self.actions:
-                raise ValueError("mode=apply requires actions")
-            if self.concept is not None:
-                raise ValueError("mode=apply does not accept concept")
-        if self.mode == "show":
-            if not self.concept:
-                raise ValueError("mode=show requires concept")
-            if self.actions is not None:
-                raise ValueError("mode=show does not accept actions")
+        slugs = [_normalize_slug(action.slug) for action in self.actions]
+        if len(slugs) != len(set(slugs)):
+            raise ValueError("concept add actions must use unique slugs")
         return self
+
+
+class ConceptUpdateRequest(StrictBaseModel):
+    """Canonical concept-update request."""
+
+    schema_version: Literal["concept.v1"]
+    repo_id: str
+    actions: list[ConceptUpdateAction] = Field(min_length=1)
+
+
+class ConceptShowRequest(StrictBaseModel):
+    """Canonical concept-show request."""
+
+    schema_version: Literal["concept.v1"]
+    repo_id: str
+    concept: str = Field(min_length=1)
+    include: list[ConceptShowIncludeValue] = Field(default_factory=list)
+
+    @field_validator("include")
+    @classmethod
+    def _validate_include_unique(
+        cls, value: list[ConceptShowIncludeValue]
+    ) -> list[ConceptShowIncludeValue]:
+        """Reject duplicate show facets."""
+
+        if len(value) != len(set(value)):
+            raise ValueError("concept show include facets must be unique")
+        return value
+
+
+def _normalize_slug(value: str) -> str:
+    return "-".join(" ".join(value.strip().lower().split()).replace("_", "-").split())

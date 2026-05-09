@@ -5,10 +5,14 @@ from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.memories.create_memory import execute_create_memory
-from app.infrastructure.db.models.associations import association_edge_evidence, association_edges
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.use_cases.memories.add import execute_create_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
+from app.infrastructure.db.models.associations import (
+    association_edge_evidence,
+    association_edges,
+)
 from app.infrastructure.db.models.evidence import evidence_refs
 from app.infrastructure.db.models.memories import memory_evidence
 from app.infrastructure.db.uow import PostgresUnitOfWork
@@ -40,9 +44,8 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     link_rows = fetch_rows(memory_evidence, memory_evidence.c.memory_id == memory_id)
     assert len(link_rows) == 2
@@ -94,9 +97,8 @@ def test_create_association_links_attach_edge_evidence(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     edges = fetch_rows(
         association_edges,
@@ -124,7 +126,7 @@ def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
 
     barrier = Barrier(2)
 
-    def _create(text: str) -> str:
+    def _create(text: str, id_prefix: str) -> str:
         request = MemoryCreateRequest.model_validate(
             {
                 "op": "create",
@@ -151,13 +153,14 @@ def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
                 uow,
                 embedding_provider=stub_embedding_provider,
                 embedding_model="stub-v1",
+                id_generator=SequenceIdGenerator(prefix=id_prefix),
             )
         return str(result.data["memory_id"])
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         futures = [
-            executor.submit(_create, "Parallel evidence writer A."),
-            executor.submit(_create, "Parallel evidence writer B."),
+            executor.submit(_create, "Parallel evidence writer A.", "parallel-a"),
+            executor.submit(_create, "Parallel evidence writer B.", "parallel-b"),
         ]
         memory_ids = [future.result() for future in futures]
 
@@ -165,6 +168,8 @@ def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
     assert len(refs) == 1
 
     evidence_id = str(refs[0]["id"])
-    link_rows = fetch_rows(memory_evidence, memory_evidence.c.evidence_id == evidence_id)
+    link_rows = fetch_rows(
+        memory_evidence, memory_evidence.c.evidence_id == evidence_id
+    )
     assert len(link_rows) == 2
     assert {str(row["memory_id"]) for row in link_rows} == set(memory_ids)

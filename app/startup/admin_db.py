@@ -33,7 +33,11 @@ def get_backup_dir() -> Path:
         return get_machine_backups_dir()
     if machine_config is not None:
         return Path(machine_config.backups.root).expanduser().resolve()
-    return Path(os.getenv("SHELLBRAIN_BACKUP_DIR", str(get_machine_backups_dir()))).expanduser().resolve()
+    return (
+        Path(os.getenv("SHELLBRAIN_BACKUP_DIR", str(get_machine_backups_dir())))
+        .expanduser()
+        .resolve()
+    )
 
 
 def get_backup_mirror_dir() -> Path | None:

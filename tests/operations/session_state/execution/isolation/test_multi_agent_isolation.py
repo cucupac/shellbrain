@@ -3,10 +3,14 @@
 from pathlib import Path
 
 from app.core.entities.session_state import SessionState
-from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
+from app.infrastructure.local_state.session_state_file_store import (
+    FileSessionStateStore,
+)
 
 
-def test_multi_agent_isolation_should_keep_distinct_session_state_files_per_caller_id(repo_with_shellbrain_state: Path) -> None:
+def test_multi_agent_isolation_should_keep_distinct_session_state_files_per_caller_id(
+    repo_with_shellbrain_state: Path,
+) -> None:
     """multi agent isolation should always keep distinct session state files per caller_id."""
 
     store = FileSessionStateStore()
@@ -33,5 +37,14 @@ def test_multi_agent_isolation_should_keep_distinct_session_state_files_per_call
         ),
     )
 
-    assert store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a") is not None
-    assert store.load(repo_root=repo_with_shellbrain_state, caller_id="claude_code:session-a:agent:agent-1") is not None
+    assert (
+        store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a")
+        is not None
+    )
+    assert (
+        store.load(
+            repo_root=repo_with_shellbrain_state,
+            caller_id="claude_code:session-a:agent:agent-1",
+        )
+        is not None
+    )

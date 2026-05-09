@@ -1,7 +1,7 @@
 """Adapters that expose query-vector generation through the read retrieval interface."""
 
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.interfaces.retrieval import IVectorSearch
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.retrieval import IVectorSearch
 
 
 class EmbeddingBackedVectorSearch(IVectorSearch):

@@ -8,7 +8,9 @@ from pathlib import Path
 from app.infrastructure.reporting.metrics.pager import present_metrics_repo_pager
 
 
-def test_present_metrics_repo_pager_should_render_all_entries_for_non_interactive_streams(tmp_path: Path) -> None:
+def test_present_metrics_repo_pager_should_render_all_entries_for_non_interactive_streams(
+    tmp_path: Path,
+) -> None:
     """Non-interactive streams should receive one plain-text block per repo entry."""
 
     output = io.StringIO()
@@ -34,7 +36,9 @@ def test_present_metrics_repo_pager_should_render_all_entries_for_non_interactiv
     assert "Dashboard: " in text
 
 
-def test_present_metrics_repo_pager_should_print_empty_message_when_no_entries() -> None:
+def test_present_metrics_repo_pager_should_print_empty_message_when_no_entries() -> (
+    None
+):
     """Empty snapshots should produce one short user-facing message."""
 
     output = io.StringIO()
@@ -53,8 +57,22 @@ def _snapshot(*, repo_id: str) -> dict[str, object]:
         "status": "healthy",
         "confidence": "medium",
         "metrics": [
-            _metric(name="Utility score trend", current=0.6, previous=0.4, delta=0.2, sample_count=12, format_name="score"),
-            _metric(name="Utility follow-through", current=0.75, previous=0.5, delta=0.25, sample_count=8, format_name="percent"),
+            _metric(
+                name="Utility score trend",
+                current=0.6,
+                previous=0.4,
+                delta=0.2,
+                sample_count=12,
+                format_name="score",
+            ),
+            _metric(
+                name="Utility follow-through",
+                current=0.75,
+                previous=0.5,
+                delta=0.25,
+                sample_count=8,
+                format_name="percent",
+            ),
         ],
     }
 

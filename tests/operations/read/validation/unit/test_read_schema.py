@@ -177,7 +177,13 @@ def test_read_rejects_invalid_concept_facets() -> None:
     payload = {
         "op": "read",
         "query": "find deployment issue memory",
-        "expand": {"concepts": {"mode": "explicit", "refs": ["deposit-addresses"], "facets": ["files"]}},
+        "expand": {
+            "concepts": {
+                "mode": "explicit",
+                "refs": ["deposit-addresses"],
+                "facets": ["files"],
+            }
+        },
     }
 
     request, errors = validate_read_schema(payload)

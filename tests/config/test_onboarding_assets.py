@@ -43,8 +43,12 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
     texts = [
         _read_text(repo_root / "docs" / "external-quickstart.md"),
         _read_text(assets_root / "codex" / "shellbrain-session-start" / "SKILL.md"),
-        _read_text(assets_root / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"),
-        _read_text(assets_root / "cursor" / "skills" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(
+            assets_root / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"
+        ),
+        _read_text(
+            assets_root / "cursor" / "skills" / "shellbrain-session-start" / "SKILL.md"
+        ),
     ]
 
     required_phrases = [
@@ -66,7 +70,9 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
         assert all(phrase in text for text in texts)
 
 
-def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> None:
+def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> (
+    None
+):
     """The longer workflow docs should forbid per-command profile sourcing."""
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -79,12 +85,20 @@ def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_ti
         / "session-workflow.md"
     )
 
-    required_phrase = "Do not keep sourcing the login profile on every Shellbrain command."
+    required_phrase = (
+        "Do not keep sourcing the login profile on every Shellbrain command."
+    )
 
     assert required_phrase in external_quickstart
     assert required_phrase in session_workflow
-    assert "Then use the same wrapper shape for real commands when needed:" not in external_quickstart
-    assert "keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper" not in session_workflow
+    assert (
+        "Then use the same wrapper shape for real commands when needed:"
+        not in external_quickstart
+    )
+    assert (
+        "keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper"
+        not in session_workflow
+    )
 
 
 def test_cli_help_should_share_the_short_protocol() -> None:
@@ -116,7 +130,13 @@ def test_cli_help_should_share_the_short_protocol() -> None:
 def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
     """The packaged Codex skill should include Codex UI metadata."""
 
-    openai_yaml = _read_text(_onboarding_assets_root() / "codex" / "shellbrain-session-start" / "agents" / "openai.yaml")
+    openai_yaml = _read_text(
+        _onboarding_assets_root()
+        / "codex"
+        / "shellbrain-session-start"
+        / "agents"
+        / "openai.yaml"
+    )
 
     assert 'display_name: "Shellbrain Session Start"' in openai_yaml
     assert 'icon_large: "./assets/shellbrain_logo.png"' in openai_yaml
@@ -126,7 +146,9 @@ def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
 def test_packaged_codex_asset_should_include_required_files() -> None:
     """The packaged Codex asset should include the files needed by the host."""
 
-    packaged_skill_root = _onboarding_assets_root() / "codex" / "shellbrain-session-start"
+    packaged_skill_root = (
+        _onboarding_assets_root() / "codex" / "shellbrain-session-start"
+    )
 
     relative_paths = [
         Path("SKILL.md"),
@@ -151,10 +173,14 @@ def test_packaged_startup_guidance_assets_should_exist_for_codex_and_claude() ->
     assert (assets_root / "claude" / "CLAUDE.md").is_file()
 
 
-def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons() -> None:
+def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons() -> (
+    None
+):
     """The secondary packaged Codex skill should also ship icon metadata and assets."""
 
-    packaged_skill_root = _onboarding_assets_root() / "codex" / "shellbrain-usage-review"
+    packaged_skill_root = (
+        _onboarding_assets_root() / "codex" / "shellbrain-usage-review"
+    )
     openai_yaml = _read_text(packaged_skill_root / "agents" / "openai.yaml")
 
     assert 'display_name: "Shellbrain Usage Review"' in openai_yaml
@@ -167,12 +193,16 @@ def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons(
 def test_packaged_cursor_skill_should_include_the_required_skill_file() -> None:
     """The packaged Cursor skill should ship the SKILL.md file consumed by Cursor."""
 
-    packaged_skill_root = _onboarding_assets_root() / "cursor" / "skills" / "shellbrain-session-start"
+    packaged_skill_root = (
+        _onboarding_assets_root() / "cursor" / "skills" / "shellbrain-session-start"
+    )
 
     assert (packaged_skill_root / "SKILL.md").is_file()
 
 
-def test_install_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> None:
+def test_install_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> (
+    None
+):
     """The website installer should wire PATH through managed snippets and let init choose storage mode."""
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -183,16 +213,18 @@ def test_install_script_should_locate_binary_delegate_to_init_and_configure_shel
     assert 'if "$SHELLBRAIN" init; then' in install_script
     assert 'rerun bootstrap with: "%s" init' in install_script
     assert "ensure_user_bin_on_shell_path" in install_script
-    assert 'shellbrain/path.sh' in install_script
-    assert 'shellbrain.fish' in install_script
-    assert 'cli path: ensured via $PATH_SNIPPET' in install_script
+    assert "shellbrain/path.sh" in install_script
+    assert "shellbrain.fish" in install_script
+    assert "cli path: ensured via $PATH_SNIPPET" in install_script
     assert "shellbrain init will ask how it should store data." in install_script
     assert "existing PostgreSQL + pgvector database" in install_script
     assert "git rev-parse --is-inside-work-tree" not in install_script
     assert "shellbrain was installed but is not on PATH." not in install_script
 
 
-def test_upgrade_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> None:
+def test_upgrade_script_should_locate_binary_delegate_to_init_and_configure_shell_snippets() -> (
+    None
+):
     """The website upgrader should wire PATH through managed snippets and let init choose storage mode."""
 
     repo_root = Path(__file__).resolve().parents[2]
@@ -203,9 +235,9 @@ def test_upgrade_script_should_locate_binary_delegate_to_init_and_configure_shel
     assert 'if "$SHELLBRAIN" init; then' in upgrade_script
     assert 'rerun bootstrap with: "%s" init' in upgrade_script
     assert "ensure_user_bin_on_shell_path" in upgrade_script
-    assert 'shellbrain/path.sh' in upgrade_script
-    assert 'shellbrain.fish' in upgrade_script
-    assert 'cli path: ensured via $PATH_SNIPPET' in upgrade_script
+    assert "shellbrain/path.sh" in upgrade_script
+    assert "shellbrain.fish" in upgrade_script
+    assert "cli path: ensured via $PATH_SNIPPET" in upgrade_script
     assert "shellbrain init will ask how it should store data." in upgrade_script
     assert "existing PostgreSQL + pgvector database" in upgrade_script
     assert "shellbrain was upgraded but could not be found." in upgrade_script

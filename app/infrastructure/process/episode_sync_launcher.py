@@ -9,7 +9,9 @@ import sys
 from app.infrastructure.local_state.poller_lock import inspect_poller_lock
 
 
-def ensure_episode_sync_started(*, repo_id: str, repo_root: Path) -> bool:
+def ensure_episode_sync_started(
+    *, repo_id: str, repo_root: Path, module_name: str
+) -> bool:
     """Start one detached poller process for the repo when needed."""
 
     resolved_repo_root = repo_root.resolve()
@@ -20,7 +22,7 @@ def ensure_episode_sync_started(*, repo_id: str, repo_root: Path) -> bool:
     command = [
         sys.executable,
         "-m",
-        "app.entrypoints.jobs.episode_sync",
+        module_name,
         "--repo-id",
         repo_id,
         "--repo-root",

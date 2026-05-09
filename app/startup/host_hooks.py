@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+CLAUDE_SESSION_START_ENTRYPOINT_MODULE = (
+    "app.entrypoints.host_hooks.claude_session_start"
+)
+CURSOR_STATUSLINE_ENTRYPOINT_MODULE = "app.entrypoints.host_hooks.cursor_statusline"
+
 
 def run_claude_session_start(argv: list[str] | None = None) -> int:
     """Run the Claude SessionStart hook adapter."""

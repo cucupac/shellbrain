@@ -10,9 +10,13 @@ def get_typed_threshold_settings() -> ThresholdSettings:
     thresholds = get_config_provider().get_thresholds()
     semantic_threshold = thresholds.get("semantic_threshold")
     keyword_threshold = thresholds.get("keyword_threshold")
-    if isinstance(semantic_threshold, bool) or not isinstance(semantic_threshold, (int, float)):
+    if isinstance(semantic_threshold, bool) or not isinstance(
+        semantic_threshold, (int, float)
+    ):
         raise ValueError("thresholds.semantic_threshold must be numeric")
-    if isinstance(keyword_threshold, bool) or not isinstance(keyword_threshold, (int, float)):
+    if isinstance(keyword_threshold, bool) or not isinstance(
+        keyword_threshold, (int, float)
+    ):
         raise ValueError("thresholds.keyword_threshold must be numeric")
     return ThresholdSettings(
         semantic_threshold=float(semantic_threshold),

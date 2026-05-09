@@ -22,7 +22,9 @@ def write_session_state(repo_with_shellbrain_state: Path):
     """Provide helper for writing one raw session-state file."""
 
     def _write(*, host_app: str, caller_id: str, payload: dict[str, object]) -> Path:
-        state_dir = repo_with_shellbrain_state / ".shellbrain" / "session_state" / host_app
+        state_dir = (
+            repo_with_shellbrain_state / ".shellbrain" / "session_state" / host_app
+        )
         state_dir.mkdir(parents=True, exist_ok=True)
         path = state_dir / f"{caller_id.replace(':', '__')}.json"
         path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")

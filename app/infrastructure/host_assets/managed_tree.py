@@ -10,7 +10,9 @@ import shutil
 MANAGED_MARKER_FILENAME = ".shellbrain-managed.json"
 
 
-def install_asset_tree(*, source_root, target_root: Path, asset_kind: str, force: bool) -> tuple[str, Path, str | None]:
+def install_asset_tree(
+    *, source_root, target_root: Path, asset_kind: str, force: bool
+) -> tuple[str, Path, str | None]:
     """Install one packaged asset tree into one target root safely."""
 
     if target_root.exists():
@@ -21,7 +23,11 @@ def install_asset_tree(*, source_root, target_root: Path, asset_kind: str, force
             remove_existing_path(target_root)
             status = "installed"
         else:
-            return "skipped", target_root, f"unmanaged install exists at {target_root}; rerun with --force to replace"
+            return (
+                "skipped",
+                target_root,
+                f"unmanaged install exists at {target_root}; rerun with --force to replace",
+            )
     else:
         status = "installed"
     target_root.parent.mkdir(parents=True, exist_ok=True)
@@ -64,7 +70,10 @@ def is_shellbrain_managed_asset(*, target_root: Path, asset_kind: str) -> bool:
         payload = json.loads(marker_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         return False
-    return payload.get("managed_by") == "shellbrain" and payload.get("asset_kind") == asset_kind
+    return (
+        payload.get("managed_by") == "shellbrain"
+        and payload.get("asset_kind") == asset_kind
+    )
 
 
 def remove_existing_path(path: Path) -> None:

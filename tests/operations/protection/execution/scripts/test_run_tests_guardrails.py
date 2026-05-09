@@ -11,7 +11,9 @@ import textwrap
 import pytest
 
 
-def test_run_tests_should_refuse_the_default_test_host_when_it_matches_the_protected_live_host() -> None:
+def test_run_tests_should_refuse_the_default_test_host_when_it_matches_the_protected_live_host() -> (
+    None
+):
     """run_tests should refuse its generated default when it resolves to the protected live host."""
 
     if not _docker_is_available():
@@ -24,7 +26,9 @@ def test_run_tests_should_refuse_the_default_test_host_when_it_matches_the_prote
         for key, value in os.environ.items()
         if key not in {"SHELLBRAIN_DB_DSN_TEST", "SHELLBRAIN_DB_ADMIN_DSN_TEST"}
     }
-    env["SHELLBRAIN_PROTECTED_LIVE_DSN"] = "postgresql+psycopg://live_user:live_password@127.0.0.1:5433/shellbrain"
+    env["SHELLBRAIN_PROTECTED_LIVE_DSN"] = (
+        "postgresql+psycopg://live_user:live_password@127.0.0.1:5433/shellbrain"
+    )
 
     completed = subprocess.run(
         ["bash", str(script_path)],
@@ -36,7 +40,10 @@ def test_run_tests_should_refuse_the_default_test_host_when_it_matches_the_prote
     )
 
     assert completed.returncode != 0
-    assert "Refusing destructive test setup against the protected live database host/port." in completed.stderr
+    assert (
+        "Refusing destructive test setup against the protected live database host/port."
+        in completed.stderr
+    )
 
 
 def test_run_tests_should_discover_the_live_machine_config_before_switching_to_the_test_home(
@@ -119,7 +126,10 @@ def test_run_tests_should_discover_the_live_machine_config_before_switching_to_t
     )
 
     assert completed.returncode != 0
-    assert "Refusing destructive test setup against the protected live database host/port." in completed.stderr
+    assert (
+        "Refusing destructive test setup against the protected live database host/port."
+        in completed.stderr
+    )
 
 
 def test_run_tests_should_refuse_a_protected_live_dsn() -> None:
@@ -130,7 +140,9 @@ def test_run_tests_should_refuse_a_protected_live_dsn() -> None:
 
     repo_root = _repo_root()
     script_path = repo_root / "scripts" / "run_tests"
-    protected_dsn = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+    protected_dsn = (
+        "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+    )
     env = {
         **os.environ,
         "SHELLBRAIN_PROTECTED_LIVE_DSN": protected_dsn,
@@ -147,10 +159,15 @@ def test_run_tests_should_refuse_a_protected_live_dsn() -> None:
     )
 
     assert completed.returncode != 0
-    assert "Refusing destructive test setup against the protected live database DSN." in completed.stderr
+    assert (
+        "Refusing destructive test setup against the protected live database DSN."
+        in completed.stderr
+    )
 
 
-def test_run_tests_should_refuse_a_test_dsn_on_the_live_host_even_with_a_different_database_name() -> None:
+def test_run_tests_should_refuse_a_test_dsn_on_the_live_host_even_with_a_different_database_name() -> (
+    None
+):
     """run_tests should reject host/port collisions before destructive setup."""
 
     if not _docker_is_available():
@@ -174,7 +191,10 @@ def test_run_tests_should_refuse_a_test_dsn_on_the_live_host_even_with_a_differe
     )
 
     assert completed.returncode != 0
-    assert "Refusing destructive test setup against the protected live database host/port." in completed.stderr
+    assert (
+        "Refusing destructive test setup against the protected live database host/port."
+        in completed.stderr
+    )
 
 
 def _docker_is_available() -> bool:
@@ -182,8 +202,12 @@ def _docker_is_available() -> bool:
 
     if shutil.which("docker") is None:
         return False
-    version = subprocess.run(["docker", "version"], capture_output=True, text=True, check=False)
-    compose = subprocess.run(["docker", "compose", "version"], capture_output=True, text=True, check=False)
+    version = subprocess.run(
+        ["docker", "version"], capture_output=True, text=True, check=False
+    )
+    compose = subprocess.run(
+        ["docker", "compose", "version"], capture_output=True, text=True, check=False
+    )
     return version.returncode == 0 and compose.returncode == 0
 
 

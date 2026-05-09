@@ -12,6 +12,7 @@ import sys
 
 _SESSION_START_MATCHER = "startup|resume|clear|compact"
 _MANAGED_MARKER = "shellbrain-managed:session-start"
+_DEFAULT_SESSION_START_MODULE = "app.infrastructure.host_identity.claude_runtime"
 
 
 @dataclass(frozen=True)
@@ -32,21 +33,34 @@ def default_global_claude_settings_path() -> Path:
     return (Path.home() / ".claude" / "settings.json").resolve()
 
 
-def install_claude_hook(*, repo_root: Path | None = None, settings_path: Path | None = None) -> Path:
+def install_claude_hook(
+    *,
+    repo_root: Path | None = None,
+    settings_path: Path | None = None,
+    session_start_module: str = _DEFAULT_SESSION_START_MODULE,
+) -> Path:
     """Install or update one Claude settings file with the Shellbrain hook."""
 
-    resolved_settings_path = _resolve_settings_path(repo_root=repo_root, settings_path=settings_path)
+    resolved_settings_path = _resolve_settings_path(
+        repo_root=repo_root, settings_path=settings_path
+    )
     resolved_settings_path.parent.mkdir(parents=True, exist_ok=True)
     settings, _backup_path = _load_settings_payload(resolved_settings_path)
-    settings["hooks"] = _merged_hooks(settings.get("hooks"))
-    resolved_settings_path.write_text(json.dumps(settings, indent=2, sort_keys=True), encoding="utf-8")
+    settings["hooks"] = _merged_hooks(
+        settings.get("hooks"), session_start_module=session_start_module
+    )
+    resolved_settings_path.write_text(
+        json.dumps(settings, indent=2, sort_keys=True), encoding="utf-8"
+    )
     return resolved_settings_path
 
 
 def inspect_claude_hook(*, settings_path: Path | None = None) -> ClaudeHookStatus:
     """Inspect whether one Claude settings file contains the Shellbrain-managed hook."""
 
-    resolved_settings_path = (settings_path or default_global_claude_settings_path()).expanduser().resolve()
+    resolved_settings_path = (
+        (settings_path or default_global_claude_settings_path()).expanduser().resolve()
+    )
     if not resolved_settings_path.exists():
         return ClaudeHookStatus(
             settings_path=resolved_settings_path,
@@ -84,22 +98,26 @@ def inspect_claude_hook(*, settings_path: Path | None = None) -> ClaudeHookStatu
         malformed=False,
         managed=_hooks_contain_managed_entry(settings.get("hooks")),
         command_executable=command_executable,
-        executable_exists=bool(command_executable and Path(command_executable).exists()),
+        executable_exists=bool(
+            command_executable and Path(command_executable).exists()
+        ),
     )
 
 
-def _managed_command() -> str:
+def _managed_command(*, session_start_module: str) -> str:
     """Return the Shellbrain-managed Claude SessionStart hook command."""
 
     executable = str(Path(sys.executable).resolve())
     return (
-        f"{shlex.quote(executable)} -m app.entrypoints.host_hooks.claude_session_start session-start "
+        f"{shlex.quote(executable)} -m {shlex.quote(session_start_module)} session-start "
         f"# {_MANAGED_MARKER} uses CLAUDE_ENV_FILE to export SHELLBRAIN_HOST_APP=claude_code "
         "and related Shellbrain identity variables"
     )
 
 
-def _resolve_settings_path(*, repo_root: Path | None, settings_path: Path | None) -> Path:
+def _resolve_settings_path(
+    *, repo_root: Path | None, settings_path: Path | None
+) -> Path:
     """Resolve one Claude settings path from either repo-local or explicit input."""
 
     if (repo_root is None) == (settings_path is None):
@@ -110,7 +128,9 @@ def _resolve_settings_path(*, repo_root: Path | None, settings_path: Path | None
     return repo_root.resolve() / ".claude" / "settings.local.json"
 
 
-def _load_settings_payload(settings_path: Path) -> tuple[dict[str, object], Path | None]:
+def _load_settings_payload(
+    settings_path: Path,
+) -> tuple[dict[str, object], Path | None]:
     """Load one Claude settings payload, backing up malformed files when needed."""
 
     try:
@@ -130,14 +150,16 @@ def _backup_invalid_settings_file(settings_path: Path) -> Path:
     settings_path.parent.mkdir(parents=True, exist_ok=True)
     counter = 1
     while True:
-        backup_path = settings_path.with_name(f"{settings_path.name}.shellbrain-backup-{counter}")
+        backup_path = settings_path.with_name(
+            f"{settings_path.name}.shellbrain-backup-{counter}"
+        )
         if not backup_path.exists():
             shutil.copy2(settings_path, backup_path)
             return backup_path
         counter += 1
 
 
-def _merged_hooks(hooks: object) -> dict[str, object]:
+def _merged_hooks(hooks: object, *, session_start_module: str) -> dict[str, object]:
     """Return hooks with one managed SessionStart entry merged in place."""
 
     if not isinstance(hooks, dict):
@@ -151,7 +173,7 @@ def _merged_hooks(hooks: object) -> dict[str, object]:
         "hooks": [
             {
                 "type": "command",
-                "command": _managed_command(),
+                "command": _managed_command(session_start_module=session_start_module),
             }
         ],
     }
@@ -162,7 +184,11 @@ def _merged_hooks(hooks: object) -> dict[str, object]:
         nested_hooks = entry.get("hooks")
         if not isinstance(nested_hooks, list):
             continue
-        if any(_MANAGED_MARKER in str(item.get("command", "")) for item in nested_hooks if isinstance(item, dict)):
+        if any(
+            _MANAGED_MARKER in str(item.get("command", ""))
+            for item in nested_hooks
+            if isinstance(item, dict)
+        ):
             session_start_entries[index] = managed_entry
             replaced = True
             break
@@ -186,7 +212,11 @@ def _hooks_contain_managed_entry(hooks: object) -> bool:
         nested_hooks = entry.get("hooks")
         if not isinstance(nested_hooks, list):
             continue
-        if any(_MANAGED_MARKER in str(item.get("command", "")) for item in nested_hooks if isinstance(item, dict)):
+        if any(
+            _MANAGED_MARKER in str(item.get("command", ""))
+            for item in nested_hooks
+            if isinstance(item, dict)
+        ):
             return True
     return False
 

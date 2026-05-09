@@ -8,7 +8,7 @@ from app.core.entities.associations import (
     AssociationState,
 )
 from app.core.entities.facts import FactUpdate, ProblemAttempt, ProblemAttemptRole
-from app.core.entities.memory import Memory, MemoryKind, MemoryScope
+from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.entities.utility import UtilityObservation
 from app.core.contracts.planned_effects import (
     AssociationUpsertAndObserveEffectParams,
@@ -22,8 +22,8 @@ from app.core.contracts.planned_effects import (
     ProblemAttemptCreateEffectParams,
     UtilityObservationAppendEffectParams,
 )
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.interfaces.unit_of_work import IUnitOfWork
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.unit_of_work import IUnitOfWork
 
 
 def apply_side_effects(
@@ -54,7 +54,9 @@ def apply_side_effects(
         if effect_type is EffectType.MEMORY_EMBEDDING_UPSERT:
             assert isinstance(params, MemoryEmbeddingUpsertEffectParams)
             if embedding_provider is None:
-                raise RuntimeError("Embedding provider is required for memory_embedding.upsert")
+                raise RuntimeError(
+                    "Embedding provider is required for memory_embedding.upsert"
+                )
             uow.memories.upsert_embedding(
                 memory_id=params.memory_id,
                 model=params.model,
@@ -66,7 +68,9 @@ def apply_side_effects(
             assert isinstance(params, MemoryEvidenceAttachEffectParams)
             for ref in sorted(params.refs):
                 evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
-                uow.evidence.link_memory_evidence(memory_id=params.memory_id, evidence_id=evidence.id)
+                uow.evidence.link_memory_evidence(
+                    memory_id=params.memory_id, evidence_id=evidence.id
+                )
             continue
 
         if effect_type is EffectType.PROBLEM_ATTEMPT_CREATE:
@@ -82,9 +86,13 @@ def apply_side_effects(
 
         if effect_type is EffectType.MEMORY_ARCHIVE_STATE:
             assert isinstance(params, MemoryArchiveStateEffectParams)
-            updated = uow.memories.set_archived(memory_id=params.memory_id, archived=params.archived)
+            updated = uow.memories.set_archived(
+                memory_id=params.memory_id, archived=params.archived
+            )
             if not updated:
-                raise LookupError(f"Target shellbrain not found for archive update: {params.memory_id}")
+                raise LookupError(
+                    f"Target shellbrain not found for archive update: {params.memory_id}"
+                )
             continue
 
         if effect_type is EffectType.UTILITY_OBSERVATION_APPEND:
@@ -141,7 +149,9 @@ def apply_side_effects(
             )
             for ref in sorted(params.evidence_refs):
                 evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
-                uow.evidence.link_association_edge_evidence(edge_id=edge.id, evidence_id=evidence.id)
+                uow.evidence.link_association_edge_evidence(
+                    edge_id=edge.id, evidence_id=evidence.id
+                )
             continue
 
         raise ValueError(f"Unsupported side effect type: {effect_type}")

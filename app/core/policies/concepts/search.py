@@ -46,7 +46,10 @@ def rank_concept_search_rows(
             reason=reason,
             score=weight,
         )
-    ranked = sorted(matches.values(), key=lambda item: (-float(item["score"]), str(item["concept_id"])))
+    ranked = sorted(
+        matches.values(),
+        key=lambda item: (-float(item["score"]), str(item["concept_id"])),
+    )
     return ranked[:limit]
 
 
@@ -71,7 +74,9 @@ def _maybe_add_text_match(
     if not normalized_value:
         return
     terms = [term for term in normalized_query.split() if len(term) >= 3]
-    matches_exact_phrase = normalized_value in normalized_query or normalized_query in normalized_value
+    matches_exact_phrase = (
+        normalized_value in normalized_query or normalized_query in normalized_value
+    )
     matches_terms = bool(terms) and all(term in normalized_value for term in terms[:4])
     if not matches_exact_phrase and not matches_terms:
         return

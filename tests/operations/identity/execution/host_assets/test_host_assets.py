@@ -8,7 +8,9 @@ import sys
 from app.infrastructure.host_assets import inspect_host_assets, install_host_assets
 
 
-def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cursor_set(monkeypatch, tmp_path: Path) -> None:
+def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cursor_set(
+    monkeypatch, tmp_path: Path
+) -> None:
     """auto mode should install startup guidance, host skills, and the Claude global hook by default."""
 
     home_root = tmp_path / "home"
@@ -50,21 +52,53 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     assert inspection.cursor_skill["managed"] is True
     assert inspection.cursor_statusline["managed"] is True
     assert inspection.claude_global_hook["managed"] is True
-    assert inspection.claude_global_hook["command_executable"] == str(Path(sys.executable).resolve())
+    assert inspection.claude_global_hook["command_executable"] == str(
+        Path(sys.executable).resolve()
+    )
     assert inspection.claude_global_hook["executable_exists"] is True
-    assert any(line.startswith("Codex startup guidance: installed at ") for line in result.lines)
-    assert any(line.startswith("Codex skill (shellbrain-session-start): installed at ") for line in result.lines)
-    assert any(line.startswith("Codex skill (shellbrain-usage-review): installed at ") for line in result.lines)
-    assert any(line.startswith("Claude startup guidance: installed at ") for line in result.lines)
-    assert any(line.startswith("Claude skill (shellbrain-session-start): installed at ") for line in result.lines)
-    assert any(line.startswith("Claude skill (shellbrain-usage-review): installed at ") for line in result.lines)
-    assert any(line.startswith("Cursor skill (shellbrain-session-start): installed at ") for line in result.lines)
-    assert any(line.startswith("Cursor skill (shellbrain-usage-review): installed at ") for line in result.lines)
-    assert any(line.startswith("Cursor statusline: installed at ") for line in result.lines)
-    assert any(line.startswith("Claude global hook: installed at ") for line in result.lines)
+    assert any(
+        line.startswith("Codex startup guidance: installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Codex skill (shellbrain-session-start): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Codex skill (shellbrain-usage-review): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Claude startup guidance: installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Claude skill (shellbrain-session-start): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Claude skill (shellbrain-usage-review): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Cursor skill (shellbrain-session-start): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Cursor skill (shellbrain-usage-review): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Cursor statusline: installed at ") for line in result.lines
+    )
+    assert any(
+        line.startswith("Claude global hook: installed at ") for line in result.lines
+    )
 
 
-def test_install_host_assets_should_merge_startup_guidance_without_overwriting_user_content(monkeypatch, tmp_path: Path) -> None:
+def test_install_host_assets_should_merge_startup_guidance_without_overwriting_user_content(
+    monkeypatch, tmp_path: Path
+) -> None:
     """startup guidance installs should append one managed block and preserve unrelated text."""
 
     home_root = tmp_path / "home"
@@ -74,7 +108,9 @@ def test_install_host_assets_should_merge_startup_guidance_without_overwriting_u
     codex_agents.parent.mkdir(parents=True)
     claude_startup.parent.mkdir(parents=True)
     codex_agents.write_text("# User codex notes\n\nKeep this.\n", encoding="utf-8")
-    claude_startup.write_text("# User claude notes\n\nKeep this too.\n", encoding="utf-8")
+    claude_startup.write_text(
+        "# User claude notes\n\nKeep this too.\n", encoding="utf-8"
+    )
     monkeypatch.setenv("HOME", str(home_root))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
@@ -89,12 +125,23 @@ def test_install_host_assets_should_merge_startup_guidance_without_overwriting_u
     assert "# User claude notes" in claude_text
     assert "Keep this too." in claude_text
     assert "<!-- shellbrain-managed:claude-startup start -->" in claude_text
-    assert "SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>" in claude_text
-    assert any(line.startswith("Codex startup guidance: installed at ") for line in result.lines)
-    assert any(line.startswith("Claude startup guidance: installed at ") for line in result.lines)
+    assert (
+        "SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>"
+        in claude_text
+    )
+    assert any(
+        line.startswith("Codex startup guidance: installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Claude startup guidance: installed at ")
+        for line in result.lines
+    )
 
 
-def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_force(monkeypatch, tmp_path: Path) -> None:
+def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_force(
+    monkeypatch, tmp_path: Path
+) -> None:
     """explicit Codex installs should skip unmanaged conflicts unless force is requested."""
 
     home_root = tmp_path / "home"
@@ -114,11 +161,19 @@ def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_
         == f"Codex skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
         for line in result.lines
     )
-    assert any(line.startswith("Codex startup guidance: installed at ") for line in result.lines)
-    assert any(line.startswith("Codex skill (shellbrain-usage-review): installed at ") for line in result.lines)
+    assert any(
+        line.startswith("Codex startup guidance: installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Codex skill (shellbrain-usage-review): installed at ")
+        for line in result.lines
+    )
 
 
-def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without_force(monkeypatch, tmp_path: Path) -> None:
+def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without_force(
+    monkeypatch, tmp_path: Path
+) -> None:
     """explicit Cursor installs should skip unmanaged conflicts unless force is requested."""
 
     home_root = tmp_path / "home"
@@ -136,11 +191,18 @@ def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without
     assert result.lines[0] == (
         f"Cursor skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
     )
-    assert any(line.startswith("Cursor skill (shellbrain-usage-review): installed at ") for line in result.lines)
-    assert any(line.startswith("Cursor statusline: installed at ") for line in result.lines)
+    assert any(
+        line.startswith("Cursor skill (shellbrain-usage-review): installed at ")
+        for line in result.lines
+    )
+    assert any(
+        line.startswith("Cursor statusline: installed at ") for line in result.lines
+    )
 
 
-def test_install_host_assets_should_not_overwrite_unmanaged_cursor_statusline_without_force(monkeypatch, tmp_path: Path) -> None:
+def test_install_host_assets_should_not_overwrite_unmanaged_cursor_statusline_without_force(
+    monkeypatch, tmp_path: Path
+) -> None:
     """Cursor installs should skip unmanaged statusLine config unless force is requested."""
 
     home_root = tmp_path / "home"
@@ -157,12 +219,15 @@ def test_install_host_assets_should_not_overwrite_unmanaged_cursor_statusline_wi
     result = install_host_assets(host_mode="cursor", force=False)
 
     assert any(
-        line == f"Cursor statusline: skipped (unmanaged statusLine exists in {config_path}; rerun with --force to replace)"
+        line
+        == f"Cursor statusline: skipped (unmanaged statusLine exists in {config_path}; rerun with --force to replace)"
         for line in result.lines
     )
 
 
-def test_install_host_assets_should_update_managed_codex_skill_idempotently(monkeypatch, tmp_path: Path) -> None:
+def test_install_host_assets_should_update_managed_codex_skill_idempotently(
+    monkeypatch, tmp_path: Path
+) -> None:
     """explicit Codex installs should refresh managed skill and startup guidance in place."""
 
     home_root = tmp_path / "home"
@@ -175,18 +240,42 @@ def test_install_host_assets_should_update_managed_codex_skill_idempotently(monk
     startup_path = codex_home / "AGENTS.md"
     review_root = codex_home / "skills" / "shellbrain-usage-review"
     (skill_root / "SKILL.md").write_text("stale\n", encoding="utf-8")
-    startup_path.write_text("<!-- shellbrain-managed:codex-startup start -->\nstale\n<!-- shellbrain-managed:codex-startup end -->\n", encoding="utf-8")
+    startup_path.write_text(
+        "<!-- shellbrain-managed:codex-startup start -->\nstale\n<!-- shellbrain-managed:codex-startup end -->\n",
+        encoding="utf-8",
+    )
 
     second = install_host_assets(host_mode="codex", force=False)
 
-    assert any(line.startswith("Codex startup guidance: installed at ") for line in first.lines)
-    assert any(line.startswith("Codex skill (shellbrain-session-start): installed at ") for line in first.lines)
-    assert any(line.startswith("Codex skill (shellbrain-usage-review): installed at ") for line in first.lines)
-    assert any(line == f"Codex startup guidance: updated at {startup_path}" for line in second.lines)
-    assert any(line == f"Codex skill (shellbrain-session-start): updated at {skill_root}" for line in second.lines)
-    assert any(line == f"Codex skill (shellbrain-usage-review): updated at {review_root}" for line in second.lines)
-    assert "goal | surface | obstacle | hypothesis" in startup_path.read_text(encoding="utf-8")
-    assert "Use Shellbrain as a case-based reasoning system" in (skill_root / "SKILL.md").read_text(encoding="utf-8")
+    assert any(
+        line.startswith("Codex startup guidance: installed at ") for line in first.lines
+    )
+    assert any(
+        line.startswith("Codex skill (shellbrain-session-start): installed at ")
+        for line in first.lines
+    )
+    assert any(
+        line.startswith("Codex skill (shellbrain-usage-review): installed at ")
+        for line in first.lines
+    )
+    assert any(
+        line == f"Codex startup guidance: updated at {startup_path}"
+        for line in second.lines
+    )
+    assert any(
+        line == f"Codex skill (shellbrain-session-start): updated at {skill_root}"
+        for line in second.lines
+    )
+    assert any(
+        line == f"Codex skill (shellbrain-usage-review): updated at {review_root}"
+        for line in second.lines
+    )
+    assert "goal | surface | obstacle | hypothesis" in startup_path.read_text(
+        encoding="utf-8"
+    )
+    assert "Use Shellbrain as a case-based reasoning system" in (
+        skill_root / "SKILL.md"
+    ).read_text(encoding="utf-8")
 
 
 def test_install_host_assets_should_update_managed_claude_startup_guidance_without_clobbering_unrelated_text(
@@ -211,4 +300,7 @@ def test_install_host_assets_should_update_managed_claude_startup_guidance_witho
     assert "Keep me." in content
     assert "goal | surface | obstacle | hypothesis" in content
     assert "stale" not in content
-    assert any(line == f"Claude startup guidance: updated at {startup_path}" for line in result.lines)
+    assert any(
+        line == f"Claude startup guidance: updated at {startup_path}"
+        for line in result.lines
+    )

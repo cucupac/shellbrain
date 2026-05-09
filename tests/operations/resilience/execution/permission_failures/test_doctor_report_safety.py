@@ -8,19 +8,37 @@ import sys
 from app.infrastructure.postgres_admin.logical_backup import BackupManifest
 from app.startup.admin_diagnose import build_doctor_report
 from app.infrastructure.postgres_admin.instance_guard import InstanceMetadataRecord
-from app.infrastructure.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig
+from app.infrastructure.local_state.machine_config_store import (
+    BackupState,
+    DatabaseState,
+    EmbeddingRuntimeState,
+    MachineConfig,
+)
 from app.infrastructure.host_assets import install_host_assets
 
-APP_LIVE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
-ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
+APP_LIVE_DSN = (
+    "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
+)
+ADMIN_LIVE_DSN = (
+    "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
+)
 
 
-def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Path) -> None:
+def test_doctor_report_should_tolerate_missing_app_dsn(
+    monkeypatch, tmp_path: Path
+) -> None:
     """doctor should still produce one report when the app DSN is not configured."""
 
-    monkeypatch.setattr("app.startup.admin_diagnose.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.inspect_role_safety", lambda dsn: ["warn"] if dsn else [])
-    monkeypatch.setattr("app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.list_backups", lambda backup_root: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.inspect_role_safety",
+        lambda dsn: ["warn"] if dsn else [],
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None)
+    )
     monkeypatch.setattr(
         "app.startup.admin_diagnose.inspect_host_assets",
         lambda: type(
@@ -59,11 +77,16 @@ def test_doctor_report_should_tolerate_missing_app_dsn(monkeypatch, tmp_path: Pa
     assert report["app_role_warnings"] == []
     assert report["admin_role_warnings"] == ["warn"]
     assert report["config_status"] in {"absent", "ok", "corrupt"}
-    assert report["effective_config"]["admin_dsn"] == "postgresql://<redacted>@localhost:5432/shellbrain_live"
+    assert (
+        report["effective_config"]["admin_dsn"]
+        == "postgresql://<redacted>@localhost:5432/shellbrain_live"
+    )
     assert report["host_integrations"]["claude_global_hook"]["managed"] is True
 
 
-def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: Path) -> None:
+def test_doctor_report_should_include_latest_backup_age(
+    monkeypatch, tmp_path: Path
+) -> None:
     """doctor should summarize backup age and both role-safety channels."""
 
     monkeypatch.setattr(
@@ -97,7 +120,9 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
         "app.startup.admin_diagnose.inspect_role_safety",
         lambda dsn: ["unsafe"] if "app" in dsn else ["admin-ok"],
     )
-    monkeypatch.setattr("app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None)
+    )
     monkeypatch.setattr(
         "app.startup.admin_diagnose.inspect_host_assets",
         lambda: type(
@@ -113,7 +138,9 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
             },
         )(),
     )
-    monkeypatch.setattr("app.startup.admin_diagnose.fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.fetch_schema_revision", lambda dsn: "20260410_0009"
+    )
 
     report = build_doctor_report(
         app_dsn=APP_LIVE_DSN,
@@ -130,17 +157,27 @@ def test_doctor_report_should_include_latest_backup_age(monkeypatch, tmp_path: P
     assert report["host_integrations"]["claude_skill"]["installed"] is True
 
 
-def test_doctor_report_should_surface_the_managed_claude_hook_interpreter(monkeypatch, tmp_path: Path) -> None:
+def test_doctor_report_should_surface_the_managed_claude_hook_interpreter(
+    monkeypatch, tmp_path: Path
+) -> None:
     """doctor should expose the managed Claude hook interpreter path when it is valid."""
 
     home_root = tmp_path / "home"
     codex_home = home_root / ".codex"
     monkeypatch.setenv("HOME", str(home_root))
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
-    monkeypatch.setattr("app.startup.admin_diagnose.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.inspect_role_safety", lambda dsn: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None))
-    monkeypatch.setattr("app.startup.admin_diagnose.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.list_backups", lambda backup_root: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.inspect_role_safety", lambda dsn: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None)
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.fetch_instance_metadata", lambda dsn: None
+    )
 
     install_host_assets(host_mode="claude", force=False)
 
@@ -151,12 +188,18 @@ def test_doctor_report_should_surface_the_managed_claude_hook_interpreter(monkey
     )
 
     assert report["host_integrations"]["claude_global_hook"]["managed"] is True
-    assert report["host_integrations"]["claude_global_hook"]["command_executable"] == str(Path(sys.executable).resolve())
-    assert report["host_integrations"]["claude_global_hook"]["executable_exists"] is True
+    assert report["host_integrations"]["claude_global_hook"][
+        "command_executable"
+    ] == str(Path(sys.executable).resolve())
+    assert (
+        report["host_integrations"]["claude_global_hook"]["executable_exists"] is True
+    )
     assert "host_integration_warning" not in report
 
 
-def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_missing(monkeypatch, tmp_path: Path) -> None:
+def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_missing(
+    monkeypatch, tmp_path: Path
+) -> None:
     """doctor should emit an actionable warning when the managed Claude hook interpreter is gone."""
 
     home_root = tmp_path / "home"
@@ -184,10 +227,18 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
     )
     monkeypatch.setenv("HOME", str(home_root))
     monkeypatch.setenv("CODEX_HOME", str(home_root / ".codex"))
-    monkeypatch.setattr("app.startup.admin_diagnose.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.inspect_role_safety", lambda dsn: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None))
-    monkeypatch.setattr("app.startup.admin_diagnose.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.list_backups", lambda backup_root: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.inspect_role_safety", lambda dsn: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.try_load_machine_config", lambda: (None, None)
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.fetch_instance_metadata", lambda dsn: None
+    )
 
     report = build_doctor_report(
         app_dsn=None,
@@ -196,14 +247,21 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
     )
 
     assert report["host_integrations"]["claude_global_hook"]["managed"] is True
-    assert report["host_integrations"]["claude_global_hook"]["command_executable"] == "/tmp/missing-shellbrain-python"
-    assert report["host_integrations"]["claude_global_hook"]["executable_exists"] is False
+    assert (
+        report["host_integrations"]["claude_global_hook"]["command_executable"]
+        == "/tmp/missing-shellbrain-python"
+    )
+    assert (
+        report["host_integrations"]["claude_global_hook"]["executable_exists"] is False
+    )
     assert report["host_integration_warning"] == (
         "Claude global hook points at a missing interpreter. Rerun `shellbrain init` to repair it."
     )
 
 
-def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp_path: Path) -> None:
+def test_doctor_report_should_surface_external_runtime_warnings(
+    monkeypatch, tmp_path: Path
+) -> None:
     """doctor should report external storage mode without managed container fields."""
 
     machine_config = MachineConfig(
@@ -231,11 +289,22 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
         ),
     )
 
-    monkeypatch.setattr("app.startup.admin_diagnose.list_backups", lambda backup_root: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.inspect_role_safety", lambda dsn: [])
-    monkeypatch.setattr("app.startup.admin_diagnose.try_load_machine_config", lambda: (machine_config, None))
-    monkeypatch.setattr("app.startup.admin_diagnose.fetch_instance_metadata", lambda dsn: None)
-    monkeypatch.setattr("app.startup.admin_diagnose.fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.list_backups", lambda backup_root: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.inspect_role_safety", lambda dsn: []
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.try_load_machine_config",
+        lambda: (machine_config, None),
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.fetch_instance_metadata", lambda dsn: None
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_diagnose.fetch_schema_revision", lambda dsn: "20260410_0009"
+    )
     monkeypatch.setattr(
         "app.startup.admin_diagnose.inspect_host_assets",
         lambda: type(
@@ -253,7 +322,9 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
     )
     monkeypatch.setattr(
         "app.startup.admin_diagnose.external_runtime.inspect_runtime",
-        lambda admin_dsn: ["External PostgreSQL database must have the pgvector extension installed."],
+        lambda admin_dsn: [
+            "External PostgreSQL database must have the pgvector extension installed."
+        ],
     )
 
     report = build_doctor_report(
@@ -263,7 +334,9 @@ def test_doctor_report_should_surface_external_runtime_warnings(monkeypatch, tmp
     )
 
     assert report["runtime_mode"] == "external_postgres"
-    assert report["runtime_warnings"] == ["External PostgreSQL database must have the pgvector extension installed."]
+    assert report["runtime_warnings"] == [
+        "External PostgreSQL database must have the pgvector extension installed."
+    ]
     assert report["machine_instance"]["instance_id"] == "ext-1"
     assert "container_name" not in report["machine_instance"]
     assert report["machine_instance"]["database"]["host"] == "db.example.com"

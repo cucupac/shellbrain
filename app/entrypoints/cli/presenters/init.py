@@ -24,18 +24,27 @@ def render_success_lines(
     else:
         summary = fingerprint_summary(config.database.admin_dsn)
         runtime_line = f"External database: {summary['host']}:{summary['port']}/{summary['database']}"
-    lines = [runtime_line, f"Embeddings: {config.embeddings.readiness_state}", f"Backups: {config.backups.root}"]
+    lines = [
+        runtime_line,
+        f"Embeddings: {config.embeddings.readiness_state}",
+        f"Backups: {config.backups.root}",
+    ]
     if registration is None:
-        lines.append("Repo registration: deferred until first Shellbrain use inside a repo.")
         lines.append(
-            "Next: from inside a repo, run shellbrain read --json '{\"query\":\"What prior Shellbrain context matters for this task?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}'"
+            "Repo registration: deferred until first Shellbrain use inside a repo."
+        )
+        lines.append(
+            'Next: from inside a repo, run shellbrain read --json \'{"query":"What prior Shellbrain context matters for this task?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}\''
         )
     else:
         lines.insert(1, f"Repo: {registration.repo_id}")
         if registration.identity_strength == identity_strength_weak_local:
-            lines.insert(2, "Repo identity is weak-local and will change if this directory moves. Use --repo-id for a durable override.")
+            lines.insert(
+                2,
+                "Repo identity is weak-local and will change if this directory moves. Use --repo-id for a durable override.",
+            )
         lines.append(
-            "Next: shellbrain read --json '{\"query\":\"What prior Shellbrain context matters for this task?\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}'"
+            'Next: shellbrain read --json \'{"query":"What prior Shellbrain context matters for this task?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}\''
         )
     lines.extend(notes)
     return lines

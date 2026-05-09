@@ -5,12 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.infrastructure.postgres_admin.logical_backup import BackupManifest
-from app.infrastructure.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
+from app.infrastructure.postgres_admin.destructive_guard import (
+    backup_and_verify_before_destructive_action,
+)
 
-ADMIN_TEST_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+ADMIN_TEST_DSN = (
+    "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+)
 
 
-def test_destructive_guard_should_create_and_verify_backup(monkeypatch, tmp_path: Path) -> None:
+def test_destructive_guard_should_create_and_verify_backup(
+    monkeypatch, tmp_path: Path
+) -> None:
     """The shared destructive guard should always create and verify one backup."""
 
     calls: list[tuple[str, object]] = []
@@ -18,7 +24,13 @@ def test_destructive_guard_should_create_and_verify_backup(monkeypatch, tmp_path
         backup_id="backup-1",
         instance_id="inst-1",
         instance_mode="live",
-        source={"fingerprint": "abc", "host": "localhost", "port": "5432", "database": "shellbrain", "user": "admin"},
+        source={
+            "fingerprint": "abc",
+            "host": "localhost",
+            "port": "5432",
+            "database": "shellbrain",
+            "user": "admin",
+        },
         schema_revision="20260410_0009",
         created_at="2026-03-19T00:00:00+00:00",
         artifact_filename="artifact.sql.gz",
@@ -35,8 +47,14 @@ def test_destructive_guard_should_create_and_verify_backup(monkeypatch, tmp_path
         calls.append(("verify", kwargs))
         return manifest
 
-    monkeypatch.setattr("app.infrastructure.postgres_admin.destructive_guard.create_backup", _fake_create_backup)
-    monkeypatch.setattr("app.infrastructure.postgres_admin.destructive_guard.verify_backup", _fake_verify_backup)
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.destructive_guard.create_backup",
+        _fake_create_backup,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.destructive_guard.verify_backup",
+        _fake_verify_backup,
+    )
 
     result = backup_and_verify_before_destructive_action(
         admin_dsn=ADMIN_TEST_DSN,

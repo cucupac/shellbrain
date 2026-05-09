@@ -3,9 +3,10 @@
 from collections.abc import Callable
 
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.memories.create_memory import execute_create_memory
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.use_cases.memories.add import execute_create_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.experiences import problem_attempts
 from app.infrastructure.db.models.memories import memories
 from app.infrastructure.db.uow import PostgresUnitOfWork
@@ -37,12 +38,13 @@ def test_create_problem_persists_memory_without_problem_attempt(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     memory_rows = fetch_rows(memories, memories.c.id == memory_id)
-    attempt_rows = fetch_rows(problem_attempts, problem_attempts.c.attempt_id == memory_id)
+    attempt_rows = fetch_rows(
+        problem_attempts, problem_attempts.c.attempt_id == memory_id
+    )
     assert len(memory_rows) == 1
     assert memory_rows[0]["kind"] == "problem"
     assert len(attempt_rows) == 0
@@ -83,9 +85,8 @@ def test_create_solution_persists_problem_attempt_with_solution_role(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     rows = fetch_rows(problem_attempts, problem_attempts.c.attempt_id == memory_id)
     assert len(rows) == 1
@@ -128,9 +129,8 @@ def test_create_failed_tactic_persists_problem_attempt_with_failed_tactic_role(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     rows = fetch_rows(problem_attempts, problem_attempts.c.attempt_id == memory_id)
     assert len(rows) == 1

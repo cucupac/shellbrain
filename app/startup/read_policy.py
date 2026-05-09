@@ -64,18 +64,26 @@ def get_read_policy_settings() -> ReadPolicySettings:
     """Return typed read settings from YAML-backed runtime and policy config."""
 
     config_provider = get_config_provider()
-    read_policy = _require_mapping(config_provider.get_read_policy(), field="read_policy")
+    read_policy = _require_mapping(
+        config_provider.get_read_policy(), field="read_policy"
+    )
     runtime = _require_mapping(config_provider.get_runtime(), field="runtime")
     cli_defaults = _require_mapping(runtime.get("cli"), field="runtime.cli")
     limits = _require_mapping(read_policy.get("limits"), field="read_policy.limits")
-    expansion = _require_mapping(read_policy.get("expansion"), field="read_policy.expansion")
+    expansion = _require_mapping(
+        read_policy.get("expansion"), field="read_policy.expansion"
+    )
     quotas = _require_mapping(read_policy.get("quotas"), field="read_policy.quotas")
     weights = _require_mapping(read_policy.get("weights"), field="read_policy.weights")
     fusion = _require_mapping(read_policy.get("fusion"), field="read_policy.fusion")
 
     return ReadPolicySettings(
-        default_mode=_require_mode(cli_defaults.get("default_mode"), field="runtime.cli.default_mode"),
-        include_global=_require_bool(cli_defaults, "include_global", field="runtime.cli"),
+        default_mode=_require_mode(
+            cli_defaults.get("default_mode"), field="runtime.cli.default_mode"
+        ),
+        include_global=_require_bool(
+            cli_defaults, "include_global", field="runtime.cli"
+        ),
         limits_by_mode={
             mode: _require_int(limits, mode, field="read_policy.limits")
             for mode in _SUPPORTED_MODES
@@ -97,7 +105,9 @@ def get_read_policy_settings() -> ReadPolicySettings:
         quotas_by_mode={
             mode: {
                 bucket: _require_int(
-                    _require_mapping(quotas.get(mode), field=f"read_policy.quotas.{mode}"),
+                    _require_mapping(
+                        quotas.get(mode), field=f"read_policy.quotas.{mode}"
+                    ),
                     bucket,
                     field=f"read_policy.quotas.{mode}",
                 )
@@ -106,8 +116,12 @@ def get_read_policy_settings() -> ReadPolicySettings:
             for mode in _SUPPORTED_MODES
         },
         retrieval={
-            "semantic_weight": _require_float(weights, "semantic", field="read_policy.weights"),
-            "keyword_weight": _require_float(weights, "keyword", field="read_policy.weights"),
+            "semantic_weight": _require_float(
+                weights, "semantic", field="read_policy.weights"
+            ),
+            "keyword_weight": _require_float(
+                weights, "keyword", field="read_policy.weights"
+            ),
             "k_rrf": _require_float(fusion, "k_rrf", field="read_policy.fusion"),
         },
     )
@@ -119,7 +133,9 @@ def get_read_settings() -> dict[str, Any]:
     return get_read_policy_settings().to_dict()
 
 
-def _coerce_read_policy_settings(settings: ReadPolicySettings | dict[str, Any]) -> ReadPolicySettings:
+def _coerce_read_policy_settings(
+    settings: ReadPolicySettings | dict[str, Any],
+) -> ReadPolicySettings:
     if isinstance(settings, ReadPolicySettings):
         return settings
     return ReadPolicySettings(
@@ -149,7 +165,9 @@ def resolve_read_limit(*, mode: str, explicit_limit: int | None) -> int:
 
     if explicit_limit is not None:
         return int(explicit_limit)
-    return _coerce_read_policy_settings(get_read_settings()).resolve_limit(mode=mode, explicit_limit=explicit_limit)
+    return _coerce_read_policy_settings(get_read_settings()).resolve_limit(
+        mode=mode, explicit_limit=explicit_limit
+    )
 
 
 def resolve_read_quotas(*, mode: str) -> dict[str, int]:
@@ -161,4 +179,6 @@ def resolve_read_quotas(*, mode: str) -> dict[str, int]:
 def resolve_read_payload_defaults(payload: dict[str, Any]) -> dict[str, Any]:
     """Resolve effective read payload defaults from YAML-backed settings."""
 
-    return _coerce_read_policy_settings(get_read_settings()).resolve_payload_defaults(payload)
+    return _coerce_read_policy_settings(get_read_settings()).resolve_payload_defaults(
+        payload
+    )

@@ -34,7 +34,12 @@ def create_isolated_install(
     """Create one clean-room virtualenv and install the packaged CLI into it."""
 
     venv_dir = tmp_path / name
-    subprocess.run([sys.executable, "-m", "venv", str(venv_dir)], check=True, capture_output=True, text=True)
+    subprocess.run(
+        [sys.executable, "-m", "venv", str(venv_dir)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
     python_executable = venv_python(venv_dir)
     subprocess.run(
         [str(python_executable), "-m", "pip", "install", "setuptools>=69.0", "wheel"],
@@ -43,7 +48,14 @@ def create_isolated_install(
         text=True,
     )
 
-    install_command = [str(python_executable), "-m", "pip", "install", "--no-build-isolation", "--no-deps"]
+    install_command = [
+        str(python_executable),
+        "-m",
+        "pip",
+        "install",
+        "--no-build-isolation",
+        "--no-deps",
+    ]
     if editable:
         install_command.extend(["-e", install_spec])
     else:
@@ -52,7 +64,13 @@ def create_isolated_install(
 
     if install_runtime_deps:
         subprocess.run(
-            [str(python_executable), "-m", "pip", "install", *_LIGHTWEIGHT_RUNTIME_DEPS],
+            [
+                str(python_executable),
+                "-m",
+                "pip",
+                "install",
+                *_LIGHTWEIGHT_RUNTIME_DEPS,
+            ],
             check=True,
             capture_output=True,
             text=True,
@@ -61,7 +79,9 @@ def create_isolated_install(
     return python_executable, venv_shellbrain(venv_dir)
 
 
-def create_temp_database(base_dsn: str, admin_base_dsn: str | None = None) -> tuple[str, str, str]:
+def create_temp_database(
+    base_dsn: str, admin_base_dsn: str | None = None
+) -> tuple[str, str, str]:
     """Create one disposable database alongside the configured test server."""
 
     raw_base_dsn = base_dsn.replace("+psycopg", "")
@@ -74,7 +94,11 @@ def create_temp_database(base_dsn: str, admin_base_dsn: str | None = None) -> tu
     with psycopg.connect(admin_dsn, autocommit=True) as conn:
         conn.execute(f'CREATE DATABASE "{db_name}"')
 
-    return package_dsn.replace("postgresql://", "postgresql+psycopg://", 1), admin_dsn, db_name
+    return (
+        package_dsn.replace("postgresql://", "postgresql+psycopg://", 1),
+        admin_dsn,
+        db_name,
+    )
 
 
 def drop_temp_database(admin_dsn: str, db_name: str) -> None:
@@ -96,7 +120,9 @@ def replace_database_dsn(dsn: str, db_name: str) -> str:
     """Return one DSN string with the database path swapped to a named database."""
 
     parsed = urlparse(dsn.replace("+psycopg", ""))
-    return urlunparse(parsed._replace(path=f"/{db_name}")).replace("postgresql://", "postgresql+psycopg://", 1)
+    return urlunparse(parsed._replace(path=f"/{db_name}")).replace(
+        "postgresql://", "postgresql+psycopg://", 1
+    )
 
 
 def repo_root() -> Path:
@@ -121,11 +147,37 @@ def prepare_git_snapshot(tmp_path: Path, repo_root: Path) -> Path:
             ".local",
         ),
     )
-    subprocess.run(["git", "init"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "config", "user.email", "smoke@example.com"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "config", "user.name", "Packaging Smoke"], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "add", "."], check=True, cwd=snapshot_root, capture_output=True, text=True)
-    subprocess.run(["git", "commit", "-m", "snapshot"], check=True, cwd=snapshot_root, capture_output=True, text=True)
+    subprocess.run(
+        ["git", "init"], check=True, cwd=snapshot_root, capture_output=True, text=True
+    )
+    subprocess.run(
+        ["git", "config", "user.email", "smoke@example.com"],
+        check=True,
+        cwd=snapshot_root,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "Packaging Smoke"],
+        check=True,
+        cwd=snapshot_root,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "add", "."],
+        check=True,
+        cwd=snapshot_root,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        ["git", "commit", "-m", "snapshot"],
+        check=True,
+        cwd=snapshot_root,
+        capture_output=True,
+        text=True,
+    )
     return snapshot_root
 
 

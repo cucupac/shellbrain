@@ -151,7 +151,9 @@ class VisualizationReportPlugin:
             discovered.extend(self._extract_test_functions(path, category_parts))
         return discovered
 
-    def _extract_test_functions(self, path: Path, category_parts: tuple[str, ...]) -> list[DiscoveredTest]:
+    def _extract_test_functions(
+        self, path: Path, category_parts: tuple[str, ...]
+    ) -> list[DiscoveredTest]:
         """Extract test functions and one-line docstrings from one Python module."""
 
         source = path.read_text(encoding="utf-8")
@@ -159,7 +161,9 @@ class VisualizationReportPlugin:
 
         results: list[DiscoveredTest] = []
         for node in tree.body:
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name.startswith("test_"):
+            if isinstance(
+                node, (ast.FunctionDef, ast.AsyncFunctionDef)
+            ) and node.name.startswith("test_"):
                 key = f"{path.relative_to(self._root_path).as_posix()}::{node.name}"
                 results.append(
                     DiscoveredTest(
@@ -183,10 +187,14 @@ class VisualizationReportPlugin:
         total = len(rows)
         passed = sum(1 for _, status in rows if status == STATUS_PASSED)
         failed = sum(1 for _, status in rows if status == STATUS_FAILED)
-        skipped_or_not_run = sum(1 for _, status in rows if status in (STATUS_SKIPPED, STATUS_NOT_RUN))
+        skipped_or_not_run = sum(
+            1 for _, status in rows if status in (STATUS_SKIPPED, STATUS_NOT_RUN)
+        )
         generated = datetime.now().astimezone().strftime("%Y-%m-%d %H:%M:%S %Z")
 
-        grouped_by_major: dict[str, list[tuple[DiscoveredTest, str]]] = {key: [] for key in MAJOR_CATEGORY_ORDER}
+        grouped_by_major: dict[str, list[tuple[DiscoveredTest, str]]] = {
+            key: [] for key in MAJOR_CATEGORY_ORDER
+        }
         for row in rows:
             grouped_by_major.setdefault(row[0].category_parts[0], []).append(row)
 
@@ -227,7 +235,9 @@ def _build_key_from_item(item: Any, root_path: Path) -> str | None:
     """Build canonical discovery key from one collected pytest item."""
 
     try:
-        relative_path = Path(str(item.fspath)).resolve().relative_to(root_path).as_posix()
+        relative_path = (
+            Path(str(item.fspath)).resolve().relative_to(root_path).as_posix()
+        )
     except Exception:
         return None
 
@@ -235,7 +245,9 @@ def _build_key_from_item(item: Any, root_path: Path) -> str | None:
     return f"{relative_path}::{test_name}"
 
 
-def _render_major_category(category_rows: list[tuple[DiscoveredTest, str]]) -> list[str]:
+def _render_major_category(
+    category_rows: list[tuple[DiscoveredTest, str]],
+) -> list[str]:
     """Render one major category block with nested headings."""
 
     lines: list[str] = []
@@ -287,7 +299,9 @@ def _render_test_bullets(rows: list[tuple[DiscoveredTest, str]]) -> list[str]:
 
     lines: list[str] = []
     for record, status in rows:
-        lines.append(f"- {_status_display(status)} {_escape_markdown(record.description)}")
+        lines.append(
+            f"- {_status_display(status)} {_escape_markdown(record.description)}"
+        )
     return lines
 
 

@@ -14,9 +14,12 @@ def test_guidance_reminders_should_be_rate_limited_per_problem() -> None:
         problem_id="problem-1",
     )
 
-    assert should_emit_guidance_reminder(
-        guidance=decision,
-        last_guidance_problem_id="problem-1",
-        last_guidance_at="2026-03-18T12:10:00+00:00",
-        now_iso="2026-03-18T12:20:00+00:00",
-    ) is False
+    assert (
+        should_emit_guidance_reminder(
+            guidance=decision,
+            last_guidance_problem_id="problem-1",
+            last_guidance_at="2026-03-18T12:10:00+00:00",
+            now_iso="2026-03-18T12:20:00+00:00",
+        )
+        is False
+    )

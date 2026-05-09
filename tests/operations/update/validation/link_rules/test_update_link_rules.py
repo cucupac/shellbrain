@@ -1,7 +1,7 @@
 """Semantic contracts for update-path requests."""
 
 from app.core.contracts.requests import MemoryUpdateRequest
-from app.core.validation.memory_semantic import validate_update_semantics
+from app.core.policies.memories.link_rules import validate_update_semantics
 
 
 def test_update_association_rejects_self_link() -> None:
@@ -44,8 +44,12 @@ def test_fact_update_requires_distinct_endpoints_and_reserves_memory_id() -> Non
     )
     duplicate_endpoint_errors = validate_update_semantics(duplicate_endpoint_request)
 
-    assert any(error.code.value == "semantic_error" for error in duplicate_endpoint_errors)
-    assert any(error.field == "update.new_fact_id" for error in duplicate_endpoint_errors)
+    assert any(
+        error.code.value == "semantic_error" for error in duplicate_endpoint_errors
+    )
+    assert any(
+        error.field == "update.new_fact_id" for error in duplicate_endpoint_errors
+    )
 
     reused_memory_id_request = MemoryUpdateRequest.model_validate(
         {
@@ -61,5 +65,7 @@ def test_fact_update_requires_distinct_endpoints_and_reserves_memory_id() -> Non
     )
     reused_memory_id_errors = validate_update_semantics(reused_memory_id_request)
 
-    assert any(error.code.value == "semantic_error" for error in reused_memory_id_errors)
+    assert any(
+        error.code.value == "semantic_error" for error in reused_memory_id_errors
+    )
     assert any(error.field == "memory_id" for error in reused_memory_id_errors)

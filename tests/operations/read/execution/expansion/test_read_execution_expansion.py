@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
@@ -28,12 +28,18 @@ def test_read_includes_problem_attempt_links_when_enabled(
         kind="solution",
         text_value="Candidate rollback fix for deployment failure.",
     )
-    seed_problem_attempt_link(problem_id="problem-1", attempt_id="solution-1", role="solution")
+    seed_problem_attempt_link(
+        problem_id="problem-1", attempt_id="solution-1", role="solution"
+    )
 
     request = make_read_request(
         repo_id="repo-a",
         query="rollback fix",
-        expand={"include_problem_links": True, "include_fact_update_links": False, "include_association_links": False},
+        expand={
+            "include_problem_links": True,
+            "include_fact_update_links": False,
+            "include_association_links": False,
+        },
     )
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
@@ -81,7 +87,11 @@ def test_read_includes_fact_update_links_when_enabled(
     request = make_read_request(
         repo_id="repo-a",
         query="previous deploy behavior",
-        expand={"include_problem_links": False, "include_fact_update_links": True, "include_association_links": False},
+        expand={
+            "include_problem_links": False,
+            "include_fact_update_links": True,
+            "include_association_links": False,
+        },
     )
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)

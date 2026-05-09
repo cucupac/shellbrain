@@ -6,7 +6,10 @@ from pathlib import Path
 import shutil
 from typing import Any
 
-from app.core.use_cases.admin.diagnose_runtime import DiagnoseRuntimePorts, build_diagnose_runtime_report
+from app.core.use_cases.admin.diagnose_runtime import (
+    DiagnoseRuntimePorts,
+    build_diagnose_runtime_report,
+)
 from app.infrastructure.host_assets import inspect_host_assets
 from app.infrastructure.local_state.machine_config_store import (
     RUNTIME_MODE_EXTERNAL_POSTGRES,
@@ -20,7 +23,11 @@ from app.infrastructure.local_state.repo_registration_store import (
     resolve_git_root,
 )
 from app.infrastructure.postgres_admin.connection import fetch_schema_revision
-from app.infrastructure.postgres_admin.instance_guard import fetch_instance_metadata, fingerprint_summary, inspect_role_safety
+from app.infrastructure.postgres_admin.instance_guard import (
+    fetch_instance_metadata,
+    fingerprint_summary,
+    inspect_role_safety,
+)
 from app.infrastructure.postgres_admin.logical_backup import list_backups
 from app.infrastructure.runtime import external_runtime
 

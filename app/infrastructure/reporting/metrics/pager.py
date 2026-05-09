@@ -25,11 +25,18 @@ def present_metrics_repo_pager(
     if not entries:
         output_stream.write("No metrics snapshots are available.\n")
         return
-    if not _supports_interactive_view(input_stream=input_stream, output_stream=output_stream):
+    if not _supports_interactive_view(
+        input_stream=input_stream, output_stream=output_stream
+    ):
         output_stream.write(_render_non_interactive(entries))
         output_stream.flush()
         return
-    _run_interactive_view(entries=entries, input_stream=input_stream, output_stream=output_stream, open_dashboard=open_dashboard)
+    _run_interactive_view(
+        entries=entries,
+        input_stream=input_stream,
+        output_stream=output_stream,
+        open_dashboard=open_dashboard,
+    )
 
 
 def _supports_interactive_view(*, input_stream: TextIO, output_stream: TextIO) -> bool:
@@ -62,7 +69,11 @@ def _run_interactive_view(
         tty.setcbreak(fd)
         while True:
             output_stream.write(_clear_screen())
-            output_stream.write(_render_entry(entries=entries, index=index, notice=notice, interactive=True))
+            output_stream.write(
+                _render_entry(
+                    entries=entries, index=index, notice=notice, interactive=True
+                )
+            )
             output_stream.flush()
 
             key = _read_key(fd)
@@ -90,7 +101,14 @@ def _run_interactive_view(
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, original_attrs)
         output_stream.write(_clear_screen())
-        output_stream.write(_render_entry(entries=entries, index=index, notice="Exited metrics viewer.", interactive=False))
+        output_stream.write(
+            _render_entry(
+                entries=entries,
+                index=index,
+                notice="Exited metrics viewer.",
+                interactive=False,
+            )
+        )
         output_stream.flush()
 
 
@@ -136,11 +154,15 @@ def _render_non_interactive(entries: Sequence[dict[str, Any]]) -> str:
     blocks: list[str] = []
     total = len(entries)
     for index in range(total):
-        blocks.append(_render_entry(entries=entries, index=index, notice="", interactive=False))
+        blocks.append(
+            _render_entry(entries=entries, index=index, notice="", interactive=False)
+        )
     return "\n\n".join(blocks) + "\n"
 
 
-def _render_entry(*, entries: Sequence[dict[str, Any]], index: int, notice: str, interactive: bool) -> str:
+def _render_entry(
+    *, entries: Sequence[dict[str, Any]], index: int, notice: str, interactive: bool
+) -> str:
     """Render one repo metrics entry as plain terminal text."""
 
     entry = entries[index]
@@ -212,7 +234,9 @@ def _render_metric_line(metric: object) -> str:
     previous = _format_metric_value(metric.get("previous"), format_name)
     delta = _format_delta(metric.get("delta"), format_name)
     sample_count = metric.get("sample_count")
-    sample_display = f"n={int(sample_count)}" if isinstance(sample_count, int | float) else "n=?"
+    sample_display = (
+        f"n={int(sample_count)}" if isinstance(sample_count, int | float) else "n=?"
+    )
     return f"{name}: now {current} | prev {previous} | delta {delta} | {sample_display}"
 
 

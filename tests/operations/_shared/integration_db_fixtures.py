@@ -15,9 +15,14 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.sql import Selectable
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from app.core.entities.memory import Memory, MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeEvent,
+    EpisodeEventSource,
+    EpisodeStatus,
+)
+from app.core.entities.memories import Memory, MemoryKind, MemoryScope
+from app.core.ports.embeddings import IEmbeddingProvider
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.models.registry import target_metadata
 from app.infrastructure.db.session import get_session_factory
@@ -69,7 +74,11 @@ def db_dsn() -> str:
 def admin_db_dsn(db_dsn: str) -> str:
     """Resolve privileged integration database DSN when split-role testing is enabled."""
 
-    return os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST") or os.getenv("SHELLBRAIN_DB_ADMIN_DSN") or db_dsn
+    return (
+        os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST")
+        or os.getenv("SHELLBRAIN_DB_ADMIN_DSN")
+        or db_dsn
+    )
 
 
 @pytest.fixture(scope="session")
@@ -118,7 +127,9 @@ def clear_database(integration_admin_engine: Engine, db_dsn: str) -> Iterator[No
 
 
 @pytest.fixture
-def uow_factory(integration_session_factory: sessionmaker) -> Callable[[], PostgresUnitOfWork]:
+def uow_factory(
+    integration_session_factory: sessionmaker,
+) -> Callable[[], PostgresUnitOfWork]:
     """Provide unit-of-work factory bound to integration database."""
 
     def _factory() -> PostgresUnitOfWork:
@@ -146,7 +157,9 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
         kind: MemoryKind,
         text_value: str,
     ) -> Memory:
-        normalized_scope = scope if isinstance(scope, MemoryScope) else MemoryScope(scope)
+        normalized_scope = (
+            scope if isinstance(scope, MemoryScope) else MemoryScope(scope)
+        )
         normalized_kind = kind if isinstance(kind, MemoryKind) else MemoryKind(kind)
         memory = Memory(
             id=memory_id,
@@ -163,7 +176,9 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
 
 
 @pytest.fixture
-def seed_episode(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., Episode]:
+def seed_episode(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+) -> Callable[..., Episode]:
     """Provide helper for seeding episode rows into integration database."""
 
     def _seed(
@@ -192,7 +207,9 @@ def seed_episode(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[...,
 
 
 @pytest.fixture
-def seed_episode_event(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., EpisodeEvent]:
+def seed_episode_event(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+) -> Callable[..., EpisodeEvent]:
     """Provide helper for seeding episode-event rows into integration database."""
 
     def _seed(
@@ -205,7 +222,11 @@ def seed_episode_event(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callabl
         content: str = '{"content_text":"evidence"}',
         created_at: datetime | None = None,
     ) -> EpisodeEvent:
-        normalized_source = source if isinstance(source, EpisodeEventSource) else EpisodeEventSource(source)
+        normalized_source = (
+            source
+            if isinstance(source, EpisodeEventSource)
+            else EpisodeEventSource(source)
+        )
         event = EpisodeEvent(
             id=event_id,
             episode_id=episode_id,
@@ -237,7 +258,9 @@ def seed_default_evidence_events(
             thread_id=f"codex:{repo_id}-episode-evidence",
         )
         seeded: dict[str, EpisodeEvent] = {}
-        for seq, event_id in enumerate(("session://1", "session://2", "integration://evidence/1"), start=1):
+        for seq, event_id in enumerate(
+            ("session://1", "session://2", "integration://evidence/1"), start=1
+        ):
             seeded[event_id] = seed_episode_event(
                 event_id=event_id,
                 episode_id=episode.id,
@@ -256,13 +279,17 @@ def count_rows(integration_engine: Engine) -> Callable[[str], int]:
 
     def _count(table_name: str) -> int:
         with integration_engine.connect() as conn:
-            return int(conn.execute(text(f"SELECT COUNT(*) FROM {table_name};")).scalar_one())
+            return int(
+                conn.execute(text(f"SELECT COUNT(*) FROM {table_name};")).scalar_one()
+            )
 
     return _count
 
 
 @pytest.fixture
-def fetch_rows(integration_engine: Engine) -> Callable[[Selectable, object], list[dict[str, object]]]:
+def fetch_rows(
+    integration_engine: Engine,
+) -> Callable[[Selectable, object], list[dict[str, object]]]:
     """Provide helper for selecting rows from a SQLAlchemy table with optional where clauses."""
 
     def _fetch(table: Selectable, *conditions: object) -> list[dict[str, object]]:
@@ -299,4 +326,6 @@ def _find_repo_root() -> Path:
         if (current / "pyproject.toml").exists():
             return current
         current = current.parent
-    raise RuntimeError("Could not resolve repository root from execution test fixtures.")
+    raise RuntimeError(
+        "Could not resolve repository root from execution test fixtures."
+    )

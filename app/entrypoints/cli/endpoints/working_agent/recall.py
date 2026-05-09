@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.entrypoints.cli.protocol.operation_requests import prepare_recall_request
-from app.startup.agent_operations import handle_recall
+from app.entrypoints.cli.protocol.retrieval import prepare_recall_request
+from app.startup.handlers import handle_recall
 from app.startup.runtime_context import get_operation_telemetry_context
 from app.startup.use_cases import get_uow_factory
 

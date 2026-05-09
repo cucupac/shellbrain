@@ -303,15 +303,24 @@ def _seed_snapshot_dataset(
     assert current_compliant_count >= current_followthrough_count
     assert previous_compliant_count >= previous_followthrough_count
     assert current_zero_result_count <= current_read_count - current_opportunity_count
-    assert previous_zero_result_count <= previous_read_count - previous_opportunity_count
+    assert (
+        previous_zero_result_count <= previous_read_count - previous_opportunity_count
+    )
     assert 0 <= current_sync_failure_count <= current_sync_run_count
 
     problem_id = f"{repo_id}-problem"
     memory_id = f"{repo_id}-memory"
 
     memory_rows = [
-        _memory_row(memory_id=problem_id, repo_id=repo_id, kind="problem", text_value="Problem."),
-        _memory_row(memory_id=memory_id, repo_id=repo_id, kind="solution", text_value="Solution."),
+        _memory_row(
+            memory_id=problem_id, repo_id=repo_id, kind="problem", text_value="Problem."
+        ),
+        _memory_row(
+            memory_id=memory_id,
+            repo_id=repo_id,
+            kind="solution",
+            text_value="Solution.",
+        ),
     ]
 
     utility_rows: list[dict[str, object]] = []
@@ -584,7 +593,9 @@ def _append_extra_writes(
         )
 
 
-def _memory_row(*, memory_id: str, repo_id: str, kind: str, text_value: str) -> dict[str, object]:
+def _memory_row(
+    *, memory_id: str, repo_id: str, kind: str, text_value: str
+) -> dict[str, object]:
     """Return one minimal memories row for metrics integration tests."""
 
     return {
@@ -653,7 +664,9 @@ def _operation_row(
     }
 
 
-def _read_summary_row(*, invocation_id: str, zero_results: bool, created_at: datetime, query_text: str) -> dict[str, object]:
+def _read_summary_row(
+    *, invocation_id: str, zero_results: bool, created_at: datetime, query_text: str
+) -> dict[str, object]:
     """Return one read_invocation_summaries row."""
 
     return {
@@ -694,7 +707,9 @@ def _write_summary_row(
         "planned_effect_count": 1,
         "created_memory_count": 1 if operation_command == "create" else 0,
         "archived_memory_count": 0,
-        "utility_observation_count": 1 if update_type in {"utility_vote", "utility_vote_batch"} else 0,
+        "utility_observation_count": 1
+        if update_type in {"utility_vote", "utility_vote_batch"}
+        else 0,
         "association_effect_count": 0,
         "fact_update_count": 0,
         "created_at": created_at,

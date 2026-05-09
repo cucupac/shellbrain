@@ -1,7 +1,7 @@
 """Link-rule contracts for create-path requests."""
 
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.validation.memory_semantic import validate_create_semantics
+from app.core.policies.memories.link_rules import validate_create_semantics
 
 
 def test_solution_requires_problem_id() -> None:

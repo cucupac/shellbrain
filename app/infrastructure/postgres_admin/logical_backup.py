@@ -16,13 +16,22 @@ from uuid import uuid4
 import psycopg
 
 from app.core.entities.backups import BackupManifest
-from app.infrastructure.local_state.backup_manifest_store import list_backup_manifests, write_backup_manifest
-from app.infrastructure.postgres_admin.instance_guard import PROTECTED_DB_NAMES, fetch_instance_metadata, fingerprint_summary
+from app.infrastructure.local_state.backup_manifest_store import (
+    list_backup_manifests,
+    write_backup_manifest,
+)
+from app.infrastructure.postgres_admin.instance_guard import (
+    PROTECTED_DB_NAMES,
+    fetch_instance_metadata,
+    fingerprint_summary,
+)
 
 
 _UNSUPPORTED_RESTORE_PARAMETERS = ("transaction_timeout",)
 _UNSUPPORTED_SET_LINE_RE = re.compile(r"^SET\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=")
-_UNSUPPORTED_SET_CONFIG_RE = re.compile(r"^SELECT\s+pg_catalog\.set_config\('([a-zA-Z_][a-zA-Z0-9_]*)'")
+_UNSUPPORTED_SET_CONFIG_RE = re.compile(
+    r"^SELECT\s+pg_catalog\.set_config\('([a-zA-Z_][a-zA-Z0-9_]*)'"
+)
 
 
 @dataclass(frozen=True)
@@ -75,7 +84,9 @@ def create_backup(
     with subprocess.Popen(command, **popen_kwargs) as process:
         stdout, stderr = process.communicate()
         if process.returncode != 0:
-            raise RuntimeError(f"pg_dump failed: {stderr.decode('utf-8', errors='replace').strip()}")
+            raise RuntimeError(
+                f"pg_dump failed: {stderr.decode('utf-8', errors='replace').strip()}"
+            )
     with gzip.open(artifact_path, "wb") as handle:
         handle.write(stdout)
 
@@ -120,7 +131,9 @@ def verify_backup(*, backup_root: Path, backup_id: str | None = None) -> BackupM
     return manifest
 
 
-def resolve_backup(*, backup_root: Path, backup_id: str | None = None) -> BackupManifest:
+def resolve_backup(
+    *, backup_root: Path, backup_id: str | None = None
+) -> BackupManifest:
     """Resolve one manifest by id, defaulting to the newest available backup."""
 
     manifests = list_backups(backup_root=backup_root)
@@ -178,8 +191,13 @@ def restore_backup(
         **run_kwargs,
     )
     if process.returncode != 0:
-        raise RuntimeError(process.stderr.decode("utf-8", errors="replace").strip() or "psql restore failed")
-    from app.infrastructure.postgres_admin.instance_guard import ensure_instance_metadata
+        raise RuntimeError(
+            process.stderr.decode("utf-8", errors="replace").strip()
+            or "psql restore failed"
+        )
+    from app.infrastructure.postgres_admin.instance_guard import (
+        ensure_instance_metadata,
+    )
 
     target_admin_dsn = _replace_database(admin_dsn, target_db)
     ensure_instance_metadata(
@@ -189,10 +207,14 @@ def restore_backup(
         notes=f"Restored from backup {manifest.backup_id}",
     )
     if app_dsn:
-        from app.infrastructure.postgres_admin.privileges import reconcile_app_role_privileges
+        from app.infrastructure.postgres_admin.privileges import (
+            reconcile_app_role_privileges,
+        )
 
         target_app_dsn = _replace_database(app_dsn, target_db)
-        reconcile_app_role_privileges(admin_dsn=target_admin_dsn, app_dsn=target_app_dsn)
+        reconcile_app_role_privileges(
+            admin_dsn=target_admin_dsn, app_dsn=target_app_dsn
+        )
     return manifest
 
 
@@ -225,7 +247,9 @@ def _backup_command(
         raw_dsn = admin_dsn.replace("+psycopg", "")
         return ["pg_dump", "--no-owner", "--no-privileges", f"--dbname={raw_dsn}"]
     if not container_db_name or not container_admin_user:
-        raise RuntimeError("Managed container backups require container DB name and admin user.")
+        raise RuntimeError(
+            "Managed container backups require container DB name and admin user."
+        )
     return [
         "docker",
         "exec",
@@ -254,7 +278,9 @@ def _restore_command(
     if container_name is None:
         return ["psql", "--set", "ON_ERROR_STOP=1", f"--dbname={target_dsn}"]
     if not container_admin_user:
-        raise RuntimeError("Managed container restore requires the container admin user.")
+        raise RuntimeError(
+            "Managed container restore requires the container admin user."
+        )
     return [
         "docker",
         "exec",
@@ -332,7 +358,10 @@ def _sanitize_restore_sql(dump_bytes: bytes) -> bytes:
         if set_match and set_match.group(1) in _UNSUPPORTED_RESTORE_PARAMETERS:
             continue
         set_config_match = _UNSUPPORTED_SET_CONFIG_RE.match(decoded)
-        if set_config_match and set_config_match.group(1) in _UNSUPPORTED_RESTORE_PARAMETERS:
+        if (
+            set_config_match
+            and set_config_match.group(1) in _UNSUPPORTED_RESTORE_PARAMETERS
+        ):
             continue
         filtered.append(line)
     return b"".join(filtered)

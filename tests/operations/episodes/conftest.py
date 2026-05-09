@@ -36,7 +36,13 @@ def codex_transcript_fixture(tmp_path: Path) -> dict[str, object]:
 
     thread_id = "019ce136-e14d-7b80-92bc-be07e4330536"
     transcript_root = tmp_path / "codex-root" / ".codex" / "sessions"
-    transcript_path = transcript_root / "2026" / "03" / "12" / f"rollout-2026-03-12T01-43-16-{thread_id}.jsonl"
+    transcript_path = (
+        transcript_root
+        / "2026"
+        / "03"
+        / "12"
+        / f"rollout-2026-03-12T01-43-16-{thread_id}.jsonl"
+    )
     session_meta = {
         "type": "session_meta",
         "payload": {
@@ -134,7 +140,9 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
         encoding="utf-8",
     )
 
-    transcript_root = tmp_path / ".claude" / "projects" / _claude_project_slug(repo_root)
+    transcript_root = (
+        tmp_path / ".claude" / "projects" / _claude_project_slug(repo_root)
+    )
     transcript_path = transcript_root / f"{cli_session_id}.jsonl"
     entries = [
         {
@@ -168,7 +176,13 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "type": "user",
             "message": {
                 "role": "user",
-                "content": [{"type": "tool_result", "text": "ls\nREADME.md\napp/\n", "is_error": False}],
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "text": "ls\nREADME.md\napp/\n",
+                        "is_error": False,
+                    }
+                ],
             },
         },
         {
@@ -177,7 +191,13 @@ def claude_code_transcript_fixture(tmp_path: Path) -> dict[str, object]:
             "type": "user",
             "message": {
                 "role": "user",
-                "content": [{"type": "tool_result", "text": "pytest failed: 1 failed, 127 passed", "is_error": True}],
+                "content": [
+                    {
+                        "type": "tool_result",
+                        "text": "pytest failed: 1 failed, 127 passed",
+                        "is_error": True,
+                    }
+                ],
             },
         },
     ]
@@ -358,7 +378,10 @@ def _write_item_table_json(path: Path, payloads: dict[str, dict[str, object]]) -
     with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE ItemTable (key TEXT PRIMARY KEY, value TEXT)")
         for key, value in payloads.items():
-            conn.execute("INSERT INTO ItemTable (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+            conn.execute(
+                "INSERT INTO ItemTable (key, value) VALUES (?, ?)",
+                (key, json.dumps(value)),
+            )
 
 
 def _write_cursor_disk_kv(path: Path, payloads: dict[str, dict[str, object]]) -> None:
@@ -368,4 +391,7 @@ def _write_cursor_disk_kv(path: Path, payloads: dict[str, dict[str, object]]) ->
     with sqlite3.connect(path) as conn:
         conn.execute("CREATE TABLE cursorDiskKV (key TEXT PRIMARY KEY, value TEXT)")
         for key, value in payloads.items():
-            conn.execute("INSERT INTO cursorDiskKV (key, value) VALUES (?, ?)", (key, json.dumps(value)))
+            conn.execute(
+                "INSERT INTO cursorDiskKV (key, value) VALUES (?, ?)",
+                (key, json.dumps(value)),
+            )

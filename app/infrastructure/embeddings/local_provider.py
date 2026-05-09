@@ -2,7 +2,7 @@
 
 from typing import Sequence
 
-from app.core.interfaces.embeddings import IEmbeddingProvider
+from app.core.ports.embeddings import IEmbeddingProvider
 
 
 class SentenceTransformersEmbeddingProvider(IEmbeddingProvider):
@@ -29,13 +29,16 @@ class SentenceTransformersEmbeddingProvider(IEmbeddingProvider):
             return self._model
         try:
             from sentence_transformers import SentenceTransformer
+
             self._model = SentenceTransformer(
                 self._model_name,
                 cache_folder=self._cache_folder,
                 local_files_only=self._local_files_only,
             )
         except Exception as exc:
-            raise RuntimeError("sentence-transformers is unavailable for local embedding generation") from exc
+            raise RuntimeError(
+                "sentence-transformers is unavailable for local embedding generation"
+            ) from exc
         return self._model
 
     def embed(self, text: str) -> Sequence[float]:

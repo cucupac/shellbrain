@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryReadRequest
-from app.core.interfaces.retrieval import IVectorSearch
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.ports.retrieval import IVectorSearch
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
@@ -42,7 +42,9 @@ def test_read_returns_semantic_seed_matches_when_lexical_misses(
     result = _execute_read_with_semantic_override(
         request,
         uow_factory=uow_factory,
-        vector_search=stub_vector_search({"latent semantic regression": [1.0, 0.0, 0.0, 0.0]}),
+        vector_search=stub_vector_search(
+            {"latent semantic regression": [1.0, 0.0, 0.0, 0.0]}
+        ),
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
@@ -318,7 +320,9 @@ def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
         query="deterministic semantic query",
         expand={"semantic_hops": 0},
     )
-    vector_search = stub_vector_search({"deterministic semantic query": [1.0, 0.0, 0.0, 0.0]})
+    vector_search = stub_vector_search(
+        {"deterministic semantic query": [1.0, 0.0, 0.0, 0.0]}
+    )
 
     first = _execute_read_with_semantic_override(
         request,
@@ -380,8 +384,14 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         text_value="archived failed tactic without query overlap",
         archived=True,
     )
-    seed_problem_attempt_link(problem_id="visible-problem", attempt_id="visible-solution", role="solution")
-    seed_problem_attempt_link(problem_id="visible-problem", attempt_id="archived-failed-tactic", role="failed_tactic")
+    seed_problem_attempt_link(
+        problem_id="visible-problem", attempt_id="visible-solution", role="solution"
+    )
+    seed_problem_attempt_link(
+        problem_id="visible-problem",
+        attempt_id="archived-failed-tactic",
+        role="failed_tactic",
+    )
 
     seed_read_memory(
         memory_id="visible-old-fact",
@@ -473,9 +483,15 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         text_value="archived latent neighbor without shared query tokens",
         archived=True,
     )
-    seed_read_embedding(memory_id="visible-semantic-anchor", vector=[1.0, 0.0, 0.0, 0.0])
-    seed_read_embedding(memory_id="visible-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0])
-    seed_read_embedding(memory_id="archived-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0])
+    seed_read_embedding(
+        memory_id="visible-semantic-anchor", vector=[1.0, 0.0, 0.0, 0.0]
+    )
+    seed_read_embedding(
+        memory_id="visible-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0]
+    )
+    seed_read_embedding(
+        memory_id="archived-semantic-neighbor", vector=[0.6, 0.8, 0.0, 0.0]
+    )
 
     request = make_read_request(
         repo_id="repo-a",

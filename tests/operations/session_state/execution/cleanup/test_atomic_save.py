@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 from app.core.entities.session_state import SessionState
-from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
+from app.infrastructure.local_state.session_state_file_store import (
+    FileSessionStateStore,
+)
 
 
-def test_session_state_save_should_update_in_place_without_temp_file_leaks(repo_with_shellbrain_state) -> None:
+def test_session_state_save_should_update_in_place_without_temp_file_leaks(
+    repo_with_shellbrain_state,
+) -> None:
     """session state save should atomically replace the caller file without leaking temp files."""
 
     store = FileSessionStateStore()
@@ -37,7 +41,9 @@ def test_session_state_save_should_update_in_place_without_temp_file_leaks(repo_
 
     state_dir = repo_with_shellbrain_state / ".shellbrain" / "session_state" / "codex"
     saved_files = sorted(state_dir.glob("*"))
-    loaded = store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a")
+    loaded = store.load(
+        repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a"
+    )
 
     assert [path.name for path in saved_files] == ["codex__thread-a.json"]
     assert loaded is not None
@@ -45,7 +51,9 @@ def test_session_state_save_should_update_in_place_without_temp_file_leaks(repo_
     assert loaded.last_seen_at == "2026-03-19T00:10:00+00:00"
 
 
-def test_session_state_delete_should_only_remove_the_named_caller(repo_with_shellbrain_state) -> None:
+def test_session_state_delete_should_only_remove_the_named_caller(
+    repo_with_shellbrain_state,
+) -> None:
     """session state clear should only delete the explicitly named caller file."""
 
     store = FileSessionStateStore()
@@ -75,5 +83,11 @@ def test_session_state_delete_should_only_remove_the_named_caller(repo_with_shel
     store.save(repo_root=repo_with_shellbrain_state, state=state_b)
     store.delete(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a")
 
-    assert store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a") is None
-    assert store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-b") is not None
+    assert (
+        store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-a")
+        is None
+    )
+    assert (
+        store.load(repo_root=repo_with_shellbrain_state, caller_id="codex:thread-b")
+        is not None
+    )

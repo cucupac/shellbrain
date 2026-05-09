@@ -31,7 +31,9 @@ def test_first_episode_import_creates_one_episode_and_ordered_episode_events(
 
     episode_rows = fetch_rows(episodes, episodes.c.repo_id == "repo-a")
     assert len(episode_rows) == 1
-    assert episode_rows[0]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    assert (
+        episode_rows[0]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    )
 
     event_rows = _sorted_event_rows(fetch_rows, episode_id=str(episode_rows[0]["id"]))
     assert [row["seq"] for row in event_rows] == [1, 2, 3]
@@ -137,7 +139,9 @@ def test_the_same_host_session_always_maps_to_the_same_stored_episode(
 
     episode_rows = fetch_rows(episodes, episodes.c.repo_id == "repo-a")
     assert len(episode_rows) == 1
-    assert episode_rows[0]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    assert (
+        episode_rows[0]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    )
 
 
 def test_parallel_first_import_of_the_same_host_session_creates_one_episode_and_one_copy_of_each_event(

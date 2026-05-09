@@ -13,7 +13,9 @@ def write_backup_manifest(*, path: Path, manifest: BackupManifest) -> None:
     """Write one backup manifest JSON file."""
 
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(asdict(manifest), indent=2, sort_keys=True), encoding="utf-8")
+    path.write_text(
+        json.dumps(asdict(manifest), indent=2, sort_keys=True), encoding="utf-8"
+    )
 
 
 def read_backup_manifest(*, path: Path) -> BackupManifest:

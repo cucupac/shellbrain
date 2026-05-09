@@ -7,9 +7,15 @@ from pathlib import Path
 
 import pytest
 
-import app.startup.admin_initialize as init_module
+import app.startup.runtime_admin as init_module
 from app.infrastructure.runtime import managed_runtime
-from app.infrastructure.local_state.machine_config_store import BackupState, DatabaseState, EmbeddingRuntimeState, MachineConfig, ManagedInstanceState
+from app.infrastructure.local_state.machine_config_store import (
+    BackupState,
+    DatabaseState,
+    EmbeddingRuntimeState,
+    MachineConfig,
+    ManagedInstanceState,
+)
 from app.infrastructure.local_state.repo_registration_store import RepoRegistration
 
 
@@ -20,7 +26,9 @@ def _isolate_machine_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path / "shellbrain-home"))
 
 
-def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path: Path, monkeypatch) -> None:
+def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(
+    tmp_path: Path, monkeypatch
+) -> None:
     """init should stop with blocked_config_corrupt when corrupt machine state cannot be rediscovered."""
 
     repo_root = tmp_path / "repo"
@@ -32,10 +40,17 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path:
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, "corrupt toml"))
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (None, "corrupt toml")
+    )
     monkeypatch.setattr(init_module, "backup_corrupt_machine_config", lambda: preserved)
-    monkeypatch.setattr(init_module, "_recover_machine_config_from_docker", lambda: None)
-    monkeypatch.setattr("app.startup.admin_initialize.save_recovery_stub", lambda **kwargs: captured_stub.update(kwargs))
+    monkeypatch.setattr(
+        init_module, "_recover_machine_config", lambda: None
+    )
+    monkeypatch.setattr(
+        "app.startup.runtime_admin.save_recovery_stub",
+        lambda **kwargs: captured_stub.update(kwargs),
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -54,7 +69,9 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(tmp_path:
     }
 
 
-def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_path: Path, monkeypatch) -> None:
+def test_run_init_should_report_repaired_when_fixing_existing_machine_state(
+    tmp_path: Path, monkeypatch
+) -> None:
     """init should create a backup first and report repaired when bootstrap state needs repair."""
 
     repo_root = tmp_path / "repo"
@@ -63,7 +80,9 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     backup_calls: list[str] = []
 
     initial_config = _machine_config(bootstrap_state="repair_needed")
-    ready_config = _machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    ready_config = _machine_config(
+        bootstrap_state="provisioning", readiness_state="ready", last_error=None
+    )
     registration = RepoRegistration(
         repo_state_version=1,
         repo_id="github.com/example/repo",
@@ -78,17 +97,31 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (initial_config, None)
+    )
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
-    monkeypatch.setattr(init_module, "_backup_before_repair", lambda config: backup_calls.append(config.machine_instance_id))
+    monkeypatch.setattr(
+        init_module,
+        "_backup_before_repair",
+        lambda config: backup_calls.append(config.machine_instance_id),
+    )
     monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
+    monkeypatch.setattr(
+        init_module, "_reconcile_database", lambda config: (False, config)
+    )
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: True)
-    monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
-    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (registration, True))
+    monkeypatch.setattr(
+        init_module,
+        "prewarm_embeddings",
+        lambda config, skip_model_download: (True, ready_config),
+    )
+    monkeypatch.setattr(
+        init_module, "_register_repo", lambda **kwargs: (registration, True)
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -104,7 +137,9 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(tmp_
     assert any("Repo: github.com/example/repo" == line for line in result.lines)
 
 
-def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: Path, monkeypatch) -> None:
+def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(
+    tmp_path: Path, monkeypatch
+) -> None:
     """blocked conflicts should not leave machine state stranded in provisioning."""
 
     repo_root = tmp_path / "repo"
@@ -116,16 +151,22 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(tmp_path: P
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (initial_config, None)
+    )
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(
         init_module,
         "_ensure_managed_container",
-        lambda config: (_ for _ in ()).throw(init_module.InitConflictError("managed port already claimed")),
+        lambda config: (_ for _ in ()).throw(
+            init_module.InitConflictError("managed port already claimed")
+        ),
     )
-    monkeypatch.setattr(init_module, "_mark_repair_needed", lambda message: marked.append(message))
+    monkeypatch.setattr(
+        init_module, "_mark_repair_needed", lambda message: marked.append(message)
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -146,7 +187,7 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
 ) -> None:
     """init should report one blocked conflict instead of leaking an Alembic traceback on schema-version mismatch."""
 
-    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError
+    from app.startup.migrations import DatabaseMigrationConflictError
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -157,22 +198,28 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (initial_config, None)
+    )
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
     monkeypatch.setattr(
-        "app.startup.migrations.upgrade_database",
-        lambda: (_ for _ in ()).throw(
-            DatabaseRevisionAheadOfInstalledPackageError(
+        init_module, "_reconcile_database", lambda config: (False, config)
+    )
+    monkeypatch.setattr(
+        "app.startup.migrations.upgrade_database_for_config",
+        lambda config: (_ for _ in ()).throw(
+            DatabaseMigrationConflictError(
                 "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."
             )
         ),
     )
-    monkeypatch.setattr(init_module, "_mark_repair_needed", lambda message: marked.append(message))
+    monkeypatch.setattr(
+        init_module, "_mark_repair_needed", lambda message: marked.append(message)
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -183,33 +230,51 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
-    assert result.lines == ["Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."]
-    assert marked == ["Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."]
+    assert result.lines == [
+        "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."
+    ]
+    assert marked == [
+        "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."
+    ]
 
 
-def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path, monkeypatch) -> None:
+def test_run_init_should_defer_repo_registration_outside_any_repo(
+    tmp_path: Path, monkeypatch
+) -> None:
     """plain init should succeed outside a repo and defer repo registration until first use."""
 
     repo_root = tmp_path / "not-a-repo"
     repo_root.mkdir()
     home_root = tmp_path / "home"
     initial_config = _machine_config(bootstrap_state="provisioning")
-    ready_config = _machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    ready_config = _machine_config(
+        bootstrap_state="provisioning", readiness_state="ready", last_error=None
+    )
     register_calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (initial_config, None)
+    )
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
     monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
+    monkeypatch.setattr(
+        init_module, "_reconcile_database", lambda config: (False, config)
+    )
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
-    monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
-    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: register_calls.append(kwargs))
+    monkeypatch.setattr(
+        init_module,
+        "prewarm_embeddings",
+        lambda config, skip_model_download: (True, ready_config),
+    )
+    monkeypatch.setattr(
+        init_module, "_register_repo", lambda **kwargs: register_calls.append(kwargs)
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -221,23 +286,32 @@ def test_run_init_should_defer_repo_registration_outside_any_repo(tmp_path: Path
 
     assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
     assert register_calls == []
-    assert "Repo registration: deferred until first Shellbrain use inside a repo." in result.lines
+    assert (
+        "Repo registration: deferred until first Shellbrain use inside a repo."
+        in result.lines
+    )
 
 
-def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_path: Path, monkeypatch) -> None:
+def test_run_init_should_apply_schema_migrations_after_database_reconcile(
+    tmp_path: Path, monkeypatch
+) -> None:
     """init should migrate the Shellbrain schema before continuing to embeddings."""
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     home_root = tmp_path / "home"
     initial_config = _machine_config(bootstrap_state="provisioning")
-    ready_config = _machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    ready_config = _machine_config(
+        bootstrap_state="provisioning", readiness_state="ready", last_error=None
+    )
     call_order: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (initial_config, None))
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (initial_config, None)
+    )
     monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
@@ -248,13 +322,26 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_pa
         "_reconcile_database",
         lambda config: (call_order.append("reconcile") or False, config),
     )
-    monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: call_order.append("migrate") or True)
     monkeypatch.setattr(
         init_module,
-        "_prewarm_embeddings",
-        lambda config, skip_model_download: (call_order.append("embeddings") or True, ready_config),
+        "_apply_schema_migrations",
+        lambda config: call_order.append("migrate") or True,
     )
-    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (_ for _ in ()).throw(AssertionError("unexpected repo registration")))
+    monkeypatch.setattr(
+        init_module,
+        "prewarm_embeddings",
+        lambda config, skip_model_download: (
+            call_order.append("embeddings") or True,
+            ready_config,
+        ),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_register_repo",
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected repo registration")
+        ),
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -268,29 +355,41 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(tmp_pa
     assert call_order == ["reconcile", "migrate", "embeddings"]
 
 
-def test_run_init_should_noop_when_machine_already_ready(tmp_path: Path, monkeypatch) -> None:
+def test_run_init_should_noop_when_machine_already_ready(
+    tmp_path: Path, monkeypatch
+) -> None:
     """init should short-circuit to noop when machine config is already in ready state."""
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     home_root = tmp_path / "home"
-    ready_config = _machine_config(bootstrap_state="ready", readiness_state="ready", last_error=None)
+    ready_config = _machine_config(
+        bootstrap_state="ready", readiness_state="ready", last_error=None
+    )
     host_asset_calls: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
-    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (ready_config, None))
-    monkeypatch.setattr(init_module, "load_repo_registration_for_target", lambda repo_root: None)
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (ready_config, None)
+    )
+    monkeypatch.setattr(
+        init_module, "load_repo_registration_for_target", lambda repo_root: None
+    )
     monkeypatch.setattr(
         init_module,
         "_ensure_managed_dependencies",
-        lambda: (_ for _ in ()).throw(AssertionError("should not check Docker when already ready")),
+        lambda: (_ for _ in ()).throw(
+            AssertionError("should not check Docker when already ready")
+        ),
     )
     monkeypatch.setattr(
         init_module,
         "install_host_assets",
-        lambda host_mode, force: (host_asset_calls.append("installed") or _FakeHostAssetsResult()),
+        lambda host_mode, force: (
+            host_asset_calls.append("installed") or _FakeHostAssetsResult()
+        ),
     )
 
     result = init_module.run_init(
@@ -306,34 +405,62 @@ def test_run_init_should_noop_when_machine_already_ready(tmp_path: Path, monkeyp
     assert host_asset_calls == ["installed"]
 
 
-def test_external_init_should_skip_managed_container_setup(monkeypatch, tmp_path: Path) -> None:
+def test_external_init_should_skip_managed_container_setup(
+    monkeypatch, tmp_path: Path
+) -> None:
     """external init should not require Docker-backed managed runtime helpers."""
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     home_root = tmp_path / "home"
     initial_config = _external_machine_config(bootstrap_state="provisioning")
-    ready_config = _external_machine_config(bootstrap_state="provisioning", readiness_state="ready", last_error=None)
+    ready_config = _external_machine_config(
+        bootstrap_state="provisioning", readiness_state="ready", last_error=None
+    )
     saved: list[MachineConfig] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
     monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (None, None))
-    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")))
-    monkeypatch.setattr(init_module.external_runtime, "build_fresh_machine_config", lambda admin_dsn: initial_config)
-    monkeypatch.setattr(init_module, "save_machine_config", lambda config: saved.append(config))
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_dependencies",
+        lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")),
+    )
+    monkeypatch.setattr(
+        init_module.external_runtime,
+        "build_fresh_machine_config",
+        lambda admin_dsn: initial_config,
+    )
+    monkeypatch.setattr(
+        init_module, "save_machine_config", lambda config: saved.append(config)
+    )
     monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
     monkeypatch.setattr(
         init_module,
         "_ensure_managed_container",
-        lambda config: (_ for _ in ()).throw(AssertionError("unexpected managed container step")),
+        lambda config: (_ for _ in ()).throw(
+            AssertionError("unexpected managed container step")
+        ),
     )
     monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
-    monkeypatch.setattr(init_module, "_reconcile_database", lambda config: (False, config))
+    monkeypatch.setattr(
+        init_module, "_reconcile_database", lambda config: (False, config)
+    )
     monkeypatch.setattr(init_module, "_apply_schema_migrations", lambda config: False)
-    monkeypatch.setattr(init_module, "_prewarm_embeddings", lambda config, skip_model_download: (True, ready_config))
-    monkeypatch.setattr(init_module, "_register_repo", lambda **kwargs: (_ for _ in ()).throw(AssertionError("unexpected repo registration")))
+    monkeypatch.setattr(
+        init_module,
+        "prewarm_embeddings",
+        lambda config, skip_model_download: (True, ready_config),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_register_repo",
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("unexpected repo registration")
+        ),
+    )
 
     result = init_module.run_init(
         repo_root=repo_root,
@@ -358,9 +485,15 @@ def test_reconcile_database_should_inline_role_password_literals(monkeypatch) ->
     admin_cursor = _FakeCursor(fetch_results=[None])
     connections = [_FakeConnection(postgres_cursor), _FakeConnection(admin_cursor)]
 
-    monkeypatch.setattr(managed_runtime.psycopg, "connect", lambda *args, **kwargs: connections.pop(0))
-    monkeypatch.setattr(managed_runtime, "reconcile_app_role_privileges", lambda **kwargs: None)
-    monkeypatch.setattr(managed_runtime, "ensure_instance_metadata", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        managed_runtime.psycopg, "connect", lambda *args, **kwargs: connections.pop(0)
+    )
+    monkeypatch.setattr(
+        managed_runtime, "reconcile_app_role_privileges", lambda **kwargs: None
+    )
+    monkeypatch.setattr(
+        managed_runtime, "ensure_instance_metadata", lambda *args, **kwargs: None
+    )
 
     changed = managed_runtime.reconcile_database(config)
 
@@ -369,7 +502,9 @@ def test_reconcile_database_should_inline_role_password_literals(monkeypatch) ->
     assert create_role_call[1] is None
 
 
-def test_select_managed_port_should_skip_ports_claimed_by_created_containers(monkeypatch) -> None:
+def test_select_managed_port_should_skip_ports_claimed_by_created_containers(
+    monkeypatch,
+) -> None:
     """created containers should reserve their declared host ports for future init runs."""
 
     class _Socket:
@@ -388,14 +523,21 @@ def test_select_managed_port_should_skip_ports_claimed_by_created_containers(mon
             return False
 
     monkeypatch.setattr(managed_runtime, "_managed_claimed_host_ports", lambda: {55432})
-    monkeypatch.setattr(managed_runtime.socket, "socket", lambda *args, **kwargs: _Socket())
+    monkeypatch.setattr(
+        managed_runtime.socket, "socket", lambda *args, **kwargs: _Socket()
+    )
 
     selected = managed_runtime._select_managed_port()
 
     assert selected == 55433
 
 
-def _machine_config(*, bootstrap_state: str, readiness_state: str = "pending", last_error: str | None = "repair me") -> MachineConfig:
+def _machine_config(
+    *,
+    bootstrap_state: str,
+    readiness_state: str = "pending",
+    last_error: str | None = "repair me",
+) -> MachineConfig:
     """Return one minimal machine config for init tests."""
 
     return MachineConfig(

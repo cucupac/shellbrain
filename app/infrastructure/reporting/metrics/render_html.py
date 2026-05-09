@@ -420,7 +420,7 @@ def render_metrics_browser_dashboard(snapshots: Sequence[dict[str, Any]]) -> str
 
     first_snapshot = normalized[0]
     tabs = "".join(
-        f"<button type=\"button\" class=\"repo-tab{' is-active' if index == 0 else ''}\" aria-pressed=\"{'true' if index == 0 else 'false'}\">{escape(str(snapshot['repo_id']))}</button>"
+        f'<button type="button" class="repo-tab{" is-active" if index == 0 else ""}" aria-pressed="{"true" if index == 0 else "false"}">{escape(str(snapshot["repo_id"]))}</button>'
         for index, snapshot in enumerate(normalized)
     )
     panels = "".join(
@@ -471,7 +471,7 @@ def _render_browser_panel(*, snapshot: dict[str, Any], index: int) -> str:
     tone = _tone_for_status(str(snapshot["status"]))
     hidden_attr = "" if index == 0 else " hidden"
     return f"""
-    <section class="repo-panel" data-repo-id="{escape(str(snapshot["repo_id"]))}" data-status="{escape(str(snapshot["status"]))}" data-tone="{tone}" aria-hidden="{'false' if index == 0 else 'true'}"{hidden_attr}>
+    <section class="repo-panel" data-repo-id="{escape(str(snapshot["repo_id"]))}" data-status="{escape(str(snapshot["status"]))}" data-tone="{tone}" aria-hidden="{"false" if index == 0 else "true"}"{hidden_attr}>
       {_render_snapshot_content(snapshot)}
     </section>
     """
@@ -491,8 +491,12 @@ def _render_snapshot_content(snapshot: dict[str, Any]) -> str:
         </section>
         """
 
-    metric_cards = "".join(_render_metric_card(metric) for metric in list(snapshot["metrics"])[:4])
-    generated_at = escape(str(snapshot["generated_at"]).replace("T", " ").replace("+00:00", " UTC"))
+    metric_cards = "".join(
+        _render_metric_card(metric) for metric in list(snapshot["metrics"])[:4]
+    )
+    generated_at = escape(
+        str(snapshot["generated_at"]).replace("T", " ").replace("+00:00", " UTC")
+    )
     current_window = snapshot["current_window"]
 
     return f"""
@@ -552,7 +556,7 @@ def _render_sparkline(*, metric: dict[str, Any]) -> str:
 
     series = list(metric["daily_series"])
     if not series:
-        return "<div class=\"subtle\">No data available.</div>"
+        return '<div class="subtle">No data available.</div>'
 
     width = 420
     height = 84
@@ -569,8 +573,26 @@ def _render_sparkline(*, metric: dict[str, Any]) -> str:
         min_value = 0.0
         max_value = 1.0
 
-    value_points = _series_points(series=series, key="value", width=chart_width, height=chart_height, min_value=min_value, max_value=max_value, padding_x=padding_x, padding_y=padding_y)
-    rolling_points = _series_points(series=series, key="rolling_value", width=chart_width, height=chart_height, min_value=min_value, max_value=max_value, padding_x=padding_x, padding_y=padding_y)
+    value_points = _series_points(
+        series=series,
+        key="value",
+        width=chart_width,
+        height=chart_height,
+        min_value=min_value,
+        max_value=max_value,
+        padding_x=padding_x,
+        padding_y=padding_y,
+    )
+    rolling_points = _series_points(
+        series=series,
+        key="rolling_value",
+        width=chart_width,
+        height=chart_height,
+        min_value=min_value,
+        max_value=max_value,
+        padding_x=padding_x,
+        padding_y=padding_y,
+    )
 
     baseline_y = _scale_y(
         value=0.0,
@@ -579,25 +601,25 @@ def _render_sparkline(*, metric: dict[str, Any]) -> str:
         height=chart_height,
         padding_y=padding_y,
     )
-    baseline = f"<line x1=\"{padding_x}\" y1=\"{baseline_y:.2f}\" x2=\"{padding_x + chart_width}\" y2=\"{baseline_y:.2f}\" stroke=\"rgba(46,51,84,0.8)\" stroke-width=\"1\" />"
+    baseline = f'<line x1="{padding_x}" y1="{baseline_y:.2f}" x2="{padding_x + chart_width}" y2="{baseline_y:.2f}" stroke="rgba(46,51,84,0.8)" stroke-width="1" />'
 
     value_path = _path_from_points(value_points)
     rolling_path = _path_from_points(rolling_points)
 
     value_svg = ""
     if value_path:
-        value_svg = f"<path d=\"{value_path}\" fill=\"none\" stroke=\"rgba(160,174,192,0.95)\" stroke-width=\"2\" />"
+        value_svg = f'<path d="{value_path}" fill="none" stroke="rgba(160,174,192,0.95)" stroke-width="2" />'
     rolling_svg = ""
     if rolling_path:
-        rolling_svg = f"<path d=\"{rolling_path}\" fill=\"none\" stroke=\"rgba(108,143,255,0.95)\" stroke-width=\"2.5\" />"
+        rolling_svg = f'<path d="{rolling_path}" fill="none" stroke="rgba(108,143,255,0.95)" stroke-width="2.5" />'
 
     points_svg = "".join(
-        f"<circle cx=\"{x:.2f}\" cy=\"{y:.2f}\" r=\"2.5\" fill=\"rgba(226,232,240,0.9)\" />"
+        f'<circle cx="{x:.2f}" cy="{y:.2f}" r="2.5" fill="rgba(226,232,240,0.9)" />'
         for x, y in value_points
     )
 
     return f"""
-    <svg viewBox="0 0 {width} {height}" role="img" aria-label="{escape(str(metric['name']))} sparkline">
+    <svg viewBox="0 0 {width} {height}" role="img" aria-label="{escape(str(metric["name"]))} sparkline">
       {baseline}
       {value_svg}
       {rolling_svg}
@@ -609,18 +631,20 @@ def _render_sparkline(*, metric: dict[str, Any]) -> str:
 def _render_chart_legend(*, metric: dict[str, Any]) -> str:
     """Render one compact legend that explains the sparkline encoding."""
 
-    has_rolling = any(row.get("rolling_value") is not None for row in metric["daily_series"])
+    has_rolling = any(
+        row.get("rolling_value") is not None for row in metric["daily_series"]
+    )
     items = [
-        "<span class=\"legend-item\"><span class=\"legend-swatch\"></span><span>Daily value</span></span>",
+        '<span class="legend-item"><span class="legend-swatch"></span><span>Daily value</span></span>',
     ]
     if has_rolling:
         items.append(
-            "<span class=\"legend-item\"><span class=\"legend-swatch rolling\"></span><span>7-day rolling average</span></span>"
+            '<span class="legend-item"><span class="legend-swatch rolling"></span><span>7-day rolling average</span></span>'
         )
     items.append(
-        "<span class=\"legend-item\"><span class=\"legend-swatch baseline\"></span><span>Zero baseline</span></span>"
+        '<span class="legend-item"><span class="legend-swatch baseline"></span><span>Zero baseline</span></span>'
     )
-    return f"<div class=\"chart-legend\">{''.join(items)}</div>"
+    return f'<div class="chart-legend">{"".join(items)}</div>'
 
 
 def _series_points(
@@ -660,7 +684,9 @@ def _series_points(
     return points
 
 
-def _scale_y(*, min_value: float, max_value: float, height: int, padding_y: int, value: float) -> float:
+def _scale_y(
+    *, min_value: float, max_value: float, height: int, padding_y: int, value: float
+) -> float:
     """Scale one numeric value into the sparkline y-space."""
 
     if max_value <= min_value:

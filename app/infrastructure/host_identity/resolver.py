@@ -7,7 +7,10 @@ from pathlib import Path
 
 from app.core.contracts.errors import ErrorDetail
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
-from app.infrastructure.host_transcripts.source_discovery import SUPPORTED_HOSTS, default_search_roots
+from app.infrastructure.host_transcripts.source_discovery import (
+    SUPPORTED_HOSTS,
+    default_search_roots,
+)
 from app.infrastructure.host_identity.claude_runtime import (
     detect_claude_runtime_without_hook,
     resolve_trusted_claude_caller_identity,
@@ -22,7 +25,9 @@ from app.infrastructure.host_identity.compatibility import (
     host_identity_drifted_error,
     host_identity_unsupported_error,
 )
-from app.infrastructure.host_transcripts.session_selection import discover_events_candidate
+from app.infrastructure.host_transcripts.session_selection import (
+    discover_events_candidate,
+)
 
 
 @dataclass(frozen=True)
@@ -60,14 +65,18 @@ def resolve_caller_identity() -> CallerIdentityResolution:
     claude_identity = resolve_trusted_claude_caller_identity()
     if claude_identity is not None:
         if claude_identity.trust_level == IdentityTrustLevel.UNSUPPORTED:
-            return CallerIdentityResolution(caller_identity=None, error=host_identity_unsupported_error())
+            return CallerIdentityResolution(
+                caller_identity=None, error=host_identity_unsupported_error()
+            )
         return CallerIdentityResolution(
             caller_identity=claude_identity,
             transcript_path_hint=resolve_trusted_claude_transcript_path(),
         )
 
     if detect_claude_runtime_without_hook():
-        return CallerIdentityResolution(caller_identity=None, error=host_hook_missing_error())
+        return CallerIdentityResolution(
+            caller_identity=None, error=host_hook_missing_error()
+        )
     return CallerIdentityResolution(caller_identity=None)
 
 
@@ -95,14 +104,20 @@ def resolve_trusted_events_source(
             if transcript_path is None:
                 return ResolvedEventsSource(
                     caller_identity=caller_identity,
-                    error=host_identity_drifted_error(caller_id=caller_identity.canonical_id or ""),
+                    error=host_identity_drifted_error(
+                        caller_id=caller_identity.canonical_id or ""
+                    ),
                 )
         else:
-            return ResolvedEventsSource(caller_identity=caller_identity, error=host_identity_unsupported_error())
+            return ResolvedEventsSource(
+                caller_identity=caller_identity, error=host_identity_unsupported_error()
+            )
     except FileNotFoundError:
         return ResolvedEventsSource(
             caller_identity=caller_identity,
-            error=host_identity_drifted_error(caller_id=caller_identity.canonical_id or ""),
+            error=host_identity_drifted_error(
+                caller_id=caller_identity.canonical_id or ""
+            ),
         )
 
     return ResolvedEventsSource(
@@ -125,7 +140,9 @@ def discover_untrusted_events_candidate(
 ) -> ResolvedEventsSource | None:
     """Discover the newest repo-matching host session as an untrusted fallback."""
 
-    discovery = discover_events_candidate(repo_root=repo_root, search_roots_by_host=search_roots_by_host)
+    discovery = discover_events_candidate(
+        repo_root=repo_root, search_roots_by_host=search_roots_by_host
+    )
     if discovery is None:
         return None
     caller_identity = CallerIdentity(

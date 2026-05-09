@@ -1,11 +1,16 @@
 """DB-level invariant contracts for write-related relational tables."""
+
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from app.infrastructure.db.models.episodes import episode_events, episodes, session_transfers
+from app.infrastructure.db.models.episodes import (
+    episode_events,
+    episodes,
+    session_transfers,
+)
 from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
 from app.infrastructure.db.models.memories import memories
 
@@ -48,8 +53,20 @@ def test_fact_update_rows_reject_identical_old_and_new_fact_ids(
     """fact_update rows should always reject identical old_fact_id and new_fact_id values."""
 
     with integration_session_factory() as session:
-        _insert_memory_row(session, memory_id="same-fact", repo_id="repo-a", kind="fact", text_value="Same fact.")
-        _insert_memory_row(session, memory_id="change-1", repo_id="repo-a", kind="change", text_value="Change.")
+        _insert_memory_row(
+            session,
+            memory_id="same-fact",
+            repo_id="repo-a",
+            kind="fact",
+            text_value="Same fact.",
+        )
+        _insert_memory_row(
+            session,
+            memory_id="change-1",
+            repo_id="repo-a",
+            kind="change",
+            text_value="Change.",
+        )
         session.commit()
 
         with pytest.raises(IntegrityError):
@@ -72,8 +89,20 @@ def test_fact_update_rows_reject_change_memory_matching_a_fact_endpoint(
     """fact_update rows should always reject change_id values that equal old_fact_id or new_fact_id."""
 
     with integration_session_factory() as session:
-        _insert_memory_row(session, memory_id="fact-a", repo_id="repo-a", kind="fact", text_value="Fact A.")
-        _insert_memory_row(session, memory_id="fact-b", repo_id="repo-a", kind="fact", text_value="Fact B.")
+        _insert_memory_row(
+            session,
+            memory_id="fact-a",
+            repo_id="repo-a",
+            kind="fact",
+            text_value="Fact A.",
+        )
+        _insert_memory_row(
+            session,
+            memory_id="fact-b",
+            repo_id="repo-a",
+            kind="fact",
+            text_value="Fact B.",
+        )
         session.commit()
 
         with pytest.raises(IntegrityError):
@@ -170,7 +199,9 @@ def test_session_transfer_rows_reject_self_transfers(
         session.rollback()
 
 
-def _insert_memory_row(session, *, memory_id: str, repo_id: str, kind: str, text_value: str) -> None:
+def _insert_memory_row(
+    session, *, memory_id: str, repo_id: str, kind: str, text_value: str
+) -> None:
     """Insert one minimal shellbrain row for direct schema-level tests."""
 
     session.execute(

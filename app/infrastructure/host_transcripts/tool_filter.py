@@ -18,7 +18,18 @@ _VALIDATION_FAMILIES = {
     "yarn test",
     "alembic",
 }
-_NOISY_COMMANDS = {"ls", "pwd", "cat", "rg", "grep", "find", "fd", "head", "tail", "sed"}
+_NOISY_COMMANDS = {
+    "ls",
+    "pwd",
+    "cat",
+    "rg",
+    "grep",
+    "find",
+    "fd",
+    "head",
+    "tail",
+    "sed",
+}
 _FAILED_PREFIXES = ("failed", "error", "exception")
 _MUTATION_PREFIXES = ("updated", "edited", "patched", "applied", "wrote")
 
@@ -48,9 +59,13 @@ def should_keep_tool_result(
         return True
     if normalized_command in _VALIDATION_FAMILIES:
         return True
-    if normalized_summary.startswith(_FAILED_PREFIXES) or normalized_summary.startswith(_MUTATION_PREFIXES):
+    if normalized_summary.startswith(_FAILED_PREFIXES) or normalized_summary.startswith(
+        _MUTATION_PREFIXES
+    ):
         return True
-    if normalized_text.startswith(_FAILED_PREFIXES) or normalized_text.startswith(_MUTATION_PREFIXES):
+    if normalized_text.startswith(_FAILED_PREFIXES) or normalized_text.startswith(
+        _MUTATION_PREFIXES
+    ):
         return True
     if normalized_tool in _NOISY_TOOLS:
         return False
@@ -76,7 +91,11 @@ def summarize_tool_result(
     if summary:
         return _normalize_summary(summary)
     if command_family in _VALIDATION_FAMILIES:
-        if is_error is True or (status or "").lower() in {"error", "failed", "failure"} or exit_code not in {None, 0}:
+        if (
+            is_error is True
+            or (status or "").lower() in {"error", "failed", "failure"}
+            or exit_code not in {None, 0}
+        ):
             return f"{command_family} failed"
         return f"{command_family} passed"
 
@@ -99,10 +118,9 @@ def _normalize_summary(value: str) -> str:
     if ":" in compact:
         prefix = compact.split(":", 1)[0].strip()
         lowered_prefix = prefix.lower()
-        if (
-            any(token in lowered_prefix for token in ("failed", "error", "exception"))
-            or lowered_prefix.startswith(_MUTATION_PREFIXES)
-        ):
+        if any(
+            token in lowered_prefix for token in ("failed", "error", "exception")
+        ) or lowered_prefix.startswith(_MUTATION_PREFIXES):
             return prefix
     if lowered.startswith("process exited with code"):
         return compact.splitlines()[0].strip()

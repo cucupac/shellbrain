@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from uuid import uuid4
 
-from app.core.interfaces.idgen import IIdGenerator
+from app.core.ports.idgen import IIdGenerator
 
 
 class UuidGenerator(IIdGenerator):

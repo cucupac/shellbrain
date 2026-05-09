@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
-from app.infrastructure.host_assets.managed_markdown import install_managed_markdown_block, inspect_managed_markdown_block
-from app.infrastructure.host_assets.managed_tree import install_asset_tree, is_shellbrain_managed_asset
-from app.infrastructure.host_assets.packaged_assets import load_packaged_text, packaged_asset_root
+from app.infrastructure.host_assets.managed_markdown import (
+    install_managed_markdown_block,
+    inspect_managed_markdown_block,
+)
+from app.infrastructure.host_assets.managed_tree import (
+    install_asset_tree,
+    is_shellbrain_managed_asset,
+)
+from app.infrastructure.host_assets.packaged_assets import (
+    load_packaged_text,
+    packaged_asset_root,
+)
 from app.infrastructure.host_assets.paths import default_claude_root
 from app.infrastructure.host_identity.claude_hook_install import (
     default_global_claude_settings_path,
@@ -17,7 +26,9 @@ CLAUDE_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
 CLAUDE_STARTUP_MARKER = "shellbrain-managed:claude-startup"
 
 
-def install_claude_assets(*, force: bool, render_install_status) -> list[str]:
+def install_claude_assets(
+    *, force: bool, render_install_status, session_start_module: str | None = None
+) -> list[str]:
     """Install the packaged Claude startup guidance, skills, and global hook."""
 
     claude_root = default_claude_root()
@@ -46,18 +57,29 @@ def install_claude_assets(*, force: bool, render_install_status) -> list[str]:
                     force=force,
                 ),
             )
+        )
+    settings_path = install_claude_hook(
+        settings_path=default_global_claude_settings_path(),
+        **(
+            {}
+            if session_start_module is None
+            else {"session_start_module": session_start_module}
+        ),
     )
-    settings_path = install_claude_hook(settings_path=default_global_claude_settings_path())
     lines.append(f"Claude global hook: installed at {settings_path}")
     return lines
 
 
-def inspect_claude_assets() -> tuple[dict[str, object], dict[str, object], dict[str, object]]:
+def inspect_claude_assets() -> tuple[
+    dict[str, object], dict[str, object], dict[str, object]
+]:
     """Inspect the default Claude startup guidance, primary skill, and global hook."""
 
     claude_root = default_claude_root()
     claude_skill_root = claude_root / "skills" / PRIMARY_CLAUDE_SKILL_NAME
-    claude_hook = inspect_claude_hook(settings_path=default_global_claude_settings_path())
+    claude_hook = inspect_claude_hook(
+        settings_path=default_global_claude_settings_path()
+    )
     return (
         inspect_managed_markdown_block(
             target_path=claude_root / "CLAUDE.md",
@@ -66,7 +88,9 @@ def inspect_claude_assets() -> tuple[dict[str, object], dict[str, object], dict[
         {
             "path": str(claude_skill_root),
             "installed": claude_skill_root.exists(),
-            "managed": is_shellbrain_managed_asset(target_root=claude_skill_root, asset_kind="claude_skill"),
+            "managed": is_shellbrain_managed_asset(
+                target_root=claude_skill_root, asset_kind="claude_skill"
+            ),
         },
         {
             "path": str(claude_hook.settings_path),

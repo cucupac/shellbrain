@@ -30,10 +30,16 @@ def infer_repo_id(repo_root: Path) -> str:
     return identity.repo_id
 
 
-def resolve_repo_context(*, repo_root_arg: str | None, repo_id_arg: str | None) -> RepoContext:
+def resolve_repo_context(
+    *, repo_root_arg: str | None, repo_id_arg: str | None
+) -> RepoContext:
     """Resolve repo_root and repo_id from explicit CLI flags or the current working directory."""
 
-    repo_root = Path(repo_root_arg).expanduser().resolve() if repo_root_arg else Path.cwd().resolve()
+    repo_root = (
+        Path(repo_root_arg).expanduser().resolve()
+        if repo_root_arg
+        else Path.cwd().resolve()
+    )
     if not repo_root.exists():
         raise ValueError(f"repo_root does not exist: {repo_root}")
     if not repo_root.is_dir():
@@ -44,10 +50,14 @@ def resolve_repo_context(*, repo_root_arg: str | None, repo_id_arg: str | None) 
         explicit_repo_root=repo_root_arg is not None,
         explicit_repo_id=repo_id_arg is not None,
     )
-    return RepoContext(repo_root=repo_root, repo_id=repo_id, registration_root=registration_root)
+    return RepoContext(
+        repo_root=repo_root, repo_id=repo_id, registration_root=registration_root
+    )
 
 
-def determine_registration_root(*, repo_root: Path, explicit_repo_root: bool, explicit_repo_id: bool) -> Path | None:
+def determine_registration_root(
+    *, repo_root: Path, explicit_repo_root: bool, explicit_repo_id: bool
+) -> Path | None:
     """Return the root that should auto-register on first real use, when any."""
 
     target = Path(repo_root).resolve()

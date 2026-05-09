@@ -10,8 +10,9 @@ import sys
 
 from app.startup.admin_db import get_optional_admin_db_dsn
 from app.startup.db import get_optional_db_dsn
-from app.core.use_cases.metrics.agent_behavior_analysis import build_agent_behavior_report
+from app.core.use_cases.metrics.analyze_agent_behavior import build_agent_behavior_report
 from app.infrastructure.db.engine import get_engine
+from app.infrastructure.db.queries.agent_behavior import fetch_agent_behavior_rows
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -30,7 +31,11 @@ def main(argv: list[str] | None = None) -> int:
     cutoff_at = _parse_cutoff(args.cutoff)
     engine = get_engine(dsn)
     try:
-        report = build_agent_behavior_report(engine=engine, cutoff_at=cutoff_at, window_days=args.days)
+        report = build_agent_behavior_report(
+            cutoff_at=cutoff_at,
+            window_days=args.days,
+            **fetch_agent_behavior_rows(engine=engine, cutoff_at=cutoff_at, window_days=args.days),
+        )
     finally:
         engine.dispose()
     json_text = json.dumps(report, indent=2 if args.pretty else None, sort_keys=True)

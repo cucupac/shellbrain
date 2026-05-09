@@ -42,7 +42,11 @@ def detect_claude_runtime_without_hook() -> bool:
         return False
     return any(
         os.getenv(name)
-        for name in ("CLAUDE_SESSION_ID", "CLAUDE_CODE_REMOTE_SESSION_ID", "CLAUDE_CODE_AGENT_NAME")
+        for name in (
+            "CLAUDE_SESSION_ID",
+            "CLAUDE_CODE_REMOTE_SESSION_ID",
+            "CLAUDE_CODE_AGENT_NAME",
+        )
     )
 
 

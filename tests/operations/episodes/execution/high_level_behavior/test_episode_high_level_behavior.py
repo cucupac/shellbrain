@@ -35,16 +35,29 @@ def test_codex_and_claude_code_imports_produce_the_same_stored_event_shape_for_e
             search_roots=list(claude_code_transcript_fixture["search_roots"]),
         )
 
-    codex_episode = fetch_rows(episodes, episodes.c.thread_id == codex_transcript_fixture["canonical_thread_id"])[0]
+    codex_episode = fetch_rows(
+        episodes,
+        episodes.c.thread_id == codex_transcript_fixture["canonical_thread_id"],
+    )[0]
     claude_episode = fetch_rows(
         episodes,
         episodes.c.thread_id == claude_code_transcript_fixture["canonical_thread_id"],
     )[0]
-    codex_events = _decoded_event_content(fetch_rows, episode_id=str(codex_episode["id"]))
-    claude_events = _decoded_event_content(fetch_rows, episode_id=str(claude_episode["id"]))
+    codex_events = _decoded_event_content(
+        fetch_rows, episode_id=str(codex_episode["id"])
+    )
+    claude_events = _decoded_event_content(
+        fetch_rows, episode_id=str(claude_episode["id"])
+    )
 
-    codex_shape = [(event["source"], event["content_kind"], event["content_text"]) for event in codex_events]
-    claude_shape = [(event["source"], event["content_kind"], event["content_text"]) for event in claude_events]
+    codex_shape = [
+        (event["source"], event["content_kind"], event["content_text"])
+        for event in codex_events
+    ]
+    claude_shape = [
+        (event["source"], event["content_kind"], event["content_text"])
+        for event in claude_events
+    ]
     assert codex_shape == claude_shape
 
 
@@ -64,8 +77,13 @@ def test_episode_import_stores_compact_event_content_rather_than_raw_noisy_trans
             search_roots=list(codex_transcript_fixture["search_roots"]),
         )
 
-    episode_row = fetch_rows(episodes, episodes.c.thread_id == codex_transcript_fixture["canonical_thread_id"])[0]
-    event_rows = fetch_rows(episode_events, episode_events.c.episode_id == str(episode_row["id"]))
+    episode_row = fetch_rows(
+        episodes,
+        episodes.c.thread_id == codex_transcript_fixture["canonical_thread_id"],
+    )[0]
+    event_rows = fetch_rows(
+        episode_events, episode_events.c.episode_id == str(episode_row["id"])
+    )
     decoded = [json.loads(str(row["content"])) for row in event_rows]
 
     base_fields = {
@@ -81,7 +99,9 @@ def test_episode_import_stores_compact_event_content_rather_than_raw_noisy_trans
     tool_fields = {"tool_name", "status", "is_error"}
     assert all(base_fields.issubset(set(event)) for event in decoded)
     assert all(
-        set(event) == base_fields if event["content_kind"] != "tool_result" else set(event) == base_fields | tool_fields
+        set(event) == base_fields
+        if event["content_kind"] != "tool_result"
+        else set(event) == base_fields | tool_fields
         for event in decoded
     )
     assert all("README.md" not in event["content_text"] for event in decoded)
@@ -103,7 +123,10 @@ def test_episode_import_preserves_user_and_assistant_order(
             search_roots=list(codex_transcript_fixture["search_roots"]),
         )
 
-    episode_row = fetch_rows(episodes, episodes.c.thread_id == codex_transcript_fixture["canonical_thread_id"])[0]
+    episode_row = fetch_rows(
+        episodes,
+        episodes.c.thread_id == codex_transcript_fixture["canonical_thread_id"],
+    )[0]
     decoded = _decoded_event_content(fetch_rows, episode_id=str(episode_row["id"]))
 
     assert [event["source"] for event in decoded[:2]] == ["user", "assistant"]

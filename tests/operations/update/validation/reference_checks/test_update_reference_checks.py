@@ -3,9 +3,9 @@
 from collections.abc import Callable
 
 from app.core.contracts.requests import MemoryUpdateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
+from app.core.entities.memories import MemoryKind, MemoryScope
 from app.infrastructure.db.uow import PostgresUnitOfWork
-from app.core.validation.memory_integrity import validate_update_integrity
+from app.core.use_cases.memories.reference_checks import validate_update_integrity
 
 
 def test_update_requires_visible_target_memory(
@@ -23,7 +23,10 @@ def test_update_requires_visible_target_memory(
     with uow_factory() as uow:
         missing_errors = validate_update_integrity(missing_request, uow)
 
-    assert any(error.code.value == "not_found" and error.field == "memory_id" for error in missing_errors)
+    assert any(
+        error.code.value == "not_found" and error.field == "memory_id"
+        for error in missing_errors
+    )
 
     seed_memory(
         memory_id="hidden-memory",
@@ -41,7 +44,10 @@ def test_update_requires_visible_target_memory(
     with uow_factory() as uow:
         hidden_errors = validate_update_integrity(hidden_request, uow)
 
-    assert any(error.code.value == "integrity_error" and error.field == "memory_id" for error in hidden_errors)
+    assert any(
+        error.code.value == "integrity_error" and error.field == "memory_id"
+        for error in hidden_errors
+    )
 
 
 def test_update_utility_vote_requires_visible_problem_memory(
@@ -162,7 +168,9 @@ def test_update_fact_update_requires_visible_fact_endpoints_and_visible_change_m
         },
     )
     with uow_factory() as uow:
-        missing_old_fact_errors = validate_update_integrity(missing_old_fact_request, uow)
+        missing_old_fact_errors = validate_update_integrity(
+            missing_old_fact_request, uow
+        )
 
     assert any(
         error.code.value == "not_found" and error.field == "update.old_fact_id"
@@ -203,7 +211,9 @@ def test_update_fact_update_requires_visible_fact_endpoints_and_visible_change_m
         },
     )
     with uow_factory() as uow:
-        missing_new_fact_errors = validate_update_integrity(missing_new_fact_request, uow)
+        missing_new_fact_errors = validate_update_integrity(
+            missing_new_fact_request, uow
+        )
 
     assert any(
         error.code.value == "not_found" and error.field == "update.new_fact_id"
@@ -251,7 +261,9 @@ def test_update_fact_update_requires_visible_fact_endpoints_and_visible_change_m
         },
     )
     with uow_factory() as uow:
-        wrong_target_kind_errors = validate_update_integrity(wrong_target_kind_request, uow)
+        wrong_target_kind_errors = validate_update_integrity(
+            wrong_target_kind_request, uow
+        )
 
     assert any(
         error.code.value == "integrity_error" and error.field == "memory_id"
@@ -414,7 +426,8 @@ def test_update_association_link_rejects_episode_event_evidence_from_another_rep
         errors = validate_update_integrity(request, uow)
 
     assert any(
-        error.code.value == "integrity_error" and error.field == "update.evidence_refs.0"
+        error.code.value == "integrity_error"
+        and error.field == "update.evidence_refs.0"
         for error in errors
     )
 
@@ -476,9 +489,13 @@ def test_update_matures_into_requires_frontier_source_and_mature_target(
     )
 
     with uow_factory() as uow:
-        non_frontier_source_errors = validate_update_integrity(non_frontier_source_request, uow)
+        non_frontier_source_errors = validate_update_integrity(
+            non_frontier_source_request, uow
+        )
     with uow_factory() as uow:
-        non_mature_target_errors = validate_update_integrity(non_mature_target_request, uow)
+        non_mature_target_errors = validate_update_integrity(
+            non_mature_target_request, uow
+        )
 
     assert any(
         error.code.value == "integrity_error" and error.field == "update.relation_type"
@@ -531,7 +548,9 @@ def test_update_optional_evidence_must_resolve_to_stored_episode_events_when_pre
     )
 
 
-def _make_update_request(*, repo_id: str, memory_id: str, update: dict[str, object]) -> MemoryUpdateRequest:
+def _make_update_request(
+    *, repo_id: str, memory_id: str, update: dict[str, object]
+) -> MemoryUpdateRequest:
     """Build a valid update request with caller-provided target and update payload."""
 
     return MemoryUpdateRequest.model_validate(

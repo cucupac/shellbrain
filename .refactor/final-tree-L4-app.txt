@@ -1,0 +1,540 @@
+app
+|-- __init__.py
+|-- __main__.py
+|-- __pycache__
+|   |-- __init__.cpython-314.pyc
+|   `-- __main__.cpython-314.pyc
+|-- core
+|   |-- __init__.py
+|   |-- __pycache__
+|   |   `-- __init__.cpython-314.pyc
+|   |-- contracts
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- concepts.cpython-314.pyc
+|   |   |   |-- errors.cpython-314.pyc
+|   |   |   |-- planned_effects.cpython-314.pyc
+|   |   |   |-- requests.cpython-314.pyc
+|   |   |   |-- responses.cpython-314.pyc
+|   |   |   `-- retrieval.cpython-314.pyc
+|   |   |-- concepts.py
+|   |   |-- errors.py
+|   |   |-- planned_effects.py
+|   |   |-- requests.py
+|   |   |-- responses.py
+|   |   `-- retrieval.py
+|   |-- entities
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- admin_errors.cpython-314.pyc
+|   |   |   |-- associations.cpython-314.pyc
+|   |   |   |-- backups.cpython-314.pyc
+|   |   |   |-- concepts.cpython-314.pyc
+|   |   |   |-- episodes.cpython-314.pyc
+|   |   |   |-- evidence.cpython-314.pyc
+|   |   |   |-- facts.cpython-314.pyc
+|   |   |   |-- guidance.cpython-314.pyc
+|   |   |   |-- identity.cpython-314.pyc
+|   |   |   |-- ids.cpython-314.pyc
+|   |   |   |-- memories.cpython-314.pyc
+|   |   |   |-- memory.cpython-314.pyc
+|   |   |   |-- runtime_context.cpython-314.pyc
+|   |   |   |-- session_state.cpython-314.pyc
+|   |   |   |-- settings.cpython-314.pyc
+|   |   |   `-- utility.cpython-314.pyc
+|   |   |-- admin_errors.py
+|   |   |-- associations.py
+|   |   |-- backups.py
+|   |   |-- concepts.py
+|   |   |-- episodes.py
+|   |   |-- evidence.py
+|   |   |-- facts.py
+|   |   |-- guidance.py
+|   |   |-- identity.py
+|   |   |-- ids.py
+|   |   |-- memories.py
+|   |   |-- runtime_context.py
+|   |   |-- session_state.py
+|   |   |-- settings.py
+|   |   `-- utility.py
+|   |-- policies
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   `-- __init__.cpython-314.pyc
+|   |   |-- concepts
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- relation_rules.py
+|   |   |   `-- search.py
+|   |   |-- memories
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- add_plan.py
+|   |   |   |-- link_rules.py
+|   |   |   `-- update_plan.py
+|   |   `-- retrieval
+|   |       |-- README.md
+|   |       |-- __init__.py
+|   |       |-- __pycache__
+|   |       |-- bm25.py
+|   |       |-- context_pack.py
+|   |       |-- expansion.py
+|   |       |-- fusion_rrf.py
+|   |       |-- lexical_query.py
+|   |       `-- scoring.py
+|   |-- ports
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- clock.cpython-314.pyc
+|   |   |   |-- concept_repositories.cpython-314.pyc
+|   |   |   |-- config.cpython-314.pyc
+|   |   |   |-- embeddings.cpython-314.pyc
+|   |   |   |-- episode_repositories.cpython-314.pyc
+|   |   |   |-- guidance.cpython-314.pyc
+|   |   |   |-- idgen.cpython-314.pyc
+|   |   |   |-- memory_repositories.cpython-314.pyc
+|   |   |   |-- metrics.cpython-314.pyc
+|   |   |   |-- retrieval.cpython-314.pyc
+|   |   |   |-- retrieval_repositories.cpython-314.pyc
+|   |   |   |-- session_state_store.cpython-314.pyc
+|   |   |   `-- unit_of_work.cpython-314.pyc
+|   |   |-- clock.py
+|   |   |-- concept_repositories.py
+|   |   |-- config.py
+|   |   |-- embeddings.py
+|   |   |-- episode_repositories.py
+|   |   |-- guidance.py
+|   |   |-- idgen.py
+|   |   |-- memory_repositories.py
+|   |   |-- metrics.py
+|   |   |-- retrieval.py
+|   |   |-- retrieval_repositories.py
+|   |   |-- session_state_store.py
+|   |   `-- unit_of_work.py
+|   `-- use_cases
+|       |-- __init__.py
+|       |-- __pycache__
+|       |   |-- __init__.cpython-314.pyc
+|       |   |-- build_guidance.cpython-314.pyc
+|       |   |-- manage_session_state.cpython-314.pyc
+|       |   |-- plan_execution.cpython-314.pyc
+|       |   `-- sync_episode.cpython-314.pyc
+|       |-- admin
+|       |   |-- __init__.py
+|       |   |-- __pycache__
+|       |   |-- analytics_diagnostics.py
+|       |   |-- create_backup.py
+|       |   |-- diagnose_runtime.py
+|       |   |-- generate_analytics_report.py
+|       |   |-- initialize_runtime.py
+|       |   |-- restore_backup.py
+|       |   `-- verify_backup.py
+|       |-- build_guidance.py
+|       |-- concepts
+|       |   |-- __init__.py
+|       |   |-- __pycache__
+|       |   |-- add.py
+|       |   |-- containment_checks.py
+|       |   |-- reference_checks.py
+|       |   |-- show.py
+|       |   |-- update.py
+|       |   `-- views.py
+|       |-- episodes
+|       |   |-- __init__.py
+|       |   |-- __pycache__
+|       |   |-- close_replaced_episode.py
+|       |   `-- sync_discovered_host_session.py
+|       |-- memories
+|       |   |-- __init__.py
+|       |   |-- __pycache__
+|       |   |-- add.py
+|       |   |-- reference_checks.py
+|       |   `-- update.py
+|       |-- metrics
+|       |   |-- __init__.py
+|       |   |-- __pycache__
+|       |   |-- analyze_agent_behavior.py
+|       |   |-- build_snapshot.py
+|       |   `-- generate_dashboard.py
+|       |-- plan_execution.py
+|       |-- retrieval
+|       |   |-- __init__.py
+|       |   |-- __pycache__
+|       |   |-- context_pack_pipeline.py
+|       |   |-- expansion.py
+|       |   |-- read.py
+|       |   |-- read_concepts.py
+|       |   |-- recall.py
+|       |   `-- seed_retrieval.py
+|       `-- sync_episode.py
+|-- entrypoints
+|   |-- __init__.py
+|   |-- __pycache__
+|   |   `-- __init__.cpython-314.pyc
+|   |-- cli
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   `-- main.cpython-314.pyc
+|   |   |-- endpoints
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- human
+|   |   |   |-- internal_agent
+|   |   |   `-- working_agent
+|   |   |-- main.py
+|   |   |-- parser
+|   |   |   |-- __init__.py
+|   |   |   `-- __pycache__
+|   |   |-- presenters
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- init.py
+|   |   |   |-- json.py
+|   |   |   `-- metrics.py
+|   |   `-- protocol
+|   |       |-- __init__.py
+|   |       |-- __pycache__
+|   |       |-- concepts.py
+|   |       |-- episodes.py
+|   |       |-- error_envelopes.py
+|   |       |-- hydration.py
+|   |       |-- memories.py
+|   |       |-- payload_validation.py
+|   |       |-- prepared.py
+|   |       `-- retrieval.py
+|   |-- host_hooks
+|   |   |-- __init__.py
+|   |   |-- claude_session_start.py
+|   |   `-- cursor_statusline.py
+|   `-- jobs
+|       |-- __init__.py
+|       `-- episode_sync.py
+|-- handlers
+|   |-- __init__.py
+|   |-- __pycache__
+|   |   |-- __init__.cpython-314.pyc
+|   |   |-- cli_operation.cpython-314.pyc
+|   |   |-- command_context.cpython-314.pyc
+|   |   |-- result_envelopes.cpython-314.pyc
+|   |   |-- session_state.cpython-314.pyc
+|   |   `-- telemetry_sink.cpython-314.pyc
+|   |-- cli_operation.py
+|   |-- command_context.py
+|   |-- human
+|   |   `-- __init__.py
+|   |-- internal_agent
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   `-- __init__.cpython-314.pyc
+|   |   |-- concepts
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- add.py
+|   |   |   `-- update.py
+|   |   |-- episodes
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- events.py
+|   |   |   |-- selection.py
+|   |   |   `-- serialization.py
+|   |   |-- memories
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- add.py
+|   |   |   |-- update.py
+|   |   |   `-- utility_vote_evidence.py
+|   |   `-- retrieval
+|   |       |-- __init__.py
+|   |       |-- __pycache__
+|   |       |-- execution.py
+|   |       `-- read.py
+|   |-- result_envelopes.py
+|   |-- session_state.py
+|   |-- telemetry_sink.py
+|   `-- working_agent
+|       |-- __init__.py
+|       |-- __pycache__
+|       |   |-- __init__.cpython-314.pyc
+|       |   `-- recall.cpython-314.pyc
+|       `-- recall.py
+|-- infrastructure
+|   |-- __init__.py
+|   |-- __pycache__
+|   |   `-- __init__.cpython-314.pyc
+|   |-- db
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- engine.cpython-314.pyc
+|   |   |   |-- session.cpython-314.pyc
+|   |   |   `-- uow.cpython-314.pyc
+|   |   |-- engine.py
+|   |   |-- models
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- associations.py
+|   |   |   |-- concepts.py
+|   |   |   |-- episodes.py
+|   |   |   |-- evidence.py
+|   |   |   |-- experiences.py
+|   |   |   |-- instance_metadata.py
+|   |   |   |-- memories.py
+|   |   |   |-- metadata.py
+|   |   |   |-- problem_runs.py
+|   |   |   |-- registry.py
+|   |   |   |-- telemetry.py
+|   |   |   |-- utility.py
+|   |   |   `-- views.py
+|   |   |-- queries
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- agent_behavior.py
+|   |   |   |-- analytics.py
+|   |   |   |-- metrics.py
+|   |   |   `-- metrics_adapter.py
+|   |   |-- repos
+|   |   |   |-- __init__.py
+|   |   |   |-- __pycache__
+|   |   |   |-- relational
+|   |   |   `-- semantic
+|   |   |-- session.py
+|   |   `-- uow.py
+|   |-- embeddings
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- local_provider.cpython-314.pyc
+|   |   |   `-- query_vector_search.cpython-314.pyc
+|   |   |-- local_provider.py
+|   |   `-- query_vector_search.py
+|   |-- host_assets
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- claude.cpython-314.pyc
+|   |   |   |-- codex.cpython-314.pyc
+|   |   |   |-- cursor.cpython-314.pyc
+|   |   |   |-- cursor_statusline_config.cpython-314.pyc
+|   |   |   |-- inspection.cpython-314.pyc
+|   |   |   |-- managed_markdown.cpython-314.pyc
+|   |   |   |-- managed_tree.cpython-314.pyc
+|   |   |   |-- packaged_assets.cpython-314.pyc
+|   |   |   |-- paths.cpython-314.pyc
+|   |   |   |-- service.cpython-314.pyc
+|   |   |   `-- types.cpython-314.pyc
+|   |   |-- claude.py
+|   |   |-- codex.py
+|   |   |-- cursor.py
+|   |   |-- cursor_statusline_config.py
+|   |   |-- inspection.py
+|   |   |-- managed_markdown.py
+|   |   |-- managed_tree.py
+|   |   |-- packaged_assets.py
+|   |   |-- paths.py
+|   |   |-- service.py
+|   |   `-- types.py
+|   |-- host_identity
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- claude_hook_install.cpython-314.pyc
+|   |   |   |-- claude_runtime.cpython-314.pyc
+|   |   |   |-- codex_runtime.cpython-314.pyc
+|   |   |   |-- compatibility.cpython-314.pyc
+|   |   |   `-- resolver.cpython-314.pyc
+|   |   |-- claude_hook_install.py
+|   |   |-- claude_runtime.py
+|   |   |-- codex_runtime.py
+|   |   |-- compatibility.py
+|   |   |-- cursor_statusline.py
+|   |   `-- resolver.py
+|   |-- host_transcripts
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- claude_code.cpython-314.pyc
+|   |   |   |-- codex.cpython-314.pyc
+|   |   |   |-- cursor.cpython-314.pyc
+|   |   |   |-- model_usage.cpython-314.pyc
+|   |   |   |-- normalization.cpython-314.pyc
+|   |   |   |-- session_selection.cpython-314.pyc
+|   |   |   |-- source_discovery.cpython-314.pyc
+|   |   |   `-- tool_filter.cpython-314.pyc
+|   |   |-- claude_code.py
+|   |   |-- codex.py
+|   |   |-- cursor.py
+|   |   |-- model_usage.py
+|   |   |-- normalization.py
+|   |   |-- session_selection.py
+|   |   |-- source_discovery.py
+|   |   `-- tool_filter.py
+|   |-- local_state
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- backup_manifest_store.cpython-314.pyc
+|   |   |   |-- episode_sync_status_store.cpython-314.pyc
+|   |   |   |-- init_lock.cpython-314.pyc
+|   |   |   |-- machine_config_store.cpython-314.pyc
+|   |   |   |-- paths.cpython-314.pyc
+|   |   |   |-- poller_lock.cpython-314.pyc
+|   |   |   |-- repo_registration_store.cpython-314.pyc
+|   |   |   `-- session_state_file_store.cpython-314.pyc
+|   |   |-- backup_manifest_store.py
+|   |   |-- episode_sync_status_store.py
+|   |   |-- init_lock.py
+|   |   |-- machine_config_store.py
+|   |   |-- paths.py
+|   |   |-- poller_lock.py
+|   |   |-- repo_registration_store.py
+|   |   `-- session_state_file_store.py
+|   |-- observability
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   `-- __init__.cpython-314.pyc
+|   |   `-- telemetry
+|   |       |-- __init__.py
+|   |       |-- __pycache__
+|   |       |-- operation_invocations.py
+|   |       |-- ports.py
+|   |       |-- read_records.py
+|   |       |-- recall_records.py
+|   |       |-- recorder.py
+|   |       |-- records.py
+|   |       |-- sync_records.py
+|   |       `-- write_records.py
+|   |-- postgres_admin
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- connection.cpython-314.pyc
+|   |   |   |-- destructive_guard.cpython-314.pyc
+|   |   |   |-- instance_guard.cpython-314.pyc
+|   |   |   |-- logical_backup.cpython-314.pyc
+|   |   |   |-- migrations.cpython-314.pyc
+|   |   |   |-- privileges.cpython-314.pyc
+|   |   |   `-- storage_setup.cpython-314.pyc
+|   |   |-- connection.py
+|   |   |-- destructive_guard.py
+|   |   |-- instance_guard.py
+|   |   |-- logical_backup.py
+|   |   |-- migrations.py
+|   |   |-- privileges.py
+|   |   |-- restore.py
+|   |   `-- storage_setup.py
+|   |-- process
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   |-- __init__.cpython-314.pyc
+|   |   |   |-- episode_poller.cpython-314.pyc
+|   |   |   `-- episode_sync_launcher.cpython-314.pyc
+|   |   |-- episode_poller.py
+|   |   `-- episode_sync_launcher.py
+|   |-- reporting
+|   |   |-- __init__.py
+|   |   |-- __pycache__
+|   |   |   `-- __init__.cpython-314.pyc
+|   |   `-- metrics
+|   |       |-- __init__.py
+|   |       |-- __pycache__
+|   |       |-- artifacts.py
+|   |       |-- browser.py
+|   |       |-- pager.py
+|   |       `-- render_html.py
+|   `-- runtime
+|       |-- __init__.py
+|       |-- __pycache__
+|       |   |-- __init__.cpython-314.pyc
+|       |   |-- docker_prerequisites.cpython-314.pyc
+|       |   |-- embedding_prewarm.cpython-314.pyc
+|       |   |-- external_runtime.cpython-314.pyc
+|       |   |-- init_admin.cpython-314.pyc
+|       |   |-- managed_runtime.cpython-314.pyc
+|       |   |-- system_clock.cpython-314.pyc
+|       |   |-- upgrade.cpython-314.pyc
+|       |   `-- uuid_generator.cpython-314.pyc
+|       |-- docker_prerequisites.py
+|       |-- embedding_prewarm.py
+|       |-- external_runtime.py
+|       |-- init_admin.py
+|       |-- managed_runtime.py
+|       |-- system_clock.py
+|       |-- upgrade.py
+|       `-- uuid_generator.py
+|-- settings
+|   |-- __init__.py
+|   |-- __pycache__
+|   |   |-- __init__.cpython-314.pyc
+|   |   `-- loader.cpython-314.pyc
+|   |-- defaults
+|   |   |-- create_policy.yaml
+|   |   |-- read_policy.yaml
+|   |   |-- runtime.yaml
+|   |   |-- thresholds.yaml
+|   |   `-- update_policy.yaml
+|   `-- loader.py
+`-- startup
+    |-- __init__.py
+    |-- __pycache__
+    |   |-- __init__.cpython-314.pyc
+    |   |-- admin.cpython-314.pyc
+    |   |-- admin_db.cpython-314.pyc
+    |   |-- admin_diagnose.cpython-314.pyc
+    |   |-- admin_initialize.cpython-314.pyc
+    |   |-- agent_operations.cpython-314.pyc
+    |   |-- analytics.cpython-314.pyc
+    |   |-- backup.cpython-314.pyc
+    |   |-- cli.cpython-314.pyc
+    |   |-- config.cpython-314.pyc
+    |   |-- create_policy.cpython-314.pyc
+    |   |-- db.cpython-314.pyc
+    |   |-- dsn_resolution.cpython-314.pyc
+    |   |-- embeddings.cpython-314.pyc
+    |   |-- episode_sync_launcher.cpython-314.pyc
+    |   |-- handlers.cpython-314.pyc
+    |   |-- host_hooks.cpython-314.pyc
+    |   |-- metrics.cpython-314.pyc
+    |   |-- migrations.cpython-314.pyc
+    |   |-- model_usage_backfill.cpython-314.pyc
+    |   |-- read_policy.cpython-314.pyc
+    |   |-- repo_context.cpython-314.pyc
+    |   |-- repos.cpython-314.pyc
+    |   |-- retrieval.cpython-314.pyc
+    |   |-- runtime_admin.cpython-314.pyc
+    |   |-- runtime_context.cpython-314.pyc
+    |   |-- thresholds.cpython-314.pyc
+    |   |-- update_policy.cpython-314.pyc
+    |   `-- use_cases.cpython-314.pyc
+    |-- admin.py
+    |-- admin_db.py
+    |-- admin_diagnose.py
+    |-- analytics.py
+    |-- backup.py
+    |-- cli.py
+    |-- config.py
+    |-- create_policy.py
+    |-- db.py
+    |-- dsn_resolution.py
+    |-- embeddings.py
+    |-- episode_poller.py
+    |-- episode_sync_launcher.py
+    |-- handlers.py
+    |-- host_hooks.py
+    |-- metrics.py
+    |-- migrations.py
+    |-- model_usage_backfill.py
+    |-- read_policy.py
+    |-- repo_context.py
+    |-- repos.py
+    |-- retrieval.py
+    |-- runtime_admin.py
+    |-- runtime_context.py
+    |-- thresholds.py
+    |-- update_policy.py
+    `-- use_cases.py
+
+105 directories, 433 files

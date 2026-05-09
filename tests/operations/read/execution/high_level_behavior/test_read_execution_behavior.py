@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
@@ -25,10 +25,9 @@ def test_read_never_mutates_database_state(
     request = make_read_request(repo_id="repo-a", query="deployment issue")
 
     with uow_factory() as uow:
-        result = execute_read_memory(request, uow)
+        execute_read_memory(request, uow)
 
     after = snapshot_row_counts()
-    assert result.status == "ok"
     assert before == after
 
 

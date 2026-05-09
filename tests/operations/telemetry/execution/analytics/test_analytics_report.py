@@ -58,7 +58,12 @@ def test_build_analytics_report_should_summarize_cross_repo_strengths_failures_a
     assert "utility_vote_followthrough" in gap_categories
     assert "events_before_write" in gap_categories
 
-    assert priority_categories & {"duplicate_evidence_ref", "duplicate_episode_event_seq", "events_before_write", "utility_vote_followthrough"}
+    assert priority_categories & {
+        "duplicate_evidence_ref",
+        "duplicate_episode_event_seq",
+        "events_before_write",
+        "utility_vote_followthrough",
+    }
 
     rollups = {row["repo_id"]: row for row in report["repo_rollups"]}
     assert rollups["github.com/example/good"]["strength_ids"]
@@ -67,7 +72,11 @@ def test_build_analytics_report_should_summarize_cross_repo_strengths_failures_a
     assert rollups["github.com/example/bad"]["failure_count"] == 8
     assert rollups["github.com/example/bad"]["capability_gap_ids"]
 
-    utility_gap = next(item for item in report["capability_gaps"] if item["category"] == "utility_vote_followthrough")
+    utility_gap = next(
+        item
+        for item in report["capability_gaps"]
+        if item["category"] == "utility_vote_followthrough"
+    )
     assert utility_gap["metrics"]["opportunity_count"] == 2
     assert utility_gap["metrics"]["gap_count"] == 1
 
@@ -96,7 +105,14 @@ def _seed_analytics_dataset(integration_engine, *, fixed_now: datetime) -> None:
                 created_at=created_at,
             )
         )
-        read_summary_rows.append(_read_summary_row(invocation_id=invocation_id, zero_results=False, created_at=created_at, query_text="good read"))
+        read_summary_rows.append(
+            _read_summary_row(
+                invocation_id=invocation_id,
+                zero_results=False,
+                created_at=created_at,
+                query_text="good read",
+            )
+        )
 
     for index in range(5):
         thread_id = f"codex:good-write-{index + 1}"
@@ -146,7 +162,9 @@ def _seed_analytics_dataset(integration_engine, *, fixed_now: datetime) -> None:
             )
         )
 
-    duplicate_message = 'duplicate key value violates unique constraint "uq_evidence_repo_ref"'
+    duplicate_message = (
+        'duplicate key value violates unique constraint "uq_evidence_repo_ref"'
+    )
     for index in range(3):
         op_rows.append(
             _operation_row(
@@ -323,7 +341,9 @@ def _operation_row(
     }
 
 
-def _read_summary_row(*, invocation_id: str, zero_results: bool, created_at: datetime, query_text: str) -> dict[str, object]:
+def _read_summary_row(
+    *, invocation_id: str, zero_results: bool, created_at: datetime, query_text: str
+) -> dict[str, object]:
     """Return one read_invocation_summaries row."""
 
     return {
@@ -364,7 +384,9 @@ def _write_summary_row(
         "planned_effect_count": 1,
         "created_memory_count": 1 if operation_command == "create" else 0,
         "archived_memory_count": 0,
-        "utility_observation_count": 1 if update_type in {"utility_vote", "utility_vote_batch"} else 0,
+        "utility_observation_count": 1
+        if update_type in {"utility_vote", "utility_vote_batch"}
+        else 0,
         "association_effect_count": 0,
         "fact_update_count": 0,
         "created_at": created_at,

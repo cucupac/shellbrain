@@ -6,7 +6,9 @@ from datetime import datetime, timedelta, timezone
 
 from sqlalchemy.engine import Engine
 
-from app.core.use_cases.admin.generate_analytics_report import build_analytics_report as build_analytics_report_from_rows
+from app.core.use_cases.admin.generate_analytics_report import (
+    build_analytics_report as build_analytics_report_from_rows,
+)
 from app.infrastructure.db.queries.analytics import (
     fetch_events_for_threads,
     fetch_operation_invocations,
@@ -36,7 +38,9 @@ def build_analytics_report(*, engine: Engine, days: int) -> dict:
             for row in pending_threads
             if isinstance(row.get("selected_thread_id"), str)
         ]
-        utility_vote_rows = fetch_utility_vote_writes_for_threads(conn=conn, thread_keys=thread_keys)
+        utility_vote_rows = fetch_utility_vote_writes_for_threads(
+            conn=conn, thread_keys=thread_keys
+        )
         event_thread_keys = [
             (str(row["repo_id"]), str(row["selected_thread_id"]))
             for row in write_rows

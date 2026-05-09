@@ -67,7 +67,9 @@ def assert_disposable_test_dsn(
     """Refuse to treat a protected or production-shaped database as disposable."""
 
     if protected_dsn and dsn_fingerprint(test_dsn) == dsn_fingerprint(protected_dsn):
-        raise RuntimeError("Refusing destructive test setup against the protected live database DSN.")
+        raise RuntimeError(
+            "Refusing destructive test setup against the protected live database DSN."
+        )
     protected_pairs = set(protected_host_ports or set())
     if protected_dsn:
         protected_pairs.add(host_port_from_dsn(protected_dsn))
@@ -125,7 +127,9 @@ def ensure_instance_metadata(
     return record
 
 
-def fetch_instance_metadata(dsn: str, *, include_legacy_lookup: bool = True) -> InstanceMetadataRecord | None:
+def fetch_instance_metadata(
+    dsn: str, *, include_legacy_lookup: bool = True
+) -> InstanceMetadataRecord | None:
     """Read one instance_metadata row when the safety table exists."""
 
     raw_dsn = dsn.replace("+psycopg", "")
@@ -158,7 +162,9 @@ def fetch_instance_metadata(dsn: str, *, include_legacy_lookup: bool = True) -> 
     return InstanceMetadataRecord(*row)
 
 
-def assert_destructive_allowed(dsn: str, *, allowed_modes: tuple[str, ...] = (TEST, SCRATCH)) -> None:
+def assert_destructive_allowed(
+    dsn: str, *, allowed_modes: tuple[str, ...] = (TEST, SCRATCH)
+) -> None:
     """Fail closed unless the target database is explicitly classified as disposable."""
 
     record = fetch_instance_metadata(dsn)
@@ -227,4 +233,6 @@ def _legacy_dsn_fingerprint(dsn: str) -> str:
     port = parsed.port or 5432
     db_name = parsed.path.lstrip("/")
     user = parsed.username or ""
-    return hashlib.sha256(f"{hostname}:{port}/{db_name}?user={user}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        f"{hostname}:{port}/{db_name}?user={user}".encode("utf-8")
+    ).hexdigest()

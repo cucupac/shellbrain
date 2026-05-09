@@ -19,7 +19,9 @@ from tests._shared.packaging_smoke_helpers import (
 )
 
 
-def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path: Path) -> None:
+def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
+    tmp_path: Path,
+) -> None:
     """editable installs should expose the shellbrain console script outside this repository."""
 
     repo_root = resolve_repo_root()
@@ -49,7 +51,9 @@ def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
     assert "events` before every write" in completed.stdout
 
 
-def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path: Path) -> None:
+def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(
+    tmp_path: Path,
+) -> None:
     """git-url installs should expose the shellbrain console script outside this repository."""
 
     if shutil.which("git") is None:
@@ -83,7 +87,9 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(tmp_path
     assert "events" in completed.stdout
 
 
-def test_editable_install_should_package_onboarding_assets_in_a_clean_room(tmp_path: Path) -> None:
+def test_editable_install_should_package_onboarding_assets_in_a_clean_room(
+    tmp_path: Path,
+) -> None:
     """editable installs should expose packaged onboarding assets through importlib.resources."""
 
     repo_root = resolve_repo_root()
@@ -126,7 +132,9 @@ def test_editable_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
     assert "# Shellbrain Usage Review" in completed.stdout
 
 
-def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(tmp_path: Path) -> None:
+def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
+    tmp_path: Path,
+) -> None:
     """git-url installs should also carry the packaged onboarding assets."""
 
     if shutil.which("git") is None:
@@ -173,13 +181,17 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(tmp_p
     assert "# Shellbrain Usage Review" in completed.stdout
 
 
-def test_admin_migrate_should_initialize_schema_from_an_installed_package(tmp_path: Path) -> None:
+def test_admin_migrate_should_initialize_schema_from_an_installed_package(
+    tmp_path: Path,
+) -> None:
     """installed-package admin migrate should initialize an empty database from packaged artifacts."""
 
     base_dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
     admin_base_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", base_dsn or "")
     if not base_dsn or not admin_base_dsn:
-        pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
+        pytest.skip(
+            "Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests."
+        )
 
     repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-migrate-repo"
@@ -237,7 +249,9 @@ def test_admin_migrate_should_preserve_pre_frontier_data_and_enable_frontier_sup
     base_dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
     admin_base_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", base_dsn or "")
     if not base_dsn or not admin_base_dsn:
-        pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
+        pytest.skip(
+            "Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests."
+        )
 
     repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-frontier-migrate-repo"
@@ -319,13 +333,19 @@ def test_admin_migrate_should_preserve_pre_frontier_data_and_enable_frontier_sup
                 cur.execute("SELECT version_num FROM alembic_version;")
                 assert cur.fetchone()[0] == "20260508_0016"
 
-                cur.execute("SELECT kind, text FROM memories WHERE id = 'pre0009-problem';")
+                cur.execute(
+                    "SELECT kind, text FROM memories WHERE id = 'pre0009-problem';"
+                )
                 assert cur.fetchone() == ("problem", "pre-frontier problem")
 
-                cur.execute("SELECT kind, text FROM memories WHERE id = 'pre0009-fact';")
+                cur.execute(
+                    "SELECT kind, text FROM memories WHERE id = 'pre0009-fact';"
+                )
                 assert cur.fetchone() == ("fact", "pre-frontier fact")
 
-                cur.execute("SELECT relation_type FROM association_edges WHERE id = 'pre0009-edge';")
+                cur.execute(
+                    "SELECT relation_type FROM association_edges WHERE id = 'pre0009-edge';"
+                )
                 assert cur.fetchone() == ("depends_on",)
 
                 cur.execute(
@@ -360,13 +380,19 @@ def test_admin_migrate_should_preserve_pre_frontier_data_and_enable_frontier_sup
                     """
                 )
 
-                cur.execute("SELECT kind FROM memories WHERE id = 'frontier-after-upgrade';")
+                cur.execute(
+                    "SELECT kind FROM memories WHERE id = 'frontier-after-upgrade';"
+                )
                 assert cur.fetchone() == ("frontier",)
 
-                cur.execute("SELECT relation_type FROM association_edges WHERE id = 'matures-into-edge';")
+                cur.execute(
+                    "SELECT relation_type FROM association_edges WHERE id = 'matures-into-edge';"
+                )
                 assert cur.fetchone() == ("matures_into",)
 
-                cur.execute("SELECT relation_type FROM association_observations WHERE id = 'matures-into-observation';")
+                cur.execute(
+                    "SELECT relation_type FROM association_observations WHERE id = 'matures-into-observation';"
+                )
                 assert cur.fetchone() == ("matures_into",)
 
         assert "Applied shellbrain schema migrations to head." in completed.stdout

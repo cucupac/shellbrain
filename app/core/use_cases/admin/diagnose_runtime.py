@@ -56,8 +56,12 @@ def build_diagnose_runtime_report(
     latest_backup = None if not backups else json.loads(json.dumps(backups[0].__dict__))
     backup_age_seconds = None
     if backups:
-        created_at = datetime.fromisoformat(backups[0].created_at.replace("Z", "+00:00"))
-        backup_age_seconds = int((checked_at - created_at.astimezone(timezone.utc)).total_seconds())
+        created_at = datetime.fromisoformat(
+            backups[0].created_at.replace("Z", "+00:00")
+        )
+        backup_age_seconds = int(
+            (checked_at - created_at.astimezone(timezone.utc)).total_seconds()
+        )
     home_root = ports.get_shellbrain_home()
     disk = ports.disk_usage(home_root if home_root.exists() else home_root.parent)
     repo_report = _build_repo_report(repo_root=repo_root, ports=ports)
@@ -79,29 +83,43 @@ def build_diagnose_runtime_report(
     report: dict[str, Any] = {
         "checked_at": checked_at.isoformat(),
         "shellbrain_home": str(home_root),
-        "config_status": _config_status(machine_config=machine_config, machine_error=machine_error),
+        "config_status": _config_status(
+            machine_config=machine_config, machine_error=machine_error
+        ),
         "config_error": machine_error,
         "runtime_mode": None if machine_config is None else machine_config.runtime_mode,
-        "bootstrap_state": None if machine_config is None else machine_config.bootstrap_state,
+        "bootstrap_state": None
+        if machine_config is None
+        else machine_config.bootstrap_state,
         "current_step": None if machine_config is None else machine_config.current_step,
         "last_error": None if machine_config is None else machine_config.last_error,
-        "config_version": None if machine_config is None else machine_config.config_version,
-        "bootstrap_version": None if machine_config is None else machine_config.bootstrap_version,
+        "config_version": None
+        if machine_config is None
+        else machine_config.config_version,
+        "bootstrap_version": None
+        if machine_config is None
+        else machine_config.bootstrap_version,
         "machine_instance": _machine_instance_report(machine_config, ports=ports),
         "runtime_warnings": runtime_warnings,
-        "effective_config": _effective_config_summary(machine_config=machine_config, app_dsn=app_dsn, admin_dsn=admin_dsn),
+        "effective_config": _effective_config_summary(
+            machine_config=machine_config, app_dsn=app_dsn, admin_dsn=admin_dsn
+        ),
         "app_dsn_configured": bool(app_dsn),
         "admin_dsn_configured": bool(admin_dsn),
         "instance": None if instance is None else instance.__dict__,
         "app_role_warnings": app_role_warnings,
         "admin_role_warnings": admin_role_warnings,
-        "schema_revision": None if not app_dsn else ports.fetch_schema_revision(app_dsn),
+        "schema_revision": None
+        if not app_dsn
+        else ports.fetch_schema_revision(app_dsn),
         "backup_root": str(backup_root),
         "backup_count": len(backups),
         "latest_backup": latest_backup,
         "backup_age_seconds": backup_age_seconds,
         "disk_free_bytes": disk.free,
-        "disk_warning": None if disk.free >= _LOW_DISK_WARNING_BYTES else "Low free disk space under Shellbrain home.",
+        "disk_warning": None
+        if disk.free >= _LOW_DISK_WARNING_BYTES
+        else "Low free disk space under Shellbrain home.",
         "host_integrations": {
             "codex_startup_guidance": host_integrations.codex_startup_guidance,
             "codex_skill": host_integrations.codex_skill,
@@ -113,8 +131,13 @@ def build_diagnose_runtime_report(
         },
         "repo": repo_report,
     }
-    if repo_report and repo_report.get("identity_strength") == ports.identity_strength_weak_local:
-        report["repo_warning"] = "Repo identity is weak-local and will change if this directory moves."
+    if (
+        repo_report
+        and repo_report.get("identity_strength") == ports.identity_strength_weak_local
+    ):
+        report["repo_warning"] = (
+            "Repo identity is weak-local and will change if this directory moves."
+        )
     claude_hook = report["host_integrations"]["claude_global_hook"]
     if claude_hook.get("managed") and not claude_hook.get("executable_exists", False):
         report["host_integration_warning"] = (
@@ -123,25 +146,37 @@ def build_diagnose_runtime_report(
     return report
 
 
-def _build_repo_report(*, repo_root: Path | None, ports: DiagnoseRuntimePorts) -> dict[str, Any] | None:
+def _build_repo_report(
+    *, repo_root: Path | None, ports: DiagnoseRuntimePorts
+) -> dict[str, Any] | None:
     if repo_root is None:
         return None
     target = Path(repo_root).expanduser().resolve()
     git_root = ports.resolve_git_root(target)
     registration = ports.load_repo_registration_for_target(target)
-    if registration is None and git_root is None and not (target / ".shellbrain").exists():
+    if (
+        registration is None
+        and git_root is None
+        and not (target / ".shellbrain").exists()
+    ):
         return None
     return {
         "repo_root": str(target),
         "git_root": str(git_root) if git_root is not None else None,
         "registered": registration is not None,
         "repo_id": None if registration is None else registration.repo_id,
-        "identity_strength": None if registration is None else registration.identity_strength,
+        "identity_strength": None
+        if registration is None
+        else registration.identity_strength,
         "source_remote": None if registration is None else registration.source_remote,
-        "machine_instance_id": None if registration is None else registration.machine_instance_id,
+        "machine_instance_id": None
+        if registration is None
+        else registration.machine_instance_id,
         "registered_at": None if registration is None else registration.registered_at,
         "claude_status": None if registration is None else registration.claude_status,
-        "claude_settings_path": None if registration is None else registration.claude_settings_path,
+        "claude_settings_path": None
+        if registration is None
+        else registration.claude_settings_path,
         "claude_note": None if registration is None else registration.claude_note,
     }
 
@@ -154,7 +189,9 @@ def _config_status(*, machine_config: Any | None, machine_error: str | None) -> 
     return "absent"
 
 
-def _machine_instance_report(machine_config: Any | None, *, ports: DiagnoseRuntimePorts) -> dict[str, Any] | None:
+def _machine_instance_report(
+    machine_config: Any | None, *, ports: DiagnoseRuntimePorts
+) -> dict[str, Any] | None:
     if machine_config is None:
         return None
     report: dict[str, Any] = {
@@ -171,7 +208,10 @@ def _machine_instance_report(machine_config: Any | None, *, ports: DiagnoseRunti
             "last_error": machine_config.embeddings.last_error,
         },
     }
-    if machine_config.runtime_mode == ports.runtime_mode_managed_local and machine_config.managed is not None:
+    if (
+        machine_config.runtime_mode == ports.runtime_mode_managed_local
+        and machine_config.managed is not None
+    ):
         report.update(
             {
                 "container_name": machine_config.managed.container_name,
@@ -184,15 +224,21 @@ def _machine_instance_report(machine_config: Any | None, *, ports: DiagnoseRunti
         )
         return report
     if machine_config.runtime_mode == ports.runtime_mode_external_postgres:
-        report["database"] = ports.fingerprint_summary(machine_config.database.admin_dsn)
+        report["database"] = ports.fingerprint_summary(
+            machine_config.database.admin_dsn
+        )
     return report
 
 
-def _runtime_warnings(machine_config: Any | None, *, ports: DiagnoseRuntimePorts) -> list[str]:
+def _runtime_warnings(
+    machine_config: Any | None, *, ports: DiagnoseRuntimePorts
+) -> list[str]:
     if machine_config is None:
         return []
     if machine_config.runtime_mode == ports.runtime_mode_external_postgres:
-        return ports.inspect_external_runtime(admin_dsn=machine_config.database.admin_dsn)
+        return ports.inspect_external_runtime(
+            admin_dsn=machine_config.database.admin_dsn
+        )
     return []
 
 

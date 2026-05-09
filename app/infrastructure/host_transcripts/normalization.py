@@ -5,7 +5,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.infrastructure.host_transcripts.claude_code import normalize_claude_code_transcript
+from app.infrastructure.host_transcripts.claude_code import (
+    normalize_claude_code_transcript,
+)
 from app.infrastructure.host_transcripts.codex import normalize_codex_transcript
 from app.infrastructure.host_transcripts.cursor import normalize_cursor_transcript
 

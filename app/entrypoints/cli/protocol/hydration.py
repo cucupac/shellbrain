@@ -5,7 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 
-def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]) -> dict[str, Any]:
+def hydrate_read_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]
+) -> dict[str, Any]:
     """Hydrate read payloads with inferred defaults before strict validation."""
 
     if not isinstance(defaults.get("limits_by_mode"), dict):
@@ -26,7 +28,9 @@ def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defa
         mode = str(merged["mode"])
         limits_by_mode = defaults["limits_by_mode"]
         if mode not in limits_by_mode:
-            raise ValueError(f"read hydration defaults must define limit for mode: {mode}")
+            raise ValueError(
+                f"read hydration defaults must define limit for mode: {mode}"
+            )
         merged["limit"] = limits_by_mode[mode]
     expand_defaults = dict(defaults["expand"])
     incoming_expand = merged.get("expand")
@@ -39,7 +43,9 @@ def hydrate_read_payload(payload: dict[str, Any], *, inferred_repo_id: str, defa
     return merged
 
 
-def hydrate_create_payload(payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]) -> dict[str, Any]:
+def hydrate_create_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]
+) -> dict[str, Any]:
     """Hydrate create payloads with inferred scope defaults."""
 
     if "scope" not in defaults:
@@ -52,7 +58,9 @@ def hydrate_create_payload(payload: dict[str, Any], *, inferred_repo_id: str, de
     return merged
 
 
-def hydrate_events_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
+def hydrate_events_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str
+) -> dict[str, Any]:
     """Hydrate events payloads with inferred repo defaults."""
 
     merged = dict(payload)
@@ -62,7 +70,9 @@ def hydrate_events_payload(payload: dict[str, Any], *, inferred_repo_id: str) ->
     return merged
 
 
-def hydrate_update_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
+def hydrate_update_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str
+) -> dict[str, Any]:
     """Hydrate update payloads with inferred repo defaults."""
 
     merged = dict(payload)
@@ -71,10 +81,31 @@ def hydrate_update_payload(payload: dict[str, Any], *, inferred_repo_id: str) ->
     return merged
 
 
-def hydrate_concept_payload(payload: dict[str, Any], *, inferred_repo_id: str) -> dict[str, Any]:
-    """Hydrate concept endpoint payloads with inferred repo defaults."""
+def hydrate_concept_add_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str
+) -> dict[str, Any]:
+    """Hydrate concept-add payloads with inferred repo defaults."""
 
     merged = dict(payload)
     merged.setdefault("repo_id", inferred_repo_id)
     return merged
 
+
+def hydrate_concept_update_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str
+) -> dict[str, Any]:
+    """Hydrate concept-update payloads with inferred repo defaults."""
+
+    merged = dict(payload)
+    merged.setdefault("repo_id", inferred_repo_id)
+    return merged
+
+
+def hydrate_concept_show_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str
+) -> dict[str, Any]:
+    """Hydrate concept-show payloads with inferred repo defaults."""
+
+    merged = dict(payload)
+    merged.setdefault("repo_id", inferred_repo_id)
+    return merged

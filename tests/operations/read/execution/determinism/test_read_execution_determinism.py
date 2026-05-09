@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
@@ -94,4 +94,3 @@ def test_read_produces_deterministic_ordering_on_unchanged_snapshot(
     second_ids = item_ids(second)
     assert len(first_ids) >= 2
     assert first_ids == second_ids
-

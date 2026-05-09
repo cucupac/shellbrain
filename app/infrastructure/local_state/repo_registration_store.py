@@ -133,11 +133,17 @@ def register_repo_for_target(
     """Register one target repo idempotently and return whether the file changed."""
 
     target = Path(repo_root).resolve()
-    identity = resolve_repo_identity(repo_root=target, explicit_repo_id=explicit_repo_id)
-    registration_root = Path(identity.git_root).resolve() if identity.git_root is not None else target
+    identity = resolve_repo_identity(
+        repo_root=target, explicit_repo_id=explicit_repo_id
+    )
+    registration_root = (
+        Path(identity.git_root).resolve() if identity.git_root is not None else target
+    )
     existing = load_repo_registration(registration_root)
     claude_status = existing.claude_status if existing is not None else "not_checked"
-    claude_settings_path = existing.claude_settings_path if existing is not None else None
+    claude_settings_path = (
+        existing.claude_settings_path if existing is not None else None
+    )
     claude_note = existing.claude_note if existing is not None else None
     if existing is not None and _registration_matches(
         existing=existing,
@@ -164,7 +170,9 @@ def register_repo_for_target(
     return registration, True
 
 
-def resolve_repo_identity(*, repo_root: Path, explicit_repo_id: str | None = None) -> RepoIdentity:
+def resolve_repo_identity(
+    *, repo_root: Path, explicit_repo_id: str | None = None
+) -> RepoIdentity:
     """Resolve repo identity using explicit override, git remotes, or weak local fallback."""
 
     target = Path(repo_root).resolve()
@@ -288,7 +296,9 @@ def _optional_str(value: Any) -> str | None:
     if value is None:
         return None
     if not isinstance(value, str):
-        raise ValueError("Optional repo registration fields must be strings when present.")
+        raise ValueError(
+            "Optional repo registration fields must be strings when present."
+        )
     return value or None
 
 

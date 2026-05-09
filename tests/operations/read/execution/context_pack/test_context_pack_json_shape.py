@@ -4,8 +4,8 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.contracts.requests import MemoryReadRequest
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -28,7 +28,13 @@ def test_read_context_pack_should_always_order_sections_as_meta_direct_explicit_
 
     result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
 
-    assert list(result.data["pack"].keys()) == ["meta", "direct", "explicit_related", "implicit_related", "concepts"]
+    assert list(result.data["pack"].keys()) == [
+        "meta",
+        "direct",
+        "explicit_related",
+        "implicit_related",
+        "concepts",
+    ]
 
 
 def test_read_context_pack_should_always_include_stable_concepts_section(
@@ -146,12 +152,12 @@ def _execute_stubbed_read(
     """Execute one read call with deterministic scored candidates for JSON-shape tests."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
+        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword: [
+        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
+        lambda semantic, keyword, **kwargs: [
             {
                 "memory_id": "direct-1",
                 "rrf_score": 0.99,
@@ -163,7 +169,7 @@ def _execute_stubbed_read(
         ],
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
+        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {
@@ -189,7 +195,7 @@ def _execute_stubbed_read(
         },
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.score_candidates",
+        "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
 

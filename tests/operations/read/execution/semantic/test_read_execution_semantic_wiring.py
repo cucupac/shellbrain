@@ -6,9 +6,11 @@ from typing import Any
 import pytest
 
 from app.core.contracts.errors import ErrorCode
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
-from app.startup.agent_operations import handle_read
-from app.infrastructure.db.repos.semantic.semantic_retrieval_repo import SemanticRetrievalRepo
+from app.core.use_cases.retrieval.read import execute_read_memory
+from tests.operations._shared.handler_calls import handle_read
+from app.infrastructure.db.repos.semantic.semantic_retrieval_repo import (
+    SemanticRetrievalRepo,
+)
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
@@ -143,7 +145,10 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
         _ = (args, kwargs)
         raise RuntimeError("query embedding failed")
 
-    monkeypatch.setattr("app.core.use_cases.memory_retrieval.read_memory.build_context_pack", _build_context_pack_raising)
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.read.build_context_pack",
+        _build_context_pack_raising,
+    )
 
     result = handle_read(
         {"query": "latent semantic regression"},
@@ -172,4 +177,3 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
             "field": None,
         }
     ]
-

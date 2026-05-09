@@ -6,7 +6,9 @@ import pytest
 from sqlalchemy import text
 
 from app.infrastructure.db.models.registry import target_metadata
-from tests.operations._shared.destructive_guardrail_fixtures import assert_destructive_test_setup_allowed
+from tests.operations._shared.destructive_guardrail_fixtures import (
+    assert_destructive_test_setup_allowed,
+)
 from tests.operations._shared.docker_persistence_fixtures import *  # noqa: F401,F403
 from tests.operations._shared.integration_db_fixtures import (  # noqa: F401
     admin_db_dsn,
@@ -25,7 +27,7 @@ from tests.operations._shared.integration_db_fixtures import (  # noqa: F401
     uow_factory,
 )
 from tests.operations._shared.telemetry_db_fixtures import *  # noqa: F401,F403
-from tests.operations.episodes.conftest import claude_code_transcript_fixture, codex_transcript_fixture  # noqa: F401
+from tests.operations.episodes.conftest import *  # noqa: F401,F403
 
 
 @pytest.fixture

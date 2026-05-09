@@ -11,10 +11,20 @@ import subprocess
 import psycopg
 from psycopg import sql
 
-from app.infrastructure.local_state.paths import get_machine_backups_dir, get_machine_models_dir, get_machine_postgres_data_dir, get_shellbrain_home
-from app.infrastructure.postgres_admin.destructive_guard import backup_and_verify_before_destructive_action
+from app.infrastructure.local_state.paths import (
+    get_machine_backups_dir,
+    get_machine_models_dir,
+    get_machine_postgres_data_dir,
+    get_shellbrain_home,
+)
+from app.infrastructure.postgres_admin.destructive_guard import (
+    backup_and_verify_before_destructive_action,
+)
 from app.core.entities.admin_errors import InitConflictError
-from app.infrastructure.postgres_admin.instance_guard import dsn_fingerprint, ensure_instance_metadata
+from app.infrastructure.postgres_admin.instance_guard import (
+    dsn_fingerprint,
+    ensure_instance_metadata,
+)
 from app.infrastructure.local_state.machine_config_store import (
     BOOTSTRAP_STATE_REPAIR_NEEDED,
     BOOTSTRAP_STATE_PROVISIONING,
@@ -93,14 +103,19 @@ def ensure_managed_container(config: MachineConfig) -> bool:
     """Create or start the managed Postgres container."""
 
     if config.managed is None:
-        raise InitConflictError("Managed-local Shellbrain config is missing managed container metadata.")
+        raise InitConflictError(
+            "Managed-local Shellbrain config is missing managed container metadata."
+        )
     info = inspect_container(config.managed.container_name)
     if info is None:
         _create_managed_container(config)
         _start_container(config.managed.container_name)
         return True
     labels = info.get("Config", {}).get("Labels", {}) or {}
-    if labels.get(MANAGED_LABEL) != "true" or labels.get(MANAGED_HOME_LABEL) != _home_hash():
+    if (
+        labels.get(MANAGED_LABEL) != "true"
+        or labels.get(MANAGED_HOME_LABEL) != _home_hash()
+    ):
         raise InitConflictError(
             f"Container {config.managed.container_name} already exists but is not owned by Shellbrain for this machine state."
         )
@@ -119,7 +134,9 @@ def backup_before_repair(config: MachineConfig) -> None:
     """Create and verify a logical backup before mutating a managed instance."""
 
     if config.managed is None:
-        raise InitConflictError("Managed-local Shellbrain config is missing managed container metadata.")
+        raise InitConflictError(
+            "Managed-local Shellbrain config is missing managed container metadata."
+        )
     backup_and_verify_before_destructive_action(
         admin_dsn=config.database.admin_dsn,
         backup_root=Path(config.backups.root),
@@ -134,23 +151,36 @@ def reconcile_database(config: MachineConfig) -> bool:
     """Create or repair managed roles, database, extension, and grants."""
 
     if config.managed is None:
-        raise InitConflictError("Managed-local Shellbrain config is missing managed container metadata.")
+        raise InitConflictError(
+            "Managed-local Shellbrain config is missing managed container metadata."
+        )
     changed = False
     raw_admin_dsn = config.database.admin_dsn.replace("+psycopg", "")
     postgres_dsn = _replace_database(raw_admin_dsn, "postgres")
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (config.managed.db_name,))
+            cur.execute(
+                "SELECT 1 FROM pg_database WHERE datname = %s",
+                (config.managed.db_name,),
+            )
             if cur.fetchone() is None:
-                cur.execute(sql.SQL("CREATE DATABASE {}").format(sql.Identifier(config.managed.db_name)))
+                cur.execute(
+                    sql.SQL("CREATE DATABASE {}").format(
+                        sql.Identifier(config.managed.db_name)
+                    )
+                )
                 changed = True
 
     with psycopg.connect(raw_admin_dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (config.managed.app_user,))
+            cur.execute(
+                "SELECT 1 FROM pg_roles WHERE rolname = %s", (config.managed.app_user,)
+            )
             if cur.fetchone() is None:
                 cur.execute(
-                    sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}").format(
+                    sql.SQL(
+                        "CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}"
+                    ).format(
                         sql.Identifier(config.managed.app_user),
                         sql.Literal(config.managed.app_password),
                     ),
@@ -170,7 +200,9 @@ def reconcile_database(config: MachineConfig) -> bool:
                     sql.Identifier(config.managed.app_user),
                 )
             )
-    reconcile_app_role_privileges(admin_dsn=config.database.admin_dsn, app_dsn=config.database.app_dsn)
+    reconcile_app_role_privileges(
+        admin_dsn=config.database.admin_dsn, app_dsn=config.database.app_dsn
+    )
     ensure_instance_metadata(
         config.database.admin_dsn,
         instance_mode="live",
@@ -180,7 +212,9 @@ def reconcile_database(config: MachineConfig) -> bool:
     return changed
 
 
-def recover_machine_config_from_docker(*, embeddings: dict[str, object]) -> MachineConfig | None:
+def recover_machine_config_from_docker(
+    *, embeddings: dict[str, object]
+) -> MachineConfig | None:
     """Attempt to recover one unique managed instance for the current home root."""
 
     completed = subprocess.run(
@@ -325,7 +359,10 @@ def _create_managed_container(config: MachineConfig) -> None:
     ]
     completed = subprocess.run(command, capture_output=True, text=True, check=False)
     if completed.returncode != 0:
-        raise InitConflictError(completed.stderr.strip() or f"Failed to create container {config.managed.container_name}.")
+        raise InitConflictError(
+            completed.stderr.strip()
+            or f"Failed to create container {config.managed.container_name}."
+        )
 
 
 def _start_container(container_name: str) -> None:
@@ -338,7 +375,9 @@ def _start_container(container_name: str) -> None:
         check=False,
     )
     if completed.returncode != 0:
-        raise InitConflictError(completed.stderr.strip() or f"Failed to start container {container_name}.")
+        raise InitConflictError(
+            completed.stderr.strip() or f"Failed to start container {container_name}."
+        )
 
 
 def _select_managed_port() -> int:
@@ -355,7 +394,9 @@ def _select_managed_port() -> int:
             except OSError:
                 continue
             return port
-    raise InitConflictError("No free reserved port is available for the managed Shellbrain Postgres instance.")
+    raise InitConflictError(
+        "No free reserved port is available for the managed Shellbrain Postgres instance."
+    )
 
 
 def _replace_database(dsn: str, db_name: str) -> str:

@@ -1,33 +1,36 @@
-"""CLI-handler contracts for the JSON-first concept endpoint."""
+"""CLI-handler contracts for the JSON-first concept endpoints."""
 
 from collections.abc import Callable
 from pathlib import Path
 
-from app.startup.agent_operations import handle_concept
+from app.core.contracts.concepts import ConceptAddRequest, ConceptUpdateRequest
+from tests.operations._shared.handler_calls import handle_concept_add, handle_concept_update
 from app.infrastructure.db.models.concepts import concepts
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
-def test_concept_handler_should_apply_json_payload(
+def test_concept_add_handler_should_add_json_payload(
     uow_factory: Callable[[], PostgresUnitOfWork],
     fetch_rows: Callable[..., list[dict[str, object]]],
     tmp_path: Path,
 ) -> None:
-    """concept handler should expose one JSON-first apply surface."""
+    """concept add handler should expose one JSON-first add surface."""
 
-    result = handle_concept(
-        {
-            "schema_version": "concept.v1",
-            "mode": "apply",
-            "actions": [
-                {
-                    "type": "upsert_concept",
-                    "slug": "deposit-addresses",
-                    "name": "Deposit Addresses",
-                    "kind": "domain",
-                }
-            ],
-        },
+    result = handle_concept_add(
+        ConceptAddRequest.model_validate(
+            {
+                "schema_version": "concept.v1",
+                "actions": [
+                    {
+                        "type": "add_concept",
+                        "slug": "deposit-addresses",
+                        "name": "Deposit Addresses",
+                        "kind": "domain",
+                    }
+                ],
+                "repo_id": "repo-a",
+            }
+        ),
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
         repo_root=tmp_path,
@@ -38,36 +41,82 @@ def test_concept_handler_should_apply_json_payload(
     assert len(rows) == 1
 
 
-def test_concept_handler_should_show_dynamic_preview_concept(
+def test_concept_update_handler_should_use_distinct_update_path(
     uow_factory: Callable[[], PostgresUnitOfWork],
+    fetch_rows: Callable[..., list[dict[str, object]]],
     tmp_path: Path,
 ) -> None:
-    """concept handler show mode should return a dynamic preview_concept."""
+    """concept update handler should mutate an existing concept without delegating to add."""
 
-    handle_concept(
-        {
-            "schema_version": "concept.v1",
-            "mode": "apply",
-            "actions": [
-                {"type": "upsert_concept", "slug": "deposit-addresses", "name": "Deposit Addresses", "kind": "domain"}
-            ],
-        },
+    handle_concept_add(
+        ConceptAddRequest.model_validate(
+            {
+                "schema_version": "concept.v1",
+                "actions": [
+                    {
+                        "type": "add_concept",
+                        "slug": "deposit-addresses",
+                        "name": "Deposit Addresses",
+                        "kind": "domain",
+                    }
+                ],
+                "repo_id": "repo-a",
+            }
+        ),
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
         repo_root=tmp_path,
     )
 
-    result = handle_concept(
-        {
-            "schema_version": "concept.v1",
-            "mode": "show",
-            "concept": "deposit-addresses",
-            "include": ["preview_concept"],
-        },
+    result = handle_concept_update(
+        ConceptUpdateRequest.model_validate(
+            {
+                "schema_version": "concept.v1",
+                "actions": [
+                    {
+                        "type": "update_concept",
+                        "concept": "deposit-addresses",
+                        "name": "Deposit Address Graph",
+                    }
+                ],
+                "repo_id": "repo-a",
+            }
+        ),
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
         repo_root=tmp_path,
     )
 
     assert result["status"] == "ok"
-    assert result["data"]["concept"]["preview_concept"]["name"] == "Deposit Addresses"
+    rows = fetch_rows(concepts, concepts.c.slug == "deposit-addresses")
+    assert rows[0]["name"] == "Deposit Address Graph"
+
+
+def test_concept_update_handler_should_fail_when_concept_is_missing(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    tmp_path: Path,
+) -> None:
+    """concept update handler should not create missing concept containers."""
+
+    result = handle_concept_update(
+        ConceptUpdateRequest.model_validate(
+            {
+                "schema_version": "concept.v1",
+                "actions": [
+                    {
+                        "type": "update_concept",
+                        "concept": "deposit-addresses",
+                        "name": "Deposit Address Graph",
+                    }
+                ],
+                "repo_id": "repo-a",
+            }
+        ),
+        uow_factory=uow_factory,
+        inferred_repo_id="repo-a",
+        repo_root=tmp_path,
+    )
+
+    assert result["status"] == "error"
+    assert result["errors"][0]["code"] == "not_found"
+    assert "Concept not found" in result["errors"][0]["message"]

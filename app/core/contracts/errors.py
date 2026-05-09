@@ -27,3 +27,15 @@ class ErrorDetail(BaseModel):
     code: ErrorCode
     message: str
     field: str | None = None
+
+
+class ShellbrainError(Exception):
+    """Base class for typed core errors surfaced through handler envelopes."""
+
+
+class DomainValidationError(ShellbrainError, ValueError):
+    """Raised when core request validation fails over policies or ports."""
+
+    def __init__(self, errors: list[ErrorDetail]) -> None:
+        self.errors = errors
+        super().__init__("; ".join(error.message for error in errors))

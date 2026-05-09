@@ -21,7 +21,9 @@ def test_read_hydration_infers_missing_defaults() -> None:
         },
     }
 
-    hydrated = hydrate_read_payload(payload, inferred_repo_id="repo-inferred", defaults=defaults)
+    hydrated = hydrate_read_payload(
+        payload, inferred_repo_id="repo-inferred", defaults=defaults
+    )
 
     assert hydrated["op"] == "read"
     assert hydrated["repo_id"] == "repo-inferred"
@@ -71,7 +73,9 @@ def test_read_hydration_preserves_explicit_values() -> None:
         },
     }
 
-    hydrated = hydrate_read_payload(payload, inferred_repo_id="repo-inferred", defaults=defaults)
+    hydrated = hydrate_read_payload(
+        payload, inferred_repo_id="repo-inferred", defaults=defaults
+    )
 
     assert hydrated["op"] == "read"
     assert hydrated["repo_id"] == "repo-explicit"
@@ -105,7 +109,9 @@ def test_read_hydration_merges_partial_expand_over_config_defaults() -> None:
         },
     }
 
-    hydrated = hydrate_read_payload(payload, inferred_repo_id="repo-inferred", defaults=defaults)
+    hydrated = hydrate_read_payload(
+        payload, inferred_repo_id="repo-inferred", defaults=defaults
+    )
 
     assert hydrated["expand"] == {
         "semantic_hops": 0,

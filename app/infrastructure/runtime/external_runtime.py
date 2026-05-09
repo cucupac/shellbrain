@@ -9,9 +9,15 @@ import psycopg
 from psycopg import sql
 from sqlalchemy.engine import make_url
 
-from app.infrastructure.local_state.paths import get_machine_backups_dir, get_machine_models_dir
+from app.infrastructure.local_state.paths import (
+    get_machine_backups_dir,
+    get_machine_models_dir,
+)
 from app.core.entities.admin_errors import InitConflictError
-from app.infrastructure.postgres_admin.instance_guard import dsn_fingerprint, ensure_instance_metadata
+from app.infrastructure.postgres_admin.instance_guard import (
+    dsn_fingerprint,
+    ensure_instance_metadata,
+)
 from app.infrastructure.local_state.machine_config_store import (
     BOOTSTRAP_STATE_PROVISIONING,
     BOOTSTRAP_VERSION,
@@ -28,7 +34,9 @@ from app.infrastructure.postgres_admin.privileges import reconcile_app_role_priv
 DEFAULT_EXTERNAL_APP_USER = "shellbrain_app"
 
 
-def build_fresh_machine_config(*, admin_dsn: str, embeddings: dict[str, object]) -> MachineConfig:
+def build_fresh_machine_config(
+    *, admin_dsn: str, embeddings: dict[str, object]
+) -> MachineConfig:
     """Construct one fresh machine config for external PostgreSQL mode."""
 
     if not isinstance(embeddings, dict):
@@ -63,7 +71,9 @@ def reconcile_database(config: MachineConfig) -> tuple[bool, MachineConfig]:
     """Validate one external PostgreSQL database and reconcile the Shellbrain app role."""
 
     if config.runtime_mode != RUNTIME_MODE_EXTERNAL_POSTGRES:
-        raise InitConflictError("External runtime reconciliation requires external_postgres mode.")
+        raise InitConflictError(
+            "External runtime reconciliation requires external_postgres mode."
+        )
     _validate_external_admin_dsn(config.database.admin_dsn)
     app_dsn = _provision_external_app_role(
         admin_dsn=config.database.admin_dsn,
@@ -129,10 +139,14 @@ def _validate_external_admin_dsn(admin_dsn: str) -> None:
     except InitConflictError:
         raise
     except psycopg.Error as exc:
-        raise InitConflictError(f"Could not connect to the external PostgreSQL admin DSN: {exc}") from exc
+        raise InitConflictError(
+            f"Could not connect to the external PostgreSQL admin DSN: {exc}"
+        ) from exc
 
 
-def _provision_external_app_role(*, admin_dsn: str, existing_app_dsn: str | None = None) -> str:
+def _provision_external_app_role(
+    *, admin_dsn: str, existing_app_dsn: str | None = None
+) -> str:
     """Create or repair the dedicated Shellbrain app role for one external database."""
 
     app_user = DEFAULT_EXTERNAL_APP_USER
@@ -143,18 +157,24 @@ def _provision_external_app_role(*, admin_dsn: str, existing_app_dsn: str | None
         app_password = app_url.password
     if not app_password:
         app_password = secrets.token_hex(16)
-    app_dsn = _app_dsn_from_admin_dsn(admin_dsn=admin_dsn, app_user=app_user, app_password=app_password)
+    app_dsn = _app_dsn_from_admin_dsn(
+        admin_dsn=admin_dsn, app_user=app_user, app_password=app_password
+    )
     raw_admin_dsn = admin_dsn.replace("+psycopg", "")
     database_name = make_url(admin_dsn).database
     if not database_name:
-        raise InitConflictError("External PostgreSQL admin DSN must include a database name.")
+        raise InitConflictError(
+            "External PostgreSQL admin DSN must include a database name."
+        )
     try:
         with psycopg.connect(raw_admin_dsn, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT 1 FROM pg_roles WHERE rolname = %s", (app_user,))
                 if cur.fetchone() is None:
                     cur.execute(
-                        sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}").format(
+                        sql.SQL(
+                            "CREATE ROLE {} LOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE PASSWORD {}"
+                        ).format(
                             sql.Identifier(app_user),
                             sql.Literal(app_password),
                         ),
@@ -173,7 +193,9 @@ def _provision_external_app_role(*, admin_dsn: str, existing_app_dsn: str | None
                     )
                 )
     except psycopg.Error as exc:
-        raise InitConflictError(f"Could not provision the external Shellbrain app role: {exc}") from exc
+        raise InitConflictError(
+            f"Could not provision the external Shellbrain app role: {exc}"
+        ) from exc
     reconcile_app_role_privileges(admin_dsn=admin_dsn, app_dsn=app_dsn)
     return app_dsn
 

@@ -17,7 +17,9 @@ def test_recall_accepts_query_only() -> None:
 def test_recall_accepts_limit_with_read_bounds() -> None:
     """recall limit should use the same hard bounds as read limits."""
 
-    request, errors = validate_recall_schema({"query": "find migration context", "limit": 100})
+    request, errors = validate_recall_schema(
+        {"query": "find migration context", "limit": 100}
+    )
 
     assert errors == []
     assert request is not None
@@ -27,7 +29,9 @@ def test_recall_accepts_limit_with_read_bounds() -> None:
 def test_recall_rejects_limit_above_read_bounds() -> None:
     """recall should reject limits above the read maximum."""
 
-    request, errors = validate_recall_schema({"query": "find migration context", "limit": 101})
+    request, errors = validate_recall_schema(
+        {"query": "find migration context", "limit": 101}
+    )
 
     assert request is None
     assert errors

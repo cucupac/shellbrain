@@ -33,12 +33,20 @@ def codex_runtime_identity(monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
 
 
 @pytest.fixture
-def claude_hook_runtime_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+def claude_hook_runtime_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, str]:
     """Provide one trusted Claude runtime identity via Shellbrain hook variables."""
 
     session_id = "46cc92ee-1291-49d2-89e5-ef0ac1603709"
     repo_root = Path.cwd().resolve()
-    transcript_path = tmp_path / ".claude" / "projects" / _claude_project_slug(repo_root) / f"{session_id}.jsonl"
+    transcript_path = (
+        tmp_path
+        / ".claude"
+        / "projects"
+        / _claude_project_slug(repo_root)
+        / f"{session_id}.jsonl"
+    )
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     transcript_path.write_text(
         json.dumps(
@@ -46,7 +54,10 @@ def claude_hook_runtime_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
                 "uuid": "claude-user-1",
                 "timestamp": "2026-03-18T12:00:00Z",
                 "type": "user",
-                "message": {"role": "user", "content": [{"type": "text", "text": "Inspect this bug."}]},
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": "Inspect this bug."}],
+                },
             }
         )
         + "\n",
@@ -67,7 +78,9 @@ def claude_hook_runtime_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.fixture
-def claude_hook_subagent_runtime_identity(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> dict[str, str]:
+def claude_hook_subagent_runtime_identity(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> dict[str, str]:
     """Provide one trusted Claude subagent identity via Shellbrain hook variables."""
 
     session_id = "46cc92ee-1291-49d2-89e5-ef0ac1603709"
@@ -89,7 +102,10 @@ def claude_hook_subagent_runtime_identity(tmp_path: Path, monkeypatch: pytest.Mo
                 "uuid": "claude-agent-user-1",
                 "timestamp": "2026-03-18T12:00:00Z",
                 "type": "user",
-                "message": {"role": "user", "content": [{"type": "text", "text": "Subagent task."}]},
+                "message": {
+                    "role": "user",
+                    "content": [{"type": "text", "text": "Subagent task."}],
+                },
             }
         )
         + "\n",
@@ -100,7 +116,9 @@ def claude_hook_subagent_runtime_identity(tmp_path: Path, monkeypatch: pytest.Mo
     monkeypatch.setenv("SHELLBRAIN_HOST_SESSION_KEY", session_id)
     monkeypatch.setenv("SHELLBRAIN_AGENT_KEY", agent_id)
     monkeypatch.setenv("SHELLBRAIN_TRANSCRIPT_PATH", str(transcript_path))
-    monkeypatch.setenv("SHELLBRAIN_CALLER_ID", f"claude_code:{session_id}:agent:{agent_id}")
+    monkeypatch.setenv(
+        "SHELLBRAIN_CALLER_ID", f"claude_code:{session_id}:agent:{agent_id}"
+    )
     return {
         "host_app": "claude_code",
         "host_session_key": session_id,

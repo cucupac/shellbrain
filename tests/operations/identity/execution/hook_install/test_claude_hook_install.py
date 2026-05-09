@@ -4,10 +4,15 @@ import json
 from pathlib import Path
 import sys
 
-from app.infrastructure.host_identity.claude_hook_install import install_claude_hook, inspect_claude_hook
+from app.infrastructure.host_identity.claude_hook_install import (
+    install_claude_hook,
+    inspect_claude_hook,
+)
 
 
-def test_claude_hook_install_should_write_one_repo_local_settings_file_with_shellbrain_identity_exports(tmp_path: Path) -> None:
+def test_claude_hook_install_should_write_one_repo_local_settings_file_with_shellbrain_identity_exports(
+    tmp_path: Path,
+) -> None:
     """repo-local install should still write one settings.local.json file with Shellbrain identity exports."""
 
     repo_root = tmp_path / "claude-hook-repo"
@@ -23,7 +28,9 @@ def test_claude_hook_install_should_write_one_repo_local_settings_file_with_shel
     assert str(Path(sys.executable).resolve()) in content
 
 
-def test_claude_hook_install_should_merge_shellbrain_entry_without_overwriting_unrelated_hooks(tmp_path: Path) -> None:
+def test_claude_hook_install_should_merge_shellbrain_entry_without_overwriting_unrelated_hooks(
+    tmp_path: Path,
+) -> None:
     """hook install should merge the managed SessionStart entry non-destructively."""
 
     repo_root = tmp_path / "claude-hook-merge-repo"
@@ -37,7 +44,12 @@ def test_claude_hook_install_should_merge_shellbrain_entry_without_overwriting_u
                         {"hooks": [{"type": "command", "command": "echo custom"}]},
                         {
                             "matcher": "startup|resume|clear|compact",
-                            "hooks": [{"type": "command", "command": "echo stale # shellbrain-managed:session-start"}],
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "echo stale # shellbrain-managed:session-start",
+                                }
+                            ],
                         },
                     ],
                     "Stop": [{"hooks": [{"type": "command", "command": "echo stop"}]}],
@@ -59,7 +71,9 @@ def test_claude_hook_install_should_merge_shellbrain_entry_without_overwriting_u
     assert payload["other"] == {"preserve": True}
 
 
-def test_claude_hook_install_should_create_global_settings_file_when_absent(tmp_path: Path) -> None:
+def test_claude_hook_install_should_create_global_settings_file_when_absent(
+    tmp_path: Path,
+) -> None:
     """global install should create ~/.claude/settings.json when it does not exist yet."""
 
     settings_path = tmp_path / ".claude" / "settings.json"
@@ -76,7 +90,9 @@ def test_claude_hook_install_should_create_global_settings_file_when_absent(tmp_
     assert status.executable_exists is True
 
 
-def test_claude_hook_install_should_backup_malformed_global_settings_before_recreating(tmp_path: Path) -> None:
+def test_claude_hook_install_should_backup_malformed_global_settings_before_recreating(
+    tmp_path: Path,
+) -> None:
     """malformed global settings should be backed up before Shellbrain recreates a valid file."""
 
     settings_path = tmp_path / ".claude" / "settings.json"
@@ -96,7 +112,9 @@ def test_claude_hook_install_should_backup_malformed_global_settings_before_recr
     assert status.executable_exists is True
 
 
-def test_claude_hook_inspection_should_report_missing_managed_interpreter(tmp_path: Path) -> None:
+def test_claude_hook_inspection_should_report_missing_managed_interpreter(
+    tmp_path: Path,
+) -> None:
     """managed hook inspection should expose a broken interpreter path clearly."""
 
     settings_path = tmp_path / ".claude" / "settings.json"

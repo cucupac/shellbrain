@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-from app.core.contracts.responses import OperationResult
-from app.startup.agent_operations import handle_read
+from app.core.contracts.responses import UseCaseResult
+from tests.operations._shared.handler_calls import handle_read
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -38,7 +38,9 @@ def test_read_should_always_append_one_read_summary_row_with_effective_request_m
 
     assert result["status"] == "ok"
     assert_relation_exists("read_invocation_summaries")
-    rows = fetch_relation_rows("read_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "read_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     row = rows[0]
@@ -82,11 +84,17 @@ def test_read_should_always_append_one_read_result_item_row_per_returned_memory_
 
     assert result["status"] == "ok"
     assert_relation_exists("read_result_items")
-    rows = fetch_relation_rows("read_result_items", order_by="invocation_id ASC, ordinal ASC")
+    rows = fetch_relation_rows(
+        "read_result_items", order_by="invocation_id ASC, ordinal ASC"
+    )
 
     assert len(rows) == 3
     assert [row["ordinal"] for row in rows] == [1, 2, 3]
-    assert [row["memory_id"] for row in rows] == ["direct-1", "explicit-1", "implicit-1"]
+    assert [row["memory_id"] for row in rows] == [
+        "direct-1",
+        "explicit-1",
+        "implicit-1",
+    ]
 
 
 def test_read_should_always_record_kind_section_priority_why_included_and_anchor_metadata_for_each_returned_item(
@@ -107,7 +115,9 @@ def test_read_should_always_record_kind_section_priority_why_included_and_anchor
 
     assert result["status"] == "ok"
     assert_relation_exists("read_result_items")
-    rows = fetch_relation_rows("read_result_items", order_by="invocation_id ASC, ordinal ASC")
+    rows = fetch_relation_rows(
+        "read_result_items", order_by="invocation_id ASC, ordinal ASC"
+    )
 
     assert len(rows) == 3
     assert rows[0]["kind"] == "problem"
@@ -146,7 +156,9 @@ def test_read_should_always_record_zero_results_true_when_the_context_pack_is_em
 
     assert result["status"] == "ok"
     assert_relation_exists("read_invocation_summaries")
-    rows = fetch_relation_rows("read_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "read_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["zero_results"] is True
@@ -172,12 +184,19 @@ def test_read_summary_should_record_concept_context_telemetry(
     """read summary telemetry should capture concept-context cost fields."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.agent_operations.flow_common.execute_read_memory",
-        lambda request, uow: OperationResult(
-            status="ok",
+        "app.handlers.internal_agent.retrieval.execution.execute_read_memory",
+        lambda request, uow, **kwargs: UseCaseResult(
             data={
                 "pack": {
-                    "meta": {"mode": "targeted", "limit": 8, "counts": {"direct": 0, "explicit_related": 0, "implicit_related": 0}},
+                    "meta": {
+                        "mode": "targeted",
+                        "limit": 8,
+                        "counts": {
+                            "direct": 0,
+                            "explicit_related": 0,
+                            "implicit_related": 0,
+                        },
+                    },
                     "direct": [],
                     "explicit_related": [],
                     "implicit_related": [],
@@ -207,7 +226,9 @@ def test_read_summary_should_record_concept_context_telemetry(
     )
 
     assert result["status"] == "ok"
-    rows = fetch_relation_rows("read_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "read_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
     assert rows[0]["concept_count"] == 1
     assert rows[0]["concept_token_estimate"] > 0
     assert _normalize_jsonish(rows[0]["concept_refs_returned"]) == ["deposit-addresses"]
@@ -218,54 +239,58 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     """Patch the read pipeline to return deterministic summary rows."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
+        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword: []
-        if zero_results
-        else [
-            {
-                "memory_id": "direct-1",
-                "rrf_score": 0.99,
-                "score": 0.99,
-                "kind": "problem",
-                "text": "Primary direct memory.",
-                "why_included": "direct_match",
+        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
+        lambda semantic, keyword, **kwargs: (
+            []
+            if zero_results
+            else [
+                {
+                    "memory_id": "direct-1",
+                    "rrf_score": 0.99,
+                    "score": 0.99,
+                    "kind": "problem",
+                    "text": "Primary direct memory.",
+                    "why_included": "direct_match",
+                }
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
+        lambda direct_candidates, payload, **kwargs: (
+            {"explicit": [], "implicit": []}
+            if zero_results
+            else {
+                "explicit": [
+                    {
+                        "memory_id": "explicit-1",
+                        "score": 0.88,
+                        "kind": "solution",
+                        "text": "Linked association memory.",
+                        "why_included": "association_link",
+                        "anchor_memory_id": "direct-1",
+                        "relation_type": "depends_on",
+                    }
+                ],
+                "implicit": [
+                    {
+                        "memory_id": "implicit-1",
+                        "score": 0.77,
+                        "kind": "fact",
+                        "text": "Nearby semantic memory.",
+                        "why_included": "semantic_neighbor",
+                        "anchor_memory_id": "direct-1",
+                    }
+                ],
             }
-        ],
+        ),
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
-        lambda direct_candidates, payload, **kwargs: {"explicit": [], "implicit": []}
-        if zero_results
-        else {
-            "explicit": [
-                {
-                    "memory_id": "explicit-1",
-                    "score": 0.88,
-                    "kind": "solution",
-                    "text": "Linked association memory.",
-                    "why_included": "association_link",
-                    "anchor_memory_id": "direct-1",
-                    "relation_type": "depends_on",
-                }
-            ],
-            "implicit": [
-                {
-                    "memory_id": "implicit-1",
-                    "score": 0.77,
-                    "kind": "fact",
-                    "text": "Nearby semantic memory.",
-                    "why_included": "semantic_neighbor",
-                    "anchor_memory_id": "direct-1",
-                }
-            ],
-        },
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.score_candidates",
+        "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
 

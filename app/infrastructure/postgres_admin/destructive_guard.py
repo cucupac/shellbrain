@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.infrastructure.postgres_admin.logical_backup import BackupManifest, create_backup, verify_backup
+from app.infrastructure.postgres_admin.logical_backup import (
+    BackupManifest,
+    create_backup,
+    verify_backup,
+)
 
 
 def backup_and_verify_before_destructive_action(

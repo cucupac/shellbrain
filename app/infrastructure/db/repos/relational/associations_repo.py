@@ -4,9 +4,17 @@ from datetime import datetime, timezone
 
 from sqlalchemy import case, select, update
 
-from app.core.entities.associations import AssociationEdge, AssociationObservation, AssociationSourceMode, AssociationState
-from app.core.interfaces.repos import IAssociationsRepo
-from app.infrastructure.db.models.associations import association_edges, association_observations
+from app.core.entities.associations import (
+    AssociationEdge,
+    AssociationObservation,
+    AssociationSourceMode,
+    AssociationState,
+)
+from app.core.ports.memory_repositories import IAssociationsRepo
+from app.infrastructure.db.models.associations import (
+    association_edges,
+    association_observations,
+)
 
 
 class AssociationsRepo(IAssociationsRepo):
@@ -110,7 +118,8 @@ class AssociationsRepo(IAssociationsRepo):
                     + case((observation.valence > 0, 1), else_=0),
                     negative_obs=association_edges.c.negative_obs
                     + case((observation.valence < 0, 1), else_=0),
-                    salience_sum=association_edges.c.salience_sum + observation.salience,
+                    salience_sum=association_edges.c.salience_sum
+                    + observation.salience,
                     last_reinforced_at=now,
                     updated_at=now,
                 )

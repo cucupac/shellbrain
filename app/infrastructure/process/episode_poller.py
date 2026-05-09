@@ -9,12 +9,13 @@ from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
-from app.core.observability.telemetry.sync_records import build_episode_sync_records
 from app.core.use_cases.episodes.close_replaced_episode import close_replaced_episode
-from app.core.use_cases.episodes.sync_discovered_host_session import sync_discovered_host_session
-from app.core.use_cases.record_episode_sync_telemetry import record_episode_sync_telemetry
-from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
-from app.infrastructure.host_transcripts.model_usage import collect_model_usage_records_for_session
+from app.core.use_cases.episodes.sync_discovered_host_session import (
+    sync_discovered_host_session,
+)
+from app.infrastructure.host_transcripts.model_usage import (
+    collect_model_usage_records_for_session,
+)
 from app.infrastructure.host_transcripts.normalization import normalize_host_transcript
 from app.infrastructure.host_transcripts.source_discovery import (
     SUPPORTED_HOSTS,
@@ -22,8 +23,20 @@ from app.infrastructure.host_transcripts.source_discovery import (
     discover_active_host_session,
     resolve_host_transcript_source,
 )
-from app.infrastructure.local_state.episode_sync_status_store import record_episode_sync_status
-from app.infrastructure.local_state.poller_lock import acquire_poller_lock, write_poller_pid_artifact
+from app.infrastructure.local_state.episode_sync_status_store import (
+    record_episode_sync_status,
+)
+from app.infrastructure.observability.telemetry.recorder import (
+    record_episode_sync_telemetry,
+    record_model_usage_telemetry,
+)
+from app.infrastructure.observability.telemetry.sync_records import (
+    build_episode_sync_records,
+)
+from app.infrastructure.local_state.poller_lock import (
+    acquire_poller_lock,
+    write_poller_pid_artifact,
+)
 
 
 POLL_INTERVAL_SECONDS = 5
@@ -77,7 +90,9 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
         while True:
             saw_change = False
             for host_app in SUPPORTED_HOSTS:
-                search_roots = default_search_roots(repo_root=repo_root, host_app=host_app)
+                search_roots = default_search_roots(
+                    repo_root=repo_root, host_app=host_app
+                )
                 candidate = discover_active_host_session(
                     host_app=host_app,
                     repo_root=repo_root,
@@ -97,7 +112,10 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
 
                 transcript_path = Path(candidate["transcript_path"])
                 state = known_state.get(host_app)
-                session_changed = state is not None and state.session_key != candidate["host_session_key"]
+                session_changed = (
+                    state is not None
+                    and state.session_key != candidate["host_session_key"]
+                )
                 if session_changed:
                     _close_episode(
                         repo_id=repo_id,
@@ -107,7 +125,11 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
                     )
 
                 freshness = float(candidate.get("updated_at") or 0.0)
-                should_sync = state is None or session_changed or state.last_freshness != freshness
+                should_sync = (
+                    state is None
+                    or session_changed
+                    or state.last_freshness != freshness
+                )
                 known_state[host_app] = _HostState(
                     session_key=str(candidate["host_session_key"]),
                     transcript_path=transcript_path,
@@ -142,7 +164,9 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
                                 host_session_key=str(candidate["host_session_key"]),
                                 thread_id=str(sync_result["thread_id"]),
                                 episode_id=str(sync_result["episode_id"]),
-                                transcript_path=Path(str(sync_result["transcript_path"])),
+                                transcript_path=Path(
+                                    str(sync_result["transcript_path"])
+                                ),
                             )
                         )
                     except Exception:
@@ -209,7 +233,9 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
         lock_handle.release()
 
 
-def _close_episode(*, repo_id: str, host_app: str, host_session_key: str, uow_factory) -> None:
+def _close_episode(
+    *, repo_id: str, host_app: str, host_session_key: str, uow_factory
+) -> None:
     """Close one active episode when a newer session replaces it."""
 
     with uow_factory() as uow:

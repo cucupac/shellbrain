@@ -7,7 +7,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.evidence import EvidenceRef
-from app.core.interfaces.repos import IEvidenceRepo
+from app.core.ports.memory_repositories import IEvidenceRepo
 from app.infrastructure.db.models.associations import association_edge_evidence
 from app.infrastructure.db.models.evidence import evidence_refs
 from app.infrastructure.db.models.memories import memory_evidence
@@ -29,7 +29,8 @@ class EvidenceRepo(IEvidenceRepo):
             self._session.execute(
                 select(evidence_refs).where(
                     evidence_refs.c.repo_id == repo_id,
-                    (evidence_refs.c.episode_event_id == ref) | (evidence_refs.c.ref == ref),
+                    (evidence_refs.c.episode_event_id == ref)
+                    | (evidence_refs.c.ref == ref),
                 )
             )
             .mappings()
@@ -62,7 +63,9 @@ class EvidenceRepo(IEvidenceRepo):
                 created_at=datetime.now(timezone.utc),
             )
         )
-        return EvidenceRef(id=evidence_id, repo_id=repo_id, ref=ref, episode_event_id=ref)
+        return EvidenceRef(
+            id=evidence_id, repo_id=repo_id, ref=ref, episode_event_id=ref
+        )
 
     def _acquire_ref_guard(self, *, repo_id: str, ref: str) -> None:
         """Serialize concurrent writes for one repo/ref pair within the active transaction."""

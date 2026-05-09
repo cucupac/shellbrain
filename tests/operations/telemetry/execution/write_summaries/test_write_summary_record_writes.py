@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from app.core.entities.memory import MemoryKind, MemoryScope
+from app.core.entities.memories import MemoryKind, MemoryScope
 import pytest
-from app.startup.agent_operations import handle_create, handle_update
+from tests.operations._shared.handler_calls import handle_create, handle_update
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -56,7 +56,9 @@ def test_create_should_always_append_one_write_summary_row_with_the_created_memo
 
     assert result["status"] == "ok"
     assert_relation_exists("write_invocation_summaries")
-    rows = fetch_relation_rows("write_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "write_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     row = rows[0]
@@ -111,7 +113,9 @@ def test_create_should_always_append_one_write_effect_row_per_planned_side_effec
 
     assert result["status"] == "ok"
     assert_relation_exists("write_effect_items")
-    rows = fetch_relation_rows("write_effect_items", order_by="invocation_id ASC, ordinal ASC")
+    rows = fetch_relation_rows(
+        "write_effect_items", order_by="invocation_id ASC, ordinal ASC"
+    )
 
     assert len(rows) >= 1
     assert [row["ordinal"] for row in rows] == list(range(1, len(rows) + 1))
@@ -145,7 +149,9 @@ def test_successful_writes_should_always_record_planned_effect_count_for_downstr
 
     assert result["status"] == "ok"
     assert_relation_exists("write_invocation_summaries")
-    rows = fetch_relation_rows("write_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "write_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["planned_effect_count"] >= 1
@@ -192,7 +198,9 @@ def test_update_utility_vote_should_always_append_one_write_summary_row_with_upd
 
     assert result["status"] == "ok"
     assert_relation_exists("write_invocation_summaries")
-    rows = fetch_relation_rows("write_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "write_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["update_type"] == "utility_vote"
@@ -240,7 +248,9 @@ def test_update_association_link_should_always_append_one_write_summary_row_with
 
     assert result["status"] == "ok"
     assert_relation_exists("write_invocation_summaries")
-    rows = fetch_relation_rows("write_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "write_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["update_type"] == "association_link"
@@ -292,7 +302,9 @@ def test_update_fact_update_link_should_always_append_one_write_summary_row_with
 
     assert result["status"] == "ok"
     assert_relation_exists("write_invocation_summaries")
-    rows = fetch_relation_rows("write_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "write_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["update_type"] == "fact_update_link"
@@ -329,7 +341,9 @@ def test_update_archive_state_should_always_append_one_write_summary_row_with_up
 
     assert result["status"] == "ok"
     assert_relation_exists("write_invocation_summaries")
-    rows = fetch_relation_rows("write_invocation_summaries", order_by="created_at DESC, invocation_id DESC")
+    rows = fetch_relation_rows(
+        "write_invocation_summaries", order_by="created_at DESC, invocation_id DESC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["update_type"] == "archive_state"

@@ -1,2 +1,1 @@
 """Process entrypoints for Shellbrain."""
-

@@ -21,7 +21,9 @@ def ensure_docker_runtime_available() -> None:
         check=False,
     )
     if completed.returncode != 0:
-        raise InitDependencyError("Shellbrain init requires the Docker daemon to be running and reachable.")
+        raise InitDependencyError(
+            "Shellbrain init requires the Docker daemon to be running and reachable."
+        )
 
 
 def recover_managed_machine_config_from_docker(*, embeddings: dict[str, object]):

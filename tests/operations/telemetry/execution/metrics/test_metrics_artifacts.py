@@ -12,7 +12,9 @@ from app.infrastructure.reporting.metrics.artifacts import (
 )
 
 
-def test_write_metrics_artifacts_should_write_and_overwrite_latest_outputs(monkeypatch, tmp_path) -> None:
+def test_write_metrics_artifacts_should_write_and_overwrite_latest_outputs(
+    monkeypatch, tmp_path
+) -> None:
     """Artifacts should always land under Shellbrain home and overwrite latest files in place."""
 
     shellbrain_home = tmp_path / "shellbrain-home"
@@ -40,12 +42,23 @@ def test_write_metrics_artifacts_should_write_and_overwrite_latest_outputs(monke
 
     assert first_paths["artifact_dir"] == second_paths["artifact_dir"]
     assert second_paths["artifact_dir"].is_relative_to(shellbrain_home)
-    assert json.loads(second_paths["json_path"].read_text(encoding="utf-8"))["summary_md"] == second_snapshot["summary_md"]
-    assert second_paths["md_path"].read_text(encoding="utf-8") == second_snapshot["summary_md"] + "\n"
-    assert second_paths["html_path"].read_text(encoding="utf-8") == "<html><body>second</body></html>"
+    assert (
+        json.loads(second_paths["json_path"].read_text(encoding="utf-8"))["summary_md"]
+        == second_snapshot["summary_md"]
+    )
+    assert (
+        second_paths["md_path"].read_text(encoding="utf-8")
+        == second_snapshot["summary_md"] + "\n"
+    )
+    assert (
+        second_paths["html_path"].read_text(encoding="utf-8")
+        == "<html><body>second</body></html>"
+    )
 
 
-def test_get_metrics_artifact_dir_should_normalize_repo_ids(monkeypatch, tmp_path) -> None:
+def test_get_metrics_artifact_dir_should_normalize_repo_ids(
+    monkeypatch, tmp_path
+) -> None:
     """Repo slugs should be stable, filesystem-safe, and namespaced by Shellbrain home."""
 
     shellbrain_home = tmp_path / "shellbrain-home"
@@ -57,7 +70,9 @@ def test_get_metrics_artifact_dir_should_normalize_repo_ids(monkeypatch, tmp_pat
     assert artifact_dir.name.startswith("github-com-example-repo-")
 
 
-def test_write_metrics_index_artifact_should_write_root_browser_dashboard(monkeypatch, tmp_path) -> None:
+def test_write_metrics_index_artifact_should_write_root_browser_dashboard(
+    monkeypatch, tmp_path
+) -> None:
     """The combined browser dashboard should live at the metrics root."""
 
     shellbrain_home = tmp_path / "shellbrain-home"

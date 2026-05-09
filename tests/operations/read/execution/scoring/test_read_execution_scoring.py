@@ -4,28 +4,44 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.contracts.requests import MemoryReadRequest
-from app.core.use_cases.memory_retrieval.expansion import expand_candidates
-from app.core.policies.memory_read_policy.fusion_rrf import fuse_with_rrf
-from app.core.policies.memory_read_policy.scoring import score_candidates
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.use_cases.retrieval.expansion import expand_candidates
+from app.core.policies.retrieval.fusion_rrf import fuse_with_rrf
+from app.core.policies.retrieval.scoring import score_candidates
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
-def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds() -> None:
+def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds() -> (
+    None
+):
     """read scoring should always preserve RRF ordering for fused direct seeds."""
 
     fused = [
-        {"memory_id": "memory-b", "rrf_score": 0.20, "rank_semantic": 2, "rank_keyword": None},
-        {"memory_id": "memory-a", "rrf_score": 0.30, "rank_semantic": 1, "rank_keyword": 3},
+        {
+            "memory_id": "memory-b",
+            "rrf_score": 0.20,
+            "rank_semantic": 2,
+            "rank_keyword": None,
+        },
+        {
+            "memory_id": "memory-a",
+            "rrf_score": 0.30,
+            "rank_semantic": 1,
+            "rank_keyword": 3,
+        },
     ]
 
-    scored = score_candidates({"direct": fused, "explicit": [], "implicit": []}, payload={})
+    scored = score_candidates(
+        {"direct": fused, "explicit": [], "implicit": []}, payload={}
+    )
 
     assert _candidate_ids(scored["direct"]) == ["memory-a", "memory-b"]
 
 
-def test_read_scoring_should_always_rank_a_dual_lane_hit_above_single_lane_hits() -> None:
+def test_read_scoring_should_always_rank_a_dual_lane_hit_above_single_lane_hits() -> (
+    None
+):
     """read scoring should always rank a dual-lane hit above single-lane hits."""
 
     fused = fuse_with_rrf(
@@ -39,12 +55,20 @@ def test_read_scoring_should_always_rank_a_dual_lane_hit_above_single_lane_hits(
         ],
     )
 
-    scored = score_candidates({"direct": fused, "explicit": [], "implicit": []}, payload={})
+    scored = score_candidates(
+        {"direct": fused, "explicit": [], "implicit": []}, payload={}
+    )
 
-    assert _candidate_ids(scored["direct"]) == ["dual-hit", "keyword-only", "semantic-only"]
+    assert _candidate_ids(scored["direct"]) == [
+        "dual-hit",
+        "keyword-only",
+        "semantic-only",
+    ]
 
 
-def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier() -> None:
+def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier() -> (
+    None
+):
     """read scoring should always break equal RRF scores by shellbrain identifier."""
 
     fused = fuse_with_rrf(
@@ -52,12 +76,16 @@ def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier(
         [{"memory_id": "memory-a", "score": 1.0}],
     )
 
-    scored = score_candidates({"direct": fused, "explicit": [], "implicit": []}, payload={})
+    scored = score_candidates(
+        {"direct": fused, "explicit": [], "implicit": []}, payload={}
+    )
 
     assert _candidate_ids(scored["direct"]) == ["memory-a", "memory-b"]
 
 
-def test_read_scoring_should_always_rank_shallower_explicit_candidates_above_deeper_ones() -> None:
+def test_read_scoring_should_always_rank_shallower_explicit_candidates_above_deeper_ones() -> (
+    None
+):
     """read scoring should always rank shallower explicit candidates above deeper ones."""
 
     scored = score_candidates(
@@ -87,7 +115,9 @@ def test_read_scoring_should_always_rank_shallower_explicit_candidates_above_dee
     assert _candidate_ids(scored["explicit"]) == ["shallow", "deep"]
 
 
-def test_read_scoring_should_always_rank_stronger_association_edges_above_weaker_ones() -> None:
+def test_read_scoring_should_always_rank_stronger_association_edges_above_weaker_ones() -> (
+    None
+):
     """read scoring should always rank stronger association edges above weaker ones."""
 
     scored = score_candidates(
@@ -119,7 +149,9 @@ def test_read_scoring_should_always_rank_stronger_association_edges_above_weaker
     assert _candidate_ids(scored["explicit"]) == ["strong", "weak"]
 
 
-def test_read_scoring_should_always_ignore_relation_strength_for_non_association_explicit_links() -> None:
+def test_read_scoring_should_always_ignore_relation_strength_for_non_association_explicit_links() -> (
+    None
+):
     """read scoring should always ignore relation strength for non-association explicit links."""
 
     scored = score_candidates(
@@ -151,7 +183,9 @@ def test_read_scoring_should_always_ignore_relation_strength_for_non_association
     assert _candidate_ids(scored["explicit"]) == ["memory-a", "memory-b"]
 
 
-def test_read_scoring_should_always_rank_higher_similarity_implicit_candidates_above_lower_ones() -> None:
+def test_read_scoring_should_always_rank_higher_similarity_implicit_candidates_above_lower_ones() -> (
+    None
+):
     """read scoring should always rank higher-similarity implicit candidates above lower ones."""
 
     scored = score_candidates(
@@ -183,7 +217,9 @@ def test_read_scoring_should_always_rank_higher_similarity_implicit_candidates_a
     assert _candidate_ids(scored["implicit"]) == ["high-similarity", "low-similarity"]
 
 
-def test_read_scoring_should_always_rank_lower_hop_implicit_candidates_above_higher_hop_ones() -> None:
+def test_read_scoring_should_always_rank_lower_hop_implicit_candidates_above_higher_hop_ones() -> (
+    None
+):
     """read scoring should always rank lower-hop implicit candidates above higher-hop ones."""
 
     scored = score_candidates(
@@ -236,7 +272,9 @@ def test_read_scoring_should_always_return_raw_explicit_metadata_for_downstream_
         kind="solution",
         text_value="Solution neighbor for explicit scoring metadata.",
     )
-    seed_problem_attempt_link(problem_id="problem-1", attempt_id="solution-1", role="solution")
+    seed_problem_attempt_link(
+        problem_id="problem-1", attempt_id="solution-1", role="solution"
+    )
 
     with uow_factory() as uow:
         expanded = expand_candidates(
@@ -308,12 +346,12 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
     """read scoring should always order competing expanded candidates via the scoring stage."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
+        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword: [
+        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
+        lambda semantic, keyword, **kwargs: [
             {
                 "memory_id": "anchor",
                 "rrf_score": 0.9,
@@ -326,7 +364,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
         ],
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
+        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
         lambda direct_candidates, payload, **kwargs: {
             "explicit": [
                 {
@@ -354,7 +392,9 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
 
     with uow_factory() as uow:
         result = execute_read_memory(
-            MemoryReadRequest.model_validate(_make_read_payload(query="smoke scoring order")),
+            MemoryReadRequest.model_validate(
+                _make_read_payload(query="smoke scoring order")
+            ),
             uow,
         )
 
@@ -397,8 +437,6 @@ def _candidate_ids(candidates: list[dict[str, object]]) -> list[str]:
 
 def _item_ids(result) -> list[str]:
     """Extract ordered shellbrain identifiers from a read operation result."""
-
-    assert result.status == "ok"
     assert "pack" in result.data
     pack = result.data["pack"]
     return [

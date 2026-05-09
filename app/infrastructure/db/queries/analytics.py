@@ -9,7 +9,9 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 
-def fetch_operation_invocations(*, conn: Connection, start_at: datetime) -> list[dict[str, object]]:
+def fetch_operation_invocations(
+    *, conn: Connection, start_at: datetime
+) -> list[dict[str, object]]:
     """Return operation invocations inside the reporting window."""
 
     rows = conn.execute(
@@ -39,7 +41,9 @@ def fetch_operation_invocations(*, conn: Connection, start_at: datetime) -> list
     return [dict(row) for row in rows]
 
 
-def fetch_read_summaries(*, conn: Connection, start_at: datetime) -> list[dict[str, object]]:
+def fetch_read_summaries(
+    *, conn: Connection, start_at: datetime
+) -> list[dict[str, object]]:
     """Return read summaries inside the reporting window."""
 
     rows = conn.execute(
@@ -62,7 +66,9 @@ def fetch_read_summaries(*, conn: Connection, start_at: datetime) -> list[dict[s
     return [dict(row) for row in rows]
 
 
-def fetch_write_summaries(*, conn: Connection, start_at: datetime) -> list[dict[str, object]]:
+def fetch_write_summaries(
+    *, conn: Connection, start_at: datetime
+) -> list[dict[str, object]]:
     """Return write summaries inside the reporting window."""
 
     rows = conn.execute(
@@ -112,7 +118,9 @@ def fetch_sync_runs(*, conn: Connection, start_at: datetime) -> list[dict[str, o
     return [dict(row) for row in rows]
 
 
-def fetch_pending_utility_threads(*, conn: Connection, start_at: datetime) -> list[dict[str, object]]:
+def fetch_pending_utility_threads(
+    *, conn: Connection, start_at: datetime
+) -> list[dict[str, object]]:
     """Return threads that emitted pending utility-vote guidance in the reporting window."""
 
     rows = conn.execute(

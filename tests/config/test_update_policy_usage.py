@@ -11,8 +11,14 @@ def test_update_policy_should_expose_configured_gate_list(monkeypatch) -> None:
         lambda: type(
             "_StubConfigProvider",
             (),
-            {"get_update_policy": staticmethod(lambda: {"gates": ["schema", "semantic", "integrity"]})},
+            {
+                "get_update_policy": staticmethod(
+                    lambda: {"gates": ["schema", "semantic", "integrity"]}
+                )
+            },
         )(),
     )
 
-    assert get_update_policy_settings() == {"gates": ["schema", "semantic", "integrity"]}
+    assert get_update_policy_settings() == {
+        "gates": ["schema", "semantic", "integrity"]
+    }

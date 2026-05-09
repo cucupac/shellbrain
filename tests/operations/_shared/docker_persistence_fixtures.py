@@ -18,13 +18,22 @@ import psycopg
 import pytest
 from sqlalchemy import select
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.startup.agent_operations import handle_create
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeEvent,
+    EpisodeEventSource,
+    EpisodeStatus,
+)
+from app.core.ports.embeddings import IEmbeddingProvider
+from tests.operations._shared.handler_calls import handle_create
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.models.evidence import evidence_refs
 from app.infrastructure.db.models.episodes import episode_events, episodes
-from app.infrastructure.db.models.memories import memories, memory_embeddings, memory_evidence
+from app.infrastructure.db.models.memories import (
+    memories,
+    memory_embeddings,
+    memory_evidence,
+)
 from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
@@ -59,7 +68,9 @@ class SentinelDataset:
 class IsolatedDockerPostgres:
     """Manage one isolated Docker Compose PostgreSQL environment for persistence tests."""
 
-    def __init__(self, *, repo_root: Path, base_dir: Path, label: str, test_name: str) -> None:
+    def __init__(
+        self, *, repo_root: Path, base_dir: Path, label: str, test_name: str
+    ) -> None:
         self.repo_root = repo_root
         self.base_dir = base_dir
         self.label = label
@@ -116,7 +127,13 @@ class IsolatedDockerPostgres:
         """Apply packaged schema migrations against the isolated database."""
 
         self._run_repo_command(
-            [_resolve_python_executable(), "-m", "app.entrypoints.cli.main", "admin", "migrate"],
+            [
+                _resolve_python_executable(),
+                "-m",
+                "app.entrypoints.cli.main",
+                "admin",
+                "migrate",
+            ],
             env_overrides={
                 "SHELLBRAIN_DB_DSN": self.dsn,
                 "SHELLBRAIN_DB_ADMIN_DSN": self.dsn,
@@ -244,7 +261,9 @@ class IsolatedDockerPostgres:
             memory_rows = conn.execute(select(memories)).mappings().all()
             embedding_rows = conn.execute(select(memory_embeddings)).mappings().all()
             evidence_rows = conn.execute(select(evidence_refs)).mappings().all()
-            memory_evidence_rows = conn.execute(select(memory_evidence)).mappings().all()
+            memory_evidence_rows = (
+                conn.execute(select(memory_evidence)).mappings().all()
+            )
 
         assert len(episode_rows) == 1
         assert len(event_rows) == 1
@@ -288,7 +307,9 @@ class IsolatedDockerPostgres:
         """Return a fresh unit-of-work factory bound to the current isolated database."""
 
         if self._session_factory is None:
-            raise RuntimeError("Call start_isolated_db() before creating a unit-of-work factory.")
+            raise RuntimeError(
+                "Call start_isolated_db() before creating a unit-of-work factory."
+            )
 
         def _factory() -> PostgresUnitOfWork:
             return PostgresUnitOfWork(self._session_factory)
@@ -430,7 +451,9 @@ def _reserve_tcp_port() -> int:
 def _slugify(value: str) -> str:
     """Convert one arbitrary pytest node name into a Docker-safe slug."""
 
-    sanitized = [character.lower() if character.isalnum() else "-" for character in value]
+    sanitized = [
+        character.lower() if character.isalnum() else "-" for character in value
+    ]
     slug = "".join(sanitized).strip("-")
     while "--" in slug:
         slug = slug.replace("--", "-")

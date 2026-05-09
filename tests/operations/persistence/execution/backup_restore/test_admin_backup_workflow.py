@@ -9,11 +9,21 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.postgres_admin.logical_backup import BackupManifest, create_backup, list_backups, restore_backup, verify_backup
+from app.infrastructure.postgres_admin.logical_backup import (
+    BackupManifest,
+    create_backup,
+    list_backups,
+    restore_backup,
+    verify_backup,
+)
 from app.infrastructure.postgres_admin.instance_guard import InstanceMetadataRecord
 
-ADMIN_LIVE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
-APP_LIVE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
+ADMIN_LIVE_DSN = (
+    "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_live"
+)
+APP_LIVE_DSN = (
+    "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
+)
 ADMIN_RESTORE_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain_restore_scratch"
 APP_RESTORE_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_restore_scratch"
 
@@ -28,7 +38,9 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
     mirror_root = tmp_path / "mirror"
     admin_dsn = ADMIN_LIVE_DSN
 
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
@@ -39,7 +51,10 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
             notes=None,
         ),
     )
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup._fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup._fetch_schema_revision",
+        lambda dsn: "20260410_0009",
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.fingerprint_summary",
         lambda dsn: {
@@ -52,15 +67,23 @@ def test_admin_backup_create_should_write_manifest_and_optional_mirror(
     )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.subprocess.Popen",
-        lambda *args, **kwargs: _FakePopen(stdout=b"CREATE TABLE sentinel();\n", stderr=b"", returncode=0),
+        lambda *args, **kwargs: _FakePopen(
+            stdout=b"CREATE TABLE sentinel();\n", stderr=b"", returncode=0
+        ),
     )
 
-    manifest = create_backup(admin_dsn=admin_dsn, backup_root=backup_root, mirror_root=mirror_root)
+    manifest = create_backup(
+        admin_dsn=admin_dsn, backup_root=backup_root, mirror_root=mirror_root
+    )
     listed = list_backups(backup_root=backup_root)
     verified = verify_backup(backup_root=backup_root, backup_id=manifest.backup_id)
 
     artifact_path = backup_root / manifest.instance_id / manifest.artifact_filename
-    manifest_path = backup_root / manifest.instance_id / artifact_path.name.replace(".sql.gz", ".manifest.json")
+    manifest_path = (
+        backup_root
+        / manifest.instance_id
+        / artifact_path.name.replace(".sql.gz", ".manifest.json")
+    )
 
     assert isinstance(manifest, BackupManifest)
     assert listed[0].backup_id == manifest.backup_id
@@ -80,7 +103,9 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
     backup_root = tmp_path / "backups"
     admin_dsn = ADMIN_LIVE_DSN
 
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda name: "/usr/bin/pg_dump" if name == "pg_dump" else None
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
@@ -91,7 +116,10 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
             notes=None,
         ),
     )
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup._fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup._fetch_schema_revision",
+        lambda dsn: "20260410_0009",
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.fingerprint_summary",
         lambda dsn: {
@@ -104,7 +132,9 @@ def test_admin_backup_verify_should_detect_hash_mismatch(
     )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.subprocess.Popen",
-        lambda *args, **kwargs: _FakePopen(stdout=b"SELECT 1;\n", stderr=b"", returncode=0),
+        lambda *args, **kwargs: _FakePopen(
+            stdout=b"SELECT 1;\n", stderr=b"", returncode=0
+        ),
     )
 
     manifest = create_backup(admin_dsn=admin_dsn, backup_root=backup_root)
@@ -136,7 +166,10 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
             notes=None,
         ),
     )
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup._fetch_schema_revision", lambda dsn: "20260410_0009")
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup._fetch_schema_revision",
+        lambda dsn: "20260410_0009",
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.fingerprint_summary",
         lambda dsn: {
@@ -152,7 +185,9 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
         captured["env"] = kwargs.get("env")
         return _FakePopen(stdout=b"SELECT 1;\n", stderr=b"", returncode=0)
 
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup.subprocess.Popen", _fake_popen)
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup.subprocess.Popen", _fake_popen
+    )
 
     create_backup(
         admin_dsn=admin_dsn,
@@ -169,10 +204,14 @@ def test_admin_backup_create_should_preserve_path_when_setting_pgpassword(
     assert env["PATH"] == "/usr/local/bin:/usr/bin"
 
 
-def test_admin_backup_restore_should_refuse_protected_target_names(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_admin_backup_restore_should_refuse_protected_target_names(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """admin backup restore should never allow in-place restores into protected DB names."""
 
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/psql" if name == "psql" else None)
+    monkeypatch.setattr(
+        "shutil.which", lambda name: "/usr/bin/psql" if name == "psql" else None
+    )
 
     with pytest.raises(RuntimeError, match="protected database name"):
         restore_backup(
@@ -195,7 +234,13 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
         "backup_id": "b-restore",
         "instance_id": "inst-live",
         "instance_mode": "live",
-        "source": {"database": "shellbrain_live", "fingerprint": "fp-live", "host": "localhost", "port": "5432", "user": "shellbrain_admin"},
+        "source": {
+            "database": "shellbrain_live",
+            "fingerprint": "fp-live",
+            "host": "localhost",
+            "port": "5432",
+            "user": "shellbrain_admin",
+        },
         "schema_revision": "20260410_0009",
         "created_at": "2026-03-19T00:00:00+00:00",
         "artifact_filename": "restore.sql.gz",
@@ -203,7 +248,9 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
         "artifact_size_bytes": 0,
         "compression": "gzip",
     }
-    (instance_dir / "restore.manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+    (instance_dir / "restore.manifest.json").write_text(
+        json.dumps(manifest), encoding="utf-8"
+    )
     with gzip.open(instance_dir / "restore.sql.gz", "wb") as handle:
         handle.write(
             b"SET statement_timeout = 0;\n"
@@ -214,10 +261,21 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
 
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/psql" if name == "psql" else None)
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup.verify_backup", lambda **kwargs: BackupManifest(**manifest))
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup._create_empty_database", lambda **kwargs: None)
-    monkeypatch.setattr("app.infrastructure.postgres_admin.instance_guard.ensure_instance_metadata", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        "shutil.which", lambda name: "/usr/bin/psql" if name == "psql" else None
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup.verify_backup",
+        lambda **kwargs: BackupManifest(**manifest),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup._create_empty_database",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.instance_guard.ensure_instance_metadata",
+        lambda *args, **kwargs: None,
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.privileges.reconcile_app_role_privileges",
         lambda **kwargs: captured.setdefault("reconciled", kwargs),
@@ -227,7 +285,9 @@ def test_admin_backup_restore_should_strip_unsupported_transaction_timeout(
         captured["input"] = input
         return type("_Completed", (), {"returncode": 0, "stderr": b""})()
 
-    monkeypatch.setattr("app.infrastructure.postgres_admin.logical_backup.subprocess.run", _fake_run)
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.logical_backup.subprocess.run", _fake_run
+    )
 
     restored = restore_backup(
         admin_dsn=ADMIN_LIVE_DSN,

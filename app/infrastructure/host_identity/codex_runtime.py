@@ -23,7 +23,9 @@ def resolve_codex_caller_identity() -> CallerIdentity | None:
     )
 
 
-def resolve_codex_transcript_for_caller(*, caller_identity: CallerIdentity, search_roots: Sequence[Path]) -> Path:
+def resolve_codex_transcript_for_caller(
+    *, caller_identity: CallerIdentity, search_roots: Sequence[Path]
+) -> Path:
     """Resolve the Codex transcript path for one trusted caller."""
 
     return resolve_codex_transcript_path(

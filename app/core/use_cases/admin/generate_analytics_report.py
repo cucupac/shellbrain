@@ -8,7 +8,10 @@ import math
 import re
 from typing import Any
 
-from app.core.observability.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
+from app.core.use_cases.admin.analytics_diagnostics import (
+    classify_operation_failure,
+    classify_sync_failure,
+)
 
 
 _MAX_STRENGTHS = 3
@@ -41,8 +44,15 @@ def build_analytics_report(
         end_at = _REAL_DATETIME.now(timezone.utc)
     start_at = end_at - timedelta(days=days)
 
-    strengths = _build_strengths(operation_rows=operation_rows, write_rows=write_rows, sync_rows=sync_rows, event_rows=event_rows)
-    failures = _build_failures(operation_rows=operation_rows, read_rows=read_rows, sync_rows=sync_rows)
+    strengths = _build_strengths(
+        operation_rows=operation_rows,
+        write_rows=write_rows,
+        sync_rows=sync_rows,
+        event_rows=event_rows,
+    )
+    failures = _build_failures(
+        operation_rows=operation_rows, read_rows=read_rows, sync_rows=sync_rows
+    )
     capability_gaps = _build_capability_gaps(
         operation_rows=operation_rows,
         write_rows=write_rows,
@@ -60,8 +70,12 @@ def build_analytics_report(
     )
 
     repo_ids = set()
-    repo_ids.update(str(row["repo_id"]) for row in operation_rows if row.get("repo_id") is not None)
-    repo_ids.update(str(row["repo_id"]) for row in sync_rows if row.get("repo_id") is not None)
+    repo_ids.update(
+        str(row["repo_id"]) for row in operation_rows if row.get("repo_id") is not None
+    )
+    repo_ids.update(
+        str(row["repo_id"]) for row in sync_rows if row.get("repo_id") is not None
+    )
     top_strength = strengths[0] if strengths else None
     top_failure = failures[0] if failures else None
     top_gap = capability_gaps[0] if capability_gaps else None
@@ -73,13 +87,19 @@ def build_analytics_report(
             "end_at": end_at.isoformat(),
         },
         "summary": {
-            "overall_health": _overall_health(failures=failures, capability_gaps=capability_gaps),
-            "top_strength": None if top_strength is None else _summary_ref(top_strength),
+            "overall_health": _overall_health(
+                failures=failures, capability_gaps=capability_gaps
+            ),
+            "top_strength": None
+            if top_strength is None
+            else _summary_ref(top_strength),
             "top_failure": None if top_failure is None else _summary_ref(top_failure),
             "top_capability_gap": None if top_gap is None else _summary_ref(top_gap),
             "repo_count": len(repo_ids),
             "invocation_count": len(operation_rows),
-            "failure_count": sum(1 for row in operation_rows if row.get("outcome") == "error")
+            "failure_count": sum(
+                1 for row in operation_rows if row.get("outcome") == "error"
+            )
             + sum(1 for row in sync_rows if row.get("outcome") == "error"),
         },
         "strengths": strengths,
@@ -150,7 +170,9 @@ def _build_strengths(
             metrics={
                 "sync_run_count": len(rows),
                 "failure_rate": round(failure_rate, 4),
-                "imported_event_count": sum(int(row["imported_event_count"]) for row in rows),
+                "imported_event_count": sum(
+                    int(row["imported_event_count"]) for row in rows
+                ),
             },
             diagnosis={
                 "category": "healthy_sync_usage",
@@ -173,7 +195,9 @@ def _build_strengths(
             thread_id = row.get("selected_thread_id")
             if not isinstance(thread_id, str):
                 continue
-            if _has_prior_time(times=event_times[(repo_id, thread_id)], created_at=_row_time(row)):
+            if _has_prior_time(
+                times=event_times[(repo_id, thread_id)], created_at=_row_time(row)
+            ):
                 preceded += 1
         compliance = preceded / len(rows)
         if compliance < 0.9:
@@ -199,7 +223,14 @@ def _build_strengths(
         )
         findings.append((compliance * len(rows), finding))
 
-    findings.sort(key=lambda item: (_SEVERITY_WEIGHT[item[1]["severity"]], item[0], item[1]["title"]), reverse=True)
+    findings.sort(
+        key=lambda item: (
+            _SEVERITY_WEIGHT[item[1]["severity"]],
+            item[0],
+            item[1]["title"],
+        ),
+        reverse=True,
+    )
     return [item[1] for item in findings[:_MAX_STRENGTHS]]
 
 
@@ -213,7 +244,9 @@ def _build_failures(
 
     findings: list[tuple[float, dict[str, Any]]] = []
 
-    op_groups: dict[tuple[str, str, str, str, str], list[dict[str, object]]] = defaultdict(list)
+    op_groups: dict[tuple[str, str, str, str, str], list[dict[str, object]]] = (
+        defaultdict(list)
+    )
     for row in operation_rows:
         if row.get("outcome") != "error":
             continue
@@ -233,9 +266,22 @@ def _build_failures(
         normalized = dict(row)
         normalized["_diagnosis"] = diagnosis
         op_groups[key].append(normalized)
-    for (repo_id, command, error_stage, error_code, _category), rows in op_groups.items():
+    for (
+        repo_id,
+        command,
+        error_stage,
+        error_code,
+        _category,
+    ), rows in op_groups.items():
         diagnosis = rows[0]["_diagnosis"]
-        rate = len(rows) / max(1, sum(1 for item in operation_rows if item.get("repo_id") == repo_id and item.get("command") == command))
+        rate = len(rows) / max(
+            1,
+            sum(
+                1
+                for item in operation_rows
+                if item.get("repo_id") == repo_id and item.get("command") == command
+            ),
+        )
         finding = _finding(
             finding_type="failure",
             category=str(diagnosis["category"]),
@@ -259,7 +305,9 @@ def _build_failures(
         findings.append((len(rows) + rate, finding))
 
     sync_group_totals: dict[tuple[str, str], int] = defaultdict(int)
-    sync_failure_groups: dict[tuple[str, str, str, str], list[dict[str, object]]] = defaultdict(list)
+    sync_failure_groups: dict[tuple[str, str, str, str], list[dict[str, object]]] = (
+        defaultdict(list)
+    )
     for row in sync_rows:
         key = (str(row["repo_id"]), str(row["host_app"]))
         sync_group_totals[key] += 1
@@ -278,7 +326,12 @@ def _build_failures(
         normalized = dict(row)
         normalized["_diagnosis"] = diagnosis
         sync_failure_groups[failure_key].append(normalized)
-    for (repo_id, host_app, error_stage, _category), rows in sync_failure_groups.items():
+    for (
+        repo_id,
+        host_app,
+        error_stage,
+        _category,
+    ), rows in sync_failure_groups.items():
         diagnosis = rows[0]["_diagnosis"]
         total = sync_group_totals[(repo_id, host_app)]
         rate = len(rows) / max(1, total)
@@ -364,7 +417,14 @@ def _build_failures(
         )
         findings.append((len(ambiguous_rows) + ambiguity_rate, finding))
 
-    findings.sort(key=lambda item: (_SEVERITY_WEIGHT[item[1]["severity"]], item[0], item[1]["title"]), reverse=True)
+    findings.sort(
+        key=lambda item: (
+            _SEVERITY_WEIGHT[item[1]["severity"]],
+            item[0],
+            item[1]["title"],
+        ),
+        reverse=True,
+    )
     return [item[1] for item in findings[:_MAX_FAILURES]]
 
 
@@ -395,7 +455,12 @@ def _build_capability_gaps(
             continue
         opportunities_by_repo[repo_id] += 1
         first_guidance_at = _row_time(row, field="first_guidance_at")
-        if _has_prior_time(times=utility_vote_times[(repo_id, thread_id)], created_at=first_guidance_at, inclusive=False, direction="after"):
+        if _has_prior_time(
+            times=utility_vote_times[(repo_id, thread_id)],
+            created_at=first_guidance_at,
+            inclusive=False,
+            direction="after",
+        ):
             continue
         gaps_by_repo[repo_id].append(row)
     for repo_id, rows in gaps_by_repo.items():
@@ -431,7 +496,9 @@ def _build_capability_gaps(
         if not isinstance(thread_id, str):
             write_gaps_by_repo[repo_id].append(row)
             continue
-        if _has_prior_time(times=event_times[(repo_id, thread_id)], created_at=_row_time(row)):
+        if _has_prior_time(
+            times=event_times[(repo_id, thread_id)], created_at=_row_time(row)
+        ):
             continue
         write_gaps_by_repo[repo_id].append(row)
     for repo_id, rows in write_gaps_by_repo.items():
@@ -457,11 +524,20 @@ def _build_capability_gaps(
         )
         findings.append((len(rows) + rate, finding))
 
-    findings.sort(key=lambda item: (_SEVERITY_WEIGHT[item[1]["severity"]], item[0], item[1]["title"]), reverse=True)
+    findings.sort(
+        key=lambda item: (
+            _SEVERITY_WEIGHT[item[1]["severity"]],
+            item[0],
+            item[1]["title"],
+        ),
+        reverse=True,
+    )
     return [item[1] for item in findings[:_MAX_CAPABILITY_GAPS]]
 
 
-def _build_priorities(*, failures: list[dict[str, Any]], capability_gaps: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def _build_priorities(
+    *, failures: list[dict[str, Any]], capability_gaps: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """Return top product priorities derived from failure and gap findings."""
 
     grouped: dict[str, dict[str, Any]] = {}
@@ -485,11 +561,18 @@ def _build_priorities(*, failures: list[dict[str, Any]], capability_gaps: list[d
             entry["repo_ids"].add(where["repo_id"])
         metric_score = _impact_score(finding.get("metrics", {}))
         entry["score"] += _SEVERITY_WEIGHT[str(finding["severity"])] + metric_score
-        if _SEVERITY_WEIGHT[str(finding["severity"])] > _SEVERITY_WEIGHT[str(entry["severity"])]:
+        if (
+            _SEVERITY_WEIGHT[str(finding["severity"])]
+            > _SEVERITY_WEIGHT[str(entry["severity"])]
+        ):
             entry["severity"] = finding["severity"]
             entry["title"] = finding["title"]
             entry["type"] = finding["type"]
-    priorities = sorted(grouped.values(), key=lambda item: (item["score"], len(item["repo_ids"])), reverse=True)
+    priorities = sorted(
+        grouped.values(),
+        key=lambda item: (item["score"], len(item["repo_ids"])),
+        reverse=True,
+    )
     return [
         {
             "category": item["category"],
@@ -516,8 +599,16 @@ def _build_repo_rollups(
 
     repos = sorted(
         {
-            *(str(row["repo_id"]) for row in operation_rows if row.get("repo_id") is not None),
-            *(str(row["repo_id"]) for row in sync_rows if row.get("repo_id") is not None),
+            *(
+                str(row["repo_id"])
+                for row in operation_rows
+                if row.get("repo_id") is not None
+            ),
+            *(
+                str(row["repo_id"])
+                for row in sync_rows
+                if row.get("repo_id") is not None
+            ),
         }
     )
     failure_refs = _finding_refs_by_repo(failures)
@@ -531,10 +622,14 @@ def _build_repo_rollups(
             {
                 "repo_id": repo_id,
                 "invocation_count": len(repo_ops),
-                "failure_count": sum(1 for row in repo_ops if row.get("outcome") == "error")
+                "failure_count": sum(
+                    1 for row in repo_ops if row.get("outcome") == "error"
+                )
                 + sum(1 for row in repo_syncs if row.get("outcome") == "error"),
                 "sync_run_count": len(repo_syncs),
-                "sync_failure_count": sum(1 for row in repo_syncs if row.get("outcome") == "error"),
+                "sync_failure_count": sum(
+                    1 for row in repo_syncs if row.get("outcome") == "error"
+                ),
                 "strength_ids": strength_refs.get(repo_id, []),
                 "failure_ids": failure_refs.get(repo_id, []),
                 "capability_gap_ids": gap_refs.get(repo_id, []),
@@ -630,10 +725,14 @@ def _summary_ref(finding: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _overall_health(*, failures: list[dict[str, Any]], capability_gaps: list[dict[str, Any]]) -> str:
+def _overall_health(
+    *, failures: list[dict[str, Any]], capability_gaps: list[dict[str, Any]]
+) -> str:
     """Return one compact overall health label."""
 
-    high_count = sum(1 for item in [*failures, *capability_gaps] if item["severity"] == "high")
+    high_count = sum(
+        1 for item in [*failures, *capability_gaps] if item["severity"] == "high"
+    )
     if not failures and not capability_gaps:
         return "healthy"
     if high_count >= 2 or failures:
@@ -714,14 +813,18 @@ def _guidance_evidence(rows: list[dict[str, object]]) -> list[dict[str, object]]
         evidence.append(
             {
                 "thread_id": row.get("selected_thread_id"),
-                "first_guidance_at": _row_time(row, field="first_guidance_at").isoformat(),
+                "first_guidance_at": _row_time(
+                    row, field="first_guidance_at"
+                ).isoformat(),
                 "reminder_count": int(row.get("reminder_count") or 0),
             }
         )
     return evidence
 
 
-def _thread_times(*, rows: list[dict[str, object]]) -> dict[tuple[str, str], list[datetime]]:
+def _thread_times(
+    *, rows: list[dict[str, object]]
+) -> dict[tuple[str, str], list[datetime]]:
     """Return created_at timestamps grouped by repo/thread."""
 
     grouped: dict[tuple[str, str], list[datetime]] = defaultdict(list)
@@ -764,10 +867,18 @@ def _row_time(row: dict[str, object], *, field: str = "created_at") -> datetime:
 
     value = row.get(field)
     if isinstance(value, _REAL_DATETIME):
-        return value.astimezone(timezone.utc) if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+        return (
+            value.astimezone(timezone.utc)
+            if value.tzinfo is not None
+            else value.replace(tzinfo=timezone.utc)
+        )
     if isinstance(value, str):
         parsed = _REAL_DATETIME.fromisoformat(value.replace("Z", "+00:00"))
-        return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
+        return (
+            parsed.astimezone(timezone.utc)
+            if parsed.tzinfo is not None
+            else parsed.replace(tzinfo=timezone.utc)
+        )
     raise TypeError(f"Expected datetime field {field!r}, got {value!r}")
 
 

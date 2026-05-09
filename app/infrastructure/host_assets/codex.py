@@ -2,9 +2,18 @@
 
 from __future__ import annotations
 
-from app.infrastructure.host_assets.managed_markdown import install_managed_markdown_block, inspect_managed_markdown_block
-from app.infrastructure.host_assets.managed_tree import install_asset_tree, is_shellbrain_managed_asset
-from app.infrastructure.host_assets.packaged_assets import load_packaged_text, packaged_asset_root
+from app.infrastructure.host_assets.managed_markdown import (
+    install_managed_markdown_block,
+    inspect_managed_markdown_block,
+)
+from app.infrastructure.host_assets.managed_tree import (
+    install_asset_tree,
+    is_shellbrain_managed_asset,
+)
+from app.infrastructure.host_assets.packaged_assets import (
+    load_packaged_text,
+    packaged_asset_root,
+)
 from app.infrastructure.host_assets.paths import default_codex_home
 
 PRIMARY_CODEX_SKILL_NAME = "shellbrain-session-start"
@@ -59,6 +68,8 @@ def inspect_codex_assets() -> tuple[dict[str, object], dict[str, object]]:
         {
             "path": str(codex_root),
             "installed": codex_root.exists(),
-            "managed": is_shellbrain_managed_asset(target_root=codex_root, asset_kind="codex_skill"),
+            "managed": is_shellbrain_managed_asset(
+                target_root=codex_root, asset_kind="codex_skill"
+            ),
         },
     )

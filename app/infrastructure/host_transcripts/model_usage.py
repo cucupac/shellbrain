@@ -10,10 +10,12 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from app.core.entities.telemetry import ModelUsageRecord
-from app.infrastructure.host_transcripts.claude_code import extract_claude_code_model_usage
+from app.infrastructure.host_transcripts.claude_code import (
+    extract_claude_code_model_usage,
+)
 from app.infrastructure.host_transcripts.codex import extract_codex_model_usage
 from app.infrastructure.host_transcripts.cursor import extract_cursor_model_usage
+from app.infrastructure.observability.telemetry.records import ModelUsageRecord
 
 
 def collect_model_usage_records_for_session(
@@ -66,7 +68,9 @@ def extract_host_model_usage(
             host_session_key=host_session_key,
             transcript_path=transcript_path,
         )
-        rows.extend(_extract_cursor_statusline_sidecar_usage(host_session_key=host_session_key))
+        rows.extend(
+            _extract_cursor_statusline_sidecar_usage(host_session_key=host_session_key)
+        )
         return rows
     raise ValueError(f"Unsupported host app for model-usage extraction: {host_app}")
 
@@ -85,7 +89,9 @@ def build_model_usage_records(
     records: list[ModelUsageRecord] = []
     for row in extracted_rows:
         model_id = _clean_string(row.get("model_id"))
-        provider = _clean_string(row.get("provider")) or _infer_provider(model_id=model_id)
+        provider = _clean_string(row.get("provider")) or _infer_provider(
+            model_id=model_id
+        )
         raw_usage_json = row.get("raw_usage_json")
         if not isinstance(raw_usage_json, dict):
             raw_usage_json = {}
@@ -105,10 +111,18 @@ def build_model_usage_records(
                 model_id=model_id,
                 input_tokens=_coerce_non_negative_int(row.get("input_tokens")),
                 output_tokens=_coerce_non_negative_int(row.get("output_tokens")),
-                reasoning_output_tokens=_coerce_non_negative_int(row.get("reasoning_output_tokens")),
-                cached_input_tokens_total=_coerce_non_negative_int(row.get("cached_input_tokens_total")),
-                cache_read_input_tokens=_coerce_non_negative_int(row.get("cache_read_input_tokens")),
-                cache_creation_input_tokens=_coerce_non_negative_int(row.get("cache_creation_input_tokens")),
+                reasoning_output_tokens=_coerce_non_negative_int(
+                    row.get("reasoning_output_tokens")
+                ),
+                cached_input_tokens_total=_coerce_non_negative_int(
+                    row.get("cached_input_tokens_total")
+                ),
+                cache_read_input_tokens=_coerce_non_negative_int(
+                    row.get("cache_read_input_tokens")
+                ),
+                cache_creation_input_tokens=_coerce_non_negative_int(
+                    row.get("cache_creation_input_tokens")
+                ),
                 capture_quality=_clean_string(row.get("capture_quality")) or "exact",
                 raw_usage_json=raw_usage_json,
                 created_at=None,
@@ -117,7 +131,9 @@ def build_model_usage_records(
     return records
 
 
-def _extract_cursor_statusline_sidecar_usage(*, host_session_key: str) -> list[dict[str, Any]]:
+def _extract_cursor_statusline_sidecar_usage(
+    *, host_session_key: str
+) -> list[dict[str, Any]]:
     """Read Shellbrain-managed Cursor statusline sidecar rows when present."""
 
     sidecar_path = _cursor_statusline_sidecar_path(host_session_key=host_session_key)
@@ -140,7 +156,14 @@ def _extract_cursor_statusline_sidecar_usage(*, host_session_key: str) -> list[d
                 continue
             rows.append(
                 {
-                    "host_usage_key": str(payload.get("usage_key") or _fallback_usage_key(prefix="cursor-sidecar", raw_line=raw_line, line_number=line_number)),
+                    "host_usage_key": str(
+                        payload.get("usage_key")
+                        or _fallback_usage_key(
+                            prefix="cursor-sidecar",
+                            raw_line=raw_line,
+                            line_number=line_number,
+                        )
+                    ),
                     "source_kind": "cursor_statusline_sidecar",
                     "occurred_at": str(payload.get("occurred_at") or ""),
                     "agent_role": "foreground",
@@ -149,11 +172,18 @@ def _extract_cursor_statusline_sidecar_usage(*, host_session_key: str) -> list[d
                     "input_tokens": payload.get("input_tokens"),
                     "output_tokens": payload.get("output_tokens"),
                     "reasoning_output_tokens": payload.get("reasoning_output_tokens"),
-                    "cached_input_tokens_total": payload.get("cached_input_tokens_total"),
+                    "cached_input_tokens_total": payload.get(
+                        "cached_input_tokens_total"
+                    ),
                     "cache_read_input_tokens": payload.get("cache_read_input_tokens"),
-                    "cache_creation_input_tokens": payload.get("cache_creation_input_tokens"),
-                    "capture_quality": _clean_string(payload.get("capture_quality")) or "estimated",
-                    "raw_usage_json": payload.get("raw_payload") if isinstance(payload.get("raw_payload"), dict) else payload,
+                    "cache_creation_input_tokens": payload.get(
+                        "cache_creation_input_tokens"
+                    ),
+                    "capture_quality": _clean_string(payload.get("capture_quality"))
+                    or "estimated",
+                    "raw_usage_json": payload.get("raw_payload")
+                    if isinstance(payload.get("raw_payload"), dict)
+                    else payload,
                 }
             )
     return rows
@@ -162,7 +192,11 @@ def _extract_cursor_statusline_sidecar_usage(*, host_session_key: str) -> list[d
 def _cursor_statusline_sidecar_path(*, host_session_key: str) -> Path:
     """Return the Shellbrain-managed Cursor statusline sidecar path for one session."""
 
-    cursor_home = Path(os.getenv("CURSOR_HOME") or (Path.home() / ".cursor")).expanduser().resolve()
+    cursor_home = (
+        Path(os.getenv("CURSOR_HOME") or (Path.home() / ".cursor"))
+        .expanduser()
+        .resolve()
+    )
     return cursor_home / "shellbrain" / "model-usage" / f"{host_session_key}.jsonl"
 
 
@@ -188,7 +222,9 @@ def _parse_occurred_at(value: Any) -> datetime:
         return value.astimezone(timezone.utc)
     if isinstance(value, str) and value.strip():
         try:
-            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+            return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(
+                timezone.utc
+            )
         except ValueError:
             pass
     return datetime.now(timezone.utc)
@@ -222,5 +258,7 @@ def _clean_string(value: Any) -> str | None:
 def _fallback_usage_key(*, prefix: str, raw_line: str, line_number: int) -> str:
     """Build one stable usage key when a source does not expose one directly."""
 
-    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[
+        :16
+    ]
     return f"{prefix}-{line_number}-{digest}"

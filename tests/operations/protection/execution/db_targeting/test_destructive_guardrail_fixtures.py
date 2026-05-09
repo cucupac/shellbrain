@@ -9,8 +9,12 @@ from tests.operations._shared.destructive_guardrail_fixtures import (
 )
 
 
-PROTECTED_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
-DISPOSABLE_TEST_DSN = "postgresql+psycopg://test_user:test_password@localhost:5432/test_db"
+PROTECTED_DSN = (
+    "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+)
+DISPOSABLE_TEST_DSN = (
+    "postgresql+psycopg://test_user:test_password@localhost:5432/test_db"
+)
 
 
 def test_fixture_guard_should_not_treat_the_test_dsn_as_protected_when_env_points_at_the_same_db(
