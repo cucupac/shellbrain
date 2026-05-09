@@ -1,6 +1,6 @@
 # ShellBrain
 
-#### Long-term Memory for AI Agents.
+### Long-term Memory for AI Agents.
 
 Agents are amnesiacs across sessions. They rediscover the same problems, repeat the same mistakes, and relearn what you already taught them. **ShellBrain makes their work compound.**
 
