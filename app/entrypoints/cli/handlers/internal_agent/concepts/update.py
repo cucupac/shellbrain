@@ -8,14 +8,14 @@ from time import perf_counter
 from app.core.contracts.concepts import ConceptUpdateRequest
 from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.infrastructure.cli.handlers.command_context import OperationDependencies
-from app.infrastructure.cli.handlers.result_envelopes import (
+from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.infrastructure.cli.handlers.command_context import (
+from app.entrypoints.cli.handlers.command_context import (
     ensure_telemetry_context,
 )
 from app.core.use_cases.concepts.update import update_concepts

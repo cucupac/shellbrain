@@ -21,7 +21,6 @@ from app.core.entities.runtime_context import (
 from app.core.ports.runtime.clock import IClock
 from app.core.ports.runtime.idgen import IIdGenerator
 from app.core.ports.local_state.session_state_store import ISessionStateStore
-from app.infrastructure.telemetry.sink import TelemetrySink
 
 
 class OperationContextDependencies(Protocol):
@@ -32,6 +31,13 @@ class OperationContextDependencies(Protocol):
     ]
     resolve_caller_identity: Callable[[], Any]
     id_generator: Any
+
+
+class TelemetrySink(Protocol):
+    """Telemetry behavior supplied by startup without coupling CLI to storage."""
+
+    def record(self, **kwargs: Any) -> None:
+        """Persist one best-effort telemetry event."""
 
 
 def ensure_telemetry_context(

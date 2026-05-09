@@ -1,6 +1,6 @@
 """Request-shape contracts for update-path requests."""
 
-from app.infrastructure.cli.protocol.payload_validation import validate_update_schema
+from app.entrypoints.cli.protocol.payload_validation import validate_update_schema
 
 
 def test_update_rejects_unknown_update_type() -> None:

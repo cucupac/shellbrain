@@ -10,15 +10,15 @@ from pathlib import Path
 import sys
 from typing import Any, Sequence
 
-from app.infrastructure.cli.handlers.human.admin import (
+from app.entrypoints.cli.handlers.human.admin import (
     AdminCommandDependencies,
     run_admin_command,
 )
-from app.infrastructure.cli.handlers.human.init import run as run_init_command
-from app.infrastructure.cli.handlers.human.metrics import run_metrics_command
-from app.infrastructure.cli.handlers.human.upgrade import run as run_upgrade_command
-from app.infrastructure.cli.parser import build_parser
-from app.infrastructure.cli.presenters.json import render
+from app.entrypoints.cli.handlers.human.init import run as run_init_command
+from app.entrypoints.cli.handlers.human.metrics import run_metrics_command
+from app.entrypoints.cli.handlers.human.upgrade import run as run_upgrade_command
+from app.entrypoints.cli.parser import build_parser
+from app.entrypoints.cli.presenters.json import render
 
 
 @dataclass(frozen=True)
@@ -164,7 +164,7 @@ def _dispatch_operation_command(
     repo_id = repo_context.repo_id
     repo_root = repo_context.repo_root
     if command == "recall":
-        from app.infrastructure.cli.protocol.retrieval import prepare_recall_request
+        from app.entrypoints.cli.protocol.retrieval import prepare_recall_request
 
         prepared = prepare_recall_request(payload, inferred_repo_id=repo_id)
         return runtime.handle_recall(
@@ -177,7 +177,7 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "read":
-        from app.infrastructure.cli.protocol.retrieval import prepare_read_request
+        from app.entrypoints.cli.protocol.retrieval import prepare_read_request
 
         prepared = prepare_read_request(
             payload,
@@ -195,7 +195,7 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "events":
-        from app.infrastructure.cli.protocol.episodes import prepare_events_request
+        from app.entrypoints.cli.protocol.episodes import prepare_events_request
 
         prepared = prepare_events_request(payload, inferred_repo_id=repo_id)
         return runtime.handle_events(
@@ -208,7 +208,7 @@ def _dispatch_operation_command(
             telemetry_context=runtime.get_operation_telemetry_context(),
         )
     if command == "memory:add":
-        from app.infrastructure.cli.protocol.memories import prepare_memory_add_request
+        from app.entrypoints.cli.protocol.memories import prepare_memory_add_request
 
         prepared = prepare_memory_add_request(
             payload,
@@ -227,7 +227,7 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "memory:update":
-        from app.infrastructure.cli.protocol.memories import prepare_update_request
+        from app.entrypoints.cli.protocol.memories import prepare_update_request
 
         prepared = prepare_update_request(payload, inferred_repo_id=repo_id)
         return runtime.handle_update(
@@ -240,7 +240,7 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "concept:add":
-        from app.infrastructure.cli.protocol.concepts import prepare_concept_add_request
+        from app.entrypoints.cli.protocol.concepts import prepare_concept_add_request
 
         prepared = prepare_concept_add_request(payload, inferred_repo_id=repo_id)
         return runtime.handle_concept_add(
@@ -253,7 +253,7 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "concept:update":
-        from app.infrastructure.cli.protocol.concepts import (
+        from app.entrypoints.cli.protocol.concepts import (
             prepare_concept_update_request,
         )
 

@@ -1,7 +1,7 @@
 """Request-shape contracts for create-path requests."""
 
-from app.infrastructure.cli.protocol.hydration import hydrate_memory_add_payload
-from app.infrastructure.cli.protocol.payload_validation import validate_create_schema
+from app.entrypoints.cli.protocol.hydration import hydrate_memory_add_payload
+from app.entrypoints.cli.protocol.payload_validation import validate_create_schema
 
 
 def test_create_rejects_unknown_fields() -> None:

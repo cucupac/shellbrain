@@ -7,7 +7,7 @@ import sys
 from typing import Any, Sequence
 from uuid import uuid4
 
-from app.infrastructure.cli.runner import main as run_cli_runner
+from app.entrypoints.cli.runner import main as run_cli_runner
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -19,7 +19,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 def build_cli_runtime():
     """Build the concrete dependency set for the CLI runner."""
 
-    from app.infrastructure.cli.runner import CliRuntime
+    from app.entrypoints.cli.runner import CliRuntime
     from app.startup import cli_handlers
     from app.startup import create_policy
     from app.startup import metrics as startup_metrics
@@ -60,7 +60,7 @@ def build_cli_runtime():
 def build_admin_command_dependencies():
     """Build concrete dependencies for human admin CLI commands."""
 
-    from app.infrastructure.cli.handlers.human.admin import AdminCommandDependencies
+    from app.entrypoints.cli.handlers.human.admin import AdminCommandDependencies
     from app.startup import admin as startup_admin
     from app.startup import admin_db
     from app.startup import admin_diagnose
@@ -140,7 +140,7 @@ def run_operation_command(
 ) -> dict[str, Any]:
     """Run one hydrated CLI operation with concrete startup side effects."""
 
-    from app.infrastructure.cli.handlers.cli_operation import (
+    from app.entrypoints.cli.handlers.cli_operation import (
         CliOperationEffects,
         run_cli_operation,
     )

@@ -7,8 +7,8 @@ from pathlib import Path
 import pytest
 
 import app.entrypoints.cli.main as cli_main
-import app.infrastructure.cli.parser.builder as cli_parser
-import app.infrastructure.cli.runner as cli_runner
+import app.entrypoints.cli.parser.builder as cli_parser
+import app.entrypoints.cli.runner as cli_runner
 import app.startup.cli as startup_cli
 from app.startup.repo_context import RepoContext, resolve_repo_context
 

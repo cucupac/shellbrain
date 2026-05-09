@@ -1,4 +1,4 @@
-"""Agent operation workflow for reading memory context."""
+"""Agent operation workflow for worker recall briefs."""
 
 from __future__ import annotations
 
@@ -6,35 +6,34 @@ from pathlib import Path
 from time import perf_counter
 
 from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.contracts.retrieval import MemoryRecallRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.infrastructure.cli.handlers.command_context import OperationDependencies
-from app.infrastructure.cli.handlers.result_envelopes import (
+from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.infrastructure.cli.handlers.command_context import ensure_telemetry_context
-from app.infrastructure.cli.handlers.internal_agent.retrieval.execution import (
-    execute_read_memory_with_dependencies,
+from app.entrypoints.cli.handlers.command_context import ensure_telemetry_context
+from app.entrypoints.cli.handlers.internal_agent.retrieval.execution import (
+    execute_recall_memory_with_dependencies,
 )
-from app.infrastructure.cli.handlers.session_state import SessionStateManager
+from app.entrypoints.cli.handlers.session_state import SessionStateManager
 
 
-def run_read_memory_operation(
-    request: MemoryReadRequest | None,
+def run_recall_memory_operation(
+    request: MemoryRecallRequest | None,
     *,
     dependencies: OperationDependencies,
     uow_factory,
     inferred_repo_id: str,
     validation_errors: tuple[ErrorDetail, ...] | list[ErrorDetail] = (),
     validation_error_stage: str = "schema_validation",
-    requested_limit: int | None = None,
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    """Dispatch a typed read request to the read use-case."""
+    """Dispatch a typed read-only recall request."""
 
     started_at = perf_counter()
     resolved_repo_root = (repo_root or Path.cwd()).resolve()
@@ -51,6 +50,7 @@ def run_read_memory_operation(
         caller_identity=resolved_telemetry_context.caller_identity,
     )
     result: dict | None = None
+    recall_telemetry: dict | None = None
     error_stage: str | None = None
     try:
         if validation_errors:
@@ -63,17 +63,23 @@ def run_read_memory_operation(
             result = error_response(
                 [
                     ErrorDetail(
-                        code=ErrorCode.SCHEMA_ERROR, message="read request is required"
+                        code=ErrorCode.SCHEMA_ERROR,
+                        message="recall request is required",
                     )
                 ]
             )
         else:
             with uow_factory() as uow:
                 result = ok_envelope(
-                    execute_read_memory_with_dependencies(
+                    execute_recall_memory_with_dependencies(
                         request=request, uow=uow, dependencies=dependencies
                     )
                 )
+            data = result.get("data")
+            if isinstance(data, dict):
+                telemetry_payload = data.pop("_telemetry", None)
+                if isinstance(telemetry_payload, dict):
+                    recall_telemetry = telemetry_payload
     except Exception as exc:  # pragma: no cover - defensive fallback envelope
         error_stage = "internal_error"
         result = error_response(
@@ -82,14 +88,14 @@ def run_read_memory_operation(
 
     assert result is not None
     dependencies.telemetry_sink.record(
-        command="read",
+        command="recall",
         uow_factory=uow_factory,
         repo_id=inferred_repo_id,
         telemetry_context=resolved_telemetry_context,
         result=result,
         error_stage=error_stage,
         request=request,
-        requested_limit=requested_limit,
+        recall_telemetry=recall_telemetry,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result
