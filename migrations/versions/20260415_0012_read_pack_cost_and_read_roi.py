@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.infrastructure.db.models.views import (
+from app.infrastructure.db.runtime.models.views import (
     USAGE_PROBLEM_READ_ROI_SQL,
     USAGE_READ_BEFORE_SOLVE_ROI_SQL,
 )

@@ -11,8 +11,8 @@ import sys
 from app.startup.admin_db import get_optional_admin_db_dsn
 from app.startup.db import get_optional_db_dsn
 from app.core.use_cases.metrics.analyze_agent_behavior import build_agent_behavior_report
-from app.infrastructure.db.engine import get_engine
-from app.infrastructure.db.queries.agent_behavior import fetch_agent_behavior_rows
+from app.infrastructure.db.runtime.engine import get_engine
+from app.infrastructure.db.runtime.queries.agent_behavior import fetch_agent_behavior_rows
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -3,8 +3,8 @@
 from app.startup.dsn_resolution import resolve_database_dsn
 from app.startup.config import get_config_provider
 from app.infrastructure.local_state.machine_config_store import try_load_machine_config
-from app.infrastructure.db.engine import get_engine
-from app.infrastructure.db.session import get_session_factory
+from app.infrastructure.db.runtime.engine import get_engine
+from app.infrastructure.db.runtime.session import get_session_factory
 
 
 def get_db_dsn() -> str:

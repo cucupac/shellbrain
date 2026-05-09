@@ -13,7 +13,7 @@ from tests.operations._shared.handler_calls import (
     handle_read,
     handle_update,
 )
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from app.infrastructure.process.episode_poller import run_episode_poller
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")

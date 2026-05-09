@@ -6,8 +6,8 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.host_transcripts.cursor import list_cursor_sessions_for_repo
-from app.infrastructure.host_transcripts.source_discovery import (
+from app.infrastructure.host_apps.transcripts.cursor import list_cursor_sessions_for_repo
+from app.infrastructure.host_apps.transcripts.source_discovery import (
     resolve_host_transcript_source,
 )
 

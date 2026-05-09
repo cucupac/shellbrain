@@ -108,7 +108,7 @@ def run_upgrade_command() -> int:
 def resolve_cli_caller_identity():
     """Resolve caller identity through concrete host adapters."""
 
-    from app.infrastructure.host_identity import resolver as host_identity_resolver
+    from app.infrastructure.host_apps.identity import resolver as host_identity_resolver
 
     return host_identity_resolver.resolve_caller_identity()
 
@@ -214,7 +214,7 @@ def ensure_repo_registration_for_operation(
 def warn_or_fail_on_unsafe_app_role() -> None:
     """Emit one warning, or fail in strict mode, when the app DSN is overprivileged."""
 
-    from app.infrastructure.postgres_admin import instance_guard
+    from app.infrastructure.db.admin import instance_guard
     from app.startup import admin_db
     from app.startup import db as startup_db
 

@@ -14,7 +14,7 @@ from app.infrastructure.telemetry.records import ModelUsageRecord
 from app.infrastructure.telemetry.recorder import (
     record_model_usage_telemetry,
 )
-from app.infrastructure.host_transcripts.model_usage import (
+from app.infrastructure.host_apps.transcripts.model_usage import (
     collect_model_usage_records_for_session,
 )
 

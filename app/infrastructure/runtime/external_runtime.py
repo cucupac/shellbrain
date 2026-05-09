@@ -14,7 +14,7 @@ from app.infrastructure.local_state.paths import (
     get_machine_models_dir,
 )
 from app.core.entities.admin_errors import InitConflictError
-from app.infrastructure.postgres_admin.instance_guard import (
+from app.infrastructure.db.admin.instance_guard import (
     dsn_fingerprint,
     ensure_instance_metadata,
 )
@@ -28,7 +28,7 @@ from app.infrastructure.local_state.machine_config_store import (
     MachineConfig,
     RUNTIME_MODE_EXTERNAL_POSTGRES,
 )
-from app.infrastructure.postgres_admin.privileges import reconcile_app_role_privileges
+from app.infrastructure.db.admin.privileges import reconcile_app_role_privileges
 
 
 DEFAULT_EXTERNAL_APP_USER = "shellbrain_app"

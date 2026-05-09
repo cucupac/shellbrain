@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 import sys
 
-from app.infrastructure.host_identity.claude_hook_install import (
+from app.infrastructure.host_apps.identity.claude_hook_install import (
     install_claude_hook,
     inspect_claude_hook,
 )
@@ -129,7 +129,7 @@ def test_claude_hook_inspection_should_report_missing_managed_interpreter(
                             "hooks": [
                                 {
                                     "type": "command",
-                                    "command": "/tmp/missing-shellbrain-python -m app.infrastructure.host_identity.claude_runtime session-start # shellbrain-managed:session-start",
+                                    "command": "/tmp/missing-shellbrain-python -m app.infrastructure.host_apps.identity.claude_runtime session-start # shellbrain-managed:session-start",
                                 }
                             ],
                         }

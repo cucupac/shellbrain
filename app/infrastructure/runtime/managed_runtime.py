@@ -17,11 +17,11 @@ from app.infrastructure.local_state.paths import (
     get_machine_postgres_data_dir,
     get_shellbrain_home,
 )
-from app.infrastructure.postgres_admin.destructive_guard import (
+from app.infrastructure.db.admin.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 from app.core.entities.admin_errors import InitConflictError
-from app.infrastructure.postgres_admin.instance_guard import (
+from app.infrastructure.db.admin.instance_guard import (
     dsn_fingerprint,
     ensure_instance_metadata,
 )
@@ -37,7 +37,7 @@ from app.infrastructure.local_state.machine_config_store import (
     ManagedInstanceState,
     RUNTIME_MODE_MANAGED_LOCAL,
 )
-from app.infrastructure.postgres_admin.privileges import reconcile_app_role_privileges
+from app.infrastructure.db.admin.privileges import reconcile_app_role_privileges
 
 
 MANAGED_IMAGE = "pgvector/pgvector:pg16"

@@ -92,7 +92,11 @@ def test_followup_refactor_removed_old_layer_paths() -> None:
         APP_ROOT / "handlers",
         APP_ROOT / "startup" / "handlers.py",
         APP_ROOT / "infrastructure" / "cli",
+        APP_ROOT / "infrastructure" / "host_assets",
+        APP_ROOT / "infrastructure" / "host_identity",
+        APP_ROOT / "infrastructure" / "host_transcripts",
         APP_ROOT / "infrastructure" / "observability",
+        APP_ROOT / "infrastructure" / "postgres_admin",
         APP_ROOT / "core" / "contracts" / "requests.py",
         APP_ROOT / "entrypoints" / "cli" / "endpoints",
     )
@@ -101,6 +105,22 @@ def test_followup_refactor_removed_old_layer_paths() -> None:
     ]
     assert not violations, (
         "Forbidden follow-up refactor paths still exist:\n" + "\n".join(violations)
+    )
+
+
+def test_infrastructure_adapter_families_are_grouped() -> None:
+    expected_paths = (
+        APP_ROOT / "infrastructure" / "db" / "runtime",
+        APP_ROOT / "infrastructure" / "db" / "admin",
+        APP_ROOT / "infrastructure" / "host_apps" / "assets",
+        APP_ROOT / "infrastructure" / "host_apps" / "identity",
+        APP_ROOT / "infrastructure" / "host_apps" / "transcripts",
+    )
+    missing = [
+        str(path.relative_to(REPO_ROOT)) for path in expected_paths if not path.exists()
+    ]
+    assert not missing, "Infrastructure adapter groups are missing:\n" + "\n".join(
+        missing
     )
 
 
@@ -474,7 +494,7 @@ def test_telemetry_builders_use_injected_timestamps() -> None:
 def test_handlers_and_refactored_use_cases_use_injected_clock_and_ids() -> None:
     violations: list[str] = []
     scan_roots = (
-        APP_ROOT / "infrastructure" / "cli" / "handlers",
+        APP_ROOT / "entrypoints" / "cli" / "handlers",
         APP_ROOT / "core" / "use_cases" / "memories",
         APP_ROOT / "core" / "use_cases" / "concepts",
         APP_ROOT / "core" / "use_cases" / "retrieval",

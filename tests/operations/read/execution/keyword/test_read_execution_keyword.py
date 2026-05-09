@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from app.core.entities.settings import ThresholdSettings
 from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_keyword_lane_prefers_high_coverage_partial_matches_over_generic_partial_matches(

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.infrastructure.host_transcripts.normalization import normalize_host_transcript
+from app.infrastructure.host_apps.transcripts.normalization import normalize_host_transcript
 
 
 def test_episode_event_content_should_always_include_normalized_tool_telemetry_fields_when_present(

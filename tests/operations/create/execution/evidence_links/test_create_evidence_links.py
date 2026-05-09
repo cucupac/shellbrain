@@ -9,13 +9,13 @@ from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
-from app.infrastructure.db.models.associations import (
+from app.infrastructure.db.runtime.models.associations import (
     association_edge_evidence,
     association_edges,
 )
-from app.infrastructure.db.models.evidence import evidence_refs
-from app.infrastructure.db.models.memories import memory_evidence
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.models.evidence import evidence_refs
+from app.infrastructure.db.runtime.models.memories import memory_evidence
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_create_attaches_all_memory_evidence_refs_exactly_once(

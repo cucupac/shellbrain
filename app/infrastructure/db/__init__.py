@@ -1,1 +1,1 @@
-"""This package contains database models, repositories, and transaction wiring."""
+"""Database infrastructure adapters, split into runtime and admin concerns."""

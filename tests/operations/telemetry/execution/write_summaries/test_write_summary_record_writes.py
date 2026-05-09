@@ -7,7 +7,7 @@ from collections.abc import Callable
 from app.core.entities.memories import MemoryKind, MemoryScope
 import pytest
 from tests.operations._shared.handler_calls import handle_memory_add, handle_update
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 

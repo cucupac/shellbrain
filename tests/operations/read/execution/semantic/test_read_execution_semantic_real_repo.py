@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from app.core.use_cases.retrieval.expansion import expand_candidates
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_read_returns_visible_semantic_matches_through_real_semantic_lane_when_lexical_misses(

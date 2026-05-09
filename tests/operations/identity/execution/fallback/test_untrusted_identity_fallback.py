@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.infrastructure.host_identity.resolver import (
+from app.infrastructure.host_apps.identity.resolver import (
     discover_untrusted_events_candidate,
 )
 

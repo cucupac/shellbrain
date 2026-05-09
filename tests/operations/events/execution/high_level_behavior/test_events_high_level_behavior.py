@@ -7,8 +7,8 @@ import os
 from pathlib import Path
 
 from tests.operations._shared.handler_calls import handle_events
-from app.infrastructure.db.models.episodes import episode_events
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.models.episodes import episode_events
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_events_syncs_the_resolved_active_session_and_returns_recent_events_newest_first(

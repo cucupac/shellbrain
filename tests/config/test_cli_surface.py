@@ -491,7 +491,7 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
     """admin install-host-assets should print the installer result lines."""
 
     monkeypatch.setattr(
-        "app.infrastructure.host_assets.install_host_assets",
+        "app.infrastructure.host_apps.assets.install_host_assets",
         lambda **kwargs: type(
             "Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]}
         )(),
@@ -556,7 +556,7 @@ def test_admin_analytics_should_print_the_report(
     )
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr(
-        "app.infrastructure.db.engine.get_engine", lambda dsn: f"engine:{dsn}"
+        "app.infrastructure.db.runtime.engine.get_engine", lambda dsn: f"engine:{dsn}"
     )
     monkeypatch.setattr(
         "app.startup.analytics.build_analytics_report",
@@ -831,7 +831,7 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
 ) -> None:
     """Disposable test instances should not hard-fail operational commands for unsafe roles."""
 
-    from app.infrastructure.postgres_admin.instance_guard import InstanceMetadataRecord
+    from app.infrastructure.db.admin.instance_guard import InstanceMetadataRecord
 
     monkeypatch.setattr(
         "app.startup.db.get_db_dsn",
@@ -840,11 +840,11 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
         ),
     )
     monkeypatch.setattr(
-        "app.infrastructure.postgres_admin.instance_guard.inspect_role_safety",
+        "app.infrastructure.db.admin.instance_guard.inspect_role_safety",
         lambda dsn: ["Current DSN role is superuser-capable."] if dsn else [],
     )
     monkeypatch.setattr(
-        "app.infrastructure.postgres_admin.instance_guard.fetch_instance_metadata",
+        "app.infrastructure.db.admin.instance_guard.fetch_instance_metadata",
         lambda dsn: InstanceMetadataRecord(
             instance_id="instance-1",
             instance_mode="test",
@@ -865,7 +865,7 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 ) -> None:
     """admin backup create should print the created manifest as JSON."""
 
-    from app.infrastructure.postgres_admin.logical_backup import BackupManifest
+    from app.infrastructure.db.admin.logical_backup import BackupManifest
 
     monkeypatch.setattr(
         "app.startup.admin_db.get_admin_db_dsn",
@@ -878,7 +878,7 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
     )
     monkeypatch.setattr("app.startup.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
-        "app.infrastructure.postgres_admin.logical_backup.create_backup",
+        "app.infrastructure.db.admin.logical_backup.create_backup",
         lambda **kwargs: BackupManifest(
             backup_id="b-1",
             instance_id="i-1",

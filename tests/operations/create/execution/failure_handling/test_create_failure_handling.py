@@ -9,7 +9,7 @@ from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from tests.operations._shared.handler_calls import handle_memory_add
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 class _FailingEmbeddingProvider(IEmbeddingProvider):

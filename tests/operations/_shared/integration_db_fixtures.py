@@ -23,10 +23,10 @@ from app.core.entities.episodes import (
 )
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.ports.embeddings.provider import IEmbeddingProvider
-from app.infrastructure.db.engine import get_engine
-from app.infrastructure.db.models.registry import target_metadata
-from app.infrastructure.db.session import get_session_factory
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.engine import get_engine
+from app.infrastructure.db.runtime.models.registry import target_metadata
+from app.infrastructure.db.runtime.session import get_session_factory
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations._shared.destructive_guardrail_fixtures import (
     assert_destructive_test_setup_allowed,
     assert_test_database_is_disposable,

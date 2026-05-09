@@ -5,8 +5,8 @@ from collections.abc import Callable
 from app.core.contracts.concepts import ConceptAddRequest
 from app.core.ports.runtime.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
-from app.infrastructure.db.models.concepts import concepts
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.models.concepts import concepts
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 class _SequenceIdGenerator(IIdGenerator):

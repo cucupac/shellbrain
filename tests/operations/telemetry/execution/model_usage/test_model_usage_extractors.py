@@ -5,12 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.infrastructure.host_transcripts.claude_code import (
+from app.infrastructure.host_apps.transcripts.claude_code import (
     extract_claude_code_model_usage,
 )
-from app.infrastructure.host_transcripts.codex import extract_codex_model_usage
-from app.infrastructure.host_transcripts.cursor import extract_cursor_model_usage
-from app.infrastructure.host_transcripts.model_usage import (
+from app.infrastructure.host_apps.transcripts.codex import extract_codex_model_usage
+from app.infrastructure.host_apps.transcripts.cursor import extract_cursor_model_usage
+from app.infrastructure.host_apps.transcripts.model_usage import (
     collect_model_usage_records_for_session,
 )
 

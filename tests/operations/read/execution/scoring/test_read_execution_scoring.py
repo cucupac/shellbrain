@@ -9,7 +9,7 @@ from app.core.use_cases.retrieval.expansion import expand_candidates
 from app.core.policies.retrieval.fusion_rrf import fuse_with_rrf
 from app.core.policies.retrieval.scoring import score_candidates
 from app.core.use_cases.retrieval.read import execute_read_memory
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds() -> (

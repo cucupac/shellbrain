@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.infrastructure.postgres_admin.logical_backup import BackupManifest
-from app.infrastructure.postgres_admin.destructive_guard import (
+from app.infrastructure.db.admin.logical_backup import BackupManifest
+from app.infrastructure.db.admin.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 
@@ -48,11 +48,11 @@ def test_destructive_guard_should_create_and_verify_backup(
         return manifest
 
     monkeypatch.setattr(
-        "app.infrastructure.postgres_admin.destructive_guard.create_backup",
+        "app.infrastructure.db.admin.destructive_guard.create_backup",
         _fake_create_backup,
     )
     monkeypatch.setattr(
-        "app.infrastructure.postgres_admin.destructive_guard.verify_backup",
+        "app.infrastructure.db.admin.destructive_guard.verify_backup",
         _fake_verify_backup,
     )
 

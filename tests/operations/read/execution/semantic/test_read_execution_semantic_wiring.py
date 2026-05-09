@@ -8,10 +8,10 @@ import pytest
 from app.core.contracts.errors import ErrorCode
 from app.core.use_cases.retrieval.read import execute_read_memory
 from tests.operations._shared.handler_calls import handle_read
-from app.infrastructure.db.repos.semantic.semantic_retrieval_repo import (
+from app.infrastructure.db.runtime.repos.semantic.semantic_retrieval_repo import (
     SemanticRetrievalRepo,
 )
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 

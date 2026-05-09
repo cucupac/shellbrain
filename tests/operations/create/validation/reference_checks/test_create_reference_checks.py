@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from app.core.entities.memories import MemoryKind, MemoryScope
 from tests.operations._shared.handler_calls import handle_memory_add
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_create_rejects_missing_problem_reference(

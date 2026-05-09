@@ -30,16 +30,16 @@ from app.entrypoints.cli.handlers.internal_agent.retrieval.read import run_read_
 from app.entrypoints.cli.handlers.working_agent.recall import (
     run_recall_memory_operation,
 )
-from app.infrastructure.host_identity.resolver import (
+from app.infrastructure.host_apps.identity.resolver import (
     discover_untrusted_events_candidate,
     resolve_caller_identity,
     resolve_trusted_events_source,
 )
-from app.infrastructure.host_transcripts.model_usage import (
+from app.infrastructure.host_apps.transcripts.model_usage import (
     collect_model_usage_records_for_session,
 )
-from app.infrastructure.host_transcripts.normalization import normalize_host_transcript
-from app.infrastructure.host_transcripts.session_selection import (
+from app.infrastructure.host_apps.transcripts.normalization import normalize_host_transcript
+from app.infrastructure.host_apps.transcripts.session_selection import (
     summarize_runtime_selection,
 )
 from app.infrastructure.local_state.session_state_file_store import (

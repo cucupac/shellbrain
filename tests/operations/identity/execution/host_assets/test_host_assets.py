@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from app.infrastructure.host_assets import inspect_host_assets, install_host_assets
+from app.infrastructure.host_apps.assets import inspect_host_assets, install_host_assets
 
 
 def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cursor_set(

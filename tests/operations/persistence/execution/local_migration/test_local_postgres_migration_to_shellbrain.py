@@ -22,9 +22,9 @@ from app.core.entities.episodes import (
 )
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from tests.operations._shared.handler_calls import handle_memory_add
-from app.infrastructure.db.engine import get_engine
-from app.infrastructure.db.session import get_session_factory
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.engine import get_engine
+from app.infrastructure.db.runtime.session import get_session_factory
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 class _StubEmbeddingProvider(IEmbeddingProvider):

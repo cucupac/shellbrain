@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 import app.startup.analytics as analytics_module
-from app.infrastructure.db.models.telemetry import (
+from app.infrastructure.db.runtime.models.telemetry import (
     episode_sync_runs,
     operation_invocations,
     read_invocation_summaries,

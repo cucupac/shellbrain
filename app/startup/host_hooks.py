@@ -11,7 +11,7 @@ CURSOR_STATUSLINE_ENTRYPOINT_MODULE = "app.entrypoints.host_hooks.cursor_statusl
 def run_claude_session_start(argv: list[str] | None = None) -> int:
     """Run the Claude SessionStart hook adapter."""
 
-    from app.infrastructure.host_identity.claude_runtime import main
+    from app.infrastructure.host_apps.identity.claude_runtime import main
 
     return main(argv)
 
@@ -19,6 +19,6 @@ def run_claude_session_start(argv: list[str] | None = None) -> int:
 def run_cursor_statusline() -> int:
     """Run the Cursor statusline adapter."""
 
-    from app.infrastructure.host_identity.cursor_statusline import main
+    from app.infrastructure.host_apps.identity.cursor_statusline import main
 
     return main()

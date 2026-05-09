@@ -8,7 +8,7 @@ from pathlib import Path
 from sqlalchemy import text
 
 from app.startup.model_usage_backfill import backfill_model_usage
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_backfill_model_usage_should_import_rows_for_linked_historical_sessions(

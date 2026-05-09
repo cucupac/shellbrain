@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from app.infrastructure.postgres_admin import storage_setup
+from app.infrastructure.db.admin import storage_setup
 from app.core.entities.admin_errors import InitConflictError, InitDependencyError
 from app.infrastructure.local_state.machine_config_store import (
     BackupState,
