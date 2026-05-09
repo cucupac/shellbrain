@@ -10,12 +10,12 @@ from app.core.use_cases.admin.diagnose_runtime import (
     DiagnoseRuntimePorts,
     build_diagnose_runtime_report,
 )
-from app.infrastructure.host_apps.assets import inspect_host_assets
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     RUNTIME_MODE_EXTERNAL_POSTGRES,
     RUNTIME_MODE_MANAGED_LOCAL,
-    try_load_machine_config,
 )
+from app.infrastructure.host_apps.assets import inspect_host_assets
+from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 from app.infrastructure.local_state.paths import get_shellbrain_home
 from app.infrastructure.local_state.repo_registration_store import (
     IDENTITY_STRENGTH_WEAK_LOCAL,
@@ -28,8 +28,10 @@ from app.infrastructure.db.admin.instance_guard import (
     fingerprint_summary,
     inspect_role_safety,
 )
-from app.infrastructure.db.admin.logical_backup import list_backups
-from app.infrastructure.runtime import external_runtime
+from app.infrastructure.db.admin.backups.logical_backup import list_backups
+from app.infrastructure.db.admin.provisioning import (
+    external_postgres as external_runtime,
+)
 
 
 def build_doctor_report(

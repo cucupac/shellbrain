@@ -18,7 +18,7 @@ from app.infrastructure.db.admin.instance_guard import (
     dsn_fingerprint,
     ensure_instance_metadata,
 )
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BOOTSTRAP_STATE_PROVISIONING,
     BOOTSTRAP_VERSION,
     CONFIG_VERSION,

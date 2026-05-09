@@ -12,19 +12,19 @@ from app.core.entities.runtime_context import (
     RuntimeContext,
     SessionSelectionSummary,
 )
-from app.core.ports.runtime.clock import IClock
+from app.core.ports.system.clock import IClock
 from app.infrastructure.telemetry.operation_invocations import (
     build_operation_invocation_record,
-    build_recall_summary_records,
-    build_read_summary_records,
-    build_write_summary_records,
 )
+from app.infrastructure.telemetry.read_records import build_read_summary_records
+from app.infrastructure.telemetry.recall_records import build_recall_summary_records
 from app.infrastructure.telemetry.recorder import (
     record_episode_sync_telemetry,
     record_model_usage_telemetry,
     record_operation_telemetry,
 )
 from app.infrastructure.telemetry.sync_records import build_episode_sync_records
+from app.infrastructure.telemetry.write_records import build_write_summary_records
 
 
 @dataclass(frozen=True)

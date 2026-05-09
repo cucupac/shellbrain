@@ -8,7 +8,7 @@ import sys
 from typing import TextIO
 
 from app.core.entities.admin_errors import InitConflictError, InitDependencyError
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     MachineConfig,
     RUNTIME_MODE_EXTERNAL_POSTGRES,
     RUNTIME_MODE_MANAGED_LOCAL,

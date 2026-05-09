@@ -5,15 +5,15 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from app.infrastructure.db.admin.logical_backup import BackupManifest
-from app.startup.admin_diagnose import build_doctor_report
-from app.infrastructure.db.admin.instance_guard import InstanceMetadataRecord
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,
     MachineConfig,
 )
+from app.infrastructure.db.admin.backups.logical_backup import BackupManifest
+from app.startup.admin_diagnose import build_doctor_report
+from app.infrastructure.db.admin.instance_guard import InstanceMetadataRecord
 from app.infrastructure.host_apps.assets import install_host_assets
 
 APP_LIVE_DSN = (

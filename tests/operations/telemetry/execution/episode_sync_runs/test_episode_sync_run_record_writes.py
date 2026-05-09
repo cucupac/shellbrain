@@ -11,7 +11,7 @@ import pytest
 
 from tests.operations._shared.handler_calls import handle_events
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
-from app.infrastructure.process.episode_poller import run_episode_poller
+from app.infrastructure.process.episode_sync.poller import run_episode_poller
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -63,21 +63,21 @@ def test_poller_sync_should_always_append_one_episode_sync_run_with_source_polle
     """poller sync should always append one episode sync run with source poller."""
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        "app.infrastructure.process.episode_sync.poller.acquire_poller_lock",
         lambda **kwargs: _NoOpLock(),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        "app.infrastructure.process.episode_sync.poller.write_poller_pid_artifact",
         lambda **kwargs: Path("/tmp/episode_sync.pid"),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.POLL_INTERVAL_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.IDLE_EXIT_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.default_search_roots",
+        "app.infrastructure.process.episode_sync.poller.default_search_roots",
         lambda *, repo_root, host_app: (
             list(codex_transcript_fixture["search_roots"])
             if host_app == "codex"
@@ -106,7 +106,7 @@ def test_poller_with_an_active_lock_should_not_append_episode_sync_runs(
     """poller with an active lock should always exit without writing telemetry."""
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        "app.infrastructure.process.episode_sync.poller.acquire_poller_lock",
         lambda **kwargs: None,
     )
 
@@ -234,29 +234,29 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
     discovery_calls = {"cursor": 0}
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        "app.infrastructure.process.episode_sync.poller.acquire_poller_lock",
         lambda **kwargs: _NoOpLock(),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        "app.infrastructure.process.episode_sync.poller.write_poller_pid_artifact",
         lambda **kwargs: Path("/tmp/episode_sync.pid"),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller._record_sync_telemetry_best_effort",
+        "app.infrastructure.process.episode_sync.poller._record_sync_telemetry_best_effort",
         lambda **kwargs: None,
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller._close_episode",
+        "app.infrastructure.process.episode_sync.poller._close_episode",
         lambda **kwargs: None,
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.POLL_INTERVAL_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.IDLE_EXIT_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.default_search_roots",
+        "app.infrastructure.process.episode_sync.poller.default_search_roots",
         lambda *, repo_root, host_app: [cursor_root] if host_app == "cursor" else [],
     )
 
@@ -274,11 +274,11 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
         }
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.discover_active_host_session",
+        "app.infrastructure.process.episode_sync.poller.discover_active_host_session",
         _discover_active_host_session,
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.sync_episode_from_host",
+        "app.infrastructure.process.episode_sync.poller.sync_episode_from_host",
         lambda **kwargs: (
             sync_calls.append(kwargs)
             or {
@@ -317,21 +317,21 @@ def test_poller_sync_should_always_append_model_usage_rows(
     """poller sync should always persist normalized model usage rows."""
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        "app.infrastructure.process.episode_sync.poller.acquire_poller_lock",
         lambda **kwargs: _NoOpLock(),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        "app.infrastructure.process.episode_sync.poller.write_poller_pid_artifact",
         lambda **kwargs: Path("/tmp/episode_sync.pid"),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.POLL_INTERVAL_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.IDLE_EXIT_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.default_search_roots",
+        "app.infrastructure.process.episode_sync.poller.default_search_roots",
         lambda *, repo_root, host_app: (
             list(codex_transcript_fixture["search_roots"])
             if host_app == "codex"

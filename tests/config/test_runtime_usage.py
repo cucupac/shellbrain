@@ -10,7 +10,7 @@ from app.startup.admin_db import (
 )
 from app.startup.db import get_db_dsn
 from app.settings.loader import YamlConfigProvider
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,

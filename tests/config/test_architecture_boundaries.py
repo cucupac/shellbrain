@@ -97,7 +97,17 @@ def test_followup_refactor_removed_old_layer_paths() -> None:
         APP_ROOT / "infrastructure" / "host_transcripts",
         APP_ROOT / "infrastructure" / "observability",
         APP_ROOT / "infrastructure" / "postgres_admin",
+        APP_ROOT / "infrastructure" / "runtime",
+        APP_ROOT / "infrastructure" / "process" / "episode_poller.py",
+        APP_ROOT / "infrastructure" / "process" / "episode_sync_launcher.py",
+        APP_ROOT / "infrastructure" / "local_state" / "backup_manifest_store.py",
+        APP_ROOT / "infrastructure" / "local_state" / "episode_sync_status_store.py",
+        APP_ROOT / "infrastructure" / "local_state" / "poller_lock.py",
+        APP_ROOT / "infrastructure" / "db" / "admin" / "destructive_guard.py",
+        APP_ROOT / "infrastructure" / "db" / "admin" / "logical_backup.py",
+        APP_ROOT / "infrastructure" / "db" / "admin" / "restore.py",
         APP_ROOT / "core" / "contracts" / "requests.py",
+        APP_ROOT / "core" / "ports" / "runtime",
         APP_ROOT / "entrypoints" / "cli" / "endpoints",
     )
     violations = [
@@ -112,9 +122,14 @@ def test_infrastructure_adapter_families_are_grouped() -> None:
     expected_paths = (
         APP_ROOT / "infrastructure" / "db" / "runtime",
         APP_ROOT / "infrastructure" / "db" / "admin",
+        APP_ROOT / "infrastructure" / "db" / "admin" / "backups",
+        APP_ROOT / "infrastructure" / "db" / "admin" / "provisioning",
+        APP_ROOT / "infrastructure" / "embeddings" / "prewarm.py",
         APP_ROOT / "infrastructure" / "host_apps" / "assets",
         APP_ROOT / "infrastructure" / "host_apps" / "identity",
         APP_ROOT / "infrastructure" / "host_apps" / "transcripts",
+        APP_ROOT / "infrastructure" / "process" / "episode_sync",
+        APP_ROOT / "infrastructure" / "system",
     )
     missing = [
         str(path.relative_to(REPO_ROOT)) for path in expected_paths if not path.exists()
@@ -209,8 +224,8 @@ def test_core_ports_are_grouped_by_adapter_category() -> None:
         "embeddings",
         "local_state",
         "reporting",
-        "runtime",
         "settings",
+        "system",
     }
     categories = {
         path.name
@@ -398,7 +413,7 @@ def test_core_policies_do_not_generate_ids_or_execute_plans() -> None:
         for line_no, module_name in _imported_modules(path):
             if (
                 module_name.endswith("IIdGenerator")
-                or module_name == "app.core.ports.runtime.idgen"
+                or module_name == "app.core.ports.system.idgen"
             ):
                 violations.append(
                     f"{path.relative_to(REPO_ROOT)}:{line_no} imports {module_name}"

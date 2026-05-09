@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.infrastructure.runtime.docker_prerequisites import (
+from app.infrastructure.db.admin.provisioning.docker_prerequisites import (
     ensure_docker_runtime_available,
     recover_managed_machine_config_from_docker,
 )

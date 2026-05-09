@@ -17,7 +17,7 @@ from app.infrastructure.local_state.paths import (
     get_machine_postgres_data_dir,
     get_shellbrain_home,
 )
-from app.infrastructure.db.admin.destructive_guard import (
+from app.infrastructure.db.admin.backups.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 from app.core.entities.admin_errors import InitConflictError
@@ -25,7 +25,7 @@ from app.infrastructure.db.admin.instance_guard import (
     dsn_fingerprint,
     ensure_instance_metadata,
 )
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BOOTSTRAP_STATE_REPAIR_NEEDED,
     BOOTSTRAP_STATE_PROVISIONING,
     BOOTSTRAP_VERSION,

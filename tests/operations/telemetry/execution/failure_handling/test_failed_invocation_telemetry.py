@@ -14,7 +14,7 @@ from tests.operations._shared.handler_calls import (
     handle_update,
 )
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
-from app.infrastructure.process.episode_poller import run_episode_poller
+from app.infrastructure.process.episode_sync.poller import run_episode_poller
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
@@ -238,21 +238,21 @@ def test_poller_sync_failures_should_always_append_one_failed_episode_sync_run(
     """poller sync failures should always append one failed episode sync run."""
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        "app.infrastructure.process.episode_sync.poller.acquire_poller_lock",
         lambda **kwargs: _NoOpLock(),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        "app.infrastructure.process.episode_sync.poller.write_poller_pid_artifact",
         lambda **kwargs: Path("/tmp/episode_sync.pid"),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.POLL_INTERVAL_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+        "app.infrastructure.process.episode_sync.poller.IDLE_EXIT_SECONDS", 0
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.default_search_roots",
+        "app.infrastructure.process.episode_sync.poller.default_search_roots",
         lambda *, repo_root, host_app: (
             list(codex_transcript_fixture["search_roots"])
             if host_app == "codex"
@@ -260,7 +260,7 @@ def test_poller_sync_failures_should_always_append_one_failed_episode_sync_run(
         ),
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_poller.sync_episode_from_host",
+        "app.infrastructure.process.episode_sync.poller.sync_episode_from_host",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 

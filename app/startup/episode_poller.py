@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.infrastructure.process.episode_poller import (
+from app.infrastructure.process.episode_sync.poller import (
     run_episode_poller as run_infrastructure_episode_poller,
 )
 from app.startup.use_cases import get_uow_factory

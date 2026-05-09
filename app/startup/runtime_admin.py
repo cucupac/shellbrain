@@ -8,17 +8,30 @@ from typing import Callable
 
 from app.infrastructure.local_state.init_lock import acquire_init_lock
 from app.infrastructure.local_state.paths import get_shellbrain_home
-from app.infrastructure.runtime import external_runtime, managed_runtime
-from app.infrastructure.runtime.init_admin import (
+from app.infrastructure.db.admin.provisioning import (
+    external_postgres as external_runtime,
+    managed_local as managed_runtime,
+)
+from app.infrastructure.db.admin.provisioning.init_effects import (
     ensure_managed_runtime_available,
     recover_managed_machine_config,
 )
 from app.infrastructure.db.admin.connection import wait_for_postgres
-from app.infrastructure.db.admin.destructive_guard import (
+from app.infrastructure.db.admin.backups.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
-from app.infrastructure.runtime.embedding_prewarm import prewarm_embeddings
+from app.infrastructure.embeddings.prewarm import prewarm_embeddings
 from app.core.entities.admin_errors import InitConflictError, InitDependencyError
+from app.core.entities.machine_config import (
+    BOOTSTRAP_STATE_PROVISIONING,
+    BOOTSTRAP_STATE_READY,
+    BOOTSTRAP_STATE_REPAIR_NEEDED,
+    BOOTSTRAP_VERSION,
+    CONFIG_VERSION,
+    MachineConfig,
+    RUNTIME_MODE_EXTERNAL_POSTGRES,
+    RUNTIME_MODE_MANAGED_LOCAL,
+)
 from app.core.use_cases.admin.initialize_runtime import (
     INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT,
     INIT_OUTCOME_BLOCKED_CONFLICT,
@@ -34,14 +47,6 @@ from app.core.use_cases.admin.initialize_runtime import (
 from app.startup.config import get_config_provider
 from app.infrastructure.db.admin.instance_guard import fingerprint_summary
 from app.infrastructure.local_state.machine_config_store import (
-    BOOTSTRAP_STATE_PROVISIONING,
-    BOOTSTRAP_STATE_READY,
-    BOOTSTRAP_STATE_REPAIR_NEEDED,
-    BOOTSTRAP_VERSION,
-    CONFIG_VERSION,
-    MachineConfig,
-    RUNTIME_MODE_EXTERNAL_POSTGRES,
-    RUNTIME_MODE_MANAGED_LOCAL,
     backup_corrupt_machine_config,
     save_machine_config,
     save_recovery_stub,
