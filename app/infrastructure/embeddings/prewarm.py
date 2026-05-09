@@ -10,7 +10,7 @@ from pathlib import Path
 from app.infrastructure.embeddings.local_provider import (
     SentenceTransformersEmbeddingProvider,
 )
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BOOTSTRAP_STATE_REPAIR_NEEDED,
     EmbeddingRuntimeState,
     MachineConfig,

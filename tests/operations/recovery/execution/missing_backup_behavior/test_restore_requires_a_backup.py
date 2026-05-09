@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.db.admin.logical_backup import (
+from app.infrastructure.db.admin.backups.logical_backup import (
     restore_backup,
     verify_backup,
 )

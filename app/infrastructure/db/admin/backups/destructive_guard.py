@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.infrastructure.db.admin.logical_backup import (
+from app.infrastructure.db.admin.backups.logical_backup import (
     BackupManifest,
     create_backup,
     verify_backup,

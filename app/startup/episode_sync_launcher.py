@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.infrastructure.process.episode_sync_launcher import (
+from app.infrastructure.process.episode_sync.launcher import (
     ensure_episode_sync_started as launch_episode_sync_process,
 )
 

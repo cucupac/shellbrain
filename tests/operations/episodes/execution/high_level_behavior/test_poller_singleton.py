@@ -7,7 +7,7 @@ from pathlib import Path
 import socket
 
 from app.startup.episode_sync_launcher import ensure_episode_sync_started
-from app.infrastructure.local_state.poller_lock import (
+from app.infrastructure.process.episode_sync.lock_file import (
     acquire_poller_lock,
     inspect_poller_lock,
 )
@@ -74,7 +74,7 @@ def test_stale_poller_lock_is_removed_and_reacquired(
         encoding="utf-8",
     )
     monkeypatch.setattr(
-        "app.infrastructure.local_state.poller_lock._is_process_running",
+        "app.infrastructure.process.episode_sync.lock_file._is_process_running",
         lambda pid: pid != 999_999,
     )
 
@@ -112,7 +112,7 @@ def test_permission_denied_pid_probe_should_still_count_as_active(
         raise PermissionError(1, "Operation not permitted")
 
     monkeypatch.setattr(
-        "app.infrastructure.local_state.poller_lock.os.kill", _raise_permission_error
+        "app.infrastructure.process.episode_sync.lock_file.os.kill", _raise_permission_error
     )
 
     inspection = inspect_poller_lock(repo_root=repo_root)
@@ -137,7 +137,7 @@ def test_launcher_does_not_spawn_when_an_active_lock_exists(
         )
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_sync_launcher.subprocess.Popen",
+        "app.infrastructure.process.episode_sync.launcher.subprocess.Popen",
         _unexpected_spawn,
     )
 
@@ -162,7 +162,7 @@ def test_launcher_spawns_when_no_active_lock_exists(
         return _FakeProcess()
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_sync_launcher.subprocess.Popen", _fake_popen
+        "app.infrastructure.process.episode_sync.launcher.subprocess.Popen", _fake_popen
     )
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is True

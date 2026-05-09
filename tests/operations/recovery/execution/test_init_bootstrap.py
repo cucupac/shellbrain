@@ -8,14 +8,14 @@ from pathlib import Path
 import pytest
 
 import app.startup.runtime_admin as init_module
-from app.infrastructure.runtime import managed_runtime
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,
     MachineConfig,
     ManagedInstanceState,
 )
+from app.infrastructure.db.admin.provisioning import managed_local as managed_runtime
 from app.infrastructure.local_state.repo_registration_store import RepoRegistration
 
 

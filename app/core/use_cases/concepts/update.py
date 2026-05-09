@@ -39,7 +39,7 @@ from app.core.entities.concepts import (
     ConceptSourceKind,
     ConceptStatus,
 )
-from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.concepts.relation_rules import validate_relation_shape
 from app.core.use_cases.concepts.containment_checks import validate_contains_relation

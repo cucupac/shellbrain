@@ -23,7 +23,7 @@ from app.infrastructure.host_apps.transcripts.source_discovery import (
     discover_active_host_session,
     resolve_host_transcript_source,
 )
-from app.infrastructure.local_state.episode_sync_status_store import (
+from app.infrastructure.process.episode_sync.status_store import (
     record_episode_sync_status,
 )
 from app.infrastructure.telemetry.recorder import (
@@ -33,7 +33,7 @@ from app.infrastructure.telemetry.recorder import (
 from app.infrastructure.telemetry.sync_records import (
     build_episode_sync_records,
 )
-from app.infrastructure.local_state.poller_lock import (
+from app.infrastructure.process.episode_sync.lock_file import (
     acquire_poller_lock,
     write_poller_pid_artifact,
 )

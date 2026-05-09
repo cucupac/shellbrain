@@ -3,7 +3,7 @@
 from pathlib import Path
 
 from app.core.entities.backups import BackupManifest
-from app.infrastructure.db.admin.logical_backup import (
+from app.infrastructure.db.admin.backups.logical_backup import (
     restore_backup as _restore_backup,
 )
 

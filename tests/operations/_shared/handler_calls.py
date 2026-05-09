@@ -13,7 +13,7 @@ from app.core.contracts.memories import (
     MemoryUpdateRequest,
 )
 from app.core.contracts.retrieval import MemoryReadRequest, MemoryRecallRequest
-from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.system.idgen import IIdGenerator
 from app.entrypoints.cli.protocol.episodes import prepare_events_request
 from app.entrypoints.cli.protocol.memories import (
     prepare_memory_add_request,

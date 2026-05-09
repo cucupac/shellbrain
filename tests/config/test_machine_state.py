@@ -5,11 +5,13 @@ from __future__ import annotations
 import tomllib
 from pathlib import Path
 
-from app.infrastructure.local_state.machine_config_store import (
+from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,
     MachineConfig,
+)
+from app.infrastructure.local_state.machine_config_store import (
     load_machine_config,
     save_machine_config,
 )

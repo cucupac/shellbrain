@@ -14,7 +14,7 @@ from app.core.use_cases.admin.restore_backup import (
 from app.core.use_cases.admin.verify_backup import (
     verify_backup as verify_backup_use_case,
 )
-from app.infrastructure.db.admin import logical_backup
+from app.infrastructure.db.admin.backups import logical_backup
 
 
 def create_backup(**kwargs) -> BackupManifest:

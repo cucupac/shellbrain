@@ -100,7 +100,7 @@ def build_admin_command_dependencies():
 def run_upgrade_command() -> int:
     """Run the hosted package upgrader."""
 
-    from app.infrastructure.runtime import upgrade as runtime_upgrade
+    from app.infrastructure.system import package_upgrade as runtime_upgrade
 
     return runtime_upgrade.run_upgrade()
 

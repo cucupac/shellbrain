@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from app.infrastructure.runtime import upgrade as upgrade_module
+from app.infrastructure.system import package_upgrade as upgrade_module
 
 
 def test_run_upgrade_should_fail_cleanly_when_required_tools_are_missing(

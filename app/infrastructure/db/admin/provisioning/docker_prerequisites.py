@@ -6,7 +6,7 @@ import shutil
 import subprocess
 
 from app.core.entities.admin_errors import InitDependencyError
-from app.infrastructure.runtime import managed_runtime
+from app.infrastructure.db.admin.provisioning import managed_local as managed_runtime
 
 
 def ensure_docker_runtime_available() -> None:

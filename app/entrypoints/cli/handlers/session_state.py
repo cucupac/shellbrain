@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
 from app.core.entities.session_state import SessionState
-from app.core.ports.runtime.clock import IClock
+from app.core.ports.system.clock import IClock
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 
 

@@ -16,7 +16,7 @@ from uuid import uuid4
 import psycopg
 
 from app.core.entities.backups import BackupManifest
-from app.infrastructure.local_state.backup_manifest_store import (
+from app.infrastructure.db.admin.backups.manifest_store import (
     list_backup_manifests,
     write_backup_manifest,
 )

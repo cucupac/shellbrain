@@ -15,7 +15,7 @@ from app.infrastructure.db.admin.connection import (
     database_has_shellbrain_objects,
     fetch_schema_revision,
 )
-from app.infrastructure.db.admin.destructive_guard import (
+from app.infrastructure.db.admin.backups.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 from app.infrastructure.db.admin.instance_guard import (

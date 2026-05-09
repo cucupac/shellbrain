@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.infrastructure.telemetry.operation_invocations import (
+from app.infrastructure.telemetry.read_records import (
     estimate_read_pack_size,
 )
 

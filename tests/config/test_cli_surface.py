@@ -746,7 +746,7 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
 def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:
     """upgrade should delegate to the hosted upgrader and propagate its exit code."""
 
-    monkeypatch.setattr("app.infrastructure.runtime.upgrade.run_upgrade", lambda: 23)
+    monkeypatch.setattr("app.infrastructure.system.package_upgrade.run_upgrade", lambda: 23)
 
     exit_code = cli_main.main(["upgrade"])
 
@@ -865,7 +865,7 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 ) -> None:
     """admin backup create should print the created manifest as JSON."""
 
-    from app.infrastructure.db.admin.logical_backup import BackupManifest
+    from app.infrastructure.db.admin.backups.logical_backup import BackupManifest
 
     monkeypatch.setattr(
         "app.startup.admin_db.get_admin_db_dsn",
@@ -878,7 +878,7 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
     )
     monkeypatch.setattr("app.startup.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
-        "app.infrastructure.db.admin.logical_backup.create_backup",
+        "app.infrastructure.db.admin.backups.logical_backup.create_backup",
         lambda **kwargs: BackupManifest(
             backup_id="b-1",
             instance_id="i-1",

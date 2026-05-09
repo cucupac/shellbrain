@@ -8,7 +8,7 @@ from app.core.contracts.concepts import ConceptAddRequest
 from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.contracts.responses import UseCaseResult
 from app.core.entities.concepts import Concept, ConceptKind, ConceptStatus
-from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.use_cases.concepts.reference_checks import require_missing_concept
 

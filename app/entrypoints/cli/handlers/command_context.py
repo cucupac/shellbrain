@@ -18,8 +18,8 @@ from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
 )
-from app.core.ports.runtime.clock import IClock
-from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.system.clock import IClock
+from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 
 

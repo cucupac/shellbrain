@@ -6,7 +6,7 @@ from app.core.contracts.responses import UseCaseResult
 from app.core.contracts.planned_effects import CreatePlanIds
 from app.core.entities.settings import CreatePolicySettings
 from app.core.ports.embeddings.provider import IEmbeddingProvider
-from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.memories.add_plan import build_create_plan
 from app.core.use_cases.plan_execution import apply_side_effects

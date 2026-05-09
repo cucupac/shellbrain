@@ -6,7 +6,7 @@ from pathlib import Path
 import subprocess
 import sys
 
-from app.infrastructure.local_state.poller_lock import inspect_poller_lock
+from app.infrastructure.process.episode_sync.lock_file import inspect_poller_lock
 
 
 def ensure_episode_sync_started(

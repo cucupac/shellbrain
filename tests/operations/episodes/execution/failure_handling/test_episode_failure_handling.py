@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.process.episode_poller import sync_episode_from_host
+from app.infrastructure.process.episode_sync.poller import sync_episode_from_host
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 

@@ -45,8 +45,8 @@ from app.infrastructure.host_apps.transcripts.session_selection import (
 from app.infrastructure.local_state.session_state_file_store import (
     FileSessionStateStore,
 )
-from app.infrastructure.runtime.system_clock import SystemClock
-from app.infrastructure.runtime.uuid_generator import UuidGenerator
+from app.infrastructure.system.clock import SystemClock
+from app.infrastructure.system.id_generator import UuidGenerator
 from app.startup.create_policy import (
     get_typed_create_policy_settings,
     validate_create_policy_settings,
