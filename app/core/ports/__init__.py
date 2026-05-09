@@ -1,1 +1,1 @@
-"""This package defines core interface abstractions for infrastructure adapters."""
+"""Core port categories for infrastructure and adjacent adapters."""

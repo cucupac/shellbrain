@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 
-from app.core.ports.unit_of_work import IUnitOfWork
-from app.core.ports.retrieval import IVectorSearch
+from app.core.ports.db.unit_of_work import IUnitOfWork
+from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.infrastructure.db.repos.relational.associations_repo import AssociationsRepo
 from app.infrastructure.db.repos.relational.concepts_repo import ConceptsRepo
 from app.infrastructure.db.repos.relational.episodes_repo import EpisodesRepo

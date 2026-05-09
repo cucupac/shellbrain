@@ -1,20 +1,20 @@
 """This module defines the create-shellbrain use-case orchestration entry point."""
 
 from app.core.contracts.errors import DomainValidationError
-from app.core.contracts.requests import MemoryCreateRequest
+from app.core.contracts.memories import MemoryAddRequest
 from app.core.contracts.responses import UseCaseResult
 from app.core.contracts.planned_effects import CreatePlanIds
 from app.core.entities.settings import CreatePolicySettings
-from app.core.ports.embeddings import IEmbeddingProvider
-from app.core.ports.idgen import IIdGenerator
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.embeddings.provider import IEmbeddingProvider
+from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.memories.add_plan import build_create_plan
 from app.core.use_cases.plan_execution import apply_side_effects
 from app.core.use_cases.memories.reference_checks import validate_create_request
 
 
 def execute_create_memory(
-    request: MemoryCreateRequest,
+    request: MemoryAddRequest,
     uow: IUnitOfWork,
     *,
     embedding_provider: IEmbeddingProvider,

@@ -20,8 +20,8 @@ from app.core.entities.episodes import (
     EpisodeEventSource,
     EpisodeStatus,
 )
-from app.core.ports.embeddings import IEmbeddingProvider
-from tests.operations._shared.handler_calls import handle_create
+from app.core.ports.embeddings.provider import IEmbeddingProvider
+from tests.operations._shared.handler_calls import handle_memory_add
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.db.uow import PostgresUnitOfWork
@@ -310,7 +310,7 @@ def _seed_sentinel_dataset(dsn: str) -> dict[str, str]:
             )
         )
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": memory_text,

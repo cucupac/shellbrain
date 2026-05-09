@@ -11,7 +11,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
 from app.core.entities.memories import MemoryKind, MemoryScope
-from app.core.ports.retrieval import IVectorSearch
+from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.infrastructure.db.models.associations import association_edges
 from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
 from app.infrastructure.db.models.memories import memories, memory_embeddings

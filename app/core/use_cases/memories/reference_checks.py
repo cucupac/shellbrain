@@ -1,11 +1,11 @@
 """Repository-backed reference checks for memory write requests."""
 
 from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.requests import (
+from app.core.contracts.memories import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
     MemoryBatchUpdateRequest,
-    MemoryCreateRequest,
+    MemoryAddRequest,
     MemoryUpdateRequest,
     UtilityVoteUpdate,
 )
@@ -13,7 +13,7 @@ from app.core.entities.memories import (
     Memory,
     MemoryKind,
 )
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.memories.link_rules import validate_matures_into_relation
 from app.core.policies.memories.link_rules import (
     validate_create_semantics,
@@ -22,7 +22,7 @@ from app.core.policies.memories.link_rules import (
 
 
 def validate_create_request(
-    request: MemoryCreateRequest,
+    request: MemoryAddRequest,
     *,
     uow: IUnitOfWork,
     gates: list[str] | tuple[str, ...],
@@ -113,7 +113,7 @@ def _validate_evidence_refs(
 
 
 def validate_create_integrity(
-    request: MemoryCreateRequest, uow: IUnitOfWork
+    request: MemoryAddRequest, uow: IUnitOfWork
 ) -> list[ErrorDetail]:
     """Validate database integrity constraints for create operations."""
 

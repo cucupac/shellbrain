@@ -1,13 +1,13 @@
 """Link-rule contracts for create-path requests."""
 
-from app.core.contracts.requests import MemoryCreateRequest
+from app.core.contracts.memories import MemoryAddRequest
 from app.core.policies.memories.link_rules import validate_create_semantics
 
 
 def test_solution_requires_problem_id() -> None:
     """solution memories should always include links.problem_id."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",
@@ -29,7 +29,7 @@ def test_solution_requires_problem_id() -> None:
 def test_failed_tactic_requires_problem_id() -> None:
     """failed_tactic memories should always include links.problem_id."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",
@@ -52,7 +52,7 @@ def test_non_attempt_kinds_forbid_problem_id() -> None:
     """non-attempt kinds should always reject links.problem_id."""
 
     for kind in ["problem", "fact", "preference", "change", "frontier"]:
-        request = MemoryCreateRequest.model_validate(
+        request = MemoryAddRequest.model_validate(
             {
                 "op": "create",
                 "repo_id": "repo-a",
@@ -75,7 +75,7 @@ def test_non_attempt_kinds_forbid_problem_id() -> None:
 def test_create_rejects_duplicate_association_pairs() -> None:
     """create association lists should always reject duplicate target+relation pairs."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",

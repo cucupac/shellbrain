@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from app.core.contracts.retrieval import MemoryReadRequest
-from app.core.ports.retrieval import IVectorSearch
+from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request

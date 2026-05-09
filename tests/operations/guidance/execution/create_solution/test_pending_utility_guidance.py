@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from tests.operations._shared.handler_calls import handle_create, handle_events, handle_read
+from tests.operations._shared.handler_calls import handle_memory_add, handle_events, handle_read
 
 
 def test_create_solution_should_emit_pending_utility_votes_guidance_when_session_has_unrated_retrieved_memories(
@@ -41,7 +41,7 @@ def test_create_solution_should_emit_pending_utility_votes_guidance_when_session
         },
     )
     evidence_ref = events_result["data"]["events"][0]["id"]
-    handle_create(
+    handle_memory_add(
         {
             "memory": {
                 "text": "Problem text.",
@@ -64,7 +64,7 @@ def test_create_solution_should_emit_pending_utility_votes_guidance_when_session
     )
     assert read_result["status"] == "ok"
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Solution text.",

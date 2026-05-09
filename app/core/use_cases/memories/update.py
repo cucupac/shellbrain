@@ -2,11 +2,11 @@
 
 from app.core.contracts.errors import DomainValidationError
 from app.core.contracts.planned_effects import UpdatePlanIds
-from app.core.contracts.requests import MemoryBatchUpdateRequest, MemoryUpdateRequest
+from app.core.contracts.memories import MemoryBatchUpdateRequest, MemoryUpdateRequest
 from app.core.contracts.responses import UseCaseResult
 from app.core.entities.settings import UpdatePolicySettings
-from app.core.ports.idgen import IIdGenerator
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.runtime.idgen import IIdGenerator
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.memories.update_plan import build_update_plan
 from app.core.use_cases.memories.reference_checks import validate_update_request
 from app.core.use_cases.plan_execution import apply_side_effects

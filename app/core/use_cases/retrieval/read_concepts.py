@@ -12,8 +12,8 @@ from app.core.entities.concepts import (
     ConceptMemoryLink,
 )
 from app.core.entities.memories import Memory
-from app.core.ports.concept_repositories import IConceptsRepo
-from app.core.ports.memory_repositories import IMemoriesRepo
+from app.core.ports.db.concept_repositories import IConceptsRepo
+from app.core.ports.db.memory_repositories import IMemoriesRepo
 from app.core.policies.concepts.search import rank_concept_search_rows
 
 

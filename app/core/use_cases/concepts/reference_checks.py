@@ -6,7 +6,7 @@ from app.core.contracts.concepts import ConceptEvidencePayload
 from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.entities.concepts import Anchor, Concept
 from app.core.entities.memories import Memory, MemoryScope
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 
 
 def require_concept(repo_id: str, concept_ref: str, uow: IUnitOfWork) -> Concept:

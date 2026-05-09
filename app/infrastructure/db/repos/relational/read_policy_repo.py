@@ -6,7 +6,7 @@ from typing import Any, Sequence
 
 from sqlalchemy import or_, select, union_all
 
-from app.core.ports.retrieval_repositories import IReadPolicyRepo
+from app.core.ports.db.retrieval_repositories import IReadPolicyRepo
 from app.infrastructure.db.models.associations import association_edges
 from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
 from app.infrastructure.db.models.memories import memories

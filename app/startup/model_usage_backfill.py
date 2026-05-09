@@ -10,8 +10,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from app.startup.use_cases import get_uow_factory
-from app.infrastructure.observability.telemetry.records import ModelUsageRecord
-from app.infrastructure.observability.telemetry.recorder import (
+from app.infrastructure.telemetry.records import ModelUsageRecord
+from app.infrastructure.telemetry.recorder import (
     record_model_usage_telemetry,
 )
 from app.infrastructure.host_transcripts.model_usage import (

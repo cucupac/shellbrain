@@ -33,7 +33,7 @@ from app.core.entities.concepts import (
     ConceptStatus,
     GraphPatch,
 )
-from app.core.ports.concept_repositories import IConceptsRepo
+from app.core.ports.db.concept_repositories import IConceptsRepo
 from app.infrastructure.db.models.concepts import (
     anchors,
     concept_aliases,

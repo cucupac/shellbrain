@@ -11,7 +11,7 @@ from app.core.entities.memories import MemoryKind, MemoryScope
 import app.entrypoints.cli.main as cli_main
 import app.startup.cli as startup_cli
 from tests.operations._shared.handler_calls import (
-    handle_create,
+    handle_memory_add,
     handle_events,
     handle_read,
     handle_update,
@@ -70,7 +70,7 @@ def test_create_should_always_append_one_operation_invocation_row_with_command_r
 
     seed_default_evidence_events(repo_id="repo-a")
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Telemetry create invocation.",
@@ -198,7 +198,6 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
     repo_root.mkdir()
     _stub_read_pipeline(monkeypatch, zero_results=False)
     monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
     monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
 
     exit_code = cli_main.main(

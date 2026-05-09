@@ -2,7 +2,7 @@
 
 from typing import Sequence
 
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 
 
 class SentenceTransformersEmbeddingProvider(IEmbeddingProvider):

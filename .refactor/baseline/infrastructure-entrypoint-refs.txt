@@ -1,4 +1,0 @@
-app/infrastructure/process/episode_sync_launcher.py:23:        "app.entrypoints.jobs.episode_sync",
-app/infrastructure/host_identity/claude_hook_install.py:96:        f"{shlex.quote(executable)} -m app.entrypoints.host_hooks.claude_session_start session-start "
-app/infrastructure/host_assets/cursor_statusline_config.py:12:CURSOR_STATUSLINE_MARKER = "app.entrypoints.host_hooks.cursor_statusline"
-app/infrastructure/host_assets/cursor_statusline_config.py:80:    return shlex.join([str(Path(sys.executable).resolve()), "-m", "app.entrypoints.host_hooks.cursor_statusline"])

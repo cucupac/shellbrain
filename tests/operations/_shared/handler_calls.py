@@ -6,36 +6,36 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from app.core.contracts.requests import (
-    EpisodeEventsRequest,
+from app.core.contracts.episodes import EpisodeEventsRequest
+from app.core.contracts.memories import (
     MemoryBatchUpdateRequest,
-    MemoryCreateRequest,
+    MemoryAddRequest,
     MemoryUpdateRequest,
 )
 from app.core.contracts.retrieval import MemoryReadRequest, MemoryRecallRequest
-from app.core.ports.idgen import IIdGenerator
-from app.entrypoints.cli.protocol.episodes import prepare_events_request
-from app.entrypoints.cli.protocol.memories import (
-    prepare_create_request,
+from app.core.ports.runtime.idgen import IIdGenerator
+from app.infrastructure.cli.protocol.episodes import prepare_events_request
+from app.infrastructure.cli.protocol.memories import (
+    prepare_memory_add_request,
     prepare_update_request,
 )
-from app.entrypoints.cli.protocol.prepared import PreparedOperationRequest
-from app.entrypoints.cli.protocol.retrieval import (
+from app.infrastructure.cli.protocol.prepared import PreparedOperationRequest
+from app.infrastructure.cli.protocol.retrieval import (
     prepare_read_request,
     prepare_recall_request,
 )
-from app.handlers.internal_agent.episodes.events import run_read_events_operation
-from app.handlers.internal_agent.memories.add import run_create_memory_operation
-from app.handlers.internal_agent.memories.update import run_update_memory_operation
-from app.handlers.internal_agent.retrieval.read import run_read_memory_operation
-from app.handlers.working_agent.recall import run_recall_memory_operation
-from app.startup import handlers as startup_handlers
+from app.infrastructure.cli.handlers.internal_agent.episodes.events import run_read_events_operation
+from app.infrastructure.cli.handlers.internal_agent.memories.add import run_create_memory_operation
+from app.infrastructure.cli.handlers.internal_agent.memories.update import run_update_memory_operation
+from app.infrastructure.cli.handlers.internal_agent.retrieval.read import run_read_memory_operation
+from app.infrastructure.cli.handlers.working_agent.recall import run_recall_memory_operation
+from app.startup import cli_handlers as startup_handlers
 from app.startup.create_policy import get_create_hydration_defaults
 from app.startup.read_policy import get_read_hydration_defaults
 
 
-def handle_create(
-    request: MemoryCreateRequest | dict[str, Any] | None,
+def handle_memory_add(
+    request: MemoryAddRequest | dict[str, Any] | None,
     *,
     uow_factory,
     embedding_provider_factory,
@@ -164,14 +164,14 @@ def handle_concept_update(*args: Any, **kwargs: Any) -> dict[str, Any]:
 
 
 def _prepare_create(
-    request: MemoryCreateRequest | dict[str, Any] | None,
+    request: MemoryAddRequest | dict[str, Any] | None,
     *,
     inferred_repo_id: str,
     defaults: dict[str, Any] | None,
-) -> PreparedOperationRequest[MemoryCreateRequest]:
-    if isinstance(request, MemoryCreateRequest) or request is None:
+) -> PreparedOperationRequest[MemoryAddRequest]:
+    if isinstance(request, MemoryAddRequest) or request is None:
         return PreparedOperationRequest(request=request, errors=())
-    return prepare_create_request(
+    return prepare_memory_add_request(
         request,
         inferred_repo_id=inferred_repo_id,
         defaults=defaults or get_create_hydration_defaults(),

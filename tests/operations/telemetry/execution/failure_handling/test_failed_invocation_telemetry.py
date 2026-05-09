@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from tests.operations._shared.handler_calls import (
-    handle_create,
+    handle_memory_add,
     handle_events,
     handle_read,
     handle_update,
@@ -62,7 +62,7 @@ def test_create_validation_failures_should_always_append_one_failed_operation_in
 ) -> None:
     """create validation failures should always append one failed operation invocation and no write summary row."""
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Invalid solution payload.",
@@ -167,7 +167,7 @@ def test_events_sync_failures_should_always_append_one_failed_operation_invocati
     """events sync failures should always append one failed operation invocation and one failed episode sync run."""
 
     monkeypatch.setattr(
-        "app.startup.handlers.normalize_host_transcript",
+        "app.startup.cli_handlers.normalize_host_transcript",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 
@@ -205,7 +205,7 @@ def test_unexpected_operational_failures_should_always_append_one_failed_operati
     """unexpected operational failures should always append one failed operation invocation with internal-error stage."""
 
     monkeypatch.setattr(
-        "app.handlers.internal_agent.retrieval.execution.execute_read_memory",
+        "app.infrastructure.cli.handlers.internal_agent.retrieval.execution.execute_read_memory",
         lambda request, uow, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 

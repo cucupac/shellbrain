@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryCreateRequest
+from app.core.contracts.memories import MemoryAddRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.experiences import problem_attempts
@@ -19,7 +19,7 @@ def test_create_problem_persists_memory_without_problem_attempt(
 ) -> None:
     """create(problem) should always persist one shellbrain row and no problem_attempt row."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",
@@ -65,7 +65,7 @@ def test_create_solution_persists_problem_attempt_with_solution_role(
         kind=MemoryKind.PROBLEM,
         text_value="A seeded problem.",
     )
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",
@@ -109,7 +109,7 @@ def test_create_failed_tactic_persists_problem_attempt_with_failed_tactic_role(
         kind=MemoryKind.PROBLEM,
         text_value="A seeded problem.",
     )
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",

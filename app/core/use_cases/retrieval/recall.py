@@ -12,7 +12,7 @@ from app.core.entities.settings import (
     default_read_policy_settings,
     default_threshold_settings,
 )
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.use_cases.retrieval.read import execute_read_memory
 
 

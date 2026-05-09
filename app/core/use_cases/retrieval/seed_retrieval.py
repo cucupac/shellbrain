@@ -3,8 +3,8 @@
 from typing import Any, Sequence
 
 from app.core.entities.settings import ThresholdSettings, default_threshold_settings
-from app.core.ports.retrieval import IVectorSearch
-from app.core.ports.retrieval_repositories import (
+from app.core.ports.embeddings.retrieval import IVectorSearch
+from app.core.ports.db.retrieval_repositories import (
     IKeywordRetrievalRepo,
     ISemanticRetrievalRepo,
 )

@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from app.core.entities.memories import MemoryKind, MemoryScope
-from tests.operations._shared.handler_calls import handle_create
+from tests.operations._shared.handler_calls import handle_memory_add
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -22,7 +22,7 @@ def test_create_rejects_missing_problem_reference(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -59,7 +59,7 @@ def test_create_rejects_invisible_problem_reference(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -96,7 +96,7 @@ def test_create_rejects_non_problem_reference(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -140,7 +140,7 @@ def test_create_rejects_invisible_association_target(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -207,7 +207,7 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
         },
     }
 
-    non_frontier_result = handle_create(
+    non_frontier_result = handle_memory_add(
         non_frontier_payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -215,7 +215,7 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
         inferred_repo_id="repo-a",
         defaults={"scope": "repo"},
     )
-    non_mature_target_result = handle_create(
+    non_mature_target_result = handle_memory_add(
         non_mature_target_payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -251,7 +251,7 @@ def test_create_rejects_missing_episode_event_evidence(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -296,7 +296,7 @@ def test_create_rejects_episode_event_evidence_from_another_repo(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,

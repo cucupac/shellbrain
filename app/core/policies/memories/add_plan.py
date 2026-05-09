@@ -5,7 +5,7 @@ from typing import Any
 from app.core.contracts.planned_effects import (
     AssociationUpsertAndObserveEffectParams,
     CreatePlanIds,
-    MemoryCreateEffectParams,
+    MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
     MemoryEvidenceAttachEffectParams,
     PlannedEffect,
@@ -36,7 +36,7 @@ def build_create_plan(
     plan: list[PlannedEffect] = [
         make_side_effect(
             "memory.create",
-            MemoryCreateEffectParams(
+            MemoryAddEffectParams(
                 memory_id=memory_id,
                 repo_id=repo_id,
                 scope=memory["scope"],

@@ -2,9 +2,9 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryCreateRequest
+from app.core.contracts.memories import MemoryAddRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.associations import (
@@ -29,7 +29,7 @@ def test_create_association_links_persist_edge_and_observation(
         kind=MemoryKind.FACT,
         text_value="Association target.",
     )
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",

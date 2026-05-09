@@ -8,7 +8,7 @@ from app.core.entities.settings import (
     default_read_policy_settings,
     default_threshold_settings,
 )
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.use_cases.retrieval.context_pack_pipeline import build_context_pack
 from app.core.use_cases.retrieval.read_concepts import append_concepts_to_pack
 

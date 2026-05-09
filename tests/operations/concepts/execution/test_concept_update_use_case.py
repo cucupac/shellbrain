@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 from app.core.contracts.concepts import ConceptAddRequest, ConceptUpdateRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
-from app.core.ports.idgen import IIdGenerator
+from app.core.ports.runtime.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.update import update_concepts
 from app.infrastructure.db.models.concepts import (

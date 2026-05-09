@@ -10,7 +10,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from app.core.entities.session_state import SessionState
-from app.core.ports.session_state_store import ISessionStateStore
+from app.core.ports.local_state.session_state_store import ISessionStateStore
 
 
 class FileSessionStateStore(ISessionStateStore):

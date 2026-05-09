@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from app.core.entities.utility import UtilityObservation
-from app.core.ports.memory_repositories import IUtilityRepo
+from app.core.ports.db.memory_repositories import IUtilityRepo
 from app.infrastructure.db.models.utility import utility_observations
 
 

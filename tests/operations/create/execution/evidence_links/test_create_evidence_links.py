@@ -4,9 +4,9 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 
-from app.core.contracts.requests import MemoryCreateRequest
+from app.core.contracts.memories import MemoryAddRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.associations import (
@@ -25,7 +25,7 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
 ) -> None:
     """create should always attach each evidence ref exactly once in memory_evidence."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",
@@ -70,7 +70,7 @@ def test_create_association_links_attach_edge_evidence(
         kind=MemoryKind.FACT,
         text_value="Association target.",
     )
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",
@@ -127,7 +127,7 @@ def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
     barrier = Barrier(2)
 
     def _create(text: str, id_prefix: str) -> str:
-        request = MemoryCreateRequest.model_validate(
+        request = MemoryAddRequest.model_validate(
             {
                 "op": "create",
                 "repo_id": "repo-a",

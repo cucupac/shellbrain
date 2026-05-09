@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from tests.operations._shared.handler_calls import handle_create, handle_events
+from tests.operations._shared.handler_calls import handle_memory_add, handle_events
 from app.infrastructure.local_state.session_state_file_store import (
     FileSessionStateStore,
 )
@@ -29,7 +29,7 @@ def test_create_problem_should_set_current_problem_id_in_trusted_session_state(
     )
     evidence_ref = events_result["data"]["events"][0]["id"]
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Current problem.",

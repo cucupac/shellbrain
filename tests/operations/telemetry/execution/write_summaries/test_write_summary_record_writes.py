@@ -6,7 +6,7 @@ from collections.abc import Callable
 
 from app.core.entities.memories import MemoryKind, MemoryScope
 import pytest
-from tests.operations._shared.handler_calls import handle_create, handle_update
+from tests.operations._shared.handler_calls import handle_memory_add, handle_update
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -31,7 +31,7 @@ def test_create_should_always_append_one_write_summary_row_with_the_created_memo
         text_value="Association target.",
     )
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Create summary telemetry memory.",
@@ -88,7 +88,7 @@ def test_create_should_always_append_one_write_effect_row_per_planned_side_effec
         text_value="Association target.",
     )
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Create effect-order telemetry memory.",
@@ -132,7 +132,7 @@ def test_successful_writes_should_always_record_planned_effect_count_for_downstr
 
     seed_default_evidence_events(repo_id="repo-a")
 
-    result = handle_create(
+    result = handle_memory_add(
         {
             "memory": {
                 "text": "Create planned-effect telemetry memory.",

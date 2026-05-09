@@ -5,7 +5,7 @@ from __future__ import annotations
 from app.core.contracts.concepts import ConceptShowRequest
 from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.contracts.responses import UseCaseResult
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.use_cases.concepts.views import serialize_concept_bundle
 
 

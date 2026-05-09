@@ -7,7 +7,7 @@ from sqlalchemy import select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.evidence import EvidenceRef
-from app.core.ports.memory_repositories import IEvidenceRepo
+from app.core.ports.db.memory_repositories import IEvidenceRepo
 from app.infrastructure.db.models.associations import association_edge_evidence
 from app.infrastructure.db.models.evidence import evidence_refs
 from app.infrastructure.db.models.memories import memory_evidence
