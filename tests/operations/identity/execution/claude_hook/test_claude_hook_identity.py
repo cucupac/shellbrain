@@ -1,6 +1,6 @@
 """Claude hook identity contracts."""
 
-from app.infrastructure.host_identity.resolver import resolve_caller_identity
+from app.infrastructure.host_apps.identity.resolver import resolve_caller_identity
 
 
 def test_claude_hook_identity_should_resolve_one_trusted_main_caller_from_shellbrain_hook_env(

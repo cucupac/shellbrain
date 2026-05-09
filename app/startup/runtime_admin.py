@@ -13,8 +13,8 @@ from app.infrastructure.runtime.init_admin import (
     ensure_managed_runtime_available,
     recover_managed_machine_config,
 )
-from app.infrastructure.postgres_admin.connection import wait_for_postgres
-from app.infrastructure.postgres_admin.destructive_guard import (
+from app.infrastructure.db.admin.connection import wait_for_postgres
+from app.infrastructure.db.admin.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 from app.infrastructure.runtime.embedding_prewarm import prewarm_embeddings
@@ -32,7 +32,7 @@ from app.core.use_cases.admin.initialize_runtime import (
     run_initialize_runtime,
 )
 from app.startup.config import get_config_provider
-from app.infrastructure.postgres_admin.instance_guard import fingerprint_summary
+from app.infrastructure.db.admin.instance_guard import fingerprint_summary
 from app.infrastructure.local_state.machine_config_store import (
     BOOTSTRAP_STATE_PROVISIONING,
     BOOTSTRAP_STATE_READY,
@@ -54,8 +54,8 @@ from app.infrastructure.local_state.repo_registration_store import (
     load_repo_registration_for_target,
     register_repo_for_target,
 )
-from app.infrastructure.postgres_admin.storage_setup import resolve_storage_selection
-from app.infrastructure.host_assets import install_host_assets
+from app.infrastructure.db.admin.storage_setup import resolve_storage_selection
+from app.infrastructure.host_apps.assets import install_host_assets
 
 __all__ = [
     "INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT",

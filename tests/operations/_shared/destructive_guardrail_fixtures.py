@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 
-from app.infrastructure.postgres_admin.instance_guard import (
+from app.infrastructure.db.admin.instance_guard import (
     TEST,
     assert_destructive_allowed,
     assert_disposable_test_dsn,

@@ -7,7 +7,7 @@ import pytest
 from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.use_cases.memories.update import execute_update_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.update._execution_helpers import (
     make_update_request,
     snapshot_related_update_counts,

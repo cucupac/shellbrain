@@ -13,7 +13,7 @@ from urllib.parse import urlparse, urlunparse
 import psycopg
 from psycopg.rows import dict_row
 
-from app.infrastructure.postgres_admin.instance_guard import dsn_fingerprint, fetch_instance_metadata
+from app.infrastructure.db.admin.instance_guard import dsn_fingerprint, fetch_instance_metadata
 from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 

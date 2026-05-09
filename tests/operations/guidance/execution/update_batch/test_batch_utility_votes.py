@@ -78,7 +78,7 @@ def test_update_batch_should_apply_multiple_utility_votes_and_clear_pending_cand
     assert result["status"] == "ok"
     rows = fetch_rows(
         __import__(
-            "app.infrastructure.db.models.utility", fromlist=["utility_observations"]
+            "app.infrastructure.db.runtime.models.utility", fromlist=["utility_observations"]
         ).utility_observations
     )
     assert len(rows) == 2

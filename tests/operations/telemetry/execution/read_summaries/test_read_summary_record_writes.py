@@ -9,7 +9,7 @@ import pytest
 
 from app.core.contracts.responses import UseCaseResult
 from tests.operations._shared.handler_calls import handle_read
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 

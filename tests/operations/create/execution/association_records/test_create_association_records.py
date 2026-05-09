@@ -7,11 +7,11 @@ from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
-from app.infrastructure.db.models.associations import (
+from app.infrastructure.db.runtime.models.associations import (
     association_edges,
     association_observations,
 )
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 def test_create_association_links_persist_edge_and_observation(

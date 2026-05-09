@@ -17,15 +17,15 @@ from app.core.entities.episodes import (
 from app.core.contracts.memories import MemoryAddRequest
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
-from app.infrastructure.db.engine import get_engine
+from app.infrastructure.db.runtime.engine import get_engine
 from app.infrastructure.embeddings.local_provider import (
     SentenceTransformersEmbeddingProvider,
 )
-from app.infrastructure.db.models.episodes import episode_events, episodes
-from app.infrastructure.db.models.memories import memory_embeddings
-from app.infrastructure.db.models.registry import target_metadata
-from app.infrastructure.db.session import get_session_factory
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.models.episodes import episode_events, episodes
+from app.infrastructure.db.runtime.models.memories import memory_embeddings
+from app.infrastructure.db.runtime.models.registry import target_metadata
+from app.infrastructure.db.runtime.session import get_session_factory
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations._shared.destructive_guardrail_fixtures import (
     assert_destructive_test_setup_allowed,
     assert_test_database_is_disposable,

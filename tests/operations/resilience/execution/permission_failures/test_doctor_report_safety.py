@@ -5,16 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
-from app.infrastructure.postgres_admin.logical_backup import BackupManifest
+from app.infrastructure.db.admin.logical_backup import BackupManifest
 from app.startup.admin_diagnose import build_doctor_report
-from app.infrastructure.postgres_admin.instance_guard import InstanceMetadataRecord
+from app.infrastructure.db.admin.instance_guard import InstanceMetadataRecord
 from app.infrastructure.local_state.machine_config_store import (
     BackupState,
     DatabaseState,
     EmbeddingRuntimeState,
     MachineConfig,
 )
-from app.infrastructure.host_assets import install_host_assets
+from app.infrastructure.host_apps.assets import install_host_assets
 
 APP_LIVE_DSN = (
     "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain_live"
@@ -215,7 +215,7 @@ def test_doctor_report_should_warn_when_the_managed_claude_hook_interpreter_is_m
         "hooks": [
           {
             "type": "command",
-            "command": "/tmp/missing-shellbrain-python -m app.infrastructure.host_identity.claude_runtime session-start # shellbrain-managed:session-start"
+            "command": "/tmp/missing-shellbrain-python -m app.infrastructure.host_apps.identity.claude_runtime session-start # shellbrain-managed:session-start"
           }
         ]
       }

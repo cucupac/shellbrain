@@ -12,8 +12,8 @@ from app.core.use_cases.metrics.generate_dashboard import (
     MetricsDashboardResult,
     generate_metrics_dashboard,
 )
-from app.infrastructure.db import engine as db_engine
-from app.infrastructure.db.queries.metrics_adapter import SqlMetricsQueries
+from app.infrastructure.db.runtime import engine as db_engine
+from app.infrastructure.db.runtime.queries.metrics_adapter import SqlMetricsQueries
 from app.infrastructure.reporting.metrics import artifacts as metric_artifacts
 from app.infrastructure.reporting.metrics import browser as metric_browser
 from app.infrastructure.reporting.metrics import render_html

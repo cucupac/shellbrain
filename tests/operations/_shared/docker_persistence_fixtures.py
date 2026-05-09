@@ -26,16 +26,16 @@ from app.core.entities.episodes import (
 )
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from tests.operations._shared.handler_calls import handle_memory_add
-from app.infrastructure.db.engine import get_engine
-from app.infrastructure.db.models.evidence import evidence_refs
-from app.infrastructure.db.models.episodes import episode_events, episodes
-from app.infrastructure.db.models.memories import (
+from app.infrastructure.db.runtime.engine import get_engine
+from app.infrastructure.db.runtime.models.evidence import evidence_refs
+from app.infrastructure.db.runtime.models.episodes import episode_events, episodes
+from app.infrastructure.db.runtime.models.memories import (
     memories,
     memory_embeddings,
     memory_evidence,
 )
-from app.infrastructure.db.session import get_session_factory
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.session import get_session_factory
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
 _READY_TIMEOUT_SECONDS = 60

@@ -13,11 +13,11 @@ from app.core.use_cases.episodes.close_replaced_episode import close_replaced_ep
 from app.core.use_cases.episodes.sync_discovered_host_session import (
     sync_discovered_host_session,
 )
-from app.infrastructure.host_transcripts.model_usage import (
+from app.infrastructure.host_apps.transcripts.model_usage import (
     collect_model_usage_records_for_session,
 )
-from app.infrastructure.host_transcripts.normalization import normalize_host_transcript
-from app.infrastructure.host_transcripts.source_discovery import (
+from app.infrastructure.host_apps.transcripts.normalization import normalize_host_transcript
+from app.infrastructure.host_apps.transcripts.source_discovery import (
     SUPPORTED_HOSTS,
     default_search_roots,
     discover_active_host_session,

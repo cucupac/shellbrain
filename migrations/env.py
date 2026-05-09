@@ -8,7 +8,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.infrastructure.db.models.registry import target_metadata
+from app.infrastructure.db.runtime.models.registry import target_metadata
 
 
 config = context.config

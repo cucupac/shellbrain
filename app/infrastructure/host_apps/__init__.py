@@ -1,0 +1,1 @@
+"""Host application integration adapters."""

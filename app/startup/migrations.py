@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.infrastructure.local_state.machine_config_store import MachineConfig
-from app.infrastructure.postgres_admin.migrations import (
+from app.infrastructure.db.admin.migrations import (
     DatabaseRevisionAheadOfInstalledPackageError,
     apply_packaged_migrations,
 )

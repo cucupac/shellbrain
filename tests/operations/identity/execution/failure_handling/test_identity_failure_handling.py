@@ -2,7 +2,7 @@
 
 from pathlib import Path
 
-from app.infrastructure.host_identity.resolver import (
+from app.infrastructure.host_apps.identity.resolver import (
     resolve_caller_identity,
     resolve_trusted_events_source,
 )

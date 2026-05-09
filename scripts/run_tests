@@ -77,7 +77,7 @@ fi
 import os
 from pathlib import Path
 
-from app.infrastructure.postgres_admin.instance_guard import assert_disposable_test_dsn, host_port_from_dsn
+from app.infrastructure.db.admin.instance_guard import assert_disposable_test_dsn, host_port_from_dsn
 from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 protected_dsn = os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN") or None
@@ -120,7 +120,7 @@ from urllib.parse import urlparse, urlunparse
 
 import psycopg
 from psycopg import sql
-from app.infrastructure.postgres_admin.instance_guard import (
+from app.infrastructure.db.admin.instance_guard import (
     SCRATCH,
     TEST,
     assert_destructive_allowed,

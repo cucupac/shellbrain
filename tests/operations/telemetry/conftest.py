@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import text
 
-from app.infrastructure.db.models.registry import target_metadata
+from app.infrastructure.db.runtime.models.registry import target_metadata
 from tests.operations._shared.destructive_guardrail_fixtures import (
     assert_destructive_test_setup_allowed,
 )

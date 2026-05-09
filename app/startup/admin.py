@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from app.infrastructure.db import engine as db_engine
-from app.infrastructure import host_assets
-from app.infrastructure.host_identity import claude_hook_install
+from app.infrastructure.db.runtime import engine as db_engine
+from app.infrastructure.host_apps import assets as host_assets
+from app.infrastructure.host_apps.identity import claude_hook_install
 from app.infrastructure.local_state import (
     machine_config_store,
     session_state_file_store,

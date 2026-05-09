@@ -12,8 +12,8 @@ from app.core.ports.runtime.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.update import update_concepts
 from app.core.use_cases.retrieval.read import execute_read_memory
-from app.infrastructure.db.models.concepts import concept_memory_links, concepts
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.models.concepts import concept_memory_links, concepts
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import make_read_request
 
 

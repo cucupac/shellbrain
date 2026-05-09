@@ -9,7 +9,7 @@ from sqlalchemy.engine import Engine
 from app.core.use_cases.admin.generate_analytics_report import (
     build_analytics_report as build_analytics_report_from_rows,
 )
-from app.infrastructure.db.queries.analytics import (
+from app.infrastructure.db.runtime.queries.analytics import (
     fetch_events_for_threads,
     fetch_operation_invocations,
     fetch_pending_utility_threads,

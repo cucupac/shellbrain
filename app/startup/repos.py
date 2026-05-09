@@ -2,7 +2,7 @@
 
 from app.startup.db import get_session_factory_instance
 from app.startup.embeddings import get_embedding_provider
-from app.infrastructure.db.uow import PostgresUnitOfWork
+from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from app.infrastructure.embeddings.query_vector_search import (
     EmbeddingBackedVectorSearch,
 )

@@ -35,7 +35,7 @@ def test_metrics_command_should_generate_all_repo_artifacts_and_launch_browser_d
     )
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr(
-        "app.infrastructure.db.engine.get_engine", lambda _dsn: _FakeEngine()
+        "app.infrastructure.db.runtime.engine.get_engine", lambda _dsn: _FakeEngine()
     )
     monkeypatch.setattr(
         "app.core.use_cases.metrics.generate_dashboard.list_metrics_repo_ids",
@@ -98,7 +98,7 @@ def test_metrics_command_should_print_empty_message_when_no_repo_metrics_exist(
     )
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr(
-        "app.infrastructure.db.engine.get_engine", lambda _dsn: _FakeEngine()
+        "app.infrastructure.db.runtime.engine.get_engine", lambda _dsn: _FakeEngine()
     )
     monkeypatch.setattr(
         "app.core.use_cases.metrics.generate_dashboard.list_metrics_repo_ids",
@@ -122,7 +122,7 @@ def test_metrics_command_should_reject_global_repo_target_options(
     )
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
     monkeypatch.setattr(
-        "app.infrastructure.db.engine.get_engine", lambda _dsn: _FakeEngine()
+        "app.infrastructure.db.runtime.engine.get_engine", lambda _dsn: _FakeEngine()
     )
 
     exit_code = cli_main.main(["--repo-id", "github.com/example/repo", "metrics"])

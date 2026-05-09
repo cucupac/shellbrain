@@ -12,13 +12,13 @@ from app.core.entities.episodes import EpisodeStatus
 from app.core.use_cases.metrics.analyze_agent_behavior import (
     build_agent_behavior_report,
 )
-from app.infrastructure.db.models.episodes import episode_events, episodes
-from app.infrastructure.db.models.telemetry import (
+from app.infrastructure.db.runtime.models.episodes import episode_events, episodes
+from app.infrastructure.db.runtime.models.telemetry import (
     operation_invocations,
     read_invocation_summaries,
     write_invocation_summaries,
 )
-from app.infrastructure.db.queries.agent_behavior import fetch_agent_behavior_rows
+from app.infrastructure.db.runtime.queries.agent_behavior import fetch_agent_behavior_rows
 
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
