@@ -205,7 +205,7 @@ def test_unexpected_operational_failures_should_always_append_one_failed_operati
     """unexpected operational failures should always append one failed operation invocation with internal-error stage."""
 
     monkeypatch.setattr(
-        "app.infrastructure.cli.handlers.internal_agent.retrieval.execution.execute_read_memory",
+        "app.entrypoints.cli.handlers.internal_agent.retrieval.execution.execute_read_memory",
         lambda request, uow, **kwargs: (_ for _ in ()).throw(RuntimeError("boom")),
     )
 

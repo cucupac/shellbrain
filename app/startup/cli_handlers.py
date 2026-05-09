@@ -15,19 +15,19 @@ from app.core.contracts.memories import (
 from app.core.contracts.retrieval import MemoryReadRequest, MemoryRecallRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import CreatePolicySettings, UpdatePolicySettings
-from app.infrastructure.cli.handlers.internal_agent.concepts.add import run_concept_add_operation
-from app.infrastructure.cli.handlers.internal_agent.concepts.update import (
+from app.entrypoints.cli.handlers.internal_agent.concepts.add import run_concept_add_operation
+from app.entrypoints.cli.handlers.internal_agent.concepts.update import (
     run_concept_update_operation,
 )
-from app.infrastructure.cli.handlers.command_context import OperationDependencies
+from app.entrypoints.cli.handlers.command_context import OperationDependencies
 from app.infrastructure.telemetry.sink import TelemetrySink
-from app.infrastructure.cli.handlers.internal_agent.episodes.events import run_read_events_operation
-from app.infrastructure.cli.handlers.internal_agent.memories.add import run_create_memory_operation
-from app.infrastructure.cli.handlers.internal_agent.memories.update import (
+from app.entrypoints.cli.handlers.internal_agent.episodes.events import run_read_events_operation
+from app.entrypoints.cli.handlers.internal_agent.memories.add import run_create_memory_operation
+from app.entrypoints.cli.handlers.internal_agent.memories.update import (
     run_update_memory_operation,
 )
-from app.infrastructure.cli.handlers.internal_agent.retrieval.read import run_read_memory_operation
-from app.infrastructure.cli.handlers.working_agent.recall import (
+from app.entrypoints.cli.handlers.internal_agent.retrieval.read import run_read_memory_operation
+from app.entrypoints.cli.handlers.working_agent.recall import (
     run_recall_memory_operation,
 )
 from app.infrastructure.host_identity.resolver import (

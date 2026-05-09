@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 from app.core.contracts.episodes import EpisodeEventsRequest
-from app.infrastructure.cli.protocol.hydration import hydrate_events_payload
-from app.infrastructure.cli.protocol.payload_validation import (
+from app.entrypoints.cli.protocol.hydration import hydrate_events_payload
+from app.entrypoints.cli.protocol.payload_validation import (
     validate_events_schema,
     validate_internal_events_contract,
 )
-from app.infrastructure.cli.protocol.prepared import PreparedOperationRequest
+from app.entrypoints.cli.protocol.prepared import PreparedOperationRequest
 
 
 def prepare_events_request(

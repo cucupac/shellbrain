@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from app.infrastructure.cli.parser import build_parser
+from app.entrypoints.cli.parser import build_parser
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -72,10 +72,18 @@ def test_entrypoints_do_not_import_infrastructure_directly() -> None:
     )
 
 
-def test_startup_does_not_import_entrypoints() -> None:
-    _assert_no_forbidden_imports(
-        "startup",
-        ("app.entrypoints",),
+def test_startup_imports_only_cli_entrypoint_adapters() -> None:
+    violations: list[str] = []
+    for path in _python_files(APP_ROOT / "startup"):
+        for line_no, module_name in _imported_modules(path):
+            if module_name.startswith("app.entrypoints") and not module_name.startswith(
+                "app.entrypoints.cli"
+            ):
+                rel_path = path.relative_to(REPO_ROOT)
+                violations.append(f"{rel_path}:{line_no} imports {module_name}")
+    assert not violations, (
+        "Startup may compose CLI adapters, but must not import other entrypoints:\n"
+        + "\n".join(violations)
     )
 
 
@@ -83,11 +91,9 @@ def test_followup_refactor_removed_old_layer_paths() -> None:
     forbidden_paths = (
         APP_ROOT / "handlers",
         APP_ROOT / "startup" / "handlers.py",
+        APP_ROOT / "infrastructure" / "cli",
         APP_ROOT / "infrastructure" / "observability",
         APP_ROOT / "core" / "contracts" / "requests.py",
-        APP_ROOT / "entrypoints" / "cli" / "parser",
-        APP_ROOT / "entrypoints" / "cli" / "protocol",
-        APP_ROOT / "entrypoints" / "cli" / "presenters",
         APP_ROOT / "entrypoints" / "cli" / "endpoints",
     )
     violations = [
@@ -106,6 +112,20 @@ def test_cli_entrypoint_main_is_startup_shim() -> None:
         if module_name.startswith("app.")
     ]
     assert app_imports == ["app.startup.cli"]
+
+
+def test_cli_adapter_lives_under_entrypoints() -> None:
+    expected_paths = (
+        APP_ROOT / "entrypoints" / "cli" / "runner.py",
+        APP_ROOT / "entrypoints" / "cli" / "handlers",
+        APP_ROOT / "entrypoints" / "cli" / "parser",
+        APP_ROOT / "entrypoints" / "cli" / "presenters",
+        APP_ROOT / "entrypoints" / "cli" / "protocol",
+    )
+    missing = [
+        str(path.relative_to(REPO_ROOT)) for path in expected_paths if not path.exists()
+    ]
+    assert not missing, "CLI adapter paths are missing:\n" + "\n".join(missing)
 
 
 def test_periphery_package_is_gone() -> None:

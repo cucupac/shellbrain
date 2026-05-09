@@ -10,7 +10,7 @@ from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
 )
-from app.infrastructure.cli.handlers.command_context import OperationDependencies
+from app.entrypoints.cli.handlers.command_context import OperationDependencies
 
 
 class EventsSelectionError(Exception):

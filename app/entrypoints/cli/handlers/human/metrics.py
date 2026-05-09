@@ -6,7 +6,7 @@ import argparse
 from collections.abc import Callable
 import sys
 
-from app.infrastructure.cli.presenters.metrics import render_metrics_dashboard_lines
+from app.entrypoints.cli.presenters.metrics import render_metrics_dashboard_lines
 
 
 def run_metrics_command(

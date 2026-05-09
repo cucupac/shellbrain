@@ -7,17 +7,17 @@ from app.core.contracts.concepts import (
     ConceptShowRequest,
     ConceptUpdateRequest,
 )
-from app.infrastructure.cli.protocol.hydration import (
+from app.entrypoints.cli.protocol.hydration import (
     hydrate_concept_add_payload,
     hydrate_concept_show_payload,
     hydrate_concept_update_payload,
 )
-from app.infrastructure.cli.protocol.payload_validation import (
+from app.entrypoints.cli.protocol.payload_validation import (
     validate_concept_add_schema,
     validate_concept_show_schema,
     validate_concept_update_schema,
 )
-from app.infrastructure.cli.protocol.prepared import PreparedOperationRequest
+from app.entrypoints.cli.protocol.prepared import PreparedOperationRequest
 
 
 def prepare_concept_add_request(

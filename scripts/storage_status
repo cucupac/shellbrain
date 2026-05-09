@@ -8,7 +8,6 @@ import json
 import os
 import subprocess
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 from urllib.parse import urlparse, urlunparse
 
 import psycopg
@@ -23,7 +22,7 @@ TEST_HOST = os.environ.get("SHELLBRAIN_TEST_DB_HOST", "127.0.0.1")
 TEST_PORT = int(os.environ.get("SHELLBRAIN_TEST_POSTGRES_PORT", "5433"))
 TEST_ADMIN_USER = os.environ.get("SHELLBRAIN_TEST_POSTGRES_USER", "shellbrain_test_admin")
 TEST_ADMIN_PASSWORD = os.environ.get("SHELLBRAIN_TEST_POSTGRES_PASSWORD", "shellbrain_test_admin")
-TEST_DATA_DIR = Path(os.environ.get("SHELLBRAIN_TEST_DB_DATA_DIR", str(Path.cwd() / ".local" / "postgres-test-data"))).expanduser().resolve()
+TEST_DATA_VOLUME = os.environ.get("SHELLBRAIN_TEST_DB_VOLUME", "shellbrain-postgres-test-data")
 STALE_HOURS = int(os.environ.get("SHELLBRAIN_TEST_RETENTION_HOURS", "72"))
 LEGACY_CONTAINER_NAME = os.environ.get("SHELLBRAIN_LEGACY_DB_CONTAINER_NAME", "shellbrain-postgres")
 
@@ -164,7 +163,7 @@ print("Dedicated test host")
 test_container = _inspect_container(TEST_CONTAINER_NAME)
 print(f"  container: {TEST_CONTAINER_NAME}")
 print(f"  expected_admin_dsn: {_mask_dsn(f'postgresql+psycopg://{TEST_ADMIN_USER}:{TEST_ADMIN_PASSWORD}@{TEST_HOST}:{TEST_PORT}/postgres')}")
-print(f"  data_dir: {TEST_DATA_DIR}")
+print(f"  data_volume: {TEST_DATA_VOLUME}")
 if not test_container["present"]:
     print("  status: not present")
 else:

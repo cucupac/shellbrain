@@ -184,7 +184,7 @@ def test_read_summary_should_record_concept_context_telemetry(
     """read summary telemetry should capture concept-context cost fields."""
 
     monkeypatch.setattr(
-        "app.infrastructure.cli.handlers.internal_agent.retrieval.execution.execute_read_memory",
+        "app.entrypoints.cli.handlers.internal_agent.retrieval.execution.execute_read_memory",
         lambda request, uow, **kwargs: UseCaseResult(
             data={
                 "pack": {

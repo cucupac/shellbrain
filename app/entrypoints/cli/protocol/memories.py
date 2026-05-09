@@ -7,17 +7,17 @@ from app.core.contracts.memories import (
     MemoryAddRequest,
     MemoryUpdateRequest,
 )
-from app.infrastructure.cli.protocol.hydration import (
+from app.entrypoints.cli.protocol.hydration import (
     hydrate_memory_add_payload,
     hydrate_update_payload,
 )
-from app.infrastructure.cli.protocol.payload_validation import (
+from app.entrypoints.cli.protocol.payload_validation import (
     validate_create_schema,
     validate_internal_create_contract,
     validate_internal_update_contract,
     validate_update_schema,
 )
-from app.infrastructure.cli.protocol.prepared import (
+from app.entrypoints.cli.protocol.prepared import (
     PreparedOperationRequest,
     hydrate_or_error,
 )

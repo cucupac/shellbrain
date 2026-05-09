@@ -3,14 +3,14 @@
 from __future__ import annotations
 
 from app.core.contracts.retrieval import MemoryReadRequest, MemoryRecallRequest
-from app.infrastructure.cli.protocol.hydration import hydrate_read_payload
-from app.infrastructure.cli.protocol.payload_validation import (
+from app.entrypoints.cli.protocol.hydration import hydrate_read_payload
+from app.entrypoints.cli.protocol.payload_validation import (
     validate_internal_read_contract,
     validate_internal_recall_contract,
     validate_read_schema,
     validate_recall_schema,
 )
-from app.infrastructure.cli.protocol.prepared import (
+from app.entrypoints.cli.protocol.prepared import (
     PreparedOperationRequest,
     hydrate_or_error,
 )

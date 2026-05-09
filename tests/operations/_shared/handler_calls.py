@@ -14,21 +14,21 @@ from app.core.contracts.memories import (
 )
 from app.core.contracts.retrieval import MemoryReadRequest, MemoryRecallRequest
 from app.core.ports.runtime.idgen import IIdGenerator
-from app.infrastructure.cli.protocol.episodes import prepare_events_request
-from app.infrastructure.cli.protocol.memories import (
+from app.entrypoints.cli.protocol.episodes import prepare_events_request
+from app.entrypoints.cli.protocol.memories import (
     prepare_memory_add_request,
     prepare_update_request,
 )
-from app.infrastructure.cli.protocol.prepared import PreparedOperationRequest
-from app.infrastructure.cli.protocol.retrieval import (
+from app.entrypoints.cli.protocol.prepared import PreparedOperationRequest
+from app.entrypoints.cli.protocol.retrieval import (
     prepare_read_request,
     prepare_recall_request,
 )
-from app.infrastructure.cli.handlers.internal_agent.episodes.events import run_read_events_operation
-from app.infrastructure.cli.handlers.internal_agent.memories.add import run_create_memory_operation
-from app.infrastructure.cli.handlers.internal_agent.memories.update import run_update_memory_operation
-from app.infrastructure.cli.handlers.internal_agent.retrieval.read import run_read_memory_operation
-from app.infrastructure.cli.handlers.working_agent.recall import run_recall_memory_operation
+from app.entrypoints.cli.handlers.internal_agent.episodes.events import run_read_events_operation
+from app.entrypoints.cli.handlers.internal_agent.memories.add import run_create_memory_operation
+from app.entrypoints.cli.handlers.internal_agent.memories.update import run_update_memory_operation
+from app.entrypoints.cli.handlers.internal_agent.retrieval.read import run_read_memory_operation
+from app.entrypoints.cli.handlers.working_agent.recall import run_recall_memory_operation
 from app.startup import cli_handlers as startup_handlers
 from app.startup.create_policy import get_create_hydration_defaults
 from app.startup.read_policy import get_read_hydration_defaults

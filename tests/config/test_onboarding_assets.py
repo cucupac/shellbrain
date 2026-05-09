@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import app.infrastructure.cli.parser.builder as cli_parser
+import app.entrypoints.cli.parser.builder as cli_parser
 
 
 def _read_text(path: Path) -> str:

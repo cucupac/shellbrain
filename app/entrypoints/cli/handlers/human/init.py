@@ -7,7 +7,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from app.infrastructure.cli.presenters.init import render_success_lines
+from app.entrypoints.cli.presenters.init import render_success_lines
 
 
 def run(
