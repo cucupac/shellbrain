@@ -7,7 +7,9 @@ from types import SimpleNamespace
 from app.infrastructure.runtime import upgrade as upgrade_module
 
 
-def test_run_upgrade_should_fail_cleanly_when_required_tools_are_missing(monkeypatch, capsys) -> None:
+def test_run_upgrade_should_fail_cleanly_when_required_tools_are_missing(
+    monkeypatch, capsys
+) -> None:
     """Missing curl/bash should produce one clear manual fallback and non-zero exit."""
 
     monkeypatch.setattr(upgrade_module.shutil, "which", lambda name: None)
@@ -17,7 +19,9 @@ def test_run_upgrade_should_fail_cleanly_when_required_tools_are_missing(monkeyp
     assert exit_code == 1
     err = capsys.readouterr().err
     assert "shellbrain upgrade requires curl, bash." in err
-    assert "python3 -m pip install --user --upgrade shellbrain && shellbrain init" in err
+    assert (
+        "python3 -m pip install --user --upgrade shellbrain && shellbrain init" in err
+    )
     assert "pipx upgrade shellbrain && shellbrain init" in err
 
 

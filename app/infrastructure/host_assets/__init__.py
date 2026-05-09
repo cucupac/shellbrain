@@ -2,7 +2,10 @@
 
 from app.infrastructure.host_assets.inspection import inspect_host_assets
 from app.infrastructure.host_assets.service import install_host_assets
-from app.infrastructure.host_assets.types import HostAssetInspection, HostAssetInstallResult
+from app.infrastructure.host_assets.types import (
+    HostAssetInspection,
+    HostAssetInstallResult,
+)
 
 __all__ = [
     "HostAssetInspection",

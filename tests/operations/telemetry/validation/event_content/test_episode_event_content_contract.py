@@ -18,7 +18,9 @@ def test_episode_event_content_should_always_include_normalized_tool_telemetry_f
         transcript_path=Path(str(codex_transcript_fixture["transcript_path"])),
     )
 
-    tool_event = next(event for event in events if event["host_event_key"] == "codex-tool-important-1")
+    tool_event = next(
+        event for event in events if event["host_event_key"] == "codex-tool-important-1"
+    )
 
     assert tool_event["content_kind"] == "tool_result"
     assert tool_event["tool_name"] == "exec_command"
@@ -37,7 +39,9 @@ def test_episode_event_content_should_always_omit_tool_telemetry_fields_for_non_
         transcript_path=Path(str(codex_transcript_fixture["transcript_path"])),
     )
 
-    user_event = next(event for event in events if event["host_event_key"] == "codex-user-1")
+    user_event = next(
+        event for event in events if event["host_event_key"] == "codex-user-1"
+    )
 
     assert "tool_name" not in user_event
     assert "status" not in user_event
@@ -61,8 +65,16 @@ def test_codex_and_claude_code_should_always_normalize_equivalent_tool_results_i
         transcript_path=Path(str(claude_code_transcript_fixture["transcript_path"])),
     )
 
-    codex_tool = next(event for event in codex_events if event["host_event_key"] == "codex-tool-important-1")
-    claude_tool = next(event for event in claude_events if event["host_event_key"] == "claude-tool-important-1")
+    codex_tool = next(
+        event
+        for event in codex_events
+        if event["host_event_key"] == "codex-tool-important-1"
+    )
+    claude_tool = next(
+        event
+        for event in claude_events
+        if event["host_event_key"] == "claude-tool-important-1"
+    )
 
     assert set(codex_tool) == set(claude_tool)
     assert codex_tool["content_kind"] == claude_tool["content_kind"] == "tool_result"
@@ -88,8 +100,16 @@ def test_cursor_tool_results_should_normalize_into_the_same_analytics_shape_as_c
         transcript_path=Path(str(cursor_transcript_fixture["transcript_path"])),
     )
 
-    codex_tool = next(event for event in codex_events if event["host_event_key"] == "codex-tool-important-1")
-    cursor_tool = next(event for event in cursor_events if event["host_event_key"] == "cursor-bubble-tool-1:tool:tool-result-0")
+    codex_tool = next(
+        event
+        for event in codex_events
+        if event["host_event_key"] == "codex-tool-important-1"
+    )
+    cursor_tool = next(
+        event
+        for event in cursor_events
+        if event["host_event_key"] == "cursor-bubble-tool-1:tool:tool-result-0"
+    )
 
     assert set(codex_tool) == set(cursor_tool)
     assert cursor_tool["content_kind"] == "tool_result"

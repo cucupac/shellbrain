@@ -1,7 +1,17 @@
 """This module defines SQLAlchemy Core tables for memories and shellbrain embeddings."""
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Boolean, CheckConstraint, Column, ForeignKey, Integer, String, Table, Text, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    CheckConstraint,
+    Column,
+    ForeignKey,
+    Integer,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from app.infrastructure.db.models.metadata import metadata
@@ -22,7 +32,12 @@ memories = Table(
 memory_embeddings = Table(
     "memory_embeddings",
     metadata,
-    Column("memory_id", String, ForeignKey("memories.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "memory_id",
+        String,
+        ForeignKey("memories.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
     Column("model", String, nullable=False),
     Column("dim", Integer, nullable=False),
     Column("vector", Vector(), nullable=False),
@@ -33,7 +48,17 @@ memory_embeddings = Table(
 memory_evidence = Table(
     "memory_evidence",
     metadata,
-    Column("memory_id", String, ForeignKey("memories.id", ondelete="CASCADE"), primary_key=True),
-    Column("evidence_id", String, ForeignKey("evidence_refs.id", ondelete="CASCADE"), primary_key=True),
+    Column(
+        "memory_id",
+        String,
+        ForeignKey("memories.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "evidence_id",
+        String,
+        ForeignKey("evidence_refs.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
     UniqueConstraint("memory_id", "evidence_id", name="uq_memory_evidence_pair"),
 )

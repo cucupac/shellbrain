@@ -1,6 +1,5 @@
 """This module defines view SQL strings used to build derived read-model views."""
 
-
 CURRENT_FACT_SNAPSHOT_SQL = """
 CREATE OR REPLACE VIEW current_fact_snapshot AS
 SELECT m.*
@@ -620,20 +619,14 @@ USAGE_PROBLEM_TOKENS_LEGACY_SQL = USAGE_PROBLEM_TOKENS_SQL.replace(
     "CREATE OR REPLACE VIEW usage_problem_tokens AS",
     "CREATE OR REPLACE VIEW usage_problem_tokens_legacy AS",
 )
-USAGE_PROBLEM_READ_ROI_LEGACY_SQL = (
-    USAGE_PROBLEM_READ_ROI_SQL.replace(
-        "CREATE OR REPLACE VIEW usage_problem_read_roi AS",
-        "CREATE OR REPLACE VIEW usage_problem_read_roi_legacy AS",
-    )
-    .replace("FROM usage_problem_tokens upt", "FROM usage_problem_tokens_legacy upt")
-)
-USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL = (
-    USAGE_READ_BEFORE_SOLVE_ROI_SQL.replace(
-        "CREATE OR REPLACE VIEW usage_read_before_solve_roi AS",
-        "CREATE OR REPLACE VIEW usage_read_before_solve_roi_legacy AS",
-    )
-    .replace("FROM usage_problem_read_roi", "FROM usage_problem_read_roi_legacy")
-)
+USAGE_PROBLEM_READ_ROI_LEGACY_SQL = USAGE_PROBLEM_READ_ROI_SQL.replace(
+    "CREATE OR REPLACE VIEW usage_problem_read_roi AS",
+    "CREATE OR REPLACE VIEW usage_problem_read_roi_legacy AS",
+).replace("FROM usage_problem_tokens upt", "FROM usage_problem_tokens_legacy upt")
+USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL = USAGE_READ_BEFORE_SOLVE_ROI_SQL.replace(
+    "CREATE OR REPLACE VIEW usage_read_before_solve_roi AS",
+    "CREATE OR REPLACE VIEW usage_read_before_solve_roi_legacy AS",
+).replace("FROM usage_problem_read_roi", "FROM usage_problem_read_roi_legacy")
 
 
 USAGE_PROBLEM_RUN_TOKENS_SQL = """

@@ -2,7 +2,13 @@
 
 from dataclasses import dataclass
 
-from app.core.entities.ids import AssociationEdgeId, EvidenceId, EvidenceRefText, MemoryId, RepoId
+from app.core.entities.ids import (
+    AssociationEdgeId,
+    EvidenceId,
+    EvidenceRefText,
+    MemoryId,
+    RepoId,
+)
 
 
 @dataclass(kw_only=True)

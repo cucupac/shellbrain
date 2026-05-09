@@ -7,7 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from app.core.entities.admin_errors import InitConflictError, InitDependencyError, InitLockError
+from app.core.entities.admin_errors import (
+    InitConflictError,
+    InitDependencyError,
+    InitLockError,
+)
 
 
 INIT_OUTCOME_INITIALIZED = "initialized"
@@ -52,7 +56,7 @@ class InitializeRuntimePorts:
     ensure_dependencies: Callable[[], None]
     try_load_machine_config: Callable[[], tuple[Any | None, str | None]]
     backup_corrupt_machine_config: Callable[[], Path | None]
-    recover_machine_config_from_docker: Callable[[], Any | None]
+    recover_machine_config: Callable[[], Any | None]
     save_recovery_stub: Callable[..., None]
     update_bootstrap_state: Callable[..., Any]
     save_machine_config: Callable[[Any], None]
@@ -109,14 +113,24 @@ def run_initialize_runtime(
                 backup_path = ports.backup_corrupt_machine_config()
                 if backup_path is not None:
                     notes.append(f"Preserved corrupt machine config at {backup_path}")
-                recovered = ports.recover_machine_config_from_docker()
+                recovered = ports.recover_machine_config()
                 if recovered is None:
-                    ports.save_recovery_stub(current_step="config_recovery", last_error=machine_error)
-                    lines = ["Unable to recover Shellbrain runtime state from the corrupt machine config."]
+                    ports.save_recovery_stub(
+                        current_step="config_recovery", last_error=machine_error
+                    )
+                    lines = [
+                        "Unable to recover Shellbrain runtime state from the corrupt machine config."
+                    ]
                     if backup_path is not None:
-                        lines.append(f"Preserved corrupt machine config at {backup_path}")
-                    lines.append("Rerun `shellbrain init` after repairing or replacing the runtime configuration.")
-                    return InitResult(outcome=INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT, lines=lines)
+                        lines.append(
+                            f"Preserved corrupt machine config at {backup_path}"
+                        )
+                    lines.append(
+                        "Rerun `shellbrain init` after repairing or replacing the runtime configuration."
+                    )
+                    return InitResult(
+                        outcome=INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT, lines=lines
+                    )
                 machine_config = ports.update_bootstrap_state(
                     recovered,
                     bootstrap_state=ports.bootstrap_state_repair_needed,
@@ -133,7 +147,9 @@ def run_initialize_runtime(
                 and not config_corruption_recovered
             ):
                 if not skip_host_assets:
-                    notes.extend(ports.install_host_assets(host_mode="auto", force=False).lines)
+                    notes.extend(
+                        ports.install_host_assets(host_mode="auto", force=False).lines
+                    )
                 return InitResult(outcome=INIT_OUTCOME_NOOP, lines=notes)
 
             selection = ports.resolve_storage_selection(
@@ -151,13 +167,16 @@ def run_initialize_runtime(
                         raise InitDependencyError(
                             "Shellbrain init needs --admin-dsn when bootstrapping external PostgreSQL non-interactively."
                         )
-                    machine_config = ports.build_external_machine_config(admin_dsn=selection.admin_dsn)
+                    machine_config = ports.build_external_machine_config(
+                        admin_dsn=selection.admin_dsn
+                    )
                 ports.save_machine_config(machine_config)
                 mutated_machine = True
 
             machine_config = ports.migrate_machine_config(machine_config)
             should_repair = (
-                machine_config.bootstrap_state == ports.bootstrap_state_repair_needed or config_corruption_recovered
+                machine_config.bootstrap_state == ports.bootstrap_state_repair_needed
+                or config_corruption_recovered
             )
 
             if machine_config.runtime_mode == ports.runtime_mode_managed_local:
@@ -174,7 +193,9 @@ def run_initialize_runtime(
 
             if should_repair:
                 ports.backup_before_repair(machine_config)
-                notes.append("Created a backup before repairing the configured Shellbrain runtime.")
+                notes.append(
+                    "Created a backup before repairing the configured Shellbrain runtime."
+                )
                 repair_performed = True
 
             ports.wait_for_postgres(machine_config.database.admin_dsn)
@@ -242,7 +263,9 @@ def run_initialize_runtime(
                     ]
                 )
             else:
-                notes.extend(ports.install_host_assets(host_mode="auto", force=False).lines)
+                notes.extend(
+                    ports.install_host_assets(host_mode="auto", force=False).lines
+                )
 
             machine_config = ports.update_bootstrap_state(
                 machine_config,

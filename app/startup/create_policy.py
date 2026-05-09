@@ -50,5 +50,11 @@ def validate_create_policy_settings() -> list[ErrorDetail]:
     try:
         get_typed_create_policy_settings()
     except ValueError as exc:
-        return [ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc), field="create_policy.gates")]
+        return [
+            ErrorDetail(
+                code=ErrorCode.INTERNAL_ERROR,
+                message=str(exc),
+                field="create_policy.gates",
+            )
+        ]
     return []

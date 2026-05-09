@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
-from app.infrastructure.host_assets.cursor_statusline_config import install_cursor_statusline, inspect_cursor_statusline
-from app.infrastructure.host_assets.managed_tree import install_asset_tree, is_shellbrain_managed_asset
+from app.infrastructure.host_assets.cursor_statusline_config import (
+    install_cursor_statusline,
+    inspect_cursor_statusline,
+)
+from app.infrastructure.host_assets.managed_tree import (
+    install_asset_tree,
+    is_shellbrain_managed_asset,
+)
 from app.infrastructure.host_assets.packaged_assets import packaged_asset_root
 from app.infrastructure.host_assets.paths import default_cursor_home
 
@@ -11,7 +17,9 @@ PRIMARY_CURSOR_SKILL_NAME = "shellbrain-session-start"
 CURSOR_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
 
 
-def install_cursor_assets(*, force: bool, render_install_status) -> list[str]:
+def install_cursor_assets(
+    *, force: bool, render_install_status, statusline_module: str | None = None
+) -> list[str]:
     """Install the packaged Cursor skills into the default Cursor home."""
 
     cursor_root = default_cursor_home()
@@ -33,7 +41,14 @@ def install_cursor_assets(*, force: bool, render_install_status) -> list[str]:
     lines.append(
         render_install_status(
             "Cursor statusline",
-            install_cursor_statusline(force=force),
+            install_cursor_statusline(
+                force=force,
+                **(
+                    {}
+                    if statusline_module is None
+                    else {"statusline_module": statusline_module}
+                ),
+            ),
         )
     )
     return lines
@@ -47,7 +62,9 @@ def inspect_cursor_assets() -> tuple[dict[str, object], dict[str, object]]:
         {
             "path": str(cursor_root),
             "installed": cursor_root.exists(),
-            "managed": is_shellbrain_managed_asset(target_root=cursor_root, asset_kind="cursor_skill"),
+            "managed": is_shellbrain_managed_asset(
+                target_root=cursor_root, asset_kind="cursor_skill"
+            ),
         },
         inspect_cursor_statusline(),
     )

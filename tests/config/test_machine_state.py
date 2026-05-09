@@ -15,7 +15,9 @@ from app.infrastructure.local_state.machine_config_store import (
 )
 
 
-def test_load_machine_config_should_upgrade_old_managed_payload_without_top_level_instance_id(tmp_path: Path) -> None:
+def test_load_machine_config_should_upgrade_old_managed_payload_without_top_level_instance_id(
+    tmp_path: Path,
+) -> None:
     """legacy managed configs should still load by deriving instance_id from the managed section."""
 
     config_path = tmp_path / "machine.toml"
@@ -71,7 +73,9 @@ last_error = ""
     assert config.managed.container_name == "shellbrain-postgres"
 
 
-def test_external_machine_config_should_round_trip_without_managed_metadata(tmp_path: Path) -> None:
+def test_external_machine_config_should_round_trip_without_managed_metadata(
+    tmp_path: Path,
+) -> None:
     """external configs should save and load without fabricating managed metadata."""
 
     config_path = tmp_path / "machine.toml"

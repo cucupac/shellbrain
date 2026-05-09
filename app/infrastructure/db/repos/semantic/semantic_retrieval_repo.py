@@ -5,7 +5,7 @@ from typing import Any, Sequence
 
 from sqlalchemy import select
 
-from app.core.interfaces.repos import ISemanticRetrievalRepo
+from app.core.ports.retrieval_repositories import ISemanticRetrievalRepo
 from app.infrastructure.db.models.memories import memories, memory_embeddings
 
 
@@ -32,7 +32,9 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
             return []
 
         scored: list[dict[str, Any]] = []
-        for row in self._visible_embedding_rows(repo_id=repo_id, include_global=include_global, kinds=kinds):
+        for row in self._visible_embedding_rows(
+            repo_id=repo_id, include_global=include_global, kinds=kinds
+        ):
             score = _cosine_similarity(list(query_vector), row["vector"])
             if score <= 0.0:
                 continue
@@ -51,8 +53,17 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
     ) -> Sequence[dict[str, Any]]:
         """This method returns implicit semantic neighbors for one anchor memory."""
 
-        visible_rows = self._visible_embedding_rows(repo_id=repo_id, include_global=include_global, kinds=kinds)
-        anchor_vector = next((row["vector"] for row in visible_rows if row["memory_id"] == anchor_memory_id), None)
+        visible_rows = self._visible_embedding_rows(
+            repo_id=repo_id, include_global=include_global, kinds=kinds
+        )
+        anchor_vector = next(
+            (
+                row["vector"]
+                for row in visible_rows
+                if row["memory_id"] == anchor_memory_id
+            ),
+            None,
+        )
         if anchor_vector is None:
             return []
 
@@ -69,7 +80,9 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
             return scored
         return scored[:limit]
 
-    def _visible_embedding_rows(self, *, repo_id: str, include_global: bool, kinds: Sequence[str] | None) -> list[dict[str, Any]]:
+    def _visible_embedding_rows(
+        self, *, repo_id: str, include_global: bool, kinds: Sequence[str] | None
+    ) -> list[dict[str, Any]]:
         """Load visible embedded memories eligible for semantic retrieval."""
 
         scope_values = ["repo", "global"] if include_global else ["repo"]
@@ -78,7 +91,11 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 memories.c.id.label("memory_id"),
                 memory_embeddings.c.vector,
             )
-            .select_from(memories.join(memory_embeddings, memory_embeddings.c.memory_id == memories.c.id))
+            .select_from(
+                memories.join(
+                    memory_embeddings, memory_embeddings.c.memory_id == memories.c.id
+                )
+            )
             .where(
                 memories.c.repo_id == repo_id,
                 memories.c.archived.is_(False),
@@ -107,5 +124,8 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     right_norm = sqrt(sum(value * value for value in right))
     if left_norm == 0 or right_norm == 0:
         return 0.0
-    dot = sum(left_value * right_value for left_value, right_value in zip(left, right, strict=True))
+    dot = sum(
+        left_value * right_value
+        for left_value, right_value in zip(left, right, strict=True)
+    )
     return dot / (left_norm * right_norm)

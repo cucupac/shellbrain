@@ -1,2 +1,1 @@
 """Core metrics use cases."""
-

@@ -231,7 +231,11 @@ with psycopg.connect(admin_root_dsn, autocommit=True) as conn:
         """,
         (db_name,),
     )
-    conn.execute(sql.SQL("DROP DATABASE IF EXISTS {}").format(sql.Identifier(db_name)))
+    conn.execute(
+        sql.SQL("DROP DATABASE IF EXISTS {} WITH (FORCE)").format(
+            sql.Identifier(db_name)
+        )
+    )
 PY
 }
 

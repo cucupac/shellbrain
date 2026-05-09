@@ -6,7 +6,7 @@ from typing import Any, Sequence
 
 from sqlalchemy import or_, select, union_all
 
-from app.core.interfaces.repos import IReadPolicyRepo
+from app.core.ports.retrieval_repositories import IReadPolicyRepo
 from app.infrastructure.db.models.associations import association_edges
 from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
 from app.infrastructure.db.models.memories import memories
@@ -32,7 +32,9 @@ class ReadPolicyRepo(IReadPolicyRepo):
 
         rows = (
             self._session.execute(
-                select(problem_attempts.c.problem_id, problem_attempts.c.attempt_id).where(
+                select(
+                    problem_attempts.c.problem_id, problem_attempts.c.attempt_id
+                ).where(
                     or_(
                         problem_attempts.c.problem_id == anchor_memory_id,
                         problem_attempts.c.attempt_id == anchor_memory_id,
@@ -72,7 +74,11 @@ class ReadPolicyRepo(IReadPolicyRepo):
 
         rows = (
             self._session.execute(
-                select(fact_updates.c.old_fact_id, fact_updates.c.change_id, fact_updates.c.new_fact_id).where(
+                select(
+                    fact_updates.c.old_fact_id,
+                    fact_updates.c.change_id,
+                    fact_updates.c.new_fact_id,
+                ).where(
                     or_(
                         fact_updates.c.old_fact_id == anchor_memory_id,
                         fact_updates.c.change_id == anchor_memory_id,
@@ -124,12 +130,18 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 association_edges.c.relation_type,
                 association_edges.c.strength,
             )
-            .select_from(association_edges.join(memories, memories.c.id == association_edges.c.to_memory_id))
+            .select_from(
+                association_edges.join(
+                    memories, memories.c.id == association_edges.c.to_memory_id
+                )
+            )
             .where(
                 association_edges.c.repo_id == repo_id,
                 association_edges.c.from_memory_id == anchor_memory_id,
                 association_edges.c.state != "deprecated",
-                *self._visibility_filters(repo_id=repo_id, include_global=include_global, kinds=kinds),
+                *self._visibility_filters(
+                    repo_id=repo_id, include_global=include_global, kinds=kinds
+                ),
             )
         )
         to_stmt = (
@@ -140,12 +152,18 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 association_edges.c.relation_type,
                 association_edges.c.strength,
             )
-            .select_from(association_edges.join(memories, memories.c.id == association_edges.c.from_memory_id))
+            .select_from(
+                association_edges.join(
+                    memories, memories.c.id == association_edges.c.from_memory_id
+                )
+            )
             .where(
                 association_edges.c.repo_id == repo_id,
                 association_edges.c.to_memory_id == anchor_memory_id,
                 association_edges.c.state != "deprecated",
-                *self._visibility_filters(repo_id=repo_id, include_global=include_global, kinds=kinds),
+                *self._visibility_filters(
+                    repo_id=repo_id, include_global=include_global, kinds=kinds
+                ),
             )
         )
         union_stmt = union_all(from_stmt, to_stmt).subquery()
@@ -172,13 +190,17 @@ class ReadPolicyRepo(IReadPolicyRepo):
     ) -> set[str]:
         """Return the visible subset of memory ids."""
 
-        unique_memory_ids = tuple(dict.fromkeys(str(memory_id) for memory_id in memory_ids))
+        unique_memory_ids = tuple(
+            dict.fromkeys(str(memory_id) for memory_id in memory_ids)
+        )
         if not unique_memory_ids:
             return set()
         rows = self._session.execute(
             select(memories.c.id).where(
                 memories.c.id.in_(unique_memory_ids),
-                *self._visibility_filters(repo_id=repo_id, include_global=include_global, kinds=kinds),
+                *self._visibility_filters(
+                    repo_id=repo_id, include_global=include_global, kinds=kinds
+                ),
             )
         )
         return {str(row[0]) for row in rows}

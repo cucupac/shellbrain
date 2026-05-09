@@ -5,14 +5,26 @@ from collections.abc import Callable
 from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
 
-from app.core.contracts.concepts import ConceptCommandRequest
+from app.core.contracts.concepts import ConceptAddRequest, ConceptUpdateRequest
 from app.core.entities.concepts import ConceptLifecycleStatus
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.concepts.apply_concept_changes import execute_concept_command
-from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.idgen import IIdGenerator
+from app.core.use_cases.concepts.add import add_concepts
+from app.core.use_cases.concepts.update import update_concepts
+from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.models.concepts import concept_memory_links, concepts
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import make_read_request
+
+
+class _SequenceIdGenerator(IIdGenerator):
+    def __init__(self, prefix: str = "concept-id") -> None:
+        self._prefix = prefix
+        self._next = 0
+
+    def new_id(self) -> str:
+        self._next += 1
+        return f"{self._prefix}-{self._next}"
 
 
 def test_read_should_include_concepts_linked_to_returned_memories(
@@ -33,15 +45,24 @@ def test_read_should_include_concepts_linked_to_returned_memories(
     _stub_pack(monkeypatch, direct_memory_ids=["refund-problem-1"])
 
     with uow_factory() as uow:
-        result = execute_read_memory(make_read_request(repo_id="repo-a", query="refund failure"), uow)
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="refund failure"), uow
+        )
 
     pack = result.data["pack"]
     assert [item["memory_id"] for item in pack["direct"]] == ["refund-problem-1"]
     assert pack["concepts"]["mode"] == "auto"
     assert pack["concepts"]["items"][0]["ref"] == "deposit-addresses"
-    assert pack["concepts"]["items"][0]["orientation"].startswith("Relay-controlled EOAs")
+    assert pack["concepts"]["items"][0]["orientation"].startswith(
+        "Relay-controlled EOAs"
+    )
     assert pack["concepts"]["items"][0]["why_matched"][0]["reason"] == "linked_memory"
-    assert pack["concepts"]["items"][0]["expand"][0]["read_payload"]["expand"]["concepts"]["mode"] == "explicit"
+    assert (
+        pack["concepts"]["items"][0]["expand"][0]["read_payload"]["expand"]["concepts"][
+            "mode"
+        ]
+        == "explicit"
+    )
 
 
 def test_read_should_include_concepts_matching_query_aliases(
@@ -62,11 +83,16 @@ def test_read_should_include_concepts_matching_query_aliases(
     _stub_pack(monkeypatch, direct_memory_ids=[])
 
     with uow_factory() as uow:
-        result = execute_read_memory(make_read_request(repo_id="repo-a", query="deposit address refund failure"), uow)
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="deposit address refund failure"),
+            uow,
+        )
 
     concept_item = result.data["pack"]["concepts"]["items"][0]
     assert concept_item["ref"] == "deposit-addresses"
-    assert {"reason": "query_alias", "matched": "deposit address"} in concept_item["why_matched"]
+    assert {"reason": "query_alias", "matched": "deposit address"} in concept_item[
+        "why_matched"
+    ]
 
 
 def test_read_should_suppress_concepts_when_requested(
@@ -130,7 +156,12 @@ def test_read_should_expand_explicit_concept_facets(
                     "concepts": {
                         "mode": "explicit",
                         "refs": ["deposit-addresses"],
-                        "facets": ["relations", "groundings", "memory_links", "evidence"],
+                        "facets": [
+                            "relations",
+                            "groundings",
+                            "memory_links",
+                            "evidence",
+                        ],
                     }
                 },
             ),
@@ -139,7 +170,9 @@ def test_read_should_expand_explicit_concept_facets(
 
     concept_item = result.data["pack"]["concepts"]["items"][0]
     assert concept_item["relations"][0]["predicate"] == "contains"
-    assert concept_item["groundings"][0]["anchor"]["locator"] == {"path": "app/deposit_addresses.py"}
+    assert concept_item["groundings"][0]["anchor"]["locator"] == {
+        "path": "app/deposit_addresses.py"
+    }
     assert concept_item["memory_links"][0]["memory_id"] == "refund-problem-1"
     assert concept_item["memory_links"][0]["kind"] == "problem"
     assert concept_item["evidence"]
@@ -177,7 +210,9 @@ def test_read_should_penalize_stale_concept_links_in_auto_mode(
     _stub_pack(monkeypatch, direct_memory_ids=["refund-problem-1"])
 
     with uow_factory() as uow:
-        result = execute_read_memory(make_read_request(repo_id="repo-a", query="refund failure"), uow)
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="refund failure"), uow
+        )
 
     assert [item["ref"] for item in result.data["pack"]["concepts"]["items"]][:2] == [
         "refund-policy",
@@ -187,95 +222,158 @@ def test_read_should_penalize_stale_concept_links_in_auto_mode(
 
 def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:
     with uow_factory() as uow:
-        execute_concept_command(
-            ConceptCommandRequest.model_validate(
+        add_concepts(
+            ConceptAddRequest.model_validate(
                 {
                     "schema_version": "concept.v1",
                     "repo_id": "repo-a",
-                    "mode": "apply",
                     "actions": [
                         {
-                            "type": "upsert_concept",
+                            "type": "add_concept",
                             "slug": "deposit-addresses",
                             "name": "Deposit Addresses",
                             "kind": "domain",
                             "aliases": ["deposit address"],
                         },
-                        {"type": "upsert_concept", "slug": "deposit-lifecycle", "name": "Deposit Lifecycle", "kind": "process"},
+                        {
+                            "type": "add_concept",
+                            "slug": "deposit-lifecycle",
+                            "name": "Deposit Lifecycle",
+                            "kind": "process",
+                        },
+                    ],
+                }
+            ),
+            uow,
+            id_generator=_SequenceIdGenerator(prefix="deposit-concept-id"),
+        )
+    with uow_factory() as uow:
+        update_concepts(
+            ConceptUpdateRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
                         {
                             "type": "add_claim",
                             "concept": "deposit-addresses",
                             "claim_type": "definition",
                             "text": "Relay-controlled EOAs users send funds to so Relay can execute bridge, swap, fill, or refund flows.",
-                            "evidence": [{"kind": "manual", "note": "Seeded for concept-aware read test."}],
+                            "evidence": [
+                                {
+                                    "kind": "manual",
+                                    "note": "Seeded for concept-aware read test.",
+                                }
+                            ],
                         },
                         {
                             "type": "add_relation",
                             "subject": "deposit-addresses",
                             "predicate": "contains",
                             "object": "deposit-lifecycle",
-                            "evidence": [{"kind": "manual", "note": "Seeded for concept-aware read test."}],
+                            "evidence": [
+                                {
+                                    "kind": "manual",
+                                    "note": "Seeded for concept-aware read test.",
+                                }
+                            ],
                         },
                         {
                             "type": "add_grounding",
                             "concept": "deposit-addresses",
                             "role": "implementation",
-                            "anchor": {"kind": "file", "locator": {"path": "app/deposit_addresses.py"}},
-                            "evidence": [{"kind": "manual", "note": "Implementation anchor."}],
+                            "anchor": {
+                                "kind": "file",
+                                "locator": {"path": "app/deposit_addresses.py"},
+                            },
+                            "evidence": [
+                                {"kind": "manual", "note": "Implementation anchor."}
+                            ],
                         },
                         {
                             "type": "link_memory",
                             "concept": "deposit-addresses",
                             "role": "example_of",
                             "memory_id": "refund-problem-1",
-                            "evidence": [{"kind": "manual", "note": "Related refund case."}],
+                            "evidence": [
+                                {"kind": "manual", "note": "Related refund case."}
+                            ],
                         },
                     ],
                 }
             ),
             uow,
+            id_generator=_SequenceIdGenerator(prefix="deposit-concept-update-id"),
         )
 
 
 def _seed_refund_policy(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:
     with uow_factory() as uow:
-        execute_concept_command(
-            ConceptCommandRequest.model_validate(
+        add_concepts(
+            ConceptAddRequest.model_validate(
                 {
                     "schema_version": "concept.v1",
                     "repo_id": "repo-a",
-                    "mode": "apply",
                     "actions": [
                         {
-                            "type": "upsert_concept",
+                            "type": "add_concept",
                             "slug": "refund-policy",
                             "name": "Refund Policy",
                             "kind": "rule",
                         },
+                    ],
+                }
+            ),
+            uow,
+            id_generator=_SequenceIdGenerator(prefix="refund-concept-id"),
+        )
+    with uow_factory() as uow:
+        update_concepts(
+            ConceptUpdateRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
                         {
                             "type": "add_claim",
                             "concept": "refund-policy",
                             "claim_type": "definition",
                             "text": "Rules for returning funds when a deposit flow fails.",
-                            "evidence": [{"kind": "manual", "note": "Seeded for stale ranking test."}],
+                            "evidence": [
+                                {
+                                    "kind": "manual",
+                                    "note": "Seeded for stale ranking test.",
+                                }
+                            ],
                         },
                         {
                             "type": "link_memory",
                             "concept": "refund-policy",
                             "role": "example_of",
                             "memory_id": "refund-problem-1",
-                            "evidence": [{"kind": "manual", "note": "Related refund case."}],
+                            "evidence": [
+                                {"kind": "manual", "note": "Related refund case."}
+                            ],
                         },
                     ],
                 }
             ),
             uow,
+            id_generator=_SequenceIdGenerator(prefix="refund-concept-update-id"),
         )
 
 
 def _stub_pack(monkeypatch, *, direct_memory_ids: list[str]) -> None:
     pack = {
-        "meta": {"mode": "targeted", "limit": 8, "counts": {"direct": len(direct_memory_ids), "explicit_related": 0, "implicit_related": 0}},
+        "meta": {
+            "mode": "targeted",
+            "limit": 8,
+            "counts": {
+                "direct": len(direct_memory_ids),
+                "explicit_related": 0,
+                "implicit_related": 0,
+            },
+        },
         "direct": [
             {
                 "memory_id": memory_id,
@@ -289,4 +387,7 @@ def _stub_pack(monkeypatch, *, direct_memory_ids: list[str]) -> None:
         "explicit_related": [],
         "implicit_related": [],
     }
-    monkeypatch.setattr("app.core.use_cases.memory_retrieval.read_memory.build_context_pack", lambda *args, **kwargs: pack)
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.read.build_context_pack",
+        lambda *args, **kwargs: pack,
+    )

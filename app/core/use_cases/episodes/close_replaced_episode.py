@@ -16,7 +16,9 @@ def close_replaced_episode(
     """Close the active episode for one replaced host session when present."""
 
     canonical_thread_id = f"{host_app}:{host_session_key}"
-    episode = uow.episodes.get_episode_by_thread(repo_id=repo_id, thread_id=canonical_thread_id)
+    episode = uow.episodes.get_episode_by_thread(
+        repo_id=repo_id, thread_id=canonical_thread_id
+    )
     if episode is None:
         return
     uow.episodes.close_episode(episode_id=episode.id, ended_at=ended_at)

@@ -7,9 +7,15 @@ from pathlib import Path
 
 import pytest
 
-from app.core.entities.memory import MemoryKind, MemoryScope
+from app.core.entities.memories import MemoryKind, MemoryScope
 import app.entrypoints.cli.main as cli_main
-from app.startup.agent_operations import handle_create, handle_events, handle_read, handle_update
+import app.startup.cli as startup_cli
+from tests.operations._shared.handler_calls import (
+    handle_create,
+    handle_events,
+    handle_read,
+    handle_update,
+)
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -26,7 +32,12 @@ def test_read_should_always_append_one_operation_invocation_row_with_command_rep
     _stub_read_pipeline(monkeypatch, zero_results=False)
 
     result = handle_read(
-        {"query": "telemetry read invocation", "mode": "targeted", "limit": 8, "include_global": True},
+        {
+            "query": "telemetry read invocation",
+            "mode": "targeted",
+            "limit": 8,
+            "include_global": True,
+        },
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -167,7 +178,9 @@ def test_events_should_always_append_one_operation_invocation_row_with_the_resol
     assert len(rows) == 1
     row = rows[0]
     assert row["selected_host_app"] == "codex"
-    assert row["selected_host_session_key"] == codex_transcript_fixture["host_session_key"]
+    assert (
+        row["selected_host_session_key"] == codex_transcript_fixture["host_session_key"]
+    )
     assert row["selected_thread_id"] == codex_transcript_fixture["canonical_thread_id"]
     assert row["selected_episode_id"] == result["data"]["episode_id"]
 
@@ -186,7 +199,7 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
     _stub_read_pipeline(monkeypatch, zero_results=False)
     monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
     monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
-    monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: None)
+    monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
 
     exit_code = cli_main.main(
         [
@@ -256,44 +269,48 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     """Patch the read pipeline to return deterministic candidate sets."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.retrieve_seeds",
+        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
         lambda payload, **kwargs: {"semantic": [], "keyword": []},
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword: []
-        if zero_results
-        else [
-            {
-                "memory_id": "direct-1",
-                "rrf_score": 0.99,
-                "score": 0.99,
-                "kind": "problem",
-                "text": "Primary direct memory.",
-                "why_included": "direct_match",
-            }
-        ],
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.expand_candidates",
-        lambda direct_candidates, payload, **kwargs: {"explicit": [], "implicit": []}
-        if zero_results
-        else {
-            "explicit": [
+        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
+        lambda semantic, keyword, **kwargs: (
+            []
+            if zero_results
+            else [
                 {
-                    "memory_id": "explicit-1",
-                    "score": 0.88,
-                    "kind": "solution",
-                    "text": "Linked association memory.",
-                    "why_included": "association_link",
-                    "anchor_memory_id": "direct-1",
-                    "relation_type": "depends_on",
+                    "memory_id": "direct-1",
+                    "rrf_score": 0.99,
+                    "score": 0.99,
+                    "kind": "problem",
+                    "text": "Primary direct memory.",
+                    "why_included": "direct_match",
                 }
-            ],
-            "implicit": [],
-        },
+            ]
+        ),
     )
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.context_pack_pipeline.score_candidates",
+        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
+        lambda direct_candidates, payload, **kwargs: (
+            {"explicit": [], "implicit": []}
+            if zero_results
+            else {
+                "explicit": [
+                    {
+                        "memory_id": "explicit-1",
+                        "score": 0.88,
+                        "kind": "solution",
+                        "text": "Linked association memory.",
+                        "why_included": "association_link",
+                        "anchor_memory_id": "direct-1",
+                        "relation_type": "depends_on",
+                    }
+                ],
+                "implicit": [],
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )

@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.entities.guidance import GuidanceDecision
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
 from app.core.entities.session_state import SessionState
-from app.core.interfaces.repos import ITelemetryRepo
+from app.core.ports.guidance import IPendingUtilityCandidatesRepo
 
 
 GUIDANCE_REMINDER_INTERVAL = timedelta(minutes=30)
@@ -36,18 +36,21 @@ def build_pending_utility_guidance(
     repo_id: str,
     caller_identity: CallerIdentity | None,
     session_state: SessionState | None,
-    telemetry: ITelemetryRepo,
+    pending_utility_candidates: IPendingUtilityCandidatesRepo,
     now_iso: str,
     strong: bool = False,
 ) -> list[GuidanceDecision]:
     """Build pending utility-vote guidance for one trusted caller and active problem."""
 
-    if caller_identity is None or caller_identity.trust_level != IdentityTrustLevel.TRUSTED:
+    if (
+        caller_identity is None
+        or caller_identity.trust_level != IdentityTrustLevel.TRUSTED
+    ):
         return []
     if session_state is None or session_state.current_problem_id is None:
         return []
 
-    candidates = telemetry.list_pending_utility_candidates(
+    candidates = pending_utility_candidates.list_pending_utility_candidates(
         repo_id=repo_id,
         caller_id=caller_identity.canonical_id or "",
         problem_id=session_state.current_problem_id,

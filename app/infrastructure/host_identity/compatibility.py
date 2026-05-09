@@ -30,4 +30,3 @@ def host_identity_drifted_error(*, caller_id: str) -> ErrorDetail:
         code=ErrorCode.HOST_IDENTITY_DRIFTED,
         message=f"Trusted caller identity drifted and could not be resolved for `{caller_id}`. Verify the host thread/session still exists and rerun `events`.",
     )
-

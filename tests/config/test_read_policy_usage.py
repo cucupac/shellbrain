@@ -3,7 +3,9 @@
 from app.startup.read_policy import resolve_read_payload_defaults
 
 
-def test_read_policy_should_always_resolve_missing_read_knobs_from_config(monkeypatch) -> None:
+def test_read_policy_should_always_resolve_missing_read_knobs_from_config(
+    monkeypatch,
+) -> None:
     """read policy should always resolve missing read knobs from config."""
 
     monkeypatch.setattr(
@@ -38,7 +40,14 @@ def test_read_policy_should_always_resolve_missing_read_knobs_from_config(monkey
 
     assert resolved["include_global"] is False
     assert resolved["limit"] == 12
-    assert resolved["kinds"] == ["problem", "solution", "failed_tactic", "fact", "preference", "change"]
+    assert resolved["kinds"] == [
+        "problem",
+        "solution",
+        "failed_tactic",
+        "fact",
+        "preference",
+        "change",
+    ]
     assert resolved["expand"] == {
         "semantic_hops": 1,
         "include_problem_links": False,
@@ -49,7 +58,9 @@ def test_read_policy_should_always_resolve_missing_read_knobs_from_config(monkey
     }
 
 
-def test_read_policy_should_always_merge_partial_expand_over_config_defaults(monkeypatch) -> None:
+def test_read_policy_should_always_merge_partial_expand_over_config_defaults(
+    monkeypatch,
+) -> None:
     """read policy should always merge partial expand over config defaults."""
 
     monkeypatch.setattr(

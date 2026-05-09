@@ -5,9 +5,10 @@ from collections.abc import Callable
 import pytest
 
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.memories.create_memory import execute_create_memory
-from app.startup.agent_operations import handle_create
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.use_cases.memories.add import execute_create_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
+from tests.operations._shared.handler_calls import handle_create
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -39,6 +40,7 @@ def test_validation_failure_writes_nothing(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
+        id_generator=SequenceIdGenerator(),
         inferred_repo_id="repo-a",
         defaults={"scope": "repo"},
     )
@@ -69,6 +71,7 @@ def test_embedding_failure_writes_nothing(
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: _FailingEmbeddingProvider(),
         embedding_model="failing-v1",
+        id_generator=SequenceIdGenerator(),
         inferred_repo_id="repo-a",
         defaults={"scope": "repo"},
     )
@@ -105,6 +108,7 @@ def test_side_effect_failure_mid_write_rolls_back_all_prior_effects(
                 uow,
                 embedding_provider=_FailingEmbeddingProvider(),
                 embedding_model="failing-v1",
+                id_generator=SequenceIdGenerator(),
             )
 
     assert count_rows("memories") == 0

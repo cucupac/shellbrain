@@ -1,2 +1,1 @@
 """Metrics reporting adapters."""
-

@@ -2,15 +2,31 @@
 
 from __future__ import annotations
 
-from app.core.observability.telemetry.operation_records import estimate_read_pack_size
+from app.infrastructure.observability.telemetry.operation_invocations import (
+    estimate_read_pack_size,
+)
 
 
-def test_estimate_read_pack_size_should_always_be_stable_for_the_same_input_pack() -> None:
+def test_estimate_read_pack_size_should_always_be_stable_for_the_same_input_pack() -> (
+    None
+):
     """The read-pack estimator should be deterministic for identical input."""
 
     pack = {
-        "meta": {"mode": "targeted", "limit": 8, "counts": {"direct": 1, "explicit_related": 0, "implicit_related": 0}},
-        "direct": [{"memory_id": "mem-1", "kind": "problem", "text": "One memory.", "priority": 1, "why_included": "direct_match"}],
+        "meta": {
+            "mode": "targeted",
+            "limit": 8,
+            "counts": {"direct": 1, "explicit_related": 0, "implicit_related": 0},
+        },
+        "direct": [
+            {
+                "memory_id": "mem-1",
+                "kind": "problem",
+                "text": "One memory.",
+                "priority": 1,
+                "why_included": "direct_match",
+            }
+        ],
         "explicit_related": [],
         "implicit_related": [],
     }

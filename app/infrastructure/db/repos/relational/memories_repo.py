@@ -6,8 +6,8 @@ from typing import Sequence
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.entities.memory import Memory, MemoryKind, MemoryScope
-from app.core.interfaces.repos import IMemoriesRepo
+from app.core.entities.memories import Memory, MemoryKind, MemoryScope
+from app.core.ports.memory_repositories import IMemoriesRepo
 from app.infrastructure.db.models.memories import memories, memory_embeddings
 
 
@@ -37,7 +37,11 @@ class MemoriesRepo(IMemoriesRepo):
     def get(self, memory_id: str) -> Memory | None:
         """This method loads a shellbrain record by identifier."""
 
-        row = self._session.execute(select(memories).where(memories.c.id == memory_id)).mappings().first()
+        row = (
+            self._session.execute(select(memories).where(memories.c.id == memory_id))
+            .mappings()
+            .first()
+        )
         if row is None:
             return None
         return self._to_memory(row)
@@ -48,12 +52,17 @@ class MemoriesRepo(IMemoriesRepo):
         unique_ids = list(dict.fromkeys(str(memory_id) for memory_id in ids))
         if not unique_ids:
             return []
-        rows = self._session.execute(select(memories).where(memories.c.id.in_(unique_ids))).mappings().all()
-        memories_by_id = {
-            str(row["id"]): self._to_memory(row)
-            for row in rows
-        }
-        return [memories_by_id[memory_id] for memory_id in unique_ids if memory_id in memories_by_id]
+        rows = (
+            self._session.execute(select(memories).where(memories.c.id.in_(unique_ids)))
+            .mappings()
+            .all()
+        )
+        memories_by_id = {str(row["id"]): self._to_memory(row) for row in rows}
+        return [
+            memories_by_id[memory_id]
+            for memory_id in unique_ids
+            if memory_id in memories_by_id
+        ]
 
     def _to_memory(self, row) -> Memory:
         """Convert one relational row into the canonical shellbrain entity."""
@@ -75,7 +84,9 @@ class MemoriesRepo(IMemoriesRepo):
         )
         return bool(result.rowcount)
 
-    def upsert_embedding(self, *, memory_id: str, model: str, vector: Sequence[float]) -> None:
+    def upsert_embedding(
+        self, *, memory_id: str, model: str, vector: Sequence[float]
+    ) -> None:
         """This method inserts or updates the embedding vector for the target memory."""
 
         self._session.execute(

@@ -17,3 +17,18 @@ class RuntimeContext:
     no_sync: bool = False
     caller_identity: CallerIdentity | None = None
     caller_identity_error: ErrorDetail | None = None
+
+
+OperationDispatchTelemetryContext = RuntimeContext
+
+
+@dataclass(frozen=True)
+class SessionSelectionSummary:
+    """Resolved session/thread context recorded alongside one command invocation."""
+
+    selected_host_app: str | None = None
+    selected_host_session_key: str | None = None
+    selected_thread_id: str | None = None
+    selected_episode_id: str | None = None
+    matching_candidate_count: int = 0
+    selection_ambiguous: bool = False

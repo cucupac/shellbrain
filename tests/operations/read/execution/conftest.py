@@ -10,8 +10,8 @@ import pytest
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.retrieval import IVectorSearch
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.retrieval import IVectorSearch
 from app.infrastructure.db.models.associations import association_edges
 from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
 from app.infrastructure.db.models.memories import memories, memory_embeddings
@@ -217,11 +217,16 @@ def seed_association_edge(integration_engine: Engine) -> Callable[..., None]:
 
 
 @pytest.fixture
-def snapshot_row_counts(count_rows: Callable[[str], int]) -> Callable[[], dict[str, int]]:
+def snapshot_row_counts(
+    count_rows: Callable[[str], int],
+) -> Callable[[], dict[str, int]]:
     """Capture row counts for tracked tables to assert retrieval-only behavior."""
 
     def _snapshot() -> dict[str, int]:
-        return {table_name: count_rows(table_name) for table_name in _TABLES_FOR_MUTATION_CHECK}
+        return {
+            table_name: count_rows(table_name)
+            for table_name in _TABLES_FOR_MUTATION_CHECK
+        }
 
     return _snapshot
 
@@ -273,9 +278,13 @@ class DeterministicSemanticRetrievalRepo:
     ) -> list[dict[str, object]]:
         """Return direct semantic seeds ranked by deterministic cosine similarity."""
 
-        active_query_vector = list(query_vector) or list(self._vector_search.embed_query(self._active_query_text))
+        active_query_vector = list(query_vector) or list(
+            self._vector_search.embed_query(self._active_query_text)
+        )
         scored: list[dict[str, object]] = []
-        for row in self._visible_embedding_rows(repo_id=repo_id, include_global=include_global, kinds=kinds):
+        for row in self._visible_embedding_rows(
+            repo_id=repo_id, include_global=include_global, kinds=kinds
+        ):
             score = _cosine_similarity(active_query_vector, row["vector"])
             if score < self._direct_threshold:
                 continue
@@ -294,9 +303,15 @@ class DeterministicSemanticRetrievalRepo:
     ) -> list[dict[str, object]]:
         """Return semantic neighbors for an anchor shellbrain using the same deterministic scoring."""
 
-        visible_rows = self._visible_embedding_rows(repo_id=repo_id, include_global=include_global, kinds=kinds)
+        visible_rows = self._visible_embedding_rows(
+            repo_id=repo_id, include_global=include_global, kinds=kinds
+        )
         anchor_vector = next(
-            (row["vector"] for row in visible_rows if row["memory_id"] == anchor_memory_id),
+            (
+                row["vector"]
+                for row in visible_rows
+                if row["memory_id"] == anchor_memory_id
+            ),
             None,
         )
         if anchor_vector is None:
@@ -315,7 +330,9 @@ class DeterministicSemanticRetrievalRepo:
             return scored
         return scored[:limit]
 
-    def _visible_embedding_rows(self, *, repo_id: str, include_global: bool, kinds) -> list[dict[str, object]]:
+    def _visible_embedding_rows(
+        self, *, repo_id: str, include_global: bool, kinds
+    ) -> list[dict[str, object]]:
         """Load visible embedded memories eligible for semantic retrieval."""
 
         scope_values = ["repo", "global"] if include_global else ["repo"]
@@ -324,7 +341,11 @@ class DeterministicSemanticRetrievalRepo:
                 memories.c.id.label("memory_id"),
                 memory_embeddings.c.vector,
             )
-            .select_from(memories.join(memory_embeddings, memory_embeddings.c.memory_id == memories.c.id))
+            .select_from(
+                memories.join(
+                    memory_embeddings, memory_embeddings.c.memory_id == memories.c.id
+                )
+            )
             .where(
                 memories.c.repo_id == repo_id,
                 memories.c.archived.is_(False),
@@ -352,7 +373,10 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
     right_norm = sqrt(sum(value * value for value in right))
     if left_norm == 0 or right_norm == 0:
         return 0.0
-    dot = sum(left_value * right_value for left_value, right_value in zip(left, right, strict=True))
+    dot = sum(
+        left_value * right_value
+        for left_value, right_value in zip(left, right, strict=True)
+    )
     return dot / (left_norm * right_norm)
 
 
@@ -367,7 +391,9 @@ def stub_vector_search() -> Callable[[dict[str, list[float]]], IVectorSearch]:
 
 
 @pytest.fixture
-def semantic_retrieval_override_factory() -> Callable[..., DeterministicSemanticRetrievalRepo]:
+def semantic_retrieval_override_factory() -> Callable[
+    ..., DeterministicSemanticRetrievalRepo
+]:
     """Build deterministic semantic retrieval repos bound to a live session."""
 
     def _build(

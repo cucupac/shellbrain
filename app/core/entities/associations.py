@@ -3,7 +3,14 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from app.core.entities.ids import AssociationEdgeId, Confidence, EpisodeId, MemoryId, RepoId, Salience
+from app.core.entities.ids import (
+    AssociationEdgeId,
+    Confidence,
+    EpisodeId,
+    MemoryId,
+    RepoId,
+    Salience,
+)
 
 
 class AssociationRelationType(str, Enum):

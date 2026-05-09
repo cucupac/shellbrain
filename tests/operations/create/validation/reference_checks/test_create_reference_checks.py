@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.startup.agent_operations import handle_create
+from app.core.entities.memories import MemoryKind, MemoryScope
+from tests.operations._shared.handler_calls import handle_create
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -225,7 +225,10 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
     )
 
     assert non_frontier_result["status"] == "error"
-    assert any(error["field"] == "memory.links.associations.0.relation_type" for error in non_frontier_result["errors"])
+    assert any(
+        error["field"] == "memory.links.associations.0.relation_type"
+        for error in non_frontier_result["errors"]
+    )
 
     assert non_mature_target_result["status"] == "error"
     assert any(
@@ -304,6 +307,7 @@ def test_create_rejects_episode_event_evidence_from_another_repo(
 
     assert result["status"] == "error"
     assert any(
-        error["code"] == "integrity_error" and error["field"] == "memory.evidence_refs.0"
+        error["code"] == "integrity_error"
+        and error["field"] == "memory.evidence_refs.0"
         for error in result["errors"]
     )

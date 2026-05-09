@@ -75,7 +75,10 @@ def test_usage_write_effects_should_always_aggregate_write_effect_types_and_coun
         order_by="effect_type ASC",
     )
 
-    assert [row["effect_type"] for row in rows] == ["association_edge_created", "memory_created"]
+    assert [row["effect_type"] for row in rows] == [
+        "association_edge_created",
+        "memory_created",
+    ]
     assert [row["effect_count"] for row in rows] == [1, 1]
 
 
@@ -100,7 +103,11 @@ def test_usage_sync_health_should_always_aggregate_sync_outcomes_and_tool_type_c
     assert rows[0]["sync_run_count"] == 1
     assert rows[0]["failed_sync_count"] == 0
     assert rows[0]["imported_event_count"] == 3
-    assert json.loads(rows[0]["tool_type_counts"] if isinstance(rows[0]["tool_type_counts"], str) else json.dumps(rows[0]["tool_type_counts"])) == {"exec_command": 1}
+    assert json.loads(
+        rows[0]["tool_type_counts"]
+        if isinstance(rows[0]["tool_type_counts"], str)
+        else json.dumps(rows[0]["tool_type_counts"])
+    ) == {"exec_command": 1}
 
 
 def test_usage_session_protocol_should_always_aggregate_per_thread_read_events_and_write_counts(
@@ -259,7 +266,11 @@ def test_usage_session_tokens_should_prefer_exact_rows_when_nonzero_exact_data_e
     rows = fetch_relation_rows(
         "usage_session_tokens",
         where_sql="repo_id = :repo_id AND host_app = :host_app AND host_session_key = :host_session_key",
-        params={"repo_id": "telemetry-repo", "host_app": "codex", "host_session_key": "session-1"},
+        params={
+            "repo_id": "telemetry-repo",
+            "host_app": "codex",
+            "host_session_key": "session-1",
+        },
     )
 
     assert len(rows) == 1
@@ -404,7 +415,11 @@ def test_usage_session_tokens_should_fall_back_to_estimated_rows_when_exact_curs
     session_rows = fetch_relation_rows(
         "usage_session_tokens",
         where_sql="repo_id = :repo_id AND host_app = :host_app AND host_session_key = :host_session_key",
-        params={"repo_id": "telemetry-repo", "host_app": "cursor", "host_session_key": "cursor-session-1"},
+        params={
+            "repo_id": "telemetry-repo",
+            "host_app": "cursor",
+            "host_session_key": "cursor-session-1",
+        },
     )
     health_rows = fetch_relation_rows(
         "usage_token_capture_health",
@@ -435,9 +450,15 @@ def test_problem_runs_schema_should_enforce_window_constraints_and_rename_proxy_
     assert_relation_exists("usage_problem_run_tokens")
 
     with integration_engine.connect() as conn:
-        old_proxy_view = conn.execute(text("SELECT to_regclass('public.usage_problem_tokens');")).scalar_one()
-        old_roi_view = conn.execute(text("SELECT to_regclass('public.usage_problem_read_roi');")).scalar_one()
-        old_aggregate_view = conn.execute(text("SELECT to_regclass('public.usage_read_before_solve_roi');")).scalar_one()
+        old_proxy_view = conn.execute(
+            text("SELECT to_regclass('public.usage_problem_tokens');")
+        ).scalar_one()
+        old_roi_view = conn.execute(
+            text("SELECT to_regclass('public.usage_problem_read_roi');")
+        ).scalar_one()
+        old_aggregate_view = conn.execute(
+            text("SELECT to_regclass('public.usage_read_before_solve_roi');")
+        ).scalar_one()
         indexes = {
             row["indexname"]
             for row in conn.execute(
@@ -959,7 +980,10 @@ def test_usage_problem_run_tokens_should_sum_run_windows_split_agent_roles_and_r
         order_by="problem_run_id ASC",
     )
 
-    assert [row["problem_run_id"] for row in rows] == ["problem-run-host", "problem-run-thread-fallback"]
+    assert [row["problem_run_id"] for row in rows] == [
+        "problem-run-host",
+        "problem-run-thread-fallback",
+    ]
 
     host_row = rows[0]
     assert host_row["status"] == "closed"
@@ -1530,8 +1554,16 @@ def test_usage_read_before_solve_roi_legacy_should_bucket_none_zero_only_and_non
     first_rows = [row for row in rows if row["solve_window"] == "first_solution"]
     latest_rows = [row for row in rows if row["solve_window"] == "latest_solution"]
 
-    assert {row["read_cohort"] for row in first_rows} == {"none", "zero_only", "nonzero"}
-    assert {row["read_cohort"] for row in latest_rows} == {"none", "zero_only", "nonzero"}
+    assert {row["read_cohort"] for row in first_rows} == {
+        "none",
+        "zero_only",
+        "nonzero",
+    }
+    assert {row["read_cohort"] for row in latest_rows} == {
+        "none",
+        "zero_only",
+        "nonzero",
+    }
 
     first_by_cohort = {row["read_cohort"]: row for row in first_rows}
     assert first_by_cohort["none"]["problem_count"] == 1
@@ -1615,7 +1647,12 @@ def _insert_problem_with_solution_and_optional_read(
             VALUES (:event_id, :episode_id, 1, :host_event_key, 'user', '{}'::text, :created_at)
             """
         ),
-        {"event_id": event_id, "episode_id": episode_id, "host_event_key": f"host-{suffix}", "created_at": base_time},
+        {
+            "event_id": event_id,
+            "episode_id": episode_id,
+            "host_event_key": f"host-{suffix}",
+            "created_at": base_time,
+        },
     )
     conn.execute(
         text(
@@ -1645,7 +1682,9 @@ def _insert_problem_with_solution_and_optional_read(
         },
     )
     conn.execute(
-        text("INSERT INTO memory_evidence (memory_id, evidence_id) VALUES (:problem_id, :evidence_id)"),
+        text(
+            "INSERT INTO memory_evidence (memory_id, evidence_id) VALUES (:problem_id, :evidence_id)"
+        ),
         {"problem_id": problem_id, "evidence_id": evidence_id},
     )
     conn.execute(
@@ -1655,7 +1694,11 @@ def _insert_problem_with_solution_and_optional_read(
             VALUES (:problem_id, :solution_id, 'solution', :solution_created_at)
             """
         ),
-        {"problem_id": problem_id, "solution_id": solution_id, "solution_created_at": solution_created_at},
+        {
+            "problem_id": problem_id,
+            "solution_id": solution_id,
+            "solution_created_at": solution_created_at,
+        },
     )
     conn.execute(
         text(

@@ -3,8 +3,9 @@
 from collections.abc import Callable
 
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.memories.create_memory import execute_create_memory
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.use_cases.memories.add import execute_create_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.memories import memory_embeddings
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
@@ -35,9 +36,8 @@ def test_create_persists_memory_embedding_row(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     rows = fetch_rows(memory_embeddings, memory_embeddings.c.memory_id == memory_id)
     assert len(rows) == 1

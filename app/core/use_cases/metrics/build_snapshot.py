@@ -16,15 +16,25 @@ class MetricsQueryPort(Protocol):
 
     def fetch_metrics_repo_ids(self) -> list[str]: ...
 
-    def fetch_daily_utility_rows(self, *, repo_id: str, start_at: datetime, end_at: datetime) -> list[dict[str, object]]: ...
+    def fetch_daily_utility_rows(
+        self, *, repo_id: str, start_at: datetime, end_at: datetime
+    ) -> list[dict[str, object]]: ...
 
-    def fetch_daily_followthrough_rows(self, *, repo_id: str, start_at: datetime, end_at: datetime) -> list[dict[str, object]]: ...
+    def fetch_daily_followthrough_rows(
+        self, *, repo_id: str, start_at: datetime, end_at: datetime
+    ) -> list[dict[str, object]]: ...
 
-    def fetch_daily_zero_result_rows(self, *, repo_id: str, start_at: datetime, end_at: datetime) -> list[dict[str, object]]: ...
+    def fetch_daily_zero_result_rows(
+        self, *, repo_id: str, start_at: datetime, end_at: datetime
+    ) -> list[dict[str, object]]: ...
 
-    def fetch_daily_events_before_write_rows(self, *, repo_id: str, start_at: datetime, end_at: datetime) -> list[dict[str, object]]: ...
+    def fetch_daily_events_before_write_rows(
+        self, *, repo_id: str, start_at: datetime, end_at: datetime
+    ) -> list[dict[str, object]]: ...
 
-    def fetch_sync_health_summary(self, *, repo_id: str, start_at: datetime, end_at: datetime) -> dict[str, object]: ...
+    def fetch_sync_health_summary(
+        self, *, repo_id: str, start_at: datetime, end_at: datetime
+    ) -> dict[str, object]: ...
 
 
 def list_metrics_repo_ids(*, queries: MetricsQueryPort) -> list[str]:
@@ -54,15 +64,33 @@ def build_metrics_snapshot(
     previous_end = current_start
     previous_start = previous_end - window_span
 
-    utility_current_rows = queries.fetch_daily_utility_rows(repo_id=repo_id, start_at=current_start, end_at=end_at)
-    utility_previous_rows = queries.fetch_daily_utility_rows(repo_id=repo_id, start_at=previous_start, end_at=previous_end)
-    followthrough_current_rows = queries.fetch_daily_followthrough_rows(repo_id=repo_id, start_at=current_start, end_at=end_at)
-    followthrough_previous_rows = queries.fetch_daily_followthrough_rows(repo_id=repo_id, start_at=previous_start, end_at=previous_end)
-    zero_result_current_rows = queries.fetch_daily_zero_result_rows(repo_id=repo_id, start_at=current_start, end_at=end_at)
-    zero_result_previous_rows = queries.fetch_daily_zero_result_rows(repo_id=repo_id, start_at=previous_start, end_at=previous_end)
-    compliance_current_rows = queries.fetch_daily_events_before_write_rows(repo_id=repo_id, start_at=current_start, end_at=end_at)
-    compliance_previous_rows = queries.fetch_daily_events_before_write_rows(repo_id=repo_id, start_at=previous_start, end_at=previous_end)
-    sync_summary = queries.fetch_sync_health_summary(repo_id=repo_id, start_at=current_start, end_at=end_at)
+    utility_current_rows = queries.fetch_daily_utility_rows(
+        repo_id=repo_id, start_at=current_start, end_at=end_at
+    )
+    utility_previous_rows = queries.fetch_daily_utility_rows(
+        repo_id=repo_id, start_at=previous_start, end_at=previous_end
+    )
+    followthrough_current_rows = queries.fetch_daily_followthrough_rows(
+        repo_id=repo_id, start_at=current_start, end_at=end_at
+    )
+    followthrough_previous_rows = queries.fetch_daily_followthrough_rows(
+        repo_id=repo_id, start_at=previous_start, end_at=previous_end
+    )
+    zero_result_current_rows = queries.fetch_daily_zero_result_rows(
+        repo_id=repo_id, start_at=current_start, end_at=end_at
+    )
+    zero_result_previous_rows = queries.fetch_daily_zero_result_rows(
+        repo_id=repo_id, start_at=previous_start, end_at=previous_end
+    )
+    compliance_current_rows = queries.fetch_daily_events_before_write_rows(
+        repo_id=repo_id, start_at=current_start, end_at=end_at
+    )
+    compliance_previous_rows = queries.fetch_daily_events_before_write_rows(
+        repo_id=repo_id, start_at=previous_start, end_at=previous_end
+    )
+    sync_summary = queries.fetch_sync_health_summary(
+        repo_id=repo_id, start_at=current_start, end_at=end_at
+    )
 
     current_days = _window_days(start=current_start_day, end=current_end_day)
     previous_days = _window_days(
@@ -119,7 +147,11 @@ def build_metrics_snapshot(
         compliance_metric,
     ]
 
-    status = _snapshot_status(utility_metric=utility_metric, followthrough_metric=followthrough_metric, zero_result_metric=zero_result_metric)
+    status = _snapshot_status(
+        utility_metric=utility_metric,
+        followthrough_metric=followthrough_metric,
+        zero_result_metric=zero_result_metric,
+    )
     alerts = _build_alerts(sync_summary=sync_summary)
     confidence = _overall_confidence(metrics=metrics, alerts=alerts)
     summary_md = _build_summary(
@@ -177,15 +209,29 @@ def _build_ratio_metric(
 ) -> dict[str, Any]:
     """Build one metric snapshot from grouped daily numerator/denominator rows."""
 
-    current_indexed = _index_rows(rows=current_rows, numerator_key=numerator_key, denominator_key=denominator_key)
-    previous_indexed = _index_rows(rows=previous_rows, numerator_key=numerator_key, denominator_key=denominator_key)
+    current_indexed = _index_rows(
+        rows=current_rows, numerator_key=numerator_key, denominator_key=denominator_key
+    )
+    previous_indexed = _index_rows(
+        rows=previous_rows, numerator_key=numerator_key, denominator_key=denominator_key
+    )
 
     current_totals = _totals_for_days(indexed=current_indexed, days=current_days)
     previous_totals = _totals_for_days(indexed=previous_indexed, days=previous_days)
-    current_value = _safe_ratio(current_totals["numerator"], current_totals["denominator"])
-    previous_value = _safe_ratio(previous_totals["numerator"], previous_totals["denominator"])
-    delta = None if current_value is None or previous_value is None else current_value - previous_value
-    confidence = _metric_confidence(name=name, sample_count=int(current_totals["denominator"]))
+    current_value = _safe_ratio(
+        current_totals["numerator"], current_totals["denominator"]
+    )
+    previous_value = _safe_ratio(
+        previous_totals["numerator"], previous_totals["denominator"]
+    )
+    delta = (
+        None
+        if current_value is None or previous_value is None
+        else current_value - previous_value
+    )
+    confidence = _metric_confidence(
+        name=name, sample_count=int(current_totals["denominator"])
+    )
 
     series = _build_daily_series(
         days=current_days,
@@ -259,7 +305,9 @@ def _build_daily_series(
     return series
 
 
-def _totals_for_days(*, indexed: dict[date, dict[str, float]], days: Iterable[date]) -> dict[str, float]:
+def _totals_for_days(
+    *, indexed: dict[date, dict[str, float]], days: Iterable[date]
+) -> dict[str, float]:
     """Return numerator and denominator totals for one window."""
 
     numerator = 0.0
@@ -324,11 +372,20 @@ def _snapshot_status(
     if utility_metric["sample_count"] < 10 or followthrough_metric["sample_count"] < 5:
         return "insufficient_signal"
 
-    if _value_or_none(utility_metric["delta"]) is not None and float(utility_metric["delta"]) <= -0.10:
+    if (
+        _value_or_none(utility_metric["delta"]) is not None
+        and float(utility_metric["delta"]) <= -0.10
+    ):
         return "slipping"
-    if _value_or_none(zero_result_metric["delta"]) is not None and float(zero_result_metric["delta"]) >= 0.05:
+    if (
+        _value_or_none(zero_result_metric["delta"]) is not None
+        and float(zero_result_metric["delta"]) >= 0.05
+    ):
         return "slipping"
-    if _value_or_none(followthrough_metric["delta"]) is not None and float(followthrough_metric["delta"]) <= -0.10:
+    if (
+        _value_or_none(followthrough_metric["delta"]) is not None
+        and float(followthrough_metric["delta"]) <= -0.10
+    ):
         return "slipping"
     return "healthy"
 
@@ -355,7 +412,9 @@ def _build_alerts(*, sync_summary: dict[str, object]) -> list[dict[str, Any]]:
     ]
 
 
-def _overall_confidence(*, metrics: list[dict[str, Any]], alerts: list[dict[str, Any]]) -> str:
+def _overall_confidence(
+    *, metrics: list[dict[str, Any]], alerts: list[dict[str, Any]]
+) -> str:
     """Return one overall confidence label, degraded by sync alerts when present."""
 
     current = min(metrics, key=lambda item: _CONFIDENCE_ORDER[str(item["confidence"])])
@@ -387,21 +446,15 @@ def _build_summary(
             f"with {utility_votes} utility votes and {opportunities} Utility follow-through opportunities in the current window."
         )
     elif status == "slipping":
-        sentence_one = (
-            f"Utility score trend is slipping for {repo_id}, and Utility follow-through or Zero-result read rate also moved in the wrong direction over the current window."
-        )
+        sentence_one = f"Utility score trend is slipping for {repo_id}, and Utility follow-through or Zero-result read rate also moved in the wrong direction over the current window."
     else:
-        sentence_one = (
-            f"Utility score trend is healthy for {repo_id}, and Utility follow-through stayed stable enough to support a positive read on the current window."
-        )
+        sentence_one = f"Utility score trend is healthy for {repo_id}, and Utility follow-through stayed stable enough to support a positive read on the current window."
 
     sentence_two = (
         f"Zero-result read rate is {_format_metric_value(zero_result_metric)} and Events-before-write compliance is {_format_metric_value(compliance_metric)} "
         f"when compared with the previous window."
     )
-    sentence_three = (
-        "Watch Utility score trend, Utility follow-through, Zero-result read rate, and Events-before-write compliance next to confirm whether the learning loop is strengthening or just noisy."
-    )
+    sentence_three = "Watch Utility score trend, Utility follow-through, Zero-result read rate, and Events-before-write compliance next to confirm whether the learning loop is strengthening or just noisy."
     return " ".join([sentence_one, sentence_two, sentence_three])
 
 

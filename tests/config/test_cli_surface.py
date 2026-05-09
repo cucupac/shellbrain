@@ -8,10 +8,13 @@ import pytest
 
 import app.entrypoints.cli.main as cli_main
 import app.entrypoints.cli.parser as cli_parser
+import app.startup.cli as startup_cli
 from app.startup.repo_context import RepoContext, resolve_repo_context
 
 
-def test_resolve_repo_context_infers_repo_id_from_explicit_repo_root(tmp_path: Path) -> None:
+def test_resolve_repo_context_infers_repo_id_from_explicit_repo_root(
+    tmp_path: Path,
+) -> None:
     """repo context resolution should fall back to one weak-local repo id outside git."""
 
     repo_root = tmp_path / "external-repo"
@@ -30,14 +33,18 @@ def test_resolve_repo_context_preserves_explicit_repo_id(tmp_path: Path) -> None
     repo_root = tmp_path / "external-repo"
     repo_root.mkdir()
 
-    context = resolve_repo_context(repo_root_arg=str(repo_root), repo_id_arg="repo-override")
+    context = resolve_repo_context(
+        repo_root_arg=str(repo_root), repo_id_arg="repo-override"
+    )
 
     assert context.repo_root == repo_root.resolve()
     assert context.repo_id == "repo-override"
     assert context.registration_root == repo_root.resolve()
 
 
-def test_resolve_repo_context_should_not_auto_register_plain_non_git_cwd(monkeypatch, tmp_path: Path) -> None:
+def test_resolve_repo_context_should_not_auto_register_plain_non_git_cwd(
+    monkeypatch, tmp_path: Path
+) -> None:
     """plain non-git working directories should not become auto-registration targets."""
 
     monkeypatch.chdir(tmp_path)
@@ -48,15 +55,23 @@ def test_resolve_repo_context_should_not_auto_register_plain_non_git_cwd(monkeyp
     assert context.registration_root is None
 
 
-def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(monkeypatch, tmp_path: Path) -> None:
+def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(
+    monkeypatch, tmp_path: Path
+) -> None:
     """subdirectory invocations should target the git root for registration."""
 
     repo_root = tmp_path / "repo"
     subdir = repo_root / "subdir"
     subdir.mkdir(parents=True)
     monkeypatch.chdir(subdir)
-    monkeypatch.setattr("app.startup.repo_context.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
-    monkeypatch.setattr("app.infrastructure.local_state.repo_registration_store.resolve_git_root", lambda path: repo_root if path == subdir else repo_root)
+    monkeypatch.setattr(
+        "app.startup.repo_context.resolve_git_root",
+        lambda path: repo_root if path == subdir else repo_root,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.local_state.repo_registration_store.resolve_git_root",
+        lambda path: repo_root if path == subdir else repo_root,
+    )
 
     context = resolve_repo_context(repo_root_arg=None, repo_id_arg=None)
 
@@ -64,7 +79,9 @@ def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(mo
     assert context.registration_root == repo_root.resolve()
 
 
-def test_shellbrain_help_should_explain_the_workflow(capsys: pytest.CaptureFixture[str]) -> None:
+def test_shellbrain_help_should_explain_the_workflow(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """top-level help should explain the Shellbrain mental model and session protocol."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -109,7 +126,9 @@ def test_shellbrain_version_should_print_the_installed_version(
     assert capsys.readouterr().out.strip() == "shellbrain 9.9.9"
 
 
-def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixture[str]) -> None:
+def test_init_help_should_include_bootstrap_examples(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """init help should explain the managed bootstrap path and advanced overrides."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -127,19 +146,31 @@ def test_init_help_should_include_bootstrap_examples(capsys: pytest.CaptureFixtu
     assert "--repo-id" in output
 
 
-def test_init_should_forward_storage_flags_to_run_init(monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+def test_init_should_forward_storage_flags_to_run_init(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     """init should pass storage selection flags through to the bootstrap entrypoint."""
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
     captured: dict[str, object] = {}
 
-    monkeypatch.setattr(cli_main, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root)
-    monkeypatch.setattr(cli_main, "_should_register_repo_during_init", lambda **kwargs: False)
     monkeypatch.setattr(
-        "app.startup.admin_initialize.run_init",
-        lambda **kwargs: captured.update(kwargs)
-        or type("Result", (), {"outcome": "initialized", "lines": ["ok"], "exit_code": 0})(),
+        cli_main, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root
+    )
+    monkeypatch.setattr(
+        cli_main, "_should_register_repo_during_init", lambda **kwargs: False
+    )
+    monkeypatch.setattr(
+        "app.startup.runtime_admin.run_init",
+        lambda **kwargs: (
+            captured.update(kwargs)
+            or type(
+                "Result",
+                (),
+                {"outcome": "initialized", "lines": ["ok"], "exit_code": 0},
+            )()
+        ),
     )
 
     exit_code = cli_main.main(
@@ -154,12 +185,17 @@ def test_init_should_forward_storage_flags_to_run_init(monkeypatch, tmp_path: Pa
 
     assert exit_code == 0
     assert captured["storage"] == "external"
-    assert captured["admin_dsn"] == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    assert (
+        captured["admin_dsn"]
+        == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    )
     assert captured["repo_root"] == repo_root
     assert "Outcome: initialized" in capsys.readouterr().out
 
 
-def test_upgrade_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_upgrade_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """upgrade help should teach the hosted upgrader and manual fallback."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -172,7 +208,9 @@ def test_upgrade_help_should_include_one_example(capsys: pytest.CaptureFixture[s
     assert "pipx upgrade shellbrain && shellbrain init" in output
 
 
-def test_metrics_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_metrics_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """metrics help should explain the lightweight dashboard path."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -200,7 +238,9 @@ def test_metrics_parser_should_reject_days_and_no_open_flags() -> None:
     assert no_open_exc.value.code == 2
 
 
-def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_read_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """read help should teach focused querying and pack structure."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -216,7 +256,9 @@ def test_read_help_should_include_one_example(capsys: pytest.CaptureFixture[str]
     assert "deposit-addresses" in output
 
 
-def test_recall_help_should_describe_minimal_read_only_contract(capsys: pytest.CaptureFixture[str]) -> None:
+def test_recall_help_should_describe_minimal_read_only_contract(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """recall help should keep the Phase 1 input surface intentionally small."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -230,7 +272,9 @@ def test_recall_help_should_describe_minimal_read_only_contract(capsys: pytest.C
     assert "does not mutate" in output
 
 
-def test_concept_help_should_describe_internal_json_endpoint(capsys: pytest.CaptureFixture[str]) -> None:
+def test_concept_help_should_describe_internal_json_endpoint(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """concept help should keep the worker-facing contract small and JSON-first."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -248,7 +292,9 @@ def test_concept_help_should_describe_internal_json_endpoint(capsys: pytest.Capt
     assert "--json-file" in capsys.readouterr().out
 
 
-def test_concept_parser_should_require_add_or_update_and_accept_payloads(tmp_path: Path) -> None:
+def test_concept_parser_should_require_add_or_update_and_accept_payloads(
+    tmp_path: Path,
+) -> None:
     """concept should use the same single-payload-source shape as other operational commands."""
 
     parser = cli_main.build_parser()
@@ -258,7 +304,7 @@ def test_concept_parser_should_require_add_or_update_and_accept_payloads(tmp_pat
             [
                 "concept",
                 "--json",
-                '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}',
+                '{"schema_version":"concept.v1","actions":[]}',
             ]
         )
     assert bare_exc.value.code == 2
@@ -268,7 +314,7 @@ def test_concept_parser_should_require_add_or_update_and_accept_payloads(tmp_pat
             "concept",
             "add",
             "--json",
-            '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}',
+            '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}',
         ]
     )
     assert inline_args.command == "concept"
@@ -276,14 +322,26 @@ def test_concept_parser_should_require_add_or_update_and_accept_payloads(tmp_pat
     assert inline_args.json_text
 
     payload_file = tmp_path / "concept.json"
-    payload_file.write_text('{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses"}', encoding="utf-8")
-    file_args = parser.parse_args(["concept", "update", "--json-file", str(payload_file)])
+    payload_file.write_text(
+        '{"schema_version":"concept.v1","actions":[{"type":"update_concept","concept":"deposit-addresses","name":"Deposit Address Graph"}]}',
+        encoding="utf-8",
+    )
+    file_args = parser.parse_args(
+        ["concept", "update", "--json-file", str(payload_file)]
+    )
     assert file_args.command == "concept"
     assert file_args.concept_command == "update"
-    assert cli_main._load_payload(file_args.json_text, file_args.json_file)["mode"] == "show"
+    assert (
+        cli_main._load_payload(file_args.json_text, file_args.json_file)["actions"][0][
+            "type"
+        ]
+        == "update_concept"
+    )
 
 
-def test_events_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_events_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """events help should explain fresh episodic evidence lookup."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -295,7 +353,9 @@ def test_events_help_should_include_one_example(capsys: pytest.CaptureFixture[st
     assert "inline transcript sync" in output
 
 
-def test_memory_add_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_memory_add_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """memory add help should explain memory-kind choice and attempt-link rules."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -308,7 +368,9 @@ def test_memory_add_help_should_include_one_example(capsys: pytest.CaptureFixtur
     assert "memory.links.problem_id" in output
 
 
-def test_memory_update_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_memory_update_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """memory update help should expose the supported update types."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -324,7 +386,9 @@ def test_memory_update_help_should_include_one_example(capsys: pytest.CaptureFix
     assert "association_link" in output
 
 
-def test_admin_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin help should always include one minimal example."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -334,7 +398,9 @@ def test_admin_help_should_include_one_example(capsys: pytest.CaptureFixture[str
     assert "shellbrain admin migrate" in capsys.readouterr().out
 
 
-def test_admin_migrate_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_migrate_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin migrate help should always include one minimal example."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -344,7 +410,9 @@ def test_admin_migrate_help_should_include_one_example(capsys: pytest.CaptureFix
     assert "Apply packaged Alembic migrations" in capsys.readouterr().out
 
 
-def test_admin_backup_help_should_include_backup_examples(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_backup_help_should_include_backup_examples(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin backup help should explain the first-class backup workflow."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -357,7 +425,9 @@ def test_admin_backup_help_should_include_backup_examples(capsys: pytest.Capture
     assert "backup restore" in output
 
 
-def test_admin_doctor_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_doctor_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin doctor help should explain the safety report path."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -369,7 +439,9 @@ def test_admin_doctor_help_should_include_one_example(capsys: pytest.CaptureFixt
     assert "--repo-root" in output
 
 
-def test_admin_analytics_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_analytics_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin analytics help should explain the reviewer-agent report path."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -382,7 +454,9 @@ def test_admin_analytics_help_should_include_one_example(capsys: pytest.CaptureF
     assert "analytics --days 2" in output
 
 
-def test_admin_install_claude_hook_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_install_claude_hook_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin install-claude-hook help should explain the trusted Claude setup step."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -394,7 +468,9 @@ def test_admin_install_claude_hook_help_should_include_one_example(capsys: pytes
     assert "install-claude-hook" in output
 
 
-def test_admin_install_host_assets_help_should_include_examples(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_install_host_assets_help_should_include_examples(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin install-host-assets help should explain the personal host-asset repair path."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -415,7 +491,9 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
 
     monkeypatch.setattr(
         "app.infrastructure.host_assets.install_host_assets",
-        lambda **kwargs: type("Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]})(),
+        lambda **kwargs: type(
+            "Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]}
+        )(),
     )
 
     exit_code = cli_main.main(["admin", "install-host-assets", "--host", "codex"])
@@ -424,7 +502,9 @@ def test_admin_install_host_assets_should_dispatch_to_installer(
     assert "Codex skill: installed at /tmp/codex" in capsys.readouterr().out
 
 
-def test_admin_backfill_token_usage_help_should_include_one_example(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_backfill_token_usage_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin backfill-token-usage help should explain the retroactive telemetry path."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -436,7 +516,9 @@ def test_admin_backfill_token_usage_help_should_include_one_example(capsys: pyte
     assert "backfill-token-usage" in output
 
 
-def test_admin_backfill_token_usage_should_print_the_summary(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_backfill_token_usage_should_print_the_summary(
+    monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """admin backfill-token-usage should render the backfill summary as JSON."""
 
     monkeypatch.setattr("app.startup.db.get_engine_instance", lambda: "engine")
@@ -463,12 +545,18 @@ def test_admin_backfill_token_usage_should_print_the_summary(monkeypatch, capsys
     assert '"records_attempted": 5' in output
 
 
-def test_admin_analytics_should_print_the_report(monkeypatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_analytics_should_print_the_report(
+    monkeypatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     """admin analytics should render the built analytics report as JSON."""
 
-    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql://app")
+    monkeypatch.setattr(
+        "app.startup.db.get_optional_db_dsn", lambda: "postgresql://app"
+    )
     monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr("app.infrastructure.db.engine.get_engine", lambda dsn: f"engine:{dsn}")
+    monkeypatch.setattr(
+        "app.infrastructure.db.engine.get_engine", lambda dsn: f"engine:{dsn}"
+    )
     monkeypatch.setattr(
         "app.startup.analytics.build_analytics_report",
         lambda **kwargs: {
@@ -490,7 +578,9 @@ def test_admin_analytics_should_print_the_report(monkeypatch, capsys: pytest.Cap
     assert '"overall_health": "healthy"' in output
 
 
-def test_admin_session_state_help_should_include_management_examples(capsys: pytest.CaptureFixture[str]) -> None:
+def test_admin_session_state_help_should_include_management_examples(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
     """admin session-state help should expose inspect, clear, and gc management paths."""
 
     with pytest.raises(SystemExit) as excinfo:
@@ -503,7 +593,9 @@ def test_admin_session_state_help_should_include_management_examples(capsys: pyt
     assert "session-state gc" in output
 
 
-def test_main_accepts_repo_targeting_flags_before_subcommand(monkeypatch, tmp_path: Path) -> None:
+def test_main_accepts_repo_targeting_flags_before_subcommand(
+    monkeypatch, tmp_path: Path
+) -> None:
     """repo-targeting flags should work before the operational subcommand."""
 
     repo_root = tmp_path / "before-repo"
@@ -511,16 +603,29 @@ def test_main_accepts_repo_targeting_flags_before_subcommand(monkeypatch, tmp_pa
     captured: dict[str, object] = {}
     sync_calls: list[object] = []
 
-    def _fake_dispatch(command: str, payload: dict[str, object], repo_context) -> dict[str, object]:
+    def _fake_dispatch(
+        command: str, payload: dict[str, object], repo_context
+    ) -> dict[str, object]:
         captured["command"] = command
         captured["payload"] = payload
         captured["repo_context"] = repo_context
         return {"status": "ok", "data": {"memory_id": "mem-1"}}
 
-    monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
-    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: captured.setdefault("result", result))
-    monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: sync_calls.append(repo_context))
+    monkeypatch.setattr(
+        cli_main,
+        "_print_operation_result",
+        lambda result: captured.setdefault("result", result),
+    )
+
+    def _fake_run_operation_command(**kwargs):
+        result = kwargs["dispatch_operation"](
+            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
+        )
+        sync_calls.append(kwargs["repo_context"])
+        return result
+
+    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -544,23 +649,32 @@ def test_main_accepts_repo_targeting_flags_before_subcommand(monkeypatch, tmp_pa
     assert sync_calls == [resolved_context]
 
 
-def test_main_accepts_repo_targeting_flags_after_subcommand(monkeypatch, tmp_path: Path) -> None:
+def test_main_accepts_repo_targeting_flags_after_subcommand(
+    monkeypatch, tmp_path: Path
+) -> None:
     """repo-targeting flags should also work after the operational subcommand."""
 
     repo_root = tmp_path / "after-repo"
     repo_root.mkdir()
     captured: dict[str, object] = {}
 
-    def _fake_dispatch(command: str, payload: dict[str, object], repo_context) -> dict[str, object]:
+    def _fake_dispatch(
+        command: str, payload: dict[str, object], repo_context
+    ) -> dict[str, object]:
         captured["command"] = command
         captured["payload"] = payload
         captured["repo_context"] = repo_context
         return {"status": "ok", "data": {"episode_id": "ep-1"}}
 
-    monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
     monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
-    monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: None)
+
+    def _fake_run_operation_command(**kwargs):
+        return kwargs["dispatch_operation"](
+            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
+        )
+
+    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -590,16 +704,33 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
     repo_root.mkdir()
     captured: dict[str, object] = {}
 
-    def _fake_dispatch(command: str, payload: dict[str, object], repo_context) -> dict[str, object]:
+    def _fake_dispatch(
+        command: str, payload: dict[str, object], repo_context
+    ) -> dict[str, object]:
         captured["command"] = command
         captured["payload"] = payload
         captured["repo_context"] = repo_context
-        return {"status": "ok", "data": {"brief": {"summary": "stub", "sources": []}, "fallback_reason": None}}
+        return {
+            "status": "ok",
+            "data": {
+                "brief": {"summary": "stub", "sources": []},
+                "fallback_reason": None,
+            },
+        }
 
-    monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
     monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
-    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: captured.setdefault("result", result))
-    monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: None)
+    monkeypatch.setattr(
+        cli_main,
+        "_print_operation_result",
+        lambda result: captured.setdefault("result", result),
+    )
+
+    def _fake_run_operation_command(**kwargs):
+        return kwargs["dispatch_operation"](
+            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
+        )
+
+    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -623,10 +754,22 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
     repo_root.mkdir()
     sync_calls: list[object] = []
 
-    monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: None)
-    monkeypatch.setattr(cli_main, "_dispatch_operation_command", lambda *args, **kwargs: {"status": "ok", "data": {}})
+    monkeypatch.setattr(
+        cli_main,
+        "_dispatch_operation_command",
+        lambda *args, **kwargs: {"status": "ok", "data": {}},
+    )
     monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
-    monkeypatch.setattr(cli_main, "_maybe_start_sync", lambda repo_context: sync_calls.append(repo_context))
+
+    def _fake_run_operation_command(**kwargs):
+        result = kwargs["dispatch_operation"](
+            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
+        )
+        if not kwargs["no_sync"]:
+            sync_calls.append(kwargs["repo_context"])
+        return result
+
+    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -661,7 +804,9 @@ def test_admin_migrate_should_invoke_packaged_migration_runner(
 
     calls: list[str] = []
 
-    monkeypatch.setattr("app.startup.migrations.upgrade_database", lambda: calls.append("migrated"))
+    monkeypatch.setattr(
+        "app.startup.migrations.upgrade_database", lambda: calls.append("migrated")
+    )
 
     exit_code = cli_main.main(["admin", "migrate"])
 
@@ -676,12 +821,14 @@ def test_admin_migrate_should_fail_cleanly_when_installed_package_is_older_than_
 ) -> None:
     """admin migrate should print one clear message when the database revision is newer than this package."""
 
-    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError
+    from app.startup.migrations import DatabaseMigrationConflictError
 
     monkeypatch.setattr(
         "app.startup.migrations.upgrade_database",
         lambda: (_ for _ in ()).throw(
-            DatabaseRevisionAheadOfInstalledPackageError("Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012.")
+            DatabaseMigrationConflictError(
+                "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."
+            )
         ),
     )
 
@@ -701,9 +848,17 @@ def test_operational_command_should_fail_cleanly_when_app_role_is_unsafe(
     repo_root = tmp_path / "unsafe-role-repo"
     repo_root.mkdir()
 
-    monkeypatch.setattr(cli_main, "_warn_or_fail_on_unsafe_app_role", lambda: (_ for _ in ()).throw(ValueError("unsafe role")))
-    monkeypatch.setattr(cli_main, "_dispatch_operation_command", lambda *args, **kwargs: {"status": "ok", "data": {}})
+    monkeypatch.setattr(
+        cli_main,
+        "_dispatch_operation_command",
+        lambda *args, **kwargs: {"status": "ok", "data": {}},
+    )
     monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
+    monkeypatch.setattr(
+        startup_cli,
+        "run_operation_command",
+        lambda **kwargs: (_ for _ in ()).throw(ValueError("unsafe role")),
+    )
 
     exit_code = cli_main.main(
         [
@@ -727,7 +882,12 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
 
     from app.infrastructure.postgres_admin.instance_guard import InstanceMetadataRecord
 
-    monkeypatch.setattr("app.startup.db.get_db_dsn", lambda: "postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test")
+    monkeypatch.setattr(
+        "app.startup.db.get_db_dsn",
+        lambda: (
+            "postgresql+psycopg://ci_user:ci_password@localhost:5432/shellbrain_ci_test"
+        ),
+    )
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.instance_guard.inspect_role_safety",
         lambda dsn: ["Current DSN role is superuser-capable."] if dsn else [],
@@ -743,7 +903,7 @@ def test_unsafe_app_role_should_warn_instead_of_fail_for_explicit_test_instances
         ),
     )
 
-    cli_main._warn_or_fail_on_unsafe_app_role()
+    startup_cli.warn_or_fail_on_unsafe_app_role()
 
     assert "Unsafe Shellbrain app-role configuration:" in capsys.readouterr().err
 
@@ -756,8 +916,15 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 
     from app.infrastructure.postgres_admin.logical_backup import BackupManifest
 
-    monkeypatch.setattr("app.startup.admin_db.get_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
-    monkeypatch.setattr("app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
+    monkeypatch.setattr(
+        "app.startup.admin_db.get_admin_db_dsn",
+        lambda: (
+            "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin"
+        ),
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups")
+    )
     monkeypatch.setattr("app.startup.admin_db.get_backup_mirror_dir", lambda: None)
     monkeypatch.setattr(
         "app.infrastructure.postgres_admin.logical_backup.create_backup",
@@ -765,7 +932,13 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
             backup_id="b-1",
             instance_id="i-1",
             instance_mode="live",
-            source={"database": "shellbrain", "fingerprint": "abc", "host": "localhost", "port": "5432", "user": "admin"},
+            source={
+                "database": "shellbrain",
+                "fingerprint": "abc",
+                "host": "localhost",
+                "port": "5432",
+                "user": "admin",
+            },
             schema_revision="20260410_0009",
             created_at="2026-03-19T00:00:00+00:00",
             artifact_filename="artifact.sql.gz",
@@ -787,9 +960,19 @@ def test_admin_doctor_should_print_structured_report(
 ) -> None:
     """admin doctor should print one JSON safety report."""
 
-    monkeypatch.setattr("app.startup.db.get_optional_db_dsn", lambda: "postgresql+psycopg://app_user:app_password@localhost:5432/test_app")
-    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin")
-    monkeypatch.setattr("app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups"))
+    monkeypatch.setattr(
+        "app.startup.db.get_optional_db_dsn",
+        lambda: "postgresql+psycopg://app_user:app_password@localhost:5432/test_app",
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_db.get_optional_admin_db_dsn",
+        lambda: (
+            "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin"
+        ),
+    )
+    monkeypatch.setattr(
+        "app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups")
+    )
     monkeypatch.setattr(
         "app.startup.admin_diagnose.build_doctor_report",
         lambda **kwargs: {"instance": {"instance_mode": "live"}, "backup_count": 1},
@@ -808,13 +991,13 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
 ) -> None:
     """init should print the stable outcome prefix and forward the mapped exit code."""
 
-    from app.startup.admin_initialize import InitResult
+    from app.startup.runtime_admin import InitResult
 
     repo_root = tmp_path / "init-repo"
     repo_root.mkdir()
 
     monkeypatch.setattr(
-        "app.startup.admin_initialize.run_init",
+        "app.startup.runtime_admin.run_init",
         lambda **kwargs: InitResult(
             outcome="repaired",
             lines=["Managed instance: shellbrain-postgres-test", "Repo: example/repo"],
@@ -829,10 +1012,12 @@ def test_init_should_print_outcome_and_return_mapped_exit_code(
     assert "Managed instance: shellbrain-postgres-test" in output
 
 
-def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatch, tmp_path: Path) -> None:
+def test_init_should_forward_register_repo_now_for_explicit_repo_root(
+    monkeypatch, tmp_path: Path
+) -> None:
     """init should register immediately when one explicit repo root is provided."""
 
-    from app.startup.admin_initialize import InitResult
+    from app.startup.runtime_admin import InitResult
 
     repo_root = tmp_path / "init-explicit-repo"
     repo_root.mkdir()
@@ -842,7 +1027,7 @@ def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatc
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("app.startup.admin_initialize.run_init", _fake_run_init)
+    monkeypatch.setattr("app.startup.runtime_admin.run_init", _fake_run_init)
 
     exit_code = cli_main.main(["init", "--repo-root", str(repo_root)])
 
@@ -853,7 +1038,7 @@ def test_init_should_forward_register_repo_now_for_explicit_repo_root(monkeypatc
 def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None:
     """init should forward the no-host-assets flag into the init runner."""
 
-    from app.startup.admin_initialize import InitResult
+    from app.startup.runtime_admin import InitResult
 
     repo_root = tmp_path / "init-no-host-assets"
     repo_root.mkdir()
@@ -863,15 +1048,19 @@ def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None
         captured.update(kwargs)
         return InitResult(outcome="noop", lines=[])
 
-    monkeypatch.setattr("app.startup.admin_initialize.run_init", _fake_run_init)
+    monkeypatch.setattr("app.startup.runtime_admin.run_init", _fake_run_init)
 
-    exit_code = cli_main.main(["init", "--repo-root", str(repo_root), "--no-host-assets"])
+    exit_code = cli_main.main(
+        ["init", "--repo-root", str(repo_root), "--no-host-assets"]
+    )
 
     assert exit_code == 0
     assert captured["skip_host_assets"] is True
 
 
-def test_ensure_repo_registration_for_operation_should_register_when_machine_state_is_ready(monkeypatch, tmp_path: Path) -> None:
+def test_ensure_repo_registration_for_operation_should_register_when_machine_state_is_ready(
+    monkeypatch, tmp_path: Path
+) -> None:
     """operational commands should auto-register one repo before dispatch when possible."""
 
     registration_root = tmp_path / "repo"
@@ -887,7 +1076,7 @@ def test_ensure_repo_registration_for_operation_should_register_when_machine_sta
         lambda **kwargs: calls.append(kwargs) or (None, True),
     )
 
-    cli_main._ensure_repo_registration_for_operation(
+    startup_cli.ensure_repo_registration_for_operation(
         repo_context=RepoContext(
             repo_root=registration_root,
             repo_id="repo-id",
@@ -905,15 +1094,19 @@ def test_ensure_repo_registration_for_operation_should_register_when_machine_sta
     ]
 
 
-def test_ensure_repo_registration_for_operation_should_skip_when_no_registration_target_exists(monkeypatch) -> None:
+def test_ensure_repo_registration_for_operation_should_skip_when_no_registration_target_exists(
+    monkeypatch,
+) -> None:
     """operational commands should not auto-register arbitrary non-git directories by default."""
 
     monkeypatch.setattr(
         "app.infrastructure.local_state.repo_registration_store.register_repo_for_target",
-        lambda **kwargs: (_ for _ in ()).throw(AssertionError("register_repo_for_target should not be called")),
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("register_repo_for_target should not be called")
+        ),
     )
 
-    cli_main._ensure_repo_registration_for_operation(
+    startup_cli.ensure_repo_registration_for_operation(
         repo_context=RepoContext(
             repo_root=Path("/tmp/non-repo"),
             repo_id="repo-id",

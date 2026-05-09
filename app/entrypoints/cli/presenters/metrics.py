@@ -16,7 +16,11 @@ def render_metrics_dashboard_lines(result: MetricsDashboardResult) -> list[str]:
         "Artifacts: updated in place",
     ]
     if result.opened_dashboard:
-        lines.append("Browser: opened dashboard; use left/right arrow keys in the browser to switch repos")
+        lines.append(
+            "Browser: opened dashboard; use left/right arrow keys in the browser to switch repos"
+        )
     else:
-        lines.append(f"Browser: could not open automatically; open {result.overview_path}")
+        lines.append(
+            f"Browser: could not open automatically; open {result.overview_path}"
+        )
     return lines

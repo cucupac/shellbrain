@@ -7,7 +7,9 @@ from pathlib import Path
 import pytest
 
 from app.infrastructure.host_transcripts.cursor import list_cursor_sessions_for_repo
-from app.infrastructure.host_transcripts.source_discovery import resolve_host_transcript_source
+from app.infrastructure.host_transcripts.source_discovery import (
+    resolve_host_transcript_source,
+)
 
 
 def test_codex_source_resolution_finds_rollout_transcript_from_thread_id(
@@ -84,11 +86,18 @@ def test_cursor_session_listing_finds_the_active_repo_matching_composer(
 
     assert len(candidates) == 1
     assert candidates[0]["host_app"] == "cursor"
-    assert candidates[0]["host_session_key"] == cursor_transcript_fixture["host_session_key"]
-    assert candidates[0]["transcript_path"] == cursor_transcript_fixture["transcript_path"]
+    assert (
+        candidates[0]["host_session_key"]
+        == cursor_transcript_fixture["host_session_key"]
+    )
+    assert (
+        candidates[0]["transcript_path"] == cursor_transcript_fixture["transcript_path"]
+    )
 
 
-def test_source_resolution_fails_clearly_when_host_transcript_can_no_longer_be_found(tmp_path: Path) -> None:
+def test_source_resolution_fails_clearly_when_host_transcript_can_no_longer_be_found(
+    tmp_path: Path,
+) -> None:
     """source resolution should always fail clearly when the host transcript can no longer be found."""
 
     with pytest.raises(FileNotFoundError, match="codex|Codex"):

@@ -3,10 +3,14 @@
 from collections.abc import Callable
 
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.core.use_cases.memories.create_memory import execute_create_memory
-from app.infrastructure.db.models.associations import association_edges, association_observations
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.use_cases.memories.add import execute_create_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
+from app.infrastructure.db.models.associations import (
+    association_edges,
+    association_observations,
+)
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -52,9 +56,8 @@ def test_create_association_links_persist_edge_and_observation(
             uow,
             embedding_provider=stub_embedding_provider,
             embedding_model="stub-v1",
+            id_generator=SequenceIdGenerator(),
         )
-
-    assert result.status == "ok"
     memory_id = result.data["memory_id"]
     edges = fetch_rows(
         association_edges,

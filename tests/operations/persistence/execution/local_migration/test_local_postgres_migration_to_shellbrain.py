@@ -14,9 +14,14 @@ from uuid import uuid4
 import psycopg
 import pytest
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from app.core.interfaces.embeddings import IEmbeddingProvider
-from app.startup.agent_operations import handle_create
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeEvent,
+    EpisodeEventSource,
+    EpisodeStatus,
+)
+from app.core.ports.embeddings import IEmbeddingProvider
+from tests.operations._shared.handler_calls import handle_create
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.session import get_session_factory
 from app.infrastructure.db.uow import PostgresUnitOfWork
@@ -31,6 +36,7 @@ class _StubEmbeddingProvider(IEmbeddingProvider):
         _ = text
         return [0.1, 0.2, 0.3, 0.4]
 
+
 LEGACY_USER = "legacy_user"
 LEGACY_PASSWORD = "legacy_password"
 APP_USER = "app_user"
@@ -41,7 +47,9 @@ ADMIN_PASSWORD = "admin_password"
 
 @pytest.mark.docker
 @pytest.mark.persistence
-def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path: Path) -> None:
+def test_local_postgres_migration_to_shellbrain_preserves_existing_data(
+    tmp_path: Path,
+) -> None:
     """local migration should preserve legacy data while promoting the cluster to shellbrain naming."""
 
     repo_root = Path(__file__).resolve().parents[5]
@@ -106,8 +114,14 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(tmp_path
         shellbrain_dsn = f"postgresql+psycopg://{APP_USER}:{APP_PASSWORD}@localhost:{port}/shellbrain"
         shellbrain_legacy_dsn = f"postgresql+psycopg://{ADMIN_USER}:{ADMIN_PASSWORD}@localhost:{port}/memory"
 
-        assert _fetch_memory_text(shellbrain_dsn, sentinel["memory_id"]) == sentinel["memory_text"]
-        assert _fetch_memory_text(shellbrain_legacy_dsn, sentinel["memory_id"]) == sentinel["memory_text"]
+        assert (
+            _fetch_memory_text(shellbrain_dsn, sentinel["memory_id"])
+            == sentinel["memory_text"]
+        )
+        assert (
+            _fetch_memory_text(shellbrain_legacy_dsn, sentinel["memory_id"])
+            == sentinel["memory_text"]
+        )
         assert set(_list_databases(shellbrain_dsn)) >= {"memory", "shellbrain"}
 
         container_rows = subprocess.run(
@@ -136,7 +150,10 @@ def _compose_up(repo_root: Path, env: dict[str, str], *, max_attempts: int = 5) 
         )
         if completed.returncode == 0:
             return int(env["POSTGRES_PORT"])
-        if "ports are not available" not in completed.stderr or "bind: address already in use" not in completed.stderr:
+        if (
+            "ports are not available" not in completed.stderr
+            or "bind: address already in use" not in completed.stderr
+        ):
             raise subprocess.CalledProcessError(
                 completed.returncode,
                 completed.args,
@@ -144,7 +161,14 @@ def _compose_up(repo_root: Path, env: dict[str, str], *, max_attempts: int = 5) 
                 stderr=completed.stderr,
             )
         subprocess.run(
-            ["docker", "compose", "-p", env["COMPOSE_PROJECT_NAME"], "down", "--remove-orphans"],
+            [
+                "docker",
+                "compose",
+                "-p",
+                env["COMPOSE_PROJECT_NAME"],
+                "down",
+                "--remove-orphans",
+            ],
             check=False,
             cwd=repo_root,
             env=env,
@@ -152,24 +176,53 @@ def _compose_up(repo_root: Path, env: dict[str, str], *, max_attempts: int = 5) 
             text=True,
         )
         env["POSTGRES_PORT"] = str(_reserve_tcp_port())
-    raise AssertionError(f"Timed out finding one free host port for {env['COMPOSE_PROJECT_NAME']}.")
+    raise AssertionError(
+        f"Timed out finding one free host port for {env['COMPOSE_PROJECT_NAME']}."
+    )
 
 
-def _cleanup_project(compose_project: str, legacy_container: str, shellbrain_container: str) -> None:
+def _cleanup_project(
+    compose_project: str, legacy_container: str, shellbrain_container: str
+) -> None:
     """Remove containers and network created by one isolated migration smoke test."""
 
     for container_name in (legacy_container, shellbrain_container):
-        subprocess.run(["docker", "rm", "-f", container_name], check=False, capture_output=True, text=True)
-    subprocess.run(["docker", "network", "rm", f"{compose_project}_default"], check=False, capture_output=True, text=True)
+        subprocess.run(
+            ["docker", "rm", "-f", container_name],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+    subprocess.run(
+        ["docker", "network", "rm", f"{compose_project}_default"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
 
 
-def _wait_for_container_postgres(container_name: str, user_name: str, database_name: str, *, timeout_seconds: int = 60) -> None:
+def _wait_for_container_postgres(
+    container_name: str,
+    user_name: str,
+    database_name: str,
+    *,
+    timeout_seconds: int = 60,
+) -> None:
     """Wait for one containerized PostgreSQL instance to accept ready checks."""
 
     deadline = datetime.now(timezone.utc).timestamp() + timeout_seconds
     while datetime.now(timezone.utc).timestamp() < deadline:
         ready = subprocess.run(
-            ["docker", "exec", container_name, "pg_isready", "-U", user_name, "-d", database_name],
+            [
+                "docker",
+                "exec",
+                container_name,
+                "pg_isready",
+                "-U",
+                user_name,
+                "-d",
+                database_name,
+            ],
             check=False,
             capture_output=True,
             text=True,
@@ -214,7 +267,9 @@ def _wait_for_host_postgres(dsn: str, *, timeout_seconds: int = 60) -> None:
                 return
         except psycopg.OperationalError:
             time.sleep(1)
-    raise AssertionError(f"Timed out waiting for host PostgreSQL connectivity on {raw_dsn}.")
+    raise AssertionError(
+        f"Timed out waiting for host PostgreSQL connectivity on {raw_dsn}."
+    )
 
 
 def _seed_sentinel_dataset(dsn: str) -> dict[str, str]:
@@ -295,7 +350,9 @@ def _list_databases(dsn: str) -> list[str]:
 
     with psycopg.connect(dsn.replace("+psycopg", "")) as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname")
+            cur.execute(
+                "SELECT datname FROM pg_database WHERE datistemplate = false ORDER BY datname"
+            )
             return [str(row[0]) for row in cur.fetchall()]
 
 

@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.startup.agent_operations import handle_update
+from app.core.entities.memories import MemoryKind, MemoryScope
+from tests.operations._shared.handler_calls import handle_update
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 

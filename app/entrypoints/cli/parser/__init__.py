@@ -136,12 +136,12 @@ _CONCEPT_HELP = dedent(
     `memory add`, `memory update`, `concept add`, and `concept update`.
 
     Phase 1 supports:
-      - mode: apply
-      - mode: show
+      - concept add: create concept containers; fails when the concept exists
+      - concept update: change existing concept records and graph links
 
     Examples:
-      shellbrain concept add --json '{"schema_version":"concept.v1","mode":"apply","actions":[{"type":"upsert_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
-      shellbrain concept update --json '{"schema_version":"concept.v1","mode":"show","concept":"deposit-addresses","include":["claims","preview_concept"]}'
+      shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"manual","note":"Seeded from planning."}]}]}'
     """
 )
 
@@ -412,7 +412,9 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
     _add_repo_context_arguments(concept_parser, suppress_default=True)
-    concept_subparsers = concept_parser.add_subparsers(dest="concept_command", required=True, metavar="concept-command")
+    concept_subparsers = concept_parser.add_subparsers(
+        dest="concept_command", required=True, metavar="concept-command"
+    )
     concept_add_parser = concept_subparsers.add_parser(
         "add",
         help="Add concept graph records.",
@@ -450,7 +452,9 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
     _add_repo_context_arguments(memory_parser, suppress_default=True)
-    memory_subparsers = memory_parser.add_subparsers(dest="memory_command", required=True, metavar="memory-command")
+    memory_subparsers = memory_parser.add_subparsers(
+        dest="memory_command", required=True, metavar="memory-command"
+    )
     memory_add_parser = memory_subparsers.add_parser(
         "add",
         help="Add one durable memory from explicit evidence.",
@@ -477,7 +481,9 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_ADMIN_HELP,
         formatter_class=_HelpFormatter,
     )
-    admin_subparsers = admin_parser.add_subparsers(dest="admin_command", required=True, metavar="admin-command")
+    admin_subparsers = admin_parser.add_subparsers(
+        dest="admin_command", required=True, metavar="admin-command"
+    )
     admin_subparsers.add_parser(
         "migrate",
         help="Apply packaged schema migrations to the configured database.",
@@ -492,14 +498,32 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_BACKUP_HELP,
         formatter_class=_HelpFormatter,
     )
-    backup_subparsers = backup_parser.add_subparsers(dest="backup_command", required=True, metavar="backup-command")
-    backup_subparsers.add_parser("create", help="Create one logical backup for the configured database.")
+    backup_subparsers = backup_parser.add_subparsers(
+        dest="backup_command", required=True, metavar="backup-command"
+    )
+    backup_subparsers.add_parser(
+        "create", help="Create one logical backup for the configured database."
+    )
     backup_subparsers.add_parser("list", help="List available backup manifests.")
-    verify_parser = backup_subparsers.add_parser("verify", help="Verify one backup artifact, defaulting to the newest.")
-    verify_parser.add_argument("--backup-id", help="Optional backup id to verify. Defaults to the newest backup.")
-    restore_parser = backup_subparsers.add_parser("restore", help="Restore one backup into a fresh scratch database.")
-    restore_parser.add_argument("--target-db", required=True, help="Name of the scratch restore database to create.")
-    restore_parser.add_argument("--backup-id", help="Optional backup id to restore. Defaults to the newest backup.")
+    verify_parser = backup_subparsers.add_parser(
+        "verify", help="Verify one backup artifact, defaulting to the newest."
+    )
+    verify_parser.add_argument(
+        "--backup-id",
+        help="Optional backup id to verify. Defaults to the newest backup.",
+    )
+    restore_parser = backup_subparsers.add_parser(
+        "restore", help="Restore one backup into a fresh scratch database."
+    )
+    restore_parser.add_argument(
+        "--target-db",
+        required=True,
+        help="Name of the scratch restore database to create.",
+    )
+    restore_parser.add_argument(
+        "--backup-id",
+        help="Optional backup id to restore. Defaults to the newest backup.",
+    )
     admin_subparsers.add_parser(
         "doctor",
         help="Print one Shellbrain safety report for DB role, instance mode, and backups.",
@@ -538,7 +562,10 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_INSTALL_CLAUDE_HOOK_HELP,
         formatter_class=_HelpFormatter,
     )
-    install_hook_parser.add_argument("--repo-root", help="Target repository root. Defaults to the current working directory.")
+    install_hook_parser.add_argument(
+        "--repo-root",
+        help="Target repository root. Defaults to the current working directory.",
+    )
     install_host_assets_parser = admin_subparsers.add_parser(
         "install-host-assets",
         help="Install Shellbrain-managed Codex, Claude, and Cursor host integrations.",
@@ -565,21 +592,30 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_SESSION_STATE_HELP,
         formatter_class=_HelpFormatter,
     )
-    session_state_parser.add_argument("--repo-root", help="Target repository root. Defaults to the current working directory.")
+    session_state_parser.add_argument(
+        "--repo-root",
+        help="Target repository root. Defaults to the current working directory.",
+    )
     session_state_subparsers = session_state_parser.add_subparsers(
         dest="session_state_command",
         required=True,
         metavar="session-state-command",
     )
-    inspect_parser = session_state_subparsers.add_parser("inspect", help="Print one caller state as JSON.")
+    inspect_parser = session_state_subparsers.add_parser(
+        "inspect", help="Print one caller state as JSON."
+    )
     inspect_parser.add_argument("--caller-id", required=True)
-    clear_parser = session_state_subparsers.add_parser("clear", help="Delete one caller state.")
+    clear_parser = session_state_subparsers.add_parser(
+        "clear", help="Delete one caller state."
+    )
     clear_parser.add_argument("--caller-id", required=True)
     session_state_subparsers.add_parser("gc", help="Delete stale caller state files.")
     return parser
 
 
-def _add_repo_context_arguments(parser: argparse.ArgumentParser, *, suppress_default: bool = False) -> None:
+def _add_repo_context_arguments(
+    parser: argparse.ArgumentParser, *, suppress_default: bool = False
+) -> None:
     """Add shared repo-targeting and sync-control arguments to one parser."""
 
     kwargs = {"default": argparse.SUPPRESS} if suppress_default else {}
@@ -601,9 +637,13 @@ def _add_repo_context_arguments(parser: argparse.ArgumentParser, *, suppress_def
     )
 
 
-def _add_payload_arguments(parser: argparse.ArgumentParser, *, required: bool = True) -> None:
+def _add_payload_arguments(
+    parser: argparse.ArgumentParser, *, required: bool = True
+) -> None:
     """Require one JSON payload source for an operational subcommand."""
 
     payload_group = parser.add_mutually_exclusive_group(required=required)
     payload_group.add_argument("--json", dest="json_text", help="Inline JSON payload.")
-    payload_group.add_argument("--json-file", dest="json_file", help="Path to a JSON payload file.")
+    payload_group.add_argument(
+        "--json-file", dest="json_file", help="Path to a JSON payload file."
+    )

@@ -7,7 +7,9 @@ from collections.abc import Callable
 from app.core.entities.backups import BackupManifest
 
 
-def create_backup(*, create_logical_backup: Callable[..., BackupManifest], **kwargs) -> BackupManifest:
+def create_backup(
+    *, create_logical_backup: Callable[..., BackupManifest], **kwargs
+) -> BackupManifest:
     """Create a backup through the injected logical-backup adapter."""
 
     manifest = create_logical_backup(**kwargs)

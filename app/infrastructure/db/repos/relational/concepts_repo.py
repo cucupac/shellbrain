@@ -33,7 +33,7 @@ from app.core.entities.concepts import (
     ConceptStatus,
     GraphPatch,
 )
-from app.core.interfaces.repos import IConceptsRepo
+from app.core.ports.concept_repositories import IConceptsRepo
 from app.infrastructure.db.models.concepts import (
     anchors,
     concept_aliases,
@@ -55,55 +55,62 @@ class ConceptsRepo(IConceptsRepo):
 
         self._session = session
 
-    def upsert_concept(self, concept: Concept, aliases: Sequence[str]) -> Concept:
-        """Insert or update a concept and its aliases."""
+    def add_concept(self, concept: Concept, aliases: Sequence[str]) -> Concept:
+        """Insert a new concept and its aliases."""
 
         now = datetime.now(timezone.utc)
-        existing = (
-            self._session.execute(
-                select(concepts).where(concepts.c.repo_id == concept.repo_id, concepts.c.slug == concept.slug)
-            )
-            .mappings()
-            .first()
-        )
-        if existing is None:
-            self._session.execute(
-                concepts.insert().values(
-                    id=concept.id,
-                    repo_id=concept.repo_id,
-                    slug=concept.slug,
-                    name=concept.name,
-                    kind=concept.kind.value,
-                    status=concept.status.value,
-                    scope_note=concept.scope_note,
-                    created_at=now,
-                    updated_at=now,
-                )
-            )
-            stored = concept
-        else:
-            self._session.execute(
-                update(concepts)
-                .where(concepts.c.id == existing["id"])
-                .values(
-                    name=concept.name,
-                    kind=concept.kind.value,
-                    status=concept.status.value,
-                    scope_note=concept.scope_note,
-                    updated_at=now,
-                )
-            )
-            stored = Concept(
-                id=str(existing["id"]),
+        self._session.execute(
+            concepts.insert().values(
+                id=concept.id,
                 repo_id=concept.repo_id,
                 slug=concept.slug,
                 name=concept.name,
-                kind=concept.kind,
-                status=concept.status,
+                kind=concept.kind.value,
+                status=concept.status.value,
                 scope_note=concept.scope_note,
-                created_at=existing["created_at"],
+                created_at=now,
                 updated_at=now,
             )
+        )
+        self._add_aliases(
+            concept_id=concept.id, repo_id=concept.repo_id, aliases=aliases, now=now
+        )
+        return concept
+
+    def update_concept(self, concept: Concept, aliases: Sequence[str]) -> Concept:
+        """Update an existing concept and add aliases."""
+
+        now = datetime.now(timezone.utc)
+        self._session.execute(
+            update(concepts)
+            .where(concepts.c.id == concept.id, concepts.c.repo_id == concept.repo_id)
+            .values(
+                name=concept.name,
+                kind=concept.kind.value,
+                status=concept.status.value,
+                scope_note=concept.scope_note,
+                updated_at=now,
+            )
+        )
+        self._add_aliases(
+            concept_id=concept.id, repo_id=concept.repo_id, aliases=aliases, now=now
+        )
+        return Concept(
+            id=concept.id,
+            repo_id=concept.repo_id,
+            slug=concept.slug,
+            name=concept.name,
+            kind=concept.kind,
+            status=concept.status,
+            scope_note=concept.scope_note,
+            created_at=concept.created_at,
+            updated_at=now,
+        )
+
+    def _add_aliases(
+        self, *, concept_id: str, repo_id: str, aliases: Sequence[str], now: datetime
+    ) -> None:
+        """Insert or refresh aliases for one concept."""
 
         for alias in aliases:
             normalized = _normalize_text(alias)
@@ -112,18 +119,17 @@ class ConceptsRepo(IConceptsRepo):
             self._session.execute(
                 insert(concept_aliases)
                 .values(
-                    concept_id=stored.id,
-                    repo_id=concept.repo_id,
+                    concept_id=concept_id,
+                    repo_id=repo_id,
                     alias=alias,
                     normalized_alias=normalized,
                     created_at=now,
                 )
                 .on_conflict_do_update(
                     index_elements=["concept_id", "normalized_alias"],
-                    set_={"alias": alias, "repo_id": concept.repo_id},
+                    set_={"alias": alias, "repo_id": repo_id},
                 )
             )
-        return stored
 
     def get_concept_by_ref(self, *, repo_id: str, concept_ref: str) -> Concept | None:
         """Resolve a concept by id or slug."""
@@ -140,14 +146,20 @@ class ConceptsRepo(IConceptsRepo):
         )
         return _to_concept(row) if row is not None else None
 
-    def list_concepts_by_ids(self, *, repo_id: str, concept_ids: Sequence[str]) -> Sequence[Concept]:
+    def list_concepts_by_ids(
+        self, *, repo_id: str, concept_ids: Sequence[str]
+    ) -> Sequence[Concept]:
         """Return concept rows in input order."""
 
         unique_ids = list(dict.fromkeys(str(concept_id) for concept_id in concept_ids))
         if not unique_ids:
             return []
         rows = (
-            self._session.execute(select(concepts).where(concepts.c.repo_id == repo_id, concepts.c.id.in_(unique_ids)))
+            self._session.execute(
+                select(concepts).where(
+                    concepts.c.repo_id == repo_id, concepts.c.id.in_(unique_ids)
+                )
+            )
             .mappings()
             .all()
         )
@@ -161,7 +173,8 @@ class ConceptsRepo(IConceptsRepo):
             self._session.execute(
                 select(concept_relations).where(
                     concept_relations.c.repo_id == repo_id,
-                    concept_relations.c.predicate == ConceptRelationPredicate.CONTAINS.value,
+                    concept_relations.c.predicate
+                    == ConceptRelationPredicate.CONTAINS.value,
                     concept_relations.c.status == ConceptLifecycleStatus.ACTIVE.value,
                 )
             )
@@ -177,7 +190,8 @@ class ConceptsRepo(IConceptsRepo):
             self._session.execute(
                 select(concept_relations).where(
                     concept_relations.c.repo_id == relation.repo_id,
-                    concept_relations.c.subject_concept_id == relation.subject_concept_id,
+                    concept_relations.c.subject_concept_id
+                    == relation.subject_concept_id,
                     concept_relations.c.predicate == relation.predicate.value,
                     concept_relations.c.object_concept_id == relation.object_concept_id,
                     concept_relations.c.status == ConceptLifecycleStatus.ACTIVE.value,
@@ -272,7 +286,11 @@ class ConceptsRepo(IConceptsRepo):
         """Fetch one anchor by id."""
 
         row = (
-            self._session.execute(select(anchors).where(anchors.c.repo_id == repo_id, anchors.c.id == anchor_id))
+            self._session.execute(
+                select(anchors).where(
+                    anchors.c.repo_id == repo_id, anchors.c.id == anchor_id
+                )
+            )
             .mappings()
             .first()
         )
@@ -321,7 +339,8 @@ class ConceptsRepo(IConceptsRepo):
                     concept_memory_links.c.concept_id == memory_link.concept_id,
                     concept_memory_links.c.role == memory_link.role.value,
                     concept_memory_links.c.memory_id == memory_link.memory_id,
-                    concept_memory_links.c.status == ConceptLifecycleStatus.ACTIVE.value,
+                    concept_memory_links.c.status
+                    == ConceptLifecycleStatus.ACTIVE.value,
                 )
             )
             .mappings()
@@ -401,7 +420,9 @@ class ConceptsRepo(IConceptsRepo):
         )
         return patch
 
-    def get_concept_bundle(self, *, repo_id: str, concept_ref: str) -> dict[str, Any] | None:
+    def get_concept_bundle(
+        self, *, repo_id: str, concept_ref: str
+    ) -> dict[str, Any] | None:
         """Return one concept plus directly related graph records."""
 
         concept = self.get_concept_by_ref(repo_id=repo_id, concept_ref=concept_ref)
@@ -422,7 +443,10 @@ class ConceptsRepo(IConceptsRepo):
         )
         claim_rows = (
             self._session.execute(
-                select(concept_claims).where(concept_claims.c.repo_id == repo_id, concept_claims.c.concept_id == concept.id)
+                select(concept_claims).where(
+                    concept_claims.c.repo_id == repo_id,
+                    concept_claims.c.concept_id == concept.id,
+                )
             )
             .mappings()
             .all()
@@ -449,7 +473,10 @@ class ConceptsRepo(IConceptsRepo):
         )
         alias_rows = (
             self._session.execute(
-                select(concept_aliases).where(concept_aliases.c.repo_id == repo_id, concept_aliases.c.concept_id == concept.id)
+                select(concept_aliases).where(
+                    concept_aliases.c.repo_id == repo_id,
+                    concept_aliases.c.concept_id == concept.id,
+                )
             )
             .mappings()
             .all()
@@ -458,19 +485,20 @@ class ConceptsRepo(IConceptsRepo):
         anchor_rows = []
         if anchor_ids:
             anchor_rows = (
-                self._session.execute(select(anchors).where(anchors.c.repo_id == repo_id, anchors.c.id.in_(anchor_ids)))
+                self._session.execute(
+                    select(anchors).where(
+                        anchors.c.repo_id == repo_id, anchors.c.id.in_(anchor_ids)
+                    )
+                )
                 .mappings()
                 .all()
             )
-        target_pairs = [
-            ("relation", str(row["id"])) for row in relation_rows
-        ] + [
-            ("claim", str(row["id"])) for row in claim_rows
-        ] + [
-            ("grounding", str(row["id"])) for row in grounding_rows
-        ] + [
-            ("memory_link", str(row["id"])) for row in memory_link_rows
-        ]
+        target_pairs = (
+            [("relation", str(row["id"])) for row in relation_rows]
+            + [("claim", str(row["id"])) for row in claim_rows]
+            + [("grounding", str(row["id"])) for row in grounding_rows]
+            + [("memory_link", str(row["id"])) for row in memory_link_rows]
+        )
         evidence_rows = []
         if target_pairs:
             evidence_rows = (
@@ -502,10 +530,14 @@ class ConceptsRepo(IConceptsRepo):
             "evidence": [_to_evidence(row) for row in evidence_rows],
         }
 
-    def find_concepts_for_memory_ids(self, *, repo_id: str, memory_ids: Sequence[str]) -> Sequence[dict[str, Any]]:
+    def find_concepts_for_memory_ids(
+        self, *, repo_id: str, memory_ids: Sequence[str]
+    ) -> Sequence[dict[str, Any]]:
         """Return concept-link matches for displayed memory ids."""
 
-        unique_memory_ids = list(dict.fromkeys(str(memory_id) for memory_id in memory_ids))
+        unique_memory_ids = list(
+            dict.fromkeys(str(memory_id) for memory_id in memory_ids)
+        )
         if not unique_memory_ids:
             return []
         rows = (
@@ -540,7 +572,9 @@ class ConceptsRepo(IConceptsRepo):
             .all()
         )
         alias_rows = (
-            self._session.execute(select(concept_aliases).where(concept_aliases.c.repo_id == repo_id))
+            self._session.execute(
+                select(concept_aliases).where(concept_aliases.c.repo_id == repo_id)
+            )
             .mappings()
             .all()
         )
@@ -602,7 +636,9 @@ def _lifecycle_values(lifecycle: ConceptLifecycle, now: datetime) -> dict[str, A
         "confidence": lifecycle.confidence,
         "observed_at": lifecycle.observed_at or now,
         "validated_at": lifecycle.validated_at,
-        "source_kind": lifecycle.source_kind.value if lifecycle.source_kind is not None else None,
+        "source_kind": lifecycle.source_kind.value
+        if lifecycle.source_kind is not None
+        else None,
         "source_ref": lifecycle.source_ref,
         "superseded_by_id": lifecycle.superseded_by_id,
         "created_by": lifecycle.created_by.value,
@@ -617,7 +653,9 @@ def _to_lifecycle(row) -> ConceptLifecycle:
         confidence=float(row["confidence"]),
         observed_at=row["observed_at"],
         validated_at=row["validated_at"],
-        source_kind=ConceptSourceKind(row["source_kind"]) if row["source_kind"] is not None else None,
+        source_kind=ConceptSourceKind(row["source_kind"])
+        if row["source_kind"] is not None
+        else None,
         source_ref=row["source_ref"],
         superseded_by_id=row["superseded_by_id"],
         created_by=ConceptCreatedBy(row["created_by"]),

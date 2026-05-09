@@ -18,7 +18,9 @@ from app.infrastructure.local_state.machine_config_store import (
 STORAGE_FLAG_MANAGED = "managed"
 STORAGE_FLAG_EXTERNAL = "external"
 
-_MANAGED_PROMPT_TEXT = "Set up a local PostgreSQL + pgvector database for me (recommended)"
+_MANAGED_PROMPT_TEXT = (
+    "Set up a local PostgreSQL + pgvector database for me (recommended)"
+)
 _EXTERNAL_PROMPT_TEXT = "Use an existing PostgreSQL + pgvector database"
 _NON_INTERACTIVE_MESSAGE = (
     "Shellbrain init needs a storage choice on first bootstrap. "
@@ -46,7 +48,10 @@ def resolve_storage_selection(
     normalized_admin_dsn = _normalize_admin_dsn(admin_dsn_flag)
 
     if existing_config is not None:
-        if normalized_flag is not None and normalized_flag != existing_config.runtime_mode:
+        if (
+            normalized_flag is not None
+            and normalized_flag != existing_config.runtime_mode
+        ):
             raise InitConflictError(
                 "Shellbrain init cannot switch storage modes while a machine config already exists. "
                 "Repair or remove the current machine config first."
@@ -55,7 +60,10 @@ def resolve_storage_selection(
             raise InitConflictError(
                 "Shellbrain init cannot replace the configured external database while a machine config already exists."
             )
-        return StorageSelection(runtime_mode=existing_config.runtime_mode, admin_dsn=existing_config.database.admin_dsn)
+        return StorageSelection(
+            runtime_mode=existing_config.runtime_mode,
+            admin_dsn=existing_config.database.admin_dsn,
+        )
 
     runtime_mode = normalized_flag
     admin_dsn = normalized_admin_dsn
@@ -104,7 +112,9 @@ def _prompt_for_storage_mode() -> str:
             writer.flush()
             answer = reader.readline()
             if answer == "":
-                raise InitDependencyError("Shellbrain init was interrupted before a storage mode was selected.")
+                raise InitDependencyError(
+                    "Shellbrain init was interrupted before a storage mode was selected."
+                )
             normalized = answer.strip().lower()
             if normalized in {"", "1", "managed", "local"}:
                 return RUNTIME_MODE_MANAGED_LOCAL
@@ -120,14 +130,18 @@ def _prompt_for_admin_dsn() -> str | None:
 
     reader, writer, handle = _open_interactive_stream()
     try:
-        writer.write("Enter the PostgreSQL admin connection string for your existing database.\n")
+        writer.write(
+            "Enter the PostgreSQL admin connection string for your existing database.\n"
+        )
         writer.write("It must point at the target database and support pgvector.\n")
         while True:
             writer.write("Admin DSN: ")
             writer.flush()
             answer = reader.readline()
             if answer == "":
-                raise InitDependencyError("Shellbrain init was interrupted before the external PostgreSQL DSN was provided.")
+                raise InitDependencyError(
+                    "Shellbrain init was interrupted before the external PostgreSQL DSN was provided."
+                )
             normalized = answer.strip()
             if normalized:
                 return normalized

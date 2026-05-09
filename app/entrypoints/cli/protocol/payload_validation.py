@@ -4,7 +4,11 @@ from typing import Any, Literal
 
 from pydantic import Field, ValidationError, field_validator
 
-from app.core.contracts.concepts import ConceptCommandRequest
+from app.core.contracts.concepts import (
+    ConceptAddRequest,
+    ConceptShowRequest,
+    ConceptUpdateRequest,
+)
 from app.core.contracts.errors import ErrorCode, ErrorDetail
 from app.core.contracts.requests import (
     EpisodeEventsRequest,
@@ -12,13 +16,15 @@ from app.core.contracts.requests import (
     MemoryBatchUpdateRequest,
     MemoryCreateLinks,
     MemoryCreateRequest,
-    MemoryRecallRequest,
-    MemoryReadRequest,
-    ReadConceptsExpandRequest,
     MemoryUpdateRequest,
     StrictBaseModel,
     UpdatePayload,
     UtilityVoteUpdate,
+)
+from app.core.contracts.retrieval import (
+    MemoryRecallRequest,
+    MemoryReadRequest,
+    ReadConceptsExpandRequest,
 )
 
 
@@ -121,7 +127,9 @@ def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
     for item in exc.errors():
         path = ".".join(str(segment) for segment in item.get("loc", ()))
         message = item.get("msg", "Schema validation failed")
-        if path in {"memory.evidence_refs", "update.evidence_refs"} and item.get("type") in {
+        if path in {"memory.evidence_refs", "update.evidence_refs"} and item.get(
+            "type"
+        ) in {
             "too_short",
             "missing",
         }:
@@ -136,7 +144,9 @@ def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
     return details
 
 
-def validate_create_schema(payload: dict[str, Any]) -> tuple[AgentCreateRequest | None, list[ErrorDetail]]:
+def validate_create_schema(
+    payload: dict[str, Any],
+) -> tuple[AgentCreateRequest | None, list[ErrorDetail]]:
     """Validate and parse agent create payloads into the simplified create contract."""
 
     try:
@@ -145,7 +155,9 @@ def validate_create_schema(payload: dict[str, Any]) -> tuple[AgentCreateRequest 
         return None, _format_validation_errors(exc)
 
 
-def validate_read_schema(payload: dict[str, Any]) -> tuple[AgentReadRequest | None, list[ErrorDetail]]:
+def validate_read_schema(
+    payload: dict[str, Any],
+) -> tuple[AgentReadRequest | None, list[ErrorDetail]]:
     """Validate and parse agent read payloads into the simplified read contract."""
 
     try:
@@ -154,7 +166,9 @@ def validate_read_schema(payload: dict[str, Any]) -> tuple[AgentReadRequest | No
         return None, _format_validation_errors(exc)
 
 
-def validate_recall_schema(payload: dict[str, Any]) -> tuple[AgentRecallRequest | None, list[ErrorDetail]]:
+def validate_recall_schema(
+    payload: dict[str, Any],
+) -> tuple[AgentRecallRequest | None, list[ErrorDetail]]:
     """Validate and parse agent recall payloads into the minimal recall contract."""
 
     try:
@@ -163,7 +177,9 @@ def validate_recall_schema(payload: dict[str, Any]) -> tuple[AgentRecallRequest 
         return None, _format_validation_errors(exc)
 
 
-def validate_events_schema(payload: dict[str, Any]) -> tuple[AgentEventsRequest | None, list[ErrorDetail]]:
+def validate_events_schema(
+    payload: dict[str, Any],
+) -> tuple[AgentEventsRequest | None, list[ErrorDetail]]:
     """Validate and parse agent events payloads into the simplified events contract."""
 
     try:
@@ -172,7 +188,9 @@ def validate_events_schema(payload: dict[str, Any]) -> tuple[AgentEventsRequest 
         return None, _format_validation_errors(exc)
 
 
-def validate_internal_read_contract(payload: dict[str, Any]) -> tuple[MemoryReadRequest | None, list[ErrorDetail]]:
+def validate_internal_read_contract(
+    payload: dict[str, Any],
+) -> tuple[MemoryReadRequest | None, list[ErrorDetail]]:
     """Validate one hydrated read payload against the full internal read contract."""
 
     try:
@@ -181,7 +199,9 @@ def validate_internal_read_contract(payload: dict[str, Any]) -> tuple[MemoryRead
         return None, _format_validation_errors(exc)
 
 
-def validate_internal_recall_contract(payload: dict[str, Any]) -> tuple[MemoryRecallRequest | None, list[ErrorDetail]]:
+def validate_internal_recall_contract(
+    payload: dict[str, Any],
+) -> tuple[MemoryRecallRequest | None, list[ErrorDetail]]:
     """Validate one hydrated recall payload against the full internal recall contract."""
 
     try:
@@ -201,7 +221,9 @@ def validate_internal_events_contract(
         return None, _format_validation_errors(exc)
 
 
-def validate_internal_create_contract(payload: dict[str, Any]) -> tuple[MemoryCreateRequest | None, list[ErrorDetail]]:
+def validate_internal_create_contract(
+    payload: dict[str, Any],
+) -> tuple[MemoryCreateRequest | None, list[ErrorDetail]]:
     """Validate one hydrated create payload against the full internal create contract."""
 
     try:
@@ -210,7 +232,9 @@ def validate_internal_create_contract(payload: dict[str, Any]) -> tuple[MemoryCr
         return None, _format_validation_errors(exc)
 
 
-def validate_update_schema(payload: dict[str, Any]) -> tuple[AgentUpdateRequest | None, list[ErrorDetail]]:
+def validate_update_schema(
+    payload: dict[str, Any],
+) -> tuple[AgentUpdateRequest | None, list[ErrorDetail]]:
     """Validate and parse agent update payloads into the simplified update contract."""
 
     try:
@@ -234,10 +258,34 @@ def validate_internal_update_contract(
         return None, _format_validation_errors(exc)
 
 
-def validate_concept_schema(payload: dict[str, Any]) -> tuple[ConceptCommandRequest | None, list[ErrorDetail]]:
-    """Validate and parse concept endpoint payloads."""
+def validate_concept_add_schema(
+    payload: dict[str, Any],
+) -> tuple[ConceptAddRequest | None, list[ErrorDetail]]:
+    """Validate and parse concept-add endpoint payloads."""
 
     try:
-        return ConceptCommandRequest.model_validate(payload), []
+        return ConceptAddRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_concept_update_schema(
+    payload: dict[str, Any],
+) -> tuple[ConceptUpdateRequest | None, list[ErrorDetail]]:
+    """Validate and parse concept-update endpoint payloads."""
+
+    try:
+        return ConceptUpdateRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_concept_show_schema(
+    payload: dict[str, Any],
+) -> tuple[ConceptShowRequest | None, list[ErrorDetail]]:
+    """Validate and parse concept-show endpoint payloads."""
+
+    try:
+        return ConceptShowRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)

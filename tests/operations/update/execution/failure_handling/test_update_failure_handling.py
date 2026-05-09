@@ -4,10 +4,14 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.memories.update_memory import execute_update_memory
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.use_cases.memories.update import execute_update_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.uow import PostgresUnitOfWork
-from tests.operations.update._execution_helpers import make_update_request, snapshot_related_update_counts
+from tests.operations.update._execution_helpers import (
+    make_update_request,
+    snapshot_related_update_counts,
+)
 
 
 def test_update_failure_rolls_back_every_partial_write(
@@ -53,7 +57,7 @@ def test_update_failure_rolls_back_every_partial_write(
                 "link_association_edge_evidence",
                 _raise_edge_evidence_failure,
             )
-            execute_update_memory(request, uow)
+            execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
 
     after_counts = snapshot_related_update_counts(count_rows)
     assert after_counts == before_counts

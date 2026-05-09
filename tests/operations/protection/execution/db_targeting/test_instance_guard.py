@@ -14,9 +14,13 @@ from app.infrastructure.postgres_admin.instance_guard import (
     host_port_from_dsn,
 )
 
-PROTECTED_DSN = "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+PROTECTED_DSN = (
+    "postgresql+psycopg://admin_user:admin_password@localhost:5432/shellbrain"
+)
 APP_TEST_DSN = "postgresql+psycopg://app_user:app_password@localhost:5432/shellbrain"
-DISPOSABLE_TEST_DSN = "postgresql+psycopg://test_user:test_password@localhost:5432/test_db"
+DISPOSABLE_TEST_DSN = (
+    "postgresql+psycopg://test_user:test_password@localhost:5432/test_db"
+)
 
 
 def test_instance_guard_should_reject_the_protected_live_fingerprint() -> None:
@@ -29,11 +33,19 @@ def test_instance_guard_should_reject_the_protected_live_fingerprint() -> None:
 @pytest.mark.parametrize(
     ("dsn", "database_name"),
     [
-        ("postgresql+psycopg://test_user:test_password@localhost:5432/shellbrain", "shellbrain"),
-        ("postgresql+psycopg://test_user:test_password@localhost:5432/memory", "memory"),
+        (
+            "postgresql+psycopg://test_user:test_password@localhost:5432/shellbrain",
+            "shellbrain",
+        ),
+        (
+            "postgresql+psycopg://test_user:test_password@localhost:5432/memory",
+            "memory",
+        ),
     ],
 )
-def test_instance_guard_should_reject_protected_database_names(dsn: str, database_name: str) -> None:
+def test_instance_guard_should_reject_protected_database_names(
+    dsn: str, database_name: str
+) -> None:
     """instance guard should refuse production-shaped database names even without a live fingerprint."""
 
     with pytest.raises(RuntimeError, match=database_name):
@@ -46,7 +58,9 @@ def test_instance_guard_fingerprint_should_ignore_role_username() -> None:
     assert dsn_fingerprint(APP_TEST_DSN) == dsn_fingerprint(PROTECTED_DSN)
 
 
-def test_instance_guard_should_reject_the_protected_live_host_port_even_with_a_different_database_name() -> None:
+def test_instance_guard_should_reject_the_protected_live_host_port_even_with_a_different_database_name() -> (
+    None
+):
     """instance guard should refuse test targets that share the live host/port."""
 
     with pytest.raises(RuntimeError, match="protected live database host/port"):
@@ -62,16 +76,23 @@ def test_instance_guard_host_port_should_ignore_role_username() -> None:
     assert host_port_from_dsn(APP_TEST_DSN) == host_port_from_dsn(PROTECTED_DSN)
 
 
-def test_destructive_guard_should_fail_closed_when_metadata_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_destructive_guard_should_fail_closed_when_metadata_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """destructive guard should refuse databases that are not explicitly stamped disposable."""
 
-    monkeypatch.setattr("app.infrastructure.postgres_admin.instance_guard.fetch_instance_metadata", lambda dsn: None)
+    monkeypatch.setattr(
+        "app.infrastructure.postgres_admin.instance_guard.fetch_instance_metadata",
+        lambda dsn: None,
+    )
 
     with pytest.raises(RuntimeError, match="instance metadata is missing"):
         assert_destructive_allowed(DISPOSABLE_TEST_DSN)
 
 
-def test_destructive_guard_should_refuse_live_instances(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_destructive_guard_should_refuse_live_instances(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """destructive guard should never allow automation against live instances."""
 
     monkeypatch.setattr(
@@ -89,7 +110,9 @@ def test_destructive_guard_should_refuse_live_instances(monkeypatch: pytest.Monk
         assert_destructive_allowed(DISPOSABLE_TEST_DSN)
 
 
-def test_destructive_guard_should_allow_test_instances(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_destructive_guard_should_allow_test_instances(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """destructive guard should allow explicitly stamped test instances."""
 
     monkeypatch.setattr(

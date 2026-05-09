@@ -9,7 +9,9 @@ import sys
 from typing import Mapping
 
 
-SHELLBRAIN_SECTION_BORDER = "# ============================================================================ #"
+SHELLBRAIN_SECTION_BORDER = (
+    "# ============================================================================ #"
+)
 SHELLBRAIN_SECTION_HEADER = "# SHELLBRAIN"
 SHELLBRAIN_SOURCE_LINE = (
     '[ -f "${XDG_CONFIG_HOME:-$HOME/.config}/shellbrain/path.sh" ]'
@@ -90,7 +92,7 @@ def _write_fake_docker(*, fake_bin: Path, daemon_running: bool) -> None:
     docker_info_result = "0" if daemon_running else "1"
     fake_docker.write_text(
         "#!/usr/bin/env bash\n"
-        "if [ \"$1\" = \"info\" ]; then\n"
+        'if [ "$1" = "info" ]; then\n'
         f"  exit {docker_info_result}\n"
         "fi\n"
         "exit 0\n",
@@ -106,7 +108,9 @@ def _write_system_tool_shims(*, system_bin: Path) -> None:
     for command in ("bash", "grep", "awk", "mv", "dirname", "mkdir", "touch", "cat"):
         target = shutil.which(command)
         if target is None:
-            raise RuntimeError(f"expected host command {command!r} to be available for installer tests")
+            raise RuntimeError(
+                f"expected host command {command!r} to be available for installer tests"
+            )
         shim = system_bin / command
         if not shim.exists():
             shim.symlink_to(target)
@@ -162,7 +166,9 @@ def _run_hosted_script(
     return completed, home_dir, marker_path, pip_log_path
 
 
-def test_install_script_should_wire_zsh_login_and_interactive_shells(tmp_path: Path) -> None:
+def test_install_script_should_wire_zsh_login_and_interactive_shells(
+    tmp_path: Path,
+) -> None:
     """The installer should wire zsh PATH setup through a managed snippet and both zsh startup files."""
 
     user_bin = tmp_path / "home" / "Library" / "Python" / "3.13" / "bin"
@@ -186,17 +192,27 @@ def test_install_script_should_wire_zsh_login_and_interactive_shells(tmp_path: P
     assert f"cli path: ensured via {path_snippet}" in completed.stdout
     assert str(zprofile) in completed.stdout
     assert str(zshrc) in completed.stdout
-    assert f'export PATH="{user_bin}:$PATH" ;;' in path_snippet.read_text(encoding="utf-8")
+    assert f'export PATH="{user_bin}:$PATH" ;;' in path_snippet.read_text(
+        encoding="utf-8"
+    )
     zprofile_text = zprofile.read_text(encoding="utf-8")
     zshrc_text = zshrc.read_text(encoding="utf-8")
-    assert f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}" in zprofile_text
+    assert (
+        f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}"
+        in zprofile_text
+    )
     assert SHELLBRAIN_SOURCE_LINE in zprofile_text
-    assert f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}" in zshrc_text
+    assert (
+        f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}"
+        in zshrc_text
+    )
     assert SHELLBRAIN_SOURCE_LINE in zshrc_text
     assert not (home_dir / ".bash_profile").exists()
 
 
-def test_upgrade_script_should_wire_bash_login_and_interactive_shells(tmp_path: Path) -> None:
+def test_upgrade_script_should_wire_bash_login_and_interactive_shells(
+    tmp_path: Path,
+) -> None:
     """The upgrader should wire bash PATH setup through a managed snippet and both bash startup files."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
@@ -225,7 +241,9 @@ def test_upgrade_script_should_wire_bash_login_and_interactive_shells(tmp_path: 
     assert not (home_dir / ".zprofile").exists()
 
 
-def test_install_script_should_write_fish_path_config_without_touching_posix_profiles(tmp_path: Path) -> None:
+def test_install_script_should_write_fish_path_config_without_touching_posix_profiles(
+    tmp_path: Path,
+) -> None:
     """Fish users should get fish PATH wiring without unnecessary POSIX profile edits."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
@@ -250,7 +268,9 @@ def test_install_script_should_write_fish_path_config_without_touching_posix_pro
     assert not (home_dir / ".bash_profile").exists()
 
 
-def test_install_script_should_rewrite_the_managed_path_snippet_when_user_bin_changes(tmp_path: Path) -> None:
+def test_install_script_should_rewrite_the_managed_path_snippet_when_user_bin_changes(
+    tmp_path: Path,
+) -> None:
     """Re-running the installer should update the managed snippet instead of leaving a stale Python path behind."""
 
     first_user_bin = tmp_path / "home" / "Library" / "Python" / "3.13" / "bin"
@@ -285,7 +305,9 @@ def test_install_script_should_rewrite_the_managed_path_snippet_when_user_bin_ch
     assert zshrc.read_text(encoding="utf-8").count(SHELLBRAIN_SECTION_HEADER) == 1
 
 
-def test_install_script_should_migrate_legacy_inline_path_blocks_to_the_new_source_model(tmp_path: Path) -> None:
+def test_install_script_should_migrate_legacy_inline_path_blocks_to_the_new_source_model(
+    tmp_path: Path,
+) -> None:
     """Legacy inline PATH blocks should be removed and replaced with managed snippet sourcing."""
 
     home_dir = tmp_path / "home"
@@ -318,12 +340,17 @@ def test_install_script_should_migrate_legacy_inline_path_blocks_to_the_new_sour
     assert completed.returncode == 0, completed.stderr
     assert marker_path.exists()
     assert "# >>> shellbrain path >>>" not in migrated_text
-    assert f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}" in migrated_text
+    assert (
+        f"{SHELLBRAIN_SECTION_BORDER}\n{SHELLBRAIN_SECTION_HEADER}\n{SHELLBRAIN_SECTION_BORDER}"
+        in migrated_text
+    )
     assert SHELLBRAIN_SOURCE_LINE in migrated_text
     assert migrated_text.count(SHELLBRAIN_SECTION_HEADER) == 1
 
 
-def test_install_script_should_delegate_storage_choice_to_init_when_docker_is_missing(tmp_path: Path) -> None:
+def test_install_script_should_delegate_storage_choice_to_init_when_docker_is_missing(
+    tmp_path: Path,
+) -> None:
     """The installer should still reach init so users can choose external PostgreSQL."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
@@ -338,13 +365,20 @@ def test_install_script_should_delegate_storage_choice_to_init_when_docker_is_mi
     assert completed.returncode == 0
     assert marker_path.exists()
     assert "shellbrain init will ask how it should store data." in completed.stdout
-    assert "default: let shellbrain set up local PostgreSQL + pgvector for you." in completed.stdout
-    assert "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
+    assert (
+        "default: let shellbrain set up local PostgreSQL + pgvector for you."
+        in completed.stdout
+    )
+    assert (
+        "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
+    )
     assert "STUB_INIT" in completed.stdout
     assert (home_dir / ".config" / "shellbrain" / "path.sh").exists()
 
 
-def test_install_script_should_not_block_init_when_the_docker_daemon_is_unreachable(tmp_path: Path) -> None:
+def test_install_script_should_not_block_init_when_the_docker_daemon_is_unreachable(
+    tmp_path: Path,
+) -> None:
     """The installer should still delegate to init when Docker exists but is unavailable."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
@@ -359,12 +393,16 @@ def test_install_script_should_not_block_init_when_the_docker_daemon_is_unreacha
     assert completed.returncode == 0
     assert marker_path.exists()
     assert "shellbrain init will ask how it should store data." in completed.stdout
-    assert "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
+    assert (
+        "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
+    )
     assert "STUB_INIT" in completed.stdout
     assert (home_dir / ".config" / "shellbrain" / "path.sh").exists()
 
 
-def test_install_script_should_continue_when_config_root_is_not_writable(tmp_path: Path) -> None:
+def test_install_script_should_continue_when_config_root_is_not_writable(
+    tmp_path: Path,
+) -> None:
     """A blocked config root should warn and continue instead of aborting the installer."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
@@ -388,13 +426,18 @@ def test_install_script_should_continue_when_config_root_is_not_writable(tmp_pat
     assert str(config_root) in completed.stdout
     assert str(user_bin) in completed.stdout
     assert f"shellbrain is installed at {user_bin / 'shellbrain'}" in completed.stdout
-    assert f"cli path: ensured via {config_root / 'shellbrain' / 'path.sh'}" not in completed.stdout
+    assert (
+        f"cli path: ensured via {config_root / 'shellbrain' / 'path.sh'}"
+        not in completed.stdout
+    )
     assert not (config_root / "shellbrain" / "path.sh").exists()
     assert not (home_dir / ".zprofile").exists()
     assert not (home_dir / ".zshrc").exists()
 
 
-def test_install_script_should_print_absolute_recovery_guidance_when_init_fails(tmp_path: Path) -> None:
+def test_install_script_should_print_absolute_recovery_guidance_when_init_fails(
+    tmp_path: Path,
+) -> None:
     """A failed first bootstrap should print an absolute rerun command for the current shell session."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"
@@ -423,11 +466,16 @@ def test_install_script_should_print_absolute_recovery_guidance_when_init_fails(
     assert f"shellbrain is installed at: {expected_cli}" in completed.stdout
     assert "your current shell may not have reloaded PATH yet." in completed.stdout
     assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
-    assert "after bootstrap succeeds, open a new terminal to use shellbrain by name." in completed.stdout
+    assert (
+        "after bootstrap succeeds, open a new terminal to use shellbrain by name."
+        in completed.stdout
+    )
     assert "restart your terminal, then run: shellbrain init" not in completed.stdout
 
 
-def test_upgrade_script_should_print_absolute_recovery_guidance_when_init_fails(tmp_path: Path) -> None:
+def test_upgrade_script_should_print_absolute_recovery_guidance_when_init_fails(
+    tmp_path: Path,
+) -> None:
     """A failed upgrade bootstrap should print an absolute rerun command for the current shell session."""
 
     user_bin = tmp_path / "home" / ".local" / "bin"

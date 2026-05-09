@@ -20,7 +20,9 @@ def wait_for_postgres(admin_dsn: str, *, timeout_seconds: int = 45) -> None:
                 return
         except psycopg.Error:
             if time.time() >= deadline:
-                raise InitConflictError("Shellbrain PostgreSQL runtime did not become ready in time.")
+                raise InitConflictError(
+                    "Shellbrain PostgreSQL runtime did not become ready in time."
+                )
             time.sleep(1)
 
 

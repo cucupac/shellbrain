@@ -65,7 +65,9 @@ def _clear_stale_lock(lock_path) -> bool:
     pid = holder.get("pid")
     if not isinstance(started_at, str) or not isinstance(pid, int):
         return False
-    age = datetime.now(timezone.utc) - datetime.fromisoformat(started_at.replace("Z", "+00:00"))
+    age = datetime.now(timezone.utc) - datetime.fromisoformat(
+        started_at.replace("Z", "+00:00")
+    )
     if age < timedelta(minutes=_STALE_LOCK_MINUTES):
         return False
     if _pid_exists(pid):

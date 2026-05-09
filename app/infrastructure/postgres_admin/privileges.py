@@ -12,7 +12,9 @@ def reconcile_app_role_privileges(*, admin_dsn: str, app_dsn: str) -> None:
 
     app_user = _username_from_dsn(app_dsn)
     if not app_user:
-        raise RuntimeError("Could not determine the app-role username from SHELLBRAIN_DB_DSN.")
+        raise RuntimeError(
+            "Could not determine the app-role username from SHELLBRAIN_DB_DSN."
+        )
 
     raw_admin_dsn = admin_dsn.replace("+psycopg", "")
     with psycopg.connect(raw_admin_dsn, autocommit=True) as conn:
@@ -27,11 +29,11 @@ def reconcile_app_role_privileges(*, admin_dsn: str, app_dsn: str) -> None:
                 f'GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA public TO "{app_user}"'
             )
             cur.execute(
-                f'ALTER DEFAULT PRIVILEGES FOR ROLE CURRENT_USER IN SCHEMA public '
+                f"ALTER DEFAULT PRIVILEGES FOR ROLE CURRENT_USER IN SCHEMA public "
                 f'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO "{app_user}"'
             )
             cur.execute(
-                f'ALTER DEFAULT PRIVILEGES FOR ROLE CURRENT_USER IN SCHEMA public '
+                f"ALTER DEFAULT PRIVILEGES FOR ROLE CURRENT_USER IN SCHEMA public "
                 f'GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO "{app_user}"'
             )
 

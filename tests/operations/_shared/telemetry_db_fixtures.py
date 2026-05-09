@@ -54,9 +54,14 @@ def fetch_relation_rows(integration_engine: Engine):
     ) -> list[dict[str, object]]:
         relation_name = _relation_name(relation_name)
         order_clause = f" ORDER BY {order_by}" if order_by else ""
-        statement = text(f"SELECT * FROM {relation_name} WHERE {where_sql}{order_clause};")
+        statement = text(
+            f"SELECT * FROM {relation_name} WHERE {where_sql}{order_clause};"
+        )
         with integration_engine.connect() as conn:
-            return [dict(row) for row in conn.execute(statement, params or {}).mappings().all()]
+            return [
+                dict(row)
+                for row in conn.execute(statement, params or {}).mappings().all()
+            ]
 
     return _fetch
 
@@ -90,12 +95,17 @@ def seed_competing_same_repo_codex_sessions(tmp_path: Path):
             "019ce136-e14d-7b80-92bc-be07e4330536",
             "019ce136-e14d-7b80-92bc-be07e4330537",
         ]
-        transcript_root = tmp_path / "codex-root" / ".codex" / "sessions" / "2026" / "03" / "18"
+        transcript_root = (
+            tmp_path / "codex-root" / ".codex" / "sessions" / "2026" / "03" / "18"
+        )
         transcript_root.mkdir(parents=True, exist_ok=True)
 
         transcript_paths: list[Path] = []
         for offset, thread_id in enumerate(thread_ids, start=1):
-            transcript_path = transcript_root / f"telemetry-2026-03-18T10-0{offset}-00-{thread_id}.jsonl"
+            transcript_path = (
+                transcript_root
+                / f"telemetry-2026-03-18T10-0{offset}-00-{thread_id}.jsonl"
+            )
             payload = [
                 {
                     "type": "session_meta",
@@ -112,7 +122,9 @@ def seed_competing_same_repo_codex_sessions(tmp_path: Path):
                     "text": f"Telemetry ambiguity {offset}.",
                 },
             ]
-            transcript_path.write_text("".join(f"{json.dumps(entry)}\n" for entry in payload), encoding="utf-8")
+            transcript_path.write_text(
+                "".join(f"{json.dumps(entry)}\n" for entry in payload), encoding="utf-8"
+            )
             transcript_paths.append(transcript_path)
 
         older_path, newer_path = transcript_paths
@@ -534,27 +546,77 @@ def seed_usage_telemetry_dataset_via_engine(engine: Engine) -> dict[str, str]:
     return expected
 
 
-def assert_usage_telemetry_dataset_via_engine(engine: Engine, expected: dict[str, str]) -> None:
+def assert_usage_telemetry_dataset_via_engine(
+    engine: Engine, expected: dict[str, str]
+) -> None:
     """Assert that the sentinel telemetry dataset exists after a durability operation."""
 
     with engine.connect() as conn:
-        operation_rows = conn.execute(text("SELECT * FROM operation_invocations ORDER BY id;")).mappings().all()
-        read_rows = conn.execute(text("SELECT * FROM read_invocation_summaries ORDER BY invocation_id;")).mappings().all()
-        read_item_rows = conn.execute(text("SELECT * FROM read_result_items ORDER BY invocation_id, ordinal;")).mappings().all()
-        write_rows = conn.execute(text("SELECT * FROM write_invocation_summaries ORDER BY invocation_id;")).mappings().all()
-        write_effect_rows = conn.execute(text("SELECT * FROM write_effect_items ORDER BY invocation_id, ordinal;")).mappings().all()
-        sync_rows = conn.execute(text("SELECT * FROM episode_sync_runs ORDER BY id;")).mappings().all()
-        sync_tool_rows = conn.execute(text("SELECT * FROM episode_sync_tool_types ORDER BY sync_run_id, tool_type;")).mappings().all()
+        operation_rows = (
+            conn.execute(text("SELECT * FROM operation_invocations ORDER BY id;"))
+            .mappings()
+            .all()
+        )
+        read_rows = (
+            conn.execute(
+                text("SELECT * FROM read_invocation_summaries ORDER BY invocation_id;")
+            )
+            .mappings()
+            .all()
+        )
+        read_item_rows = (
+            conn.execute(
+                text("SELECT * FROM read_result_items ORDER BY invocation_id, ordinal;")
+            )
+            .mappings()
+            .all()
+        )
+        write_rows = (
+            conn.execute(
+                text("SELECT * FROM write_invocation_summaries ORDER BY invocation_id;")
+            )
+            .mappings()
+            .all()
+        )
+        write_effect_rows = (
+            conn.execute(
+                text(
+                    "SELECT * FROM write_effect_items ORDER BY invocation_id, ordinal;"
+                )
+            )
+            .mappings()
+            .all()
+        )
+        sync_rows = (
+            conn.execute(text("SELECT * FROM episode_sync_runs ORDER BY id;"))
+            .mappings()
+            .all()
+        )
+        sync_tool_rows = (
+            conn.execute(
+                text(
+                    "SELECT * FROM episode_sync_tool_types ORDER BY sync_run_id, tool_type;"
+                )
+            )
+            .mappings()
+            .all()
+        )
 
     assert {row["id"] for row in operation_rows} == {
         expected["create_invocation_id"],
         expected["events_invocation_id"],
         expected["read_invocation_id"],
     }
-    assert [row["invocation_id"] for row in read_rows] == [expected["read_invocation_id"]]
-    assert [row["invocation_id"] for row in write_rows] == [expected["create_invocation_id"]]
+    assert [row["invocation_id"] for row in read_rows] == [
+        expected["read_invocation_id"]
+    ]
+    assert [row["invocation_id"] for row in write_rows] == [
+        expected["create_invocation_id"]
+    ]
     assert {row["memory_id"] for row in read_item_rows} >= {expected["memory_id"]}
-    assert {row["primary_memory_id"] for row in write_effect_rows} >= {expected["memory_id"]}
+    assert {row["primary_memory_id"] for row in write_effect_rows} >= {
+        expected["memory_id"]
+    }
     assert [row["id"] for row in sync_rows] == [expected["sync_run_id"]]
     assert [row["tool_type"] for row in sync_tool_rows] == ["exec_command"]
 

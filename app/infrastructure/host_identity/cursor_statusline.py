@@ -33,7 +33,9 @@ def main() -> int:
     return 0
 
 
-def _build_usage_record(*, payload: dict[str, object], state: dict[str, object]) -> dict[str, object] | None:
+def _build_usage_record(
+    *, payload: dict[str, object], state: dict[str, object]
+) -> dict[str, object] | None:
     """Build one append-only usage row from a Cursor statusline payload."""
 
     context_window = payload.get("context_window")
@@ -43,25 +45,43 @@ def _build_usage_record(*, payload: dict[str, object], state: dict[str, object])
     if not isinstance(current_usage, dict):
         current_usage = {}
 
-    raw_input_tokens = _coerce_non_negative_int(current_usage.get("input_tokens", current_usage.get("inputTokens")))
-    raw_output_tokens = _coerce_non_negative_int(current_usage.get("output_tokens", current_usage.get("outputTokens")))
+    raw_input_tokens = _coerce_non_negative_int(
+        current_usage.get("input_tokens", current_usage.get("inputTokens"))
+    )
+    raw_output_tokens = _coerce_non_negative_int(
+        current_usage.get("output_tokens", current_usage.get("outputTokens"))
+    )
     raw_reasoning_output_tokens = _coerce_non_negative_int(
-        current_usage.get("reasoning_output_tokens", current_usage.get("reasoningOutputTokens"))
+        current_usage.get(
+            "reasoning_output_tokens", current_usage.get("reasoningOutputTokens")
+        )
     )
     raw_cached_input_tokens_total = _coerce_non_negative_int(
         current_usage.get("cached_input_tokens", current_usage.get("cachedInputTokens"))
     )
     raw_cache_read_input_tokens = _coerce_non_negative_int(
-        current_usage.get("cache_read_input_tokens", current_usage.get("cacheReadInputTokens"))
+        current_usage.get(
+            "cache_read_input_tokens", current_usage.get("cacheReadInputTokens")
+        )
     )
     raw_cache_creation_input_tokens = _coerce_non_negative_int(
-        current_usage.get("cache_creation_input_tokens", current_usage.get("cacheCreationInputTokens"))
+        current_usage.get(
+            "cache_creation_input_tokens", current_usage.get("cacheCreationInputTokens")
+        )
     )
 
-    total_input_tokens = _coerce_non_negative_int(context_window.get("total_input_tokens"))
-    total_output_tokens = _coerce_non_negative_int(context_window.get("total_output_tokens"))
-    previous_total_input_tokens = _coerce_non_negative_int(state.get("total_input_tokens"))
-    previous_total_output_tokens = _coerce_non_negative_int(state.get("total_output_tokens"))
+    total_input_tokens = _coerce_non_negative_int(
+        context_window.get("total_input_tokens")
+    )
+    total_output_tokens = _coerce_non_negative_int(
+        context_window.get("total_output_tokens")
+    )
+    previous_total_input_tokens = _coerce_non_negative_int(
+        state.get("total_input_tokens")
+    )
+    previous_total_output_tokens = _coerce_non_negative_int(
+        state.get("total_output_tokens")
+    )
 
     input_tokens = raw_input_tokens
     output_tokens = raw_output_tokens
@@ -77,7 +97,12 @@ def _build_usage_record(*, payload: dict[str, object], state: dict[str, object])
     ):
         input_tokens = max(total_input_tokens - previous_total_input_tokens, 0)
         output_tokens = max(total_output_tokens - previous_total_output_tokens, 0)
-    if input_tokens == 0 and output_tokens == 0 and reasoning_output_tokens == 0 and cached_input_tokens_total == 0:
+    if (
+        input_tokens == 0
+        and output_tokens == 0
+        and reasoning_output_tokens == 0
+        and cached_input_tokens_total == 0
+    ):
         return None
 
     occurred_at = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -163,7 +188,9 @@ def _render_statusline(payload: dict[str, object]) -> str:
     model = payload.get("model")
     display_name = None
     if isinstance(model, dict):
-        display_name = _clean_string(model.get("display_name")) or _clean_string(model.get("id"))
+        display_name = _clean_string(model.get("display_name")) or _clean_string(
+            model.get("id")
+        )
     context_window = payload.get("context_window")
     used_percentage = None
     if isinstance(context_window, dict):

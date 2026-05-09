@@ -18,7 +18,11 @@ def assert_test_database_is_disposable(test_dsn: str) -> None:
 
     protected_dsn = os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN")
     fallback_dsn = os.getenv("SHELLBRAIN_DB_DSN")
-    if protected_dsn is None and fallback_dsn and dsn_fingerprint(fallback_dsn) != dsn_fingerprint(test_dsn):
+    if (
+        protected_dsn is None
+        and fallback_dsn
+        and dsn_fingerprint(fallback_dsn) != dsn_fingerprint(test_dsn)
+    ):
         protected_dsn = fallback_dsn
     assert_disposable_test_dsn(
         test_dsn=test_dsn,

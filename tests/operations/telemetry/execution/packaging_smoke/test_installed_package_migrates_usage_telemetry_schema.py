@@ -26,7 +26,9 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
     base_dsn = os.getenv("SHELLBRAIN_DB_DSN_TEST")
     admin_base_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", base_dsn or "")
     if not base_dsn or not admin_base_dsn:
-        pytest.skip("Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests.")
+        pytest.skip(
+            "Set SHELLBRAIN_DB_DSN_TEST to run packaging migration smoke tests."
+        )
 
     repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-telemetry-migrate-repo"
@@ -74,9 +76,13 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
                 usage_problem_tokens_view = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.usage_problem_tokens_legacy');")
                 usage_problem_tokens_legacy_view = cur.fetchone()[0]
-                cur.execute("SELECT to_regclass('public.usage_problem_read_roi_legacy');")
+                cur.execute(
+                    "SELECT to_regclass('public.usage_problem_read_roi_legacy');"
+                )
                 usage_problem_read_roi_legacy_view = cur.fetchone()[0]
-                cur.execute("SELECT to_regclass('public.usage_read_before_solve_roi_legacy');")
+                cur.execute(
+                    "SELECT to_regclass('public.usage_read_before_solve_roi_legacy');"
+                )
                 usage_read_before_solve_roi_legacy_view = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.usage_problem_run_tokens');")
                 usage_problem_run_tokens_view = cur.fetchone()[0]

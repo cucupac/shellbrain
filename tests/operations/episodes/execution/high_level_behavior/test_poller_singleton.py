@@ -7,7 +7,10 @@ from pathlib import Path
 import socket
 
 from app.startup.episode_sync_launcher import ensure_episode_sync_started
-from app.infrastructure.local_state.poller_lock import acquire_poller_lock, inspect_poller_lock
+from app.infrastructure.local_state.poller_lock import (
+    acquire_poller_lock,
+    inspect_poller_lock,
+)
 
 
 def test_first_poller_lock_acquisition_writes_owner_metadata(tmp_path: Path) -> None:
@@ -34,7 +37,9 @@ def test_first_poller_lock_acquisition_writes_owner_metadata(tmp_path: Path) -> 
     assert inspect_poller_lock(repo_root=repo_root).status == "unlocked"
 
 
-def test_second_poller_lock_acquisition_returns_none_while_owner_is_alive(tmp_path: Path) -> None:
+def test_second_poller_lock_acquisition_returns_none_while_owner_is_alive(
+    tmp_path: Path,
+) -> None:
     """second poller lock acquisition should always return none while one live owner exists."""
 
     repo_root = _make_repo_root(tmp_path)
@@ -46,7 +51,9 @@ def test_second_poller_lock_acquisition_returns_none_while_owner_is_alive(tmp_pa
     handle.release()
 
 
-def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch) -> None:
+def test_stale_poller_lock_is_removed_and_reacquired(
+    tmp_path: Path, monkeypatch
+) -> None:
     """stale poller lock should always be cleared and reacquired."""
 
     repo_root = _make_repo_root(tmp_path)
@@ -66,7 +73,10 @@ def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr("app.infrastructure.local_state.poller_lock._is_process_running", lambda pid: pid != 999_999)
+    monkeypatch.setattr(
+        "app.infrastructure.local_state.poller_lock._is_process_running",
+        lambda pid: pid != 999_999,
+    )
 
     handle = acquire_poller_lock(repo_id="repo-a", repo_root=repo_root)
 
@@ -79,7 +89,9 @@ def test_stale_poller_lock_is_removed_and_reacquired(tmp_path: Path, monkeypatch
     handle.release()
 
 
-def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path, monkeypatch) -> None:
+def test_permission_denied_pid_probe_should_still_count_as_active(
+    tmp_path: Path, monkeypatch
+) -> None:
     """permission-denied pid probes should still preserve the active singleton lock."""
 
     repo_root = _make_repo_root(tmp_path)
@@ -92,12 +104,16 @@ def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path
         "repo_root": str(repo_root.resolve()),
         "started_at": "2026-03-24T00:00:00+00:00",
     }
-    (lock_root / "owner.json").write_text(json.dumps(owner, indent=2, sort_keys=True), encoding="utf-8")
+    (lock_root / "owner.json").write_text(
+        json.dumps(owner, indent=2, sort_keys=True), encoding="utf-8"
+    )
 
     def _raise_permission_error(_pid: int, _signal: int) -> None:
         raise PermissionError(1, "Operation not permitted")
 
-    monkeypatch.setattr("app.infrastructure.local_state.poller_lock.os.kill", _raise_permission_error)
+    monkeypatch.setattr(
+        "app.infrastructure.local_state.poller_lock.os.kill", _raise_permission_error
+    )
 
     inspection = inspect_poller_lock(repo_root=repo_root)
 
@@ -105,7 +121,9 @@ def test_permission_denied_pid_probe_should_still_count_as_active(tmp_path: Path
     assert inspection.owner == owner
 
 
-def test_launcher_does_not_spawn_when_an_active_lock_exists(tmp_path: Path, monkeypatch) -> None:
+def test_launcher_does_not_spawn_when_an_active_lock_exists(
+    tmp_path: Path, monkeypatch
+) -> None:
     """launcher should always skip spawn when one active poller lock already exists."""
 
     repo_root = _make_repo_root(tmp_path)
@@ -114,16 +132,23 @@ def test_launcher_does_not_spawn_when_an_active_lock_exists(tmp_path: Path, monk
     assert handle is not None
 
     def _unexpected_spawn(*args, **kwargs):
-        raise AssertionError("launcher should not spawn a second poller while the lock is active")
+        raise AssertionError(
+            "launcher should not spawn a second poller while the lock is active"
+        )
 
-    monkeypatch.setattr("app.infrastructure.process.episode_sync_launcher.subprocess.Popen", _unexpected_spawn)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_sync_launcher.subprocess.Popen",
+        _unexpected_spawn,
+    )
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is False
 
     handle.release()
 
 
-def test_launcher_spawns_when_no_active_lock_exists(tmp_path: Path, monkeypatch) -> None:
+def test_launcher_spawns_when_no_active_lock_exists(
+    tmp_path: Path, monkeypatch
+) -> None:
     """launcher should always spawn one poller when no active lock exists."""
 
     repo_root = _make_repo_root(tmp_path)
@@ -136,7 +161,9 @@ def test_launcher_spawns_when_no_active_lock_exists(tmp_path: Path, monkeypatch)
         calls.append((command, kwargs))
         return _FakeProcess()
 
-    monkeypatch.setattr("app.infrastructure.process.episode_sync_launcher.subprocess.Popen", _fake_popen)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_sync_launcher.subprocess.Popen", _fake_popen
+    )
 
     assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is True
     assert len(calls) == 1

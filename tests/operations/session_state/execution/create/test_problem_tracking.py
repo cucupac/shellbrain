@@ -2,8 +2,10 @@
 
 from pathlib import Path
 
-from app.startup.agent_operations import handle_create, handle_events
-from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
+from tests.operations._shared.handler_calls import handle_create, handle_events
+from app.infrastructure.local_state.session_state_file_store import (
+    FileSessionStateStore,
+)
 
 
 def test_create_problem_should_set_current_problem_id_in_trusted_session_state(
@@ -20,12 +22,21 @@ def test_create_problem_should_set_current_problem_id_in_trusted_session_state(
         uow_factory=uow_factory,
         inferred_repo_id="repo-under-test",
         repo_root=repo_with_shellbrain_state,
-        search_roots_by_host={"codex": list(codex_transcript_fixture["search_roots"]), "claude_code": []},
+        search_roots_by_host={
+            "codex": list(codex_transcript_fixture["search_roots"]),
+            "claude_code": [],
+        },
     )
     evidence_ref = events_result["data"]["events"][0]["id"]
 
     result = handle_create(
-        {"memory": {"text": "Current problem.", "kind": "problem", "evidence_refs": [evidence_ref]}},
+        {
+            "memory": {
+                "text": "Current problem.",
+                "kind": "problem",
+                "evidence_refs": [evidence_ref],
+            }
+        },
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
@@ -35,6 +46,9 @@ def test_create_problem_should_set_current_problem_id_in_trusted_session_state(
     )
 
     assert result["status"] == "ok"
-    state = FileSessionStateStore().load(repo_root=repo_with_shellbrain_state, caller_id=codex_runtime_identity["canonical_id"])
+    state = FileSessionStateStore().load(
+        repo_root=repo_with_shellbrain_state,
+        caller_id=codex_runtime_identity["canonical_id"],
+    )
     assert state is not None
     assert state.current_problem_id == result["data"]["memory_id"]

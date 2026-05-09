@@ -2,11 +2,15 @@
 
 from collections.abc import Callable
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.memories.update_memory import execute_update_memory
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.use_cases.memories.update import execute_update_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.memories import memories
 from app.infrastructure.db.uow import PostgresUnitOfWork
-from tests.operations.update._execution_helpers import make_update_request, snapshot_related_update_counts
+from tests.operations.update._execution_helpers import (
+    make_update_request,
+    snapshot_related_update_counts,
+)
 
 
 def test_update_archiving_changes_only_archived_flag(
@@ -33,10 +37,9 @@ def test_update_archiving_changes_only_archived_flag(
     )
 
     with uow_factory() as uow:
-        result = execute_update_memory(request, uow)
+        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
 
     after_row = _fetch_memory_row(fetch_rows, "memory-1")
-    assert result.status == "ok"
     assert before_row["archived"] is False
     assert after_row["archived"] is True
 
@@ -132,13 +135,14 @@ def test_update_non_archiving_preserves_original_memory_row(
         before_row = _fetch_memory_row(fetch_rows, target_id)
         before_memory_count = count_rows("memories")
         before_embedding_count = count_rows("memory_embeddings")
-        request = make_update_request(repo_id="repo-a", memory_id=target_id, update=update_payload)
+        request = make_update_request(
+            repo_id="repo-a", memory_id=target_id, update=update_payload
+        )
 
         with uow_factory() as uow:
-            result = execute_update_memory(request, uow)
+            execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
 
         after_row = _fetch_memory_row(fetch_rows, target_id)
-        assert result.status == "ok"
         assert after_row == before_row
         assert count_rows("memories") == before_memory_count
         assert count_rows("memory_embeddings") == before_embedding_count
@@ -153,4 +157,3 @@ def _fetch_memory_row(
     rows = fetch_rows(memories, memories.c.id == memory_id)
     assert len(rows) == 1
     return rows[0]
-

@@ -9,7 +9,10 @@ from pathlib import Path
 import re
 from typing import Any
 
-from app.infrastructure.host_transcripts.tool_filter import should_keep_tool_result, summarize_tool_result
+from app.infrastructure.host_transcripts.tool_filter import (
+    should_keep_tool_result,
+    summarize_tool_result,
+)
 
 
 def resolve_codex_transcript_path(
@@ -34,16 +37,22 @@ def resolve_codex_transcript_path(
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
-def find_latest_codex_session_for_repo(*, repo_root: Path, search_roots: Sequence[Path]) -> dict[str, Any] | None:
+def find_latest_codex_session_for_repo(
+    *, repo_root: Path, search_roots: Sequence[Path]
+) -> dict[str, Any] | None:
     """Return the most recently updated Codex session for one repo root."""
 
-    candidates = list_codex_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+    candidates = list_codex_sessions_for_repo(
+        repo_root=repo_root, search_roots=search_roots
+    )
     if not candidates:
         return None
     return max(candidates, key=lambda candidate: candidate["updated_at"])
 
 
-def list_codex_sessions_for_repo(*, repo_root: Path, search_roots: Sequence[Path]) -> list[dict[str, Any]]:
+def list_codex_sessions_for_repo(
+    *, repo_root: Path, search_roots: Sequence[Path]
+) -> list[dict[str, Any]]:
     """Return all repo-matching Codex sessions under the bounded search roots."""
 
     candidates: list[dict[str, Any]] = []
@@ -73,7 +82,9 @@ def list_codex_sessions_for_repo(*, repo_root: Path, search_roots: Sequence[Path
     return candidates
 
 
-def normalize_codex_transcript(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
+def normalize_codex_transcript(
+    *, host_session_key: str, transcript_path: Path
+) -> list[dict[str, Any]]:
     """Normalize one Codex transcript into shared compact event dictionaries."""
 
     events: list[dict[str, Any]] = []
@@ -87,13 +98,17 @@ def normalize_codex_transcript(*, host_session_key: str, transcript_path: Path) 
             line_type = payload.get("type")
 
             if line_type == "message":
-                event = _normalize_simple_message(payload, host_session_key=host_session_key)
+                event = _normalize_simple_message(
+                    payload, host_session_key=host_session_key
+                )
                 if event is not None:
                     events.append(event)
                 continue
 
             if line_type == "tool_result":
-                event = _normalize_simple_tool_result(payload, host_session_key=host_session_key)
+                event = _normalize_simple_tool_result(
+                    payload, host_session_key=host_session_key
+                )
                 if event is not None:
                     events.append(event)
                 continue
@@ -144,7 +159,9 @@ def normalize_codex_transcript(*, host_session_key: str, transcript_path: Path) 
     return events
 
 
-def extract_codex_model_usage(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
+def extract_codex_model_usage(
+    *, host_session_key: str, transcript_path: Path
+) -> list[dict[str, Any]]:
     """Extract per-call token usage from one Codex transcript."""
 
     rows: list[dict[str, Any]] = []
@@ -167,7 +184,11 @@ def extract_codex_model_usage(*, host_session_key: str, transcript_path: Path) -
                 continue
             rows.append(
                 {
-                    "host_usage_key": _usage_key(raw_line=raw_line, line_number=line_number, prefix="codex-token-count"),
+                    "host_usage_key": _usage_key(
+                        raw_line=raw_line,
+                        line_number=line_number,
+                        prefix="codex-token-count",
+                    ),
                     "source_kind": "codex_transcript",
                     "occurred_at": str(payload.get("timestamp") or ""),
                     "agent_role": "foreground",
@@ -189,12 +210,18 @@ def extract_codex_model_usage(*, host_session_key: str, transcript_path: Path) -
     return rows
 
 
-def _normalize_simple_message(payload: dict[str, Any], *, host_session_key: str) -> dict[str, Any] | None:
+def _normalize_simple_message(
+    payload: dict[str, Any], *, host_session_key: str
+) -> dict[str, Any] | None:
     """Normalize the synthetic message shape used by tests."""
 
     role = payload.get("role")
     text = payload.get("text")
-    if role not in {"user", "assistant"} or not isinstance(text, str) or not text.strip():
+    if (
+        role not in {"user", "assistant"}
+        or not isinstance(text, str)
+        or not text.strip()
+    ):
         return None
     return _build_event(
         host_session_key=host_session_key,
@@ -206,12 +233,18 @@ def _normalize_simple_message(payload: dict[str, Any], *, host_session_key: str)
     )
 
 
-def _normalize_simple_tool_result(payload: dict[str, Any], *, host_session_key: str) -> dict[str, Any] | None:
+def _normalize_simple_tool_result(
+    payload: dict[str, Any], *, host_session_key: str
+) -> dict[str, Any] | None:
     """Normalize the synthetic tool-result shape used by tests."""
 
-    summary = payload.get("summary") if isinstance(payload.get("summary"), str) else None
+    summary = (
+        payload.get("summary") if isinstance(payload.get("summary"), str) else None
+    )
     text = payload.get("text") if isinstance(payload.get("text"), str) else None
-    tool_name = payload.get("tool_name") if isinstance(payload.get("tool_name"), str) else None
+    tool_name = (
+        payload.get("tool_name") if isinstance(payload.get("tool_name"), str) else None
+    )
     status = payload.get("status") if isinstance(payload.get("status"), str) else None
     if not should_keep_tool_result(
         tool_name=tool_name,
@@ -234,8 +267,13 @@ def _normalize_simple_tool_result(payload: dict[str, Any], *, host_session_key: 
         ),
         extra_fields={
             "tool_name": _normalized_tool_name(tool_name=tool_name, command=None),
-            "status": _normalized_tool_status(status=status, text=text, summary=summary),
-            "is_error": _normalized_tool_status(status=status, text=text, summary=summary) == "error",
+            "status": _normalized_tool_status(
+                status=status, text=text, summary=summary
+            ),
+            "is_error": _normalized_tool_status(
+                status=status, text=text, summary=summary
+            )
+            == "error",
         },
     )
 
@@ -343,7 +381,8 @@ def _normalize_function_call_output(
                 command=command,
             ),
             "status": _normalized_tool_status(status=None, text=text, summary=None),
-            "is_error": _normalized_tool_status(status=None, text=text, summary=None) == "error",
+            "is_error": _normalized_tool_status(status=None, text=text, summary=None)
+            == "error",
         },
     )
 
@@ -436,13 +475,17 @@ def _normalized_tool_name(*, tool_name: str | None, command: str | None) -> str:
     return "unknown_tool"
 
 
-def _normalized_tool_status(*, status: str | None, text: str | None, summary: str | None) -> str:
+def _normalized_tool_status(
+    *, status: str | None, text: str | None, summary: str | None
+) -> str:
     """Derive one compact ok/error status for a normalized tool event."""
 
     if isinstance(status, str) and status.strip():
         normalized = status.strip().lower()
         return "error" if normalized in {"error", "failed", "failure"} else "ok"
-    combined = " ".join(part for part in (summary, text) if isinstance(part, str)).lower()
+    combined = " ".join(
+        part for part in (summary, text) if isinstance(part, str)
+    ).lower()
     if any(token in combined for token in ("failed", "error", "exception")):
         return "error"
     match = re.search(r"process exited with code (\d+)", text or "", re.IGNORECASE)
@@ -457,7 +500,9 @@ def _fallback_key(payload: dict[str, Any], raw_line: str, line_number: int) -> s
     explicit = payload.get("event_id")
     if isinstance(explicit, str) and explicit:
         return explicit
-    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[
+        :16
+    ]
     return f"codex-line-{line_number}-{digest}"
 
 
@@ -471,5 +516,7 @@ def _hash_event(payload: dict[str, Any]) -> str:
 def _usage_key(*, raw_line: str, line_number: int, prefix: str) -> str:
     """Build one stable usage key for a transcript line."""
 
-    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[:16]
+    digest = hashlib.sha1(raw_line.encode("utf-8"), usedforsecurity=False).hexdigest()[
+        :16
+    ]
     return f"{prefix}-{line_number}-{digest}"

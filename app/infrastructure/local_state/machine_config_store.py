@@ -115,7 +115,9 @@ def load_machine_config(path: Path | None = None) -> MachineConfig | None:
     return _machine_config_from_payload(payload)
 
 
-def try_load_machine_config(path: Path | None = None) -> tuple[MachineConfig | None, str | None]:
+def try_load_machine_config(
+    path: Path | None = None,
+) -> tuple[MachineConfig | None, str | None]:
     """Best-effort machine-config load that reports corruption text instead of raising."""
 
     target = path or get_machine_config_path()
@@ -166,7 +168,9 @@ def update_bootstrap_state(
     )
 
 
-def build_recovery_stub(*, current_step: str | None, last_error: str | None) -> dict[str, Any]:
+def build_recovery_stub(
+    *, current_step: str | None, last_error: str | None
+) -> dict[str, Any]:
     """Return a minimal recovery payload for config corruption cases."""
 
     return {
@@ -180,7 +184,9 @@ def build_recovery_stub(*, current_step: str | None, last_error: str | None) -> 
     }
 
 
-def save_recovery_stub(*, current_step: str | None, last_error: str | None, path: Path | None = None) -> Path:
+def save_recovery_stub(
+    *, current_step: str | None, last_error: str | None, path: Path | None = None
+) -> Path:
     """Persist a minimal repair-needed stub after config corruption."""
 
     target = path or get_machine_config_path()
@@ -206,7 +212,9 @@ def _machine_config_from_payload(payload: dict[str, Any]) -> MachineConfig:
     if not isinstance(database, dict):
         raise ValueError("Machine config is missing the required database section.")
     if not isinstance(backups, dict) or not isinstance(embeddings, dict):
-        raise ValueError("Machine config is missing required backups or embeddings sections.")
+        raise ValueError(
+            "Machine config is missing required backups or embeddings sections."
+        )
     runtime_mode = str(payload.get("runtime_mode") or "")
     managed_state = None
     if isinstance(managed, dict):

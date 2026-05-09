@@ -198,9 +198,10 @@ def fetch_sync_health_summary(
 ) -> dict[str, object]:
     """Return current-window sync health counts for one repo."""
 
-    row = conn.execute(
-        text(
-            """
+    row = (
+        conn.execute(
+            text(
+                """
             SELECT
               COUNT(*)::INTEGER AS sync_run_count,
               COUNT(*) FILTER (WHERE outcome = 'error')::INTEGER AS failed_sync_count
@@ -209,7 +210,10 @@ def fetch_sync_health_summary(
               AND created_at >= :start_at
               AND created_at < :end_at;
             """
-        ),
-        {"repo_id": repo_id, "start_at": start_at, "end_at": end_at},
-    ).mappings().one()
+            ),
+            {"repo_id": repo_id, "start_at": start_at, "end_at": end_at},
+        )
+        .mappings()
+        .one()
+    )
     return dict(row)

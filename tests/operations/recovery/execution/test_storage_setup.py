@@ -15,12 +15,16 @@ from app.infrastructure.local_state.machine_config_store import (
 )
 
 
-def test_resolve_storage_selection_should_prompt_for_first_run_managed_default(monkeypatch) -> None:
+def test_resolve_storage_selection_should_prompt_for_first_run_managed_default(
+    monkeypatch,
+) -> None:
     """first bootstrap should default to managed-local when the user presses enter."""
 
     reader = _FakeTerminal(["\n"])
     writer = _FakeTerminal([], is_tty=True)
-    monkeypatch.setattr(storage_setup, "_open_interactive_stream", lambda: (reader, writer, writer))
+    monkeypatch.setattr(
+        storage_setup, "_open_interactive_stream", lambda: (reader, writer, writer)
+    )
     monkeypatch.setattr(storage_setup, "_close_interactive_stream", lambda stream: None)
 
     selection = storage_setup.resolve_storage_selection(
@@ -33,10 +37,14 @@ def test_resolve_storage_selection_should_prompt_for_first_run_managed_default(m
     assert selection.admin_dsn is None
 
 
-def test_resolve_storage_selection_should_use_dev_tty_fallback_for_external_prompt(monkeypatch) -> None:
+def test_resolve_storage_selection_should_use_dev_tty_fallback_for_external_prompt(
+    monkeypatch,
+) -> None:
     """pipe installs should still prompt through /dev/tty when stdin is not interactive."""
 
-    handle = _FakeTerminal(["2\n", "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain\n"])
+    handle = _FakeTerminal(
+        ["2\n", "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain\n"]
+    )
     writer = _FakeTerminal([], is_tty=True)
     open_modes: list[str] = []
     monkeypatch.setattr(storage_setup.sys.stdin, "isatty", lambda: False)
@@ -55,17 +63,26 @@ def test_resolve_storage_selection_should_use_dev_tty_fallback_for_external_prom
     )
 
     assert selection.runtime_mode == "external_postgres"
-    assert selection.admin_dsn == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    assert (
+        selection.admin_dsn
+        == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    )
     assert open_modes == ["r", "r"]
     assert "Choose 1 or 2 [1]: " in "".join(writer.output)
 
 
-def test_resolve_storage_selection_should_fail_cleanly_without_any_interactive_stream(monkeypatch) -> None:
+def test_resolve_storage_selection_should_fail_cleanly_without_any_interactive_stream(
+    monkeypatch,
+) -> None:
     """non-interactive first bootstrap should raise a stable guidance error."""
 
     monkeypatch.setattr(storage_setup.sys.stdin, "isatty", lambda: False)
     monkeypatch.setattr(storage_setup.sys.stdout, "isatty", lambda: False)
-    monkeypatch.setattr(storage_setup.Path, "open", lambda self, *args, **kwargs: (_ for _ in ()).throw(OSError("no tty")))
+    monkeypatch.setattr(
+        storage_setup.Path,
+        "open",
+        lambda self, *args, **kwargs: (_ for _ in ()).throw(OSError("no tty")),
+    )
 
     with pytest.raises(InitDependencyError) as excinfo:
         storage_setup.resolve_storage_selection(
@@ -78,14 +95,18 @@ def test_resolve_storage_selection_should_fail_cleanly_without_any_interactive_s
     assert "--storage external --admin-dsn <dsn>" in str(excinfo.value)
 
 
-def test_resolve_storage_selection_should_fail_cleanly_without_any_visible_output_stream(monkeypatch) -> None:
+def test_resolve_storage_selection_should_fail_cleanly_without_any_visible_output_stream(
+    monkeypatch,
+) -> None:
     """first bootstrap should fail when prompt input exists but no visible writer does."""
 
     handle = _FakeTerminal(["1\n"])
     monkeypatch.setattr(storage_setup.sys.stdin, "isatty", lambda: False)
     monkeypatch.setattr(storage_setup.sys.stdout, "isatty", lambda: False)
     monkeypatch.setattr(storage_setup.sys.stderr, "isatty", lambda: False)
-    monkeypatch.setattr(storage_setup.Path, "open", lambda self, *args, **kwargs: handle)
+    monkeypatch.setattr(
+        storage_setup.Path, "open", lambda self, *args, **kwargs: handle
+    )
 
     with pytest.raises(InitDependencyError) as excinfo:
         storage_setup.resolve_storage_selection(
@@ -98,7 +119,9 @@ def test_resolve_storage_selection_should_fail_cleanly_without_any_visible_outpu
     assert "--storage external --admin-dsn <dsn>" in str(excinfo.value)
 
 
-def test_resolve_storage_selection_should_bypass_prompt_when_existing_config_exists(monkeypatch) -> None:
+def test_resolve_storage_selection_should_bypass_prompt_when_existing_config_exists(
+    monkeypatch,
+) -> None:
     """existing machine config should make init non-interactive by default."""
 
     monkeypatch.setattr(
@@ -114,10 +137,14 @@ def test_resolve_storage_selection_should_bypass_prompt_when_existing_config_exi
     )
 
     assert selection.runtime_mode == "managed_local"
-    assert selection.admin_dsn == "postgresql+psycopg://admin@127.0.0.1:55432/shellbrain"
+    assert (
+        selection.admin_dsn == "postgresql+psycopg://admin@127.0.0.1:55432/shellbrain"
+    )
 
 
-def test_resolve_storage_selection_should_bypass_prompt_when_explicit_flags_are_present(monkeypatch) -> None:
+def test_resolve_storage_selection_should_bypass_prompt_when_explicit_flags_are_present(
+    monkeypatch,
+) -> None:
     """explicit flags should skip prompt handling entirely."""
 
     monkeypatch.setattr(
@@ -133,10 +160,15 @@ def test_resolve_storage_selection_should_bypass_prompt_when_explicit_flags_are_
     )
 
     assert selection.runtime_mode == "external_postgres"
-    assert selection.admin_dsn == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    assert (
+        selection.admin_dsn
+        == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
+    )
 
 
-def test_resolve_storage_selection_should_reject_storage_switch_when_config_exists() -> None:
+def test_resolve_storage_selection_should_reject_storage_switch_when_config_exists() -> (
+    None
+):
     """changing storage mode over an existing machine config should fail closed."""
 
     with pytest.raises(InitConflictError) as excinfo:

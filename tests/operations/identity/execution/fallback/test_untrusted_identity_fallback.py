@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from app.infrastructure.host_identity.resolver import discover_untrusted_events_candidate
+from app.infrastructure.host_identity.resolver import (
+    discover_untrusted_events_candidate,
+)
 
 
 def test_identity_fallback_should_mark_the_discovered_events_candidate_untrusted_when_no_runtime_identity_exists(
@@ -12,10 +14,16 @@ def test_identity_fallback_should_mark_the_discovered_events_candidate_untrusted
 
     candidate = discover_untrusted_events_candidate(
         repo_root=Path.cwd().resolve(),
-        search_roots_by_host={"codex": list(codex_transcript_fixture["search_roots"]), "claude_code": []},
+        search_roots_by_host={
+            "codex": list(codex_transcript_fixture["search_roots"]),
+            "claude_code": [],
+        },
     )
 
     assert candidate is not None
     assert candidate.caller_identity is not None
     assert candidate.caller_identity.trust_level == "untrusted"
-    assert candidate.caller_identity.canonical_id == codex_transcript_fixture["canonical_thread_id"]
+    assert (
+        candidate.caller_identity.canonical_id
+        == codex_transcript_fixture["canonical_thread_id"]
+    )

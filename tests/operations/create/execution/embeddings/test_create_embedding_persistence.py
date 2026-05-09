@@ -8,11 +8,19 @@ import sys
 import pytest
 from sqlalchemy import select, text
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeEvent,
+    EpisodeEventSource,
+    EpisodeStatus,
+)
 from app.core.contracts.requests import MemoryCreateRequest
-from app.core.use_cases.memories.create_memory import execute_create_memory
+from app.core.use_cases.memories.add import execute_create_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.engine import get_engine
-from app.infrastructure.embeddings.local_provider import SentenceTransformersEmbeddingProvider
+from app.infrastructure.embeddings.local_provider import (
+    SentenceTransformersEmbeddingProvider,
+)
 from app.infrastructure.db.models.episodes import episode_events, episodes
 from app.infrastructure.db.models.memories import memory_embeddings
 from app.infrastructure.db.models.registry import target_metadata
@@ -38,7 +46,11 @@ def test_create_persists_memory_embedding_row() -> None:
     _run_alembic_upgrade(dsn)
     stamp_test_instance(dsn)
     assert_destructive_test_setup_allowed(dsn)
-    admin_dsn = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST") or os.getenv("SHELLBRAIN_DB_ADMIN_DSN") or dsn
+    admin_dsn = (
+        os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST")
+        or os.getenv("SHELLBRAIN_DB_ADMIN_DSN")
+        or dsn
+    )
     cleanup_engine = get_engine(admin_dsn)
     try:
         with cleanup_engine.begin() as conn:
@@ -91,22 +103,27 @@ def test_create_persists_memory_embedding_row() -> None:
                 uow,
                 embedding_provider=provider,
                 embedding_model="all-MiniLM-L6-v2",
+                id_generator=SequenceIdGenerator(),
             )
-
-        assert result.status == "ok"
         memory_id = result.data["memory_id"]
         with engine.connect() as conn:
             evidence_row = conn.execute(
                 select(episodes.c.id).where(episodes.c.id == "repo-integration-episode")
             ).first()
             event_row = conn.execute(
-                select(episode_events.c.id).where(episode_events.c.id == "integration://evidence/1")
-            ).first()
-            row = conn.execute(
-                select(memory_embeddings.c.model, memory_embeddings.c.dim).where(
-                    memory_embeddings.c.memory_id == memory_id
+                select(episode_events.c.id).where(
+                    episode_events.c.id == "integration://evidence/1"
                 )
-            ).mappings().first()
+            ).first()
+            row = (
+                conn.execute(
+                    select(memory_embeddings.c.model, memory_embeddings.c.dim).where(
+                        memory_embeddings.c.memory_id == memory_id
+                    )
+                )
+                .mappings()
+                .first()
+            )
         assert evidence_row is not None
         assert event_row is not None
         assert row is not None

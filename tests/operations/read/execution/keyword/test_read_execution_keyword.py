@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 from app.core.entities.settings import ThresholdSettings
-from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
+from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 

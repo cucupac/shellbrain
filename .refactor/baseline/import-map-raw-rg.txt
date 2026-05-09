@@ -1,0 +1,245 @@
+tests/config/test_cli_surface.py:679:    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError
+tests/config/test_packaging_smoke.py:270:                "from app.startup.migrations import upgrade_database; upgrade_database('20260320_0008')",
+app/settings/loader.py:9:from app.core.interfaces.config import IConfigProvider
+app/startup/model_usage_backfill.py:13:from app.core.entities.telemetry import ModelUsageRecord
+tests/config/test_thresholds_usage.py:3:from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
+app/infrastructure/process/episode_poller.py:12:from app.core.observability.telemetry.sync_records import build_episode_sync_records
+app/core/interfaces/unit_of_work.py:6:from app.core.interfaces.repos import (
+app/core/interfaces/unit_of_work.py:19:from app.core.interfaces.retrieval import IVectorSearch
+tests/operations/create/validation/link_rules/test_create_link_rules.py:4:from app.core.validation.memory_semantic import validate_create_semantics
+app/startup/embeddings.py:5:from app.core.interfaces.embeddings import IEmbeddingProvider
+app/startup/agent_operations.py:17:from app.core.entities.telemetry import OperationDispatchTelemetryContext
+app/startup/agent_operations.py:19:from app.core.use_cases.agent_operations.concepts.apply import run_concept_changes_operation
+app/startup/agent_operations.py:20:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/startup/agent_operations.py:21:from app.core.use_cases.agent_operations.events.read import run_read_events_operation
+app/startup/agent_operations.py:22:from app.core.use_cases.agent_operations.memories.add import run_create_memory_operation
+app/startup/agent_operations.py:23:from app.core.use_cases.agent_operations.memories.update import run_update_memory_operation
+app/startup/agent_operations.py:24:from app.core.use_cases.agent_operations.retrieval.read import run_read_memory_operation
+app/startup/agent_operations.py:25:from app.core.use_cases.agent_operations.retrieval.recall import run_recall_memory_operation
+app/core/entities/settings.py:9:from app.core.entities.memory import MATURE_MEMORY_KIND_VALUES
+app/entrypoints/cli/endpoints/human/admin.py:23:        from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError, upgrade_database
+app/entrypoints/cli/endpoints/internal_agent/read.py:8:from app.entrypoints.cli.protocol.operation_requests import prepare_read_request
+app/entrypoints/cli/endpoints/internal_agent/read.py:9:from app.startup.agent_operations import handle_read
+app/entrypoints/cli/endpoints/internal_agent/memories/add.py:8:from app.entrypoints.cli.protocol.operation_requests import prepare_create_request
+app/entrypoints/cli/endpoints/internal_agent/memories/add.py:10:from app.startup.agent_operations import handle_create
+app/core/interfaces/repos.py:21:from app.core.entities.memory import Memory
+app/core/interfaces/repos.py:22:from app.core.entities.telemetry import (
+app/entrypoints/cli/endpoints/internal_agent/memories/update.py:8:from app.entrypoints.cli.protocol.operation_requests import prepare_update_request
+app/entrypoints/cli/endpoints/internal_agent/memories/update.py:9:from app.startup.agent_operations import handle_update
+tests/operations/create/validation/reference_checks/test_create_reference_checks.py:5:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/create/validation/reference_checks/test_create_reference_checks.py:6:from app.startup.agent_operations import handle_create
+app/entrypoints/cli/endpoints/internal_agent/concepts/add.py:8:from app.entrypoints.cli.protocol.operation_requests import prepare_concept_request
+app/entrypoints/cli/endpoints/internal_agent/concepts/add.py:9:from app.startup.agent_operations import handle_concept
+app/startup/admin_initialize.py:232:    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError, upgrade_database
+app/entrypoints/cli/endpoints/internal_agent/events.py:8:from app.entrypoints.cli.protocol.operation_requests import prepare_events_request
+app/entrypoints/cli/endpoints/internal_agent/events.py:9:from app.startup.agent_operations import handle_events
+app/core/observability/telemetry/sync_records.py:7:from app.core.entities.telemetry import EpisodeSyncRunRecord, EpisodeSyncToolTypeRecord
+app/core/observability/telemetry/recall_records.py:3:from app.core.observability.telemetry.operation_records import build_recall_summary_records
+app/entrypoints/cli/endpoints/working_agent/recall.py:8:from app.entrypoints.cli.protocol.operation_requests import prepare_recall_request
+app/entrypoints/cli/endpoints/working_agent/recall.py:9:from app.startup.agent_operations import handle_recall
+app/core/observability/telemetry/read_records.py:3:from app.core.observability.telemetry.operation_records import build_read_summary_records, estimate_read_pack_size
+app/core/policies/memory_create_policy/plan.py:16:from app.core.entities.memory import MemoryKind
+app/core/validation/memory_semantic.py:11:from app.core.entities.memory import MemoryKind
+tests/operations/create/execution/effect_ordering/test_create_effect_ordering.py:4:from app.core.policies.memory_create_policy.plan import build_create_plan
+app/core/validation/memory_integrity.py:12:from app.core.entities.memory import (
+app/core/validation/memory_integrity.py:18:from app.core.interfaces.unit_of_work import IUnitOfWork
+tests/operations/concepts/execution/test_concept_use_case.py:6:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/concepts/execution/test_concept_use_case.py:7:from app.core.use_cases.concepts.apply_concept_changes import execute_concept_command
+tests/operations/create/execution/memory_records/test_create_memory_records.py:6:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/create/execution/memory_records/test_create_memory_records.py:7:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/create/execution/memory_records/test_create_memory_records.py:8:from app.core.use_cases.memories.create_memory import execute_create_memory
+tests/operations/recovery/execution/test_init_bootstrap.py:149:    from app.startup.migrations import DatabaseRevisionAheadOfInstalledPackageError
+app/core/observability/telemetry/write_records.py:3:from app.core.observability.telemetry.operation_records import build_write_summary_records
+app/core/use_cases/memories/create_memory.py:8:from app.core.interfaces.embeddings import IEmbeddingProvider
+app/core/use_cases/memories/create_memory.py:9:from app.core.interfaces.idgen import IIdGenerator
+app/core/use_cases/memories/create_memory.py:10:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/memories/create_memory.py:11:from app.core.policies.memory_create_policy.plan import build_create_plan
+tests/operations/concepts/execution/test_concept_cli_handler.py:6:from app.startup.agent_operations import handle_concept
+app/core/observability/telemetry/operation_records.py:32:from app.core.entities.telemetry import (
+app/core/use_cases/memories/update_memory.py:8:from app.core.interfaces.idgen import IIdGenerator
+app/core/use_cases/memories/update_memory.py:9:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/memories/update_memory.py:10:from app.core.policies.memory_update_policy.plan import build_update_plan
+tests/operations/create/execution/failure_handling/test_create_failure_handling.py:8:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/create/execution/failure_handling/test_create_failure_handling.py:9:from app.core.use_cases.memories.create_memory import execute_create_memory
+tests/operations/create/execution/failure_handling/test_create_failure_handling.py:10:from app.startup.agent_operations import handle_create
+tests/operations/create/execution/association_records/test_create_association_records.py:6:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/create/execution/association_records/test_create_association_records.py:7:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/create/execution/association_records/test_create_association_records.py:8:from app.core.use_cases.memories.create_memory import execute_create_memory
+app/core/use_cases/plan_execution.py:11:from app.core.entities.memory import Memory, MemoryKind, MemoryScope
+app/core/use_cases/plan_execution.py:25:from app.core.interfaces.embeddings import IEmbeddingProvider
+app/core/use_cases/plan_execution.py:26:from app.core.interfaces.unit_of_work import IUnitOfWork
+tests/operations/guidance/execution/update_batch/test_batch_utility_votes.py:5:from app.startup.agent_operations import handle_events, handle_update
+app/core/use_cases/memory_retrieval/recall_memory.py:10:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/memory_retrieval/recall_memory.py:11:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+app/core/use_cases/build_guidance.py:10:from app.core.interfaces.repos import ITelemetryRepo
+tests/operations/guidance/execution/failure_handling/test_guidance_failures.py:5:from app.startup.agent_operations import handle_update
+tests/operations/create/execution/embeddings/test_create_embedding_persistence.py:13:from app.core.use_cases.memories.create_memory import execute_create_memory
+app/core/use_cases/admin/generate_analytics_report.py:11:from app.core.observability.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
+app/infrastructure/local_state/session_state_file_store.py:13:from app.core.interfaces.session_state_store import ISessionStateStore
+app/core/use_cases/sync_episode.py:12:from app.core.interfaces.unit_of_work import IUnitOfWork
+tests/operations/create/execution/embeddings/test_create_embedding_records.py:6:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/create/execution/embeddings/test_create_embedding_records.py:7:from app.core.use_cases.memories.create_memory import execute_create_memory
+app/core/use_cases/memory_retrieval/read_memory.py:6:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/memory_retrieval/read_memory.py:7:from app.core.use_cases.memory_retrieval.context_pack_pipeline import build_context_pack
+app/core/use_cases/memory_retrieval/read_memory.py:8:from app.core.use_cases.memory_retrieval.read_concepts import append_concepts_to_pack
+app/core/use_cases/memory_retrieval/read_concepts.py:9:from app.core.entities.memory import Memory
+app/core/use_cases/memory_retrieval/read_concepts.py:10:from app.core.interfaces.repos import IConceptsRepo, IMemoriesRepo
+tests/operations/guidance/execution/create_solution/test_pending_utility_guidance.py:5:from app.startup.agent_operations import handle_create, handle_events, handle_read
+app/core/use_cases/memory_retrieval/expansion.py:6:from app.core.interfaces.repos import IReadPolicyRepo, ISemanticRetrievalRepo
+app/core/use_cases/memory_retrieval/expansion.py:7:from app.core.policies.memory_read_policy.expansion import (
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:6:from app.core.interfaces.repos import IKeywordRetrievalRepo, IMemoriesRepo, IReadPolicyRepo, ISemanticRetrievalRepo
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:7:from app.core.interfaces.retrieval import IVectorSearch
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:8:from app.core.policies.memory_read_policy.context_pack_builder import assemble_context_pack
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:9:from app.core.policies.memory_read_policy.fusion_rrf import fuse_with_rrf
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:10:from app.core.policies.memory_read_policy.scoring import score_candidates
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:11:from app.core.use_cases.memory_retrieval.expansion import expand_candidates
+app/core/use_cases/memory_retrieval/context_pack_pipeline.py:12:from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
+app/core/use_cases/record_episode_sync_telemetry.py:7:from app.core.entities.telemetry import EpisodeSyncRunRecord, EpisodeSyncToolTypeRecord
+app/core/use_cases/record_episode_sync_telemetry.py:8:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/concepts/apply_concept_changes.py:43:from app.core.entities.memory import MemoryScope
+app/core/use_cases/concepts/apply_concept_changes.py:44:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/memory_retrieval/seed_retrieval.py:6:from app.core.interfaces.repos import IKeywordRetrievalRepo, ISemanticRetrievalRepo
+app/core/use_cases/memory_retrieval/seed_retrieval.py:7:from app.core.interfaces.retrieval import IVectorSearch
+app/core/use_cases/memory_retrieval/seed_retrieval.py:8:from app.core.policies.memory_read_policy.bm25 import BM25Document, admit_scored_documents, score_documents
+app/core/use_cases/memory_retrieval/seed_retrieval.py:9:from app.core.policies.memory_read_policy.lexical_query import build_lexical_query, normalize_lexical_text
+app/core/use_cases/manage_session_state.py:10:from app.core.interfaces.clock import IClock
+app/core/use_cases/manage_session_state.py:11:from app.core.interfaces.session_state_store import ISessionStateStore
+tests/operations/update/validation/link_rules/test_update_link_rules.py:4:from app.core.validation.memory_semantic import validate_update_semantics
+tests/operations/persistence/execution/local_migration/test_local_postgres_migration_to_shellbrain.py:18:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/persistence/execution/local_migration/test_local_postgres_migration_to_shellbrain.py:19:from app.startup.agent_operations import handle_create
+app/core/use_cases/record_operation_telemetry.py:7:from app.core.entities.telemetry import (
+app/core/use_cases/record_operation_telemetry.py:16:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/agent_operations/validation.py:7:from app.core.validation.memory_integrity import validate_create_integrity, validate_update_integrity
+app/core/use_cases/agent_operations/validation.py:8:from app.core.validation.memory_semantic import validate_create_semantics, validate_update_semantics
+tests/operations/update/validation/failure_handling/test_update_validation_failure_handling.py:5:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/update/validation/failure_handling/test_update_validation_failure_handling.py:6:from app.startup.agent_operations import handle_update
+tests/operations/create/execution/evidence_links/test_create_evidence_links.py:8:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/create/execution/evidence_links/test_create_evidence_links.py:9:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/create/execution/evidence_links/test_create_evidence_links.py:10:from app.core.use_cases.memories.create_memory import execute_create_memory
+app/core/use_cases/agent_operations/dependencies.py:10:from app.core.entities.telemetry import OperationDispatchTelemetryContext, SessionSelectionSummary
+app/core/use_cases/agent_operations/dependencies.py:11:from app.core.interfaces.clock import IClock
+app/core/use_cases/agent_operations/dependencies.py:12:from app.core.interfaces.idgen import IIdGenerator
+app/core/use_cases/agent_operations/dependencies.py:13:from app.core.interfaces.session_state_store import ISessionStateStore
+tests/operations/update/execution/record_writes/test_update_record_writes.py:5:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/update/execution/record_writes/test_update_record_writes.py:6:from app.core.use_cases.memories.update_memory import execute_update_memory
+app/core/use_cases/metrics/generate_dashboard.py:10:from app.core.interfaces.metrics import MetricsArtifactWriter, MetricsDashboardBrowser, MetricsHtmlRenderer
+tests/operations/update/execution/failure_handling/test_update_failure_handling.py:7:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/update/execution/failure_handling/test_update_failure_handling.py:8:from app.core.use_cases.memories.update_memory import execute_update_memory
+tests/operations/update/validation/reference_checks/test_update_reference_checks.py:6:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/update/validation/reference_checks/test_update_reference_checks.py:8:from app.core.validation.memory_integrity import validate_update_integrity
+tests/operations/update/execution/high_level_behavior/test_update_high_level_behavior.py:5:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/update/execution/high_level_behavior/test_update_high_level_behavior.py:6:from app.core.use_cases.memories.update_memory import execute_update_memory
+app/core/use_cases/record_model_usage_telemetry.py:7:from app.core.entities.telemetry import ModelUsageRecord
+app/core/use_cases/record_model_usage_telemetry.py:8:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/core/use_cases/agent_operations/memories/add.py:10:from app.core.entities.telemetry import OperationDispatchTelemetryContext
+app/core/use_cases/agent_operations/memories/add.py:11:from app.core.observability.telemetry.operation_records import infer_error_stage_from_errors
+app/core/use_cases/agent_operations/memories/add.py:12:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/memories/add.py:13:from app.core.use_cases.agent_operations.errors import dump_errors, error_response
+app/core/use_cases/agent_operations/memories/add.py:14:from app.core.use_cases.agent_operations.guidance import (
+app/core/use_cases/agent_operations/memories/add.py:18:from app.core.use_cases.agent_operations.operation_telemetry import ensure_telemetry_context, persist_operation_telemetry_best_effort
+app/core/use_cases/agent_operations/memories/add.py:19:from app.core.use_cases.agent_operations.validation import validate_create_request
+app/core/use_cases/agent_operations/memories/add.py:21:from app.core.use_cases.memories.create_memory import execute_create_memory
+app/core/use_cases/agent_operations/memories/update.py:10:from app.core.entities.telemetry import OperationDispatchTelemetryContext
+app/core/use_cases/agent_operations/memories/update.py:11:from app.core.observability.telemetry.operation_records import infer_error_stage_from_errors
+app/core/use_cases/agent_operations/memories/update.py:12:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/memories/update.py:13:from app.core.use_cases.agent_operations.errors import ReturnHandledError, dump_errors, error_response
+app/core/use_cases/agent_operations/memories/update.py:14:from app.core.use_cases.agent_operations.guidance import (
+app/core/use_cases/agent_operations/memories/update.py:18:from app.core.use_cases.agent_operations.operation_telemetry import ensure_telemetry_context, persist_operation_telemetry_best_effort
+app/core/use_cases/agent_operations/memories/update.py:19:from app.core.use_cases.agent_operations.validation import (
+app/core/use_cases/agent_operations/memories/update.py:24:from app.core.use_cases.memories.update_memory import execute_update_memory
+app/core/use_cases/agent_operations/concepts/apply.py:10:from app.core.entities.telemetry import OperationDispatchTelemetryContext
+app/core/use_cases/agent_operations/concepts/apply.py:11:from app.core.observability.telemetry.operation_records import infer_error_stage_from_errors
+app/core/use_cases/agent_operations/concepts/apply.py:12:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/concepts/apply.py:13:from app.core.use_cases.agent_operations.errors import dump_errors, error_response
+app/core/use_cases/agent_operations/concepts/apply.py:14:from app.core.use_cases.agent_operations.operation_telemetry import ensure_telemetry_context, persist_operation_telemetry_best_effort
+app/core/use_cases/agent_operations/concepts/apply.py:15:from app.core.use_cases.concepts.apply_concept_changes import execute_concept_command
+app/infrastructure/db/uow.py:5:from app.core.interfaces.retrieval import IVectorSearch
+app/infrastructure/db/uow.py:6:from app.core.interfaces.unit_of_work import IUnitOfWork
+app/infrastructure/runtime/uuid_generator.py:7:from app.core.interfaces.idgen import IIdGenerator
+tests/operations/session_state/execution/create/test_problem_tracking.py:5:from app.startup.agent_operations import handle_create, handle_events
+tests/operations/read/execution/keyword/test_read_execution_keyword.py:6:from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
+tests/operations/read/execution/determinism/test_read_execution_determinism.py:5:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+app/core/use_cases/agent_operations/operation_telemetry.py:7:from app.core.entities.telemetry import OperationDispatchTelemetryContext, SessionSelectionSummary
+app/core/use_cases/agent_operations/operation_telemetry.py:8:from app.core.observability.telemetry.operation_records import (
+app/core/use_cases/agent_operations/operation_telemetry.py:14:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/operation_telemetry.py:15:from app.core.use_cases.agent_operations.events_selection import selection_summary_from_runtime_context
+app/infrastructure/host_transcripts/model_usage.py:13:from app.core.entities.telemetry import ModelUsageRecord
+tests/operations/session_state/execution/events/test_events_session_state.py:5:from app.startup.agent_operations import handle_events
+app/infrastructure/host_transcripts/session_selection.py:11:from app.core.entities.telemetry import SessionSelectionSummary
+tests/operations/read/execution/context_pack/test_context_pack_json_shape.py:8:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+tests/operations/read/execution/scoring/test_read_execution_scoring.py:8:from app.core.use_cases.memory_retrieval.expansion import expand_candidates
+tests/operations/read/execution/scoring/test_read_execution_scoring.py:9:from app.core.policies.memory_read_policy.fusion_rrf import fuse_with_rrf
+tests/operations/read/execution/scoring/test_read_execution_scoring.py:10:from app.core.policies.memory_read_policy.scoring import score_candidates
+tests/operations/read/execution/scoring/test_read_execution_scoring.py:11:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+app/core/use_cases/agent_operations/events/read.py:12:from app.core.entities.telemetry import OperationDispatchTelemetryContext, SessionSelectionSummary
+app/core/use_cases/agent_operations/events/read.py:13:from app.core.observability.telemetry.operation_records import infer_error_stage_from_errors
+app/core/use_cases/agent_operations/events/read.py:14:from app.core.observability.telemetry.sync_records import build_episode_sync_records
+app/core/use_cases/agent_operations/events/read.py:15:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/events/read.py:16:from app.core.use_cases.agent_operations.errors import dump_errors, error_response
+app/core/use_cases/agent_operations/events/read.py:17:from app.core.use_cases.agent_operations.events_selection import (
+app/core/use_cases/agent_operations/events/read.py:22:from app.core.use_cases.agent_operations.operation_telemetry import ensure_telemetry_context, persist_operation_telemetry_best_effort
+app/core/use_cases/agent_operations/events/read.py:23:from app.core.use_cases.agent_operations.serialization import serialize_episode_event
+tests/operations/telemetry/execution/analytics/test_analytics_diagnostics.py:5:from app.core.observability.telemetry.analytics_diagnostics import classify_operation_failure, classify_sync_failure
+app/core/use_cases/agent_operations/retrieval_execution.py:6:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/retrieval_execution.py:7:from app.core.use_cases.memory_retrieval.recall_memory import execute_recall_memory
+app/core/use_cases/agent_operations/retrieval_execution.py:8:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+tests/operations/events/execution/failure_handling/test_events_failure_handling.py:8:from app.startup.agent_operations import handle_events
+tests/operations/telemetry/execution/operation_invocations/test_operation_invocation_record_writes.py:10:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/telemetry/execution/operation_invocations/test_operation_invocation_record_writes.py:12:from app.startup.agent_operations import handle_create, handle_events, handle_read, handle_update
+app/core/use_cases/agent_operations/events_selection.py:9:from app.core.entities.telemetry import OperationDispatchTelemetryContext, SessionSelectionSummary
+app/core/use_cases/agent_operations/events_selection.py:10:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/infrastructure/runtime/system_clock.py:7:from app.core.interfaces.clock import IClock
+app/core/use_cases/agent_operations/retrieval/recall.py:10:from app.core.entities.telemetry import OperationDispatchTelemetryContext
+app/core/use_cases/agent_operations/retrieval/recall.py:11:from app.core.observability.telemetry.operation_records import infer_error_stage_from_errors
+app/core/use_cases/agent_operations/retrieval/recall.py:12:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/retrieval/recall.py:13:from app.core.use_cases.agent_operations.errors import dump_errors, error_response
+app/core/use_cases/agent_operations/retrieval/recall.py:14:from app.core.use_cases.agent_operations.operation_telemetry import ensure_telemetry_context, persist_operation_telemetry_best_effort
+app/core/use_cases/agent_operations/retrieval/recall.py:15:from app.core.use_cases.agent_operations.retrieval_execution import execute_recall_memory_with_dependencies
+tests/operations/read/execution/context_pack/test_context_pack_config_defaults.py:5:from app.core.policies.memory_read_policy.context_pack_builder import assemble_context_pack
+tests/operations/read/execution/conftest.py:13:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/read/execution/conftest.py:14:from app.core.interfaces.retrieval import IVectorSearch
+tests/operations/read/execution/semantic/test_read_execution_semantic_real_repo.py:5:from app.core.use_cases.memory_retrieval.expansion import expand_candidates
+app/core/use_cases/agent_operations/retrieval/read.py:10:from app.core.entities.telemetry import OperationDispatchTelemetryContext
+app/core/use_cases/agent_operations/retrieval/read.py:11:from app.core.observability.telemetry.operation_records import infer_error_stage_from_errors
+app/core/use_cases/agent_operations/retrieval/read.py:12:from app.core.use_cases.agent_operations.dependencies import OperationDependencies
+app/core/use_cases/agent_operations/retrieval/read.py:13:from app.core.use_cases.agent_operations.errors import dump_errors, error_response
+app/core/use_cases/agent_operations/retrieval/read.py:14:from app.core.use_cases.agent_operations.operation_telemetry import ensure_telemetry_context, persist_operation_telemetry_best_effort
+app/core/use_cases/agent_operations/retrieval/read.py:15:from app.core.use_cases.agent_operations.retrieval_execution import execute_read_memory_with_dependencies
+tests/operations/read/execution/semantic/test_read_execution_semantic_wiring.py:9:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+tests/operations/read/execution/semantic/test_read_execution_semantic_wiring.py:10:from app.startup.agent_operations import handle_read
+tests/operations/read/execution/semantic/test_read_execution_semantic.py:6:from app.core.interfaces.retrieval import IVectorSearch
+tests/operations/read/execution/semantic/test_read_execution_semantic.py:7:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+tests/operations/events/execution/high_level_behavior/test_events_high_level_behavior.py:9:from app.startup.agent_operations import handle_events
+tests/operations/read/execution/high_level_behavior/test_read_execution_behavior.py:5:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+app/infrastructure/embeddings/query_vector_search.py:3:from app.core.interfaces.embeddings import IEmbeddingProvider
+app/infrastructure/embeddings/query_vector_search.py:4:from app.core.interfaces.retrieval import IVectorSearch
+tests/operations/read/execution/context_pack/test_context_pack_rules.py:3:from app.core.policies.memory_read_policy.context_pack_builder import assemble_context_pack
+tests/operations/telemetry/execution/episode_sync_runs/test_episode_sync_run_record_writes.py:12:from app.startup.agent_operations import handle_events
+app/infrastructure/embeddings/local_provider.py:5:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/read/execution/concepts/test_concept_aware_read.py:10:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/read/execution/concepts/test_concept_aware_read.py:11:from app.core.use_cases.concepts.apply_concept_changes import execute_concept_command
+tests/operations/read/execution/concepts/test_concept_aware_read.py:12:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+tests/operations/telemetry/execution/recall_summaries/test_recall_summary_record_writes.py:11:from app.startup.agent_operations import handle_recall
+tests/operations/telemetry/execution/failure_handling/test_failed_invocation_telemetry.py:10:from app.startup.agent_operations import handle_create, handle_events, handle_read, handle_update
+app/infrastructure/db/repos/relational/telemetry_repo.py:12:from app.core.entities.telemetry import (
+app/infrastructure/db/repos/relational/telemetry_repo.py:25:from app.core.interfaces.repos import ITelemetryRepo
+tests/operations/telemetry/execution/read_summaries/test_read_pack_token_estimator.py:5:from app.core.observability.telemetry.operation_records import estimate_read_pack_size
+app/infrastructure/db/repos/relational/episodes_repo.py:10:from app.core.interfaces.repos import IEpisodesRepo
+tests/operations/telemetry/execution/write_summaries/test_write_summary_record_writes.py:7:from app.core.entities.memory import MemoryKind, MemoryScope
+tests/operations/telemetry/execution/write_summaries/test_write_summary_record_writes.py:9:from app.startup.agent_operations import handle_create, handle_update
+app/infrastructure/db/repos/relational/concepts_repo.py:36:from app.core.interfaces.repos import IConceptsRepo
+tests/operations/read/execution/expansion/test_read_execution_expansion.py:5:from app.core.use_cases.memory_retrieval.read_memory import execute_read_memory
+app/infrastructure/db/repos/relational/experiences_repo.py:6:from app.core.interfaces.repos import IExperiencesRepo
+app/infrastructure/db/repos/relational/read_policy_repo.py:9:from app.core.interfaces.repos import IReadPolicyRepo
+app/infrastructure/db/repos/relational/evidence_repo.py:10:from app.core.interfaces.repos import IEvidenceRepo
+tests/operations/telemetry/execution/read_summaries/test_read_summary_record_writes.py:11:from app.startup.agent_operations import handle_read
+tests/operations/_shared/integration_db_fixtures.py:19:from app.core.entities.memory import Memory, MemoryKind, MemoryScope
+tests/operations/_shared/integration_db_fixtures.py:20:from app.core.interfaces.embeddings import IEmbeddingProvider
+app/infrastructure/db/repos/relational/memories_repo.py:9:from app.core.entities.memory import Memory, MemoryKind, MemoryScope
+app/infrastructure/db/repos/relational/memories_repo.py:10:from app.core.interfaces.repos import IMemoriesRepo
+app/infrastructure/db/repos/semantic/keyword_retrieval_repo.py:9:from app.core.interfaces.repos import IKeywordRetrievalRepo
+app/infrastructure/db/repos/relational/associations_repo.py:8:from app.core.interfaces.repos import IAssociationsRepo
+tests/operations/_shared/docker_persistence_fixtures.py:22:from app.core.interfaces.embeddings import IEmbeddingProvider
+tests/operations/_shared/docker_persistence_fixtures.py:23:from app.startup.agent_operations import handle_create
+app/infrastructure/db/repos/relational/utility_repo.py:6:from app.core.interfaces.repos import IUtilityRepo
+app/infrastructure/db/repos/semantic/semantic_retrieval_repo.py:8:from app.core.interfaces.repos import ISemanticRetrievalRepo

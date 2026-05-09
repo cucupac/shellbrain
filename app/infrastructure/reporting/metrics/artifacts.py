@@ -28,7 +28,9 @@ def get_metrics_artifact_dir(*, repo_id: str) -> Path:
     return get_metrics_root_dir() / f"{normalized}-{digest}"
 
 
-def write_metrics_artifacts(*, repo_id: str, snapshot: dict[str, Any], html: str) -> dict[str, Path]:
+def write_metrics_artifacts(
+    *, repo_id: str, snapshot: dict[str, Any], html: str
+) -> dict[str, Path]:
     """Write the latest metrics snapshot, markdown summary, and dashboard HTML."""
 
     artifact_dir = get_metrics_artifact_dir(repo_id=repo_id)
@@ -38,7 +40,9 @@ def write_metrics_artifacts(*, repo_id: str, snapshot: dict[str, Any], html: str
     md_path = artifact_dir / "latest.md"
     html_path = artifact_dir / "dashboard.html"
 
-    json_path.write_text(json.dumps(snapshot, indent=2, sort_keys=True), encoding="utf-8")
+    json_path.write_text(
+        json.dumps(snapshot, indent=2, sort_keys=True), encoding="utf-8"
+    )
     md_path.write_text(str(snapshot["summary_md"]).strip() + "\n", encoding="utf-8")
     html_path.write_text(html, encoding="utf-8")
 

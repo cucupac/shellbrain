@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from app.startup.agent_operations import handle_events
+from tests.operations._shared.handler_calls import handle_events
 from app.infrastructure.db.uow import PostgresUnitOfWork
 from app.infrastructure.process.episode_poller import run_episode_poller
 
@@ -62,16 +62,32 @@ def test_poller_sync_should_always_append_one_episode_sync_run_with_source_polle
 ) -> None:
     """poller sync should always append one episode sync run with source poller."""
 
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.acquire_poller_lock", lambda **kwargs: _NoOpLock())
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0)
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        lambda **kwargs: _NoOpLock(),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        lambda **kwargs: Path("/tmp/episode_sync.pid"),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+    )
     monkeypatch.setattr(
         "app.infrastructure.process.episode_poller.default_search_roots",
-        lambda *, repo_root, host_app: list(codex_transcript_fixture["search_roots"]) if host_app == "codex" else [],
+        lambda *, repo_root, host_app: (
+            list(codex_transcript_fixture["search_roots"])
+            if host_app == "codex"
+            else []
+        ),
     )
 
-    run_episode_poller(repo_id="shellbrain", repo_root=Path.cwd().resolve(), uow_factory=uow_factory)
+    run_episode_poller(
+        repo_id="shellbrain", repo_root=Path.cwd().resolve(), uow_factory=uow_factory
+    )
 
     assert_relation_exists("episode_sync_runs")
     rows = fetch_relation_rows("episode_sync_runs", order_by="created_at DESC, id DESC")
@@ -89,7 +105,10 @@ def test_poller_with_an_active_lock_should_not_append_episode_sync_runs(
 ) -> None:
     """poller with an active lock should always exit without writing telemetry."""
 
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.acquire_poller_lock", lambda **kwargs: None)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        lambda **kwargs: None,
+    )
 
     run_episode_poller(
         repo_id="shellbrain",
@@ -154,7 +173,9 @@ def test_episode_sync_runs_should_always_record_tool_type_counts_from_the_normal
 
     assert result["status"] == "ok"
     assert_relation_exists("episode_sync_tool_types")
-    rows = fetch_relation_rows("episode_sync_tool_types", order_by="sync_run_id ASC, tool_type ASC")
+    rows = fetch_relation_rows(
+        "episode_sync_tool_types", order_by="sync_run_id ASC, tool_type ASC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["tool_type"] == "exec_command"
@@ -182,7 +203,9 @@ def test_events_should_always_append_model_usage_rows_for_inline_sync(
 
     assert result["status"] == "ok"
     assert_relation_exists("model_usage")
-    rows = fetch_relation_rows("model_usage", order_by="occurred_at ASC, host_usage_key ASC")
+    rows = fetch_relation_rows(
+        "model_usage", order_by="occurred_at ASC, host_usage_key ASC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["repo_id"] == "shellbrain"
@@ -210,12 +233,28 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
     sync_calls: list[dict[str, object]] = []
     discovery_calls = {"cursor": 0}
 
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.acquire_poller_lock", lambda **kwargs: _NoOpLock())
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
-    monkeypatch.setattr("app.infrastructure.process.episode_poller._record_sync_telemetry_best_effort", lambda **kwargs: None)
-    monkeypatch.setattr("app.infrastructure.process.episode_poller._close_episode", lambda **kwargs: None)
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0)
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        lambda **kwargs: _NoOpLock(),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        lambda **kwargs: Path("/tmp/episode_sync.pid"),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller._record_sync_telemetry_best_effort",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller._close_episode",
+        lambda **kwargs: None,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+    )
     monkeypatch.setattr(
         "app.infrastructure.process.episode_poller.default_search_roots",
         lambda *, repo_root, host_app: [cursor_root] if host_app == "cursor" else [],
@@ -234,25 +273,34 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
             "updated_at": 1234.0,
         }
 
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.discover_active_host_session", _discover_active_host_session)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.discover_active_host_session",
+        _discover_active_host_session,
+    )
     monkeypatch.setattr(
         "app.infrastructure.process.episode_poller.sync_episode_from_host",
-        lambda **kwargs: sync_calls.append(kwargs)
-        or {
-            "thread_id": "cursor:cursor-composer-1",
-            "episode_id": "ep-1",
-            "transcript_path": str(transcript_path),
-            "imported_event_count": 0,
-            "total_event_count": 0,
-            "user_event_count": 0,
-            "assistant_event_count": 0,
-            "tool_event_count": 0,
-            "system_event_count": 0,
-            "tool_type_counts": {},
-        },
+        lambda **kwargs: (
+            sync_calls.append(kwargs)
+            or {
+                "thread_id": "cursor:cursor-composer-1",
+                "episode_id": "ep-1",
+                "transcript_path": str(transcript_path),
+                "imported_event_count": 0,
+                "total_event_count": 0,
+                "user_event_count": 0,
+                "assistant_event_count": 0,
+                "tool_event_count": 0,
+                "system_event_count": 0,
+                "tool_type_counts": {},
+            }
+        ),
     )
 
-    run_episode_poller(repo_id="shellbrain", repo_root=repo_root, uow_factory=lambda: nullcontext(object()))
+    run_episode_poller(
+        repo_id="shellbrain",
+        repo_root=repo_root,
+        uow_factory=lambda: nullcontext(object()),
+    )
 
     assert discovery_calls["cursor"] >= 2
     assert len(sync_calls) == 1
@@ -268,19 +316,37 @@ def test_poller_sync_should_always_append_model_usage_rows(
 ) -> None:
     """poller sync should always persist normalized model usage rows."""
 
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.acquire_poller_lock", lambda **kwargs: _NoOpLock())
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.write_poller_pid_artifact", lambda **kwargs: Path("/tmp/episode_sync.pid"))
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0)
-    monkeypatch.setattr("app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0)
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.acquire_poller_lock",
+        lambda **kwargs: _NoOpLock(),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.write_poller_pid_artifact",
+        lambda **kwargs: Path("/tmp/episode_sync.pid"),
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.POLL_INTERVAL_SECONDS", 0
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_poller.IDLE_EXIT_SECONDS", 0
+    )
     monkeypatch.setattr(
         "app.infrastructure.process.episode_poller.default_search_roots",
-        lambda *, repo_root, host_app: list(codex_transcript_fixture["search_roots"]) if host_app == "codex" else [],
+        lambda *, repo_root, host_app: (
+            list(codex_transcript_fixture["search_roots"])
+            if host_app == "codex"
+            else []
+        ),
     )
 
-    run_episode_poller(repo_id="shellbrain", repo_root=Path.cwd().resolve(), uow_factory=uow_factory)
+    run_episode_poller(
+        repo_id="shellbrain", repo_root=Path.cwd().resolve(), uow_factory=uow_factory
+    )
 
     assert_relation_exists("model_usage")
-    rows = fetch_relation_rows("model_usage", order_by="occurred_at ASC, host_usage_key ASC")
+    rows = fetch_relation_rows(
+        "model_usage", order_by="occurred_at ASC, host_usage_key ASC"
+    )
 
     assert len(rows) == 1
     assert rows[0]["host_app"] == "codex"

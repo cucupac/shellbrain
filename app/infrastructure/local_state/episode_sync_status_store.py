@@ -30,4 +30,6 @@ def record_episode_sync_status(
     if last_successful_sync_at is not None:
         host_status["last_successful_sync_at"] = last_successful_sync_at
     host_status["last_error"] = last_error
-    status_path.write_text(json.dumps(status, indent=2, sort_keys=True), encoding="utf-8")
+    status_path.write_text(
+        json.dumps(status, indent=2, sort_keys=True), encoding="utf-8"
+    )

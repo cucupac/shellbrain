@@ -1,10 +1,10 @@
 """CLI protocol error envelope helpers."""
 
 from app.core.contracts.errors import ErrorDetail
-from app.core.contracts.responses import OperationResult
+from app.handlers.result_envelopes import error_envelope
 
 
 def error_response(errors: list[ErrorDetail]) -> dict:
     """Build the standard operation error response envelope."""
 
-    return OperationResult(status="error", errors=errors).model_dump(mode="python")
+    return error_envelope(errors)

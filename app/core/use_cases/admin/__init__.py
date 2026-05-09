@@ -1,2 +1,1 @@
 """Core administrative use cases."""
-

@@ -25,13 +25,35 @@ problem_runs = Table(
     Column("opened_by", String, nullable=False),
     Column("closed_by", String),
     Column("problem_memory_id", String, ForeignKey("memories.id", ondelete="SET NULL")),
-    Column("solution_memory_id", String, ForeignKey("memories.id", ondelete="SET NULL")),
-    Column("created_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
-    Column("updated_at", TIMESTAMP(timezone=True), nullable=False, server_default=text("NOW()")),
-    CheckConstraint(f"status IN ({_PROBLEM_RUN_STATUSES})", name="ck_problem_runs_status"),
-    CheckConstraint(f"opened_by IN ({_PROBLEM_RUN_ACTORS})", name="ck_problem_runs_opened_by"),
-    CheckConstraint(f"closed_by IS NULL OR closed_by IN ({_PROBLEM_RUN_ACTORS})", name="ck_problem_runs_closed_by"),
-    CheckConstraint("closed_at IS NULL OR closed_at >= opened_at", name="ck_problem_runs_closed_after_opened"),
+    Column(
+        "solution_memory_id", String, ForeignKey("memories.id", ondelete="SET NULL")
+    ),
+    Column(
+        "created_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+    Column(
+        "updated_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+    CheckConstraint(
+        f"status IN ({_PROBLEM_RUN_STATUSES})", name="ck_problem_runs_status"
+    ),
+    CheckConstraint(
+        f"opened_by IN ({_PROBLEM_RUN_ACTORS})", name="ck_problem_runs_opened_by"
+    ),
+    CheckConstraint(
+        f"closed_by IS NULL OR closed_by IN ({_PROBLEM_RUN_ACTORS})",
+        name="ck_problem_runs_closed_by",
+    ),
+    CheckConstraint(
+        "closed_at IS NULL OR closed_at >= opened_at",
+        name="ck_problem_runs_closed_after_opened",
+    ),
     CheckConstraint(
         """
         (
@@ -46,7 +68,13 @@ problem_runs = Table(
     ),
 )
 
-Index("idx_problem_runs_repo_thread_window", problem_runs.c.repo_id, problem_runs.c.thread_id, problem_runs.c.opened_at, problem_runs.c.closed_at)
+Index(
+    "idx_problem_runs_repo_thread_window",
+    problem_runs.c.repo_id,
+    problem_runs.c.thread_id,
+    problem_runs.c.opened_at,
+    problem_runs.c.closed_at,
+)
 Index(
     "idx_problem_runs_repo_host_session_window",
     problem_runs.c.repo_id,
@@ -55,6 +83,11 @@ Index(
     problem_runs.c.opened_at,
     problem_runs.c.closed_at,
 )
-Index("idx_problem_runs_repo_status_opened_at", problem_runs.c.repo_id, problem_runs.c.status, problem_runs.c.opened_at)
+Index(
+    "idx_problem_runs_repo_status_opened_at",
+    problem_runs.c.repo_id,
+    problem_runs.c.status,
+    problem_runs.c.opened_at,
+)
 Index("idx_problem_runs_problem_memory", problem_runs.c.problem_memory_id)
 Index("idx_problem_runs_solution_memory", problem_runs.c.solution_memory_id)

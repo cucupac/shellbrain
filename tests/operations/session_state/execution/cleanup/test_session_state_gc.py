@@ -2,7 +2,9 @@
 
 from pathlib import Path
 
-from app.infrastructure.local_state.session_state_file_store import FileSessionStateStore
+from app.infrastructure.local_state.session_state_file_store import (
+    FileSessionStateStore,
+)
 
 
 def test_session_state_gc_should_remove_stale_state_files_after_7_days(
@@ -25,7 +27,9 @@ def test_session_state_gc_should_remove_stale_state_files_after_7_days(
         },
     )
 
-    deleted = FileSessionStateStore().gc(repo_root=repo_with_shellbrain_state, older_than_iso="2026-03-18T12:00:00+00:00")
+    deleted = FileSessionStateStore().gc(
+        repo_root=repo_with_shellbrain_state, older_than_iso="2026-03-18T12:00:00+00:00"
+    )
 
     assert deleted == ["codex:thread-a"]
     assert not state_path.exists()

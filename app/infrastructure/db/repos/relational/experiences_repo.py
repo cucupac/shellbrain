@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 
 from app.core.entities.facts import FactUpdate, ProblemAttempt
-from app.core.interfaces.repos import IExperiencesRepo
+from app.core.ports.memory_repositories import IExperiencesRepo
 from app.infrastructure.db.models.experiences import fact_updates, problem_attempts
 
 

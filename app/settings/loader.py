@@ -6,7 +6,7 @@ from typing import Any
 
 import yaml
 
-from app.core.interfaces.config import IConfigProvider
+from app.core.ports.config import IConfigProvider
 
 
 class YamlConfigProvider(IConfigProvider):

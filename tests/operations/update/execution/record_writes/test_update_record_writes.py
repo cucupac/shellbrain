@@ -2,13 +2,21 @@
 
 from collections.abc import Callable
 
-from app.core.entities.memory import MemoryKind, MemoryScope
-from app.core.use_cases.memories.update_memory import execute_update_memory
-from app.infrastructure.db.models.associations import association_edge_evidence, association_edges, association_observations
+from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.use_cases.memories.update import execute_update_memory
+from tests.operations._shared.id_generators import SequenceIdGenerator
+from app.infrastructure.db.models.associations import (
+    association_edge_evidence,
+    association_edges,
+    association_observations,
+)
 from app.infrastructure.db.models.experiences import fact_updates
 from app.infrastructure.db.models.utility import utility_observations
 from app.infrastructure.db.uow import PostgresUnitOfWork
-from tests.operations.update._execution_helpers import make_update_request, snapshot_related_update_counts
+from tests.operations.update._execution_helpers import (
+    make_update_request,
+    snapshot_related_update_counts,
+)
 
 
 def test_update_utility_vote_commit_appends_observation_with_exact_payload(
@@ -44,9 +52,7 @@ def test_update_utility_vote_commit_appends_observation_with_exact_payload(
     )
 
     with uow_factory() as uow:
-        result = execute_update_memory(request, uow)
-
-    assert result.status == "ok"
+        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
     rows = fetch_rows(
         utility_observations,
         utility_observations.c.memory_id == "target-memory",
@@ -96,9 +102,7 @@ def test_update_fact_update_link_commit_appends_fact_update_with_change_id(
     )
 
     with uow_factory() as uow:
-        result = execute_update_memory(request, uow)
-
-    assert result.status == "ok"
+        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
     rows = fetch_rows(fact_updates, fact_updates.c.change_id == "change-1")
     assert len(rows) == 1
     assert rows[0]["old_fact_id"] == "old-fact"
@@ -141,9 +145,7 @@ def test_update_association_link_commit_persists_edge_observation_and_edge_evide
     )
 
     with uow_factory() as uow:
-        result = execute_update_memory(request, uow)
-
-    assert result.status == "ok"
+        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
     edges = fetch_rows(
         association_edges,
         association_edges.c.repo_id == "repo-a",
@@ -202,9 +204,7 @@ def test_update_matures_into_commit_persists_edge_observation_and_edge_evidence(
     )
 
     with uow_factory() as uow:
-        result = execute_update_memory(request, uow)
-
-    assert result.status == "ok"
+        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
     edges = fetch_rows(
         association_edges,
         association_edges.c.repo_id == "repo-a",
@@ -347,13 +347,14 @@ def test_update_writes_only_its_own_related_record_family(
     for target_id, update_payload, seed_case, expected_deltas in cases:
         seed_case()
         before_counts = snapshot_related_update_counts(count_rows)
-        request = make_update_request(repo_id="repo-a", memory_id=target_id, update=update_payload)
+        request = make_update_request(
+            repo_id="repo-a", memory_id=target_id, update=update_payload
+        )
 
         with uow_factory() as uow:
-            result = execute_update_memory(request, uow)
+            execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
 
         after_counts = snapshot_related_update_counts(count_rows)
-        assert result.status == "ok"
         assert _count_deltas(before_counts, after_counts) == expected_deltas
 
 

@@ -3,7 +3,9 @@
 from pathlib import Path
 
 from app.core.entities.backups import BackupManifest
-from app.infrastructure.postgres_admin.logical_backup import restore_backup as _restore_backup
+from app.infrastructure.postgres_admin.logical_backup import (
+    restore_backup as _restore_backup,
+)
 
 
 def restore_backup(

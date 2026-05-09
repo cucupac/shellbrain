@@ -8,11 +8,16 @@ import json
 from pathlib import Path
 from typing import Any
 
-from app.core.entities.telemetry import SessionSelectionSummary
-from app.infrastructure.host_transcripts.claude_code import list_claude_code_sessions_for_repo
+from app.core.entities.runtime_context import SessionSelectionSummary
+from app.infrastructure.host_transcripts.claude_code import (
+    list_claude_code_sessions_for_repo,
+)
 from app.infrastructure.host_transcripts.codex import list_codex_sessions_for_repo
 from app.infrastructure.host_transcripts.cursor import list_cursor_sessions_for_repo
-from app.infrastructure.host_transcripts.source_discovery import SUPPORTED_HOSTS, default_search_roots
+from app.infrastructure.host_transcripts.source_discovery import (
+    SUPPORTED_HOSTS,
+    default_search_roots,
+)
 
 
 @dataclass(frozen=True)
@@ -83,7 +88,9 @@ def read_runtime_session_status(repo_root: Path) -> dict[str, Any] | None:
     return payload if isinstance(payload, dict) else None
 
 
-def summarize_runtime_selection(*, repo_root: Path, repo_id: str, uow=None) -> SessionSelectionSummary:
+def summarize_runtime_selection(
+    *, repo_root: Path, repo_id: str, uow=None
+) -> SessionSelectionSummary:
     """Resolve lightweight session context from the repo-local poller status file."""
 
     status = read_runtime_session_status(repo_root)
@@ -101,7 +108,13 @@ def summarize_runtime_selection(*, repo_root: Path, repo_id: str, uow=None) -> S
         session_key = raw_host_status.get("current_session_key")
         if not isinstance(session_key, str) or not session_key:
             continue
-        candidates.append((host_app, session_key, _parse_status_time(raw_host_status.get("last_successful_sync_at"))))
+        candidates.append(
+            (
+                host_app,
+                session_key,
+                _parse_status_time(raw_host_status.get("last_successful_sync_at")),
+            )
+        )
 
     if not candidates:
         return SessionSelectionSummary()
@@ -117,7 +130,9 @@ def summarize_runtime_selection(*, repo_root: Path, repo_id: str, uow=None) -> S
     if uow is None:
         return summary
 
-    episode = uow.episodes.get_episode_by_thread(repo_id=repo_id, thread_id=summary.selected_thread_id)
+    episode = uow.episodes.get_episode_by_thread(
+        repo_id=repo_id, thread_id=summary.selected_thread_id
+    )
     if episode is None:
         return summary
     return replace(summary, selected_episode_id=episode.id)
@@ -136,15 +151,23 @@ def _search_roots_for_host(
     return default_search_roots(repo_root=repo_root, host_app=host_app)
 
 
-def _list_candidates_for_host(*, host_app: str, repo_root: Path, search_roots: list[Path]) -> list[dict[str, Any]]:
+def _list_candidates_for_host(
+    *, host_app: str, repo_root: Path, search_roots: list[Path]
+) -> list[dict[str, Any]]:
     """List all repo-matching host sessions for one supported host."""
 
     if host_app == "codex":
-        return list_codex_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+        return list_codex_sessions_for_repo(
+            repo_root=repo_root, search_roots=search_roots
+        )
     if host_app == "claude_code":
-        return list_claude_code_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+        return list_claude_code_sessions_for_repo(
+            repo_root=repo_root, search_roots=search_roots
+        )
     if host_app == "cursor":
-        return list_cursor_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+        return list_cursor_sessions_for_repo(
+            repo_root=repo_root, search_roots=search_roots
+        )
     raise ValueError(f"Unsupported host app for telemetry discovery: {host_app}")
 
 

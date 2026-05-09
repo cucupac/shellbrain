@@ -5,7 +5,9 @@ from pathlib import Path
 from app.settings.loader import YamlConfigProvider
 
 
-def test_yaml_config_provider_exposes_separate_create_and_update_policy_sections() -> None:
+def test_yaml_config_provider_exposes_separate_create_and_update_policy_sections() -> (
+    None
+):
     """yaml config provider should always expose separate create and update policy sections."""
 
     provider = YamlConfigProvider(Path("app/settings/defaults"))

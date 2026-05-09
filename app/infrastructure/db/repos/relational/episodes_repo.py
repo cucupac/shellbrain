@@ -6,9 +6,19 @@ from typing import Sequence
 from sqlalchemy import func, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus, SessionTransfer
-from app.core.interfaces.repos import IEpisodesRepo
-from app.infrastructure.db.models.episodes import episode_events, episodes, session_transfers
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeEvent,
+    EpisodeEventSource,
+    EpisodeStatus,
+    SessionTransfer,
+)
+from app.core.ports.episode_repositories import IEpisodesRepo
+from app.infrastructure.db.models.episodes import (
+    episode_events,
+    episodes,
+    session_transfers,
+)
 
 
 class EpisodesRepo(IEpisodesRepo):
@@ -41,7 +51,9 @@ class EpisodesRepo(IEpisodesRepo):
         """This method serializes sync writes for one repo/thread pair."""
 
         self._session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtext(:repo_id), hashtext(:thread_id))"),
+            text(
+                "SELECT pg_advisory_xact_lock(hashtext(:repo_id), hashtext(:thread_id))"
+            ),
             {"repo_id": repo_id, "thread_id": thread_id},
         )
 
@@ -66,7 +78,9 @@ class EpisodesRepo(IEpisodesRepo):
             )
             .on_conflict_do_nothing(index_elements=["repo_id", "thread_id"])
         )
-        stored = self.get_episode_by_thread(repo_id=episode.repo_id, thread_id=episode.thread_id)
+        stored = self.get_episode_by_thread(
+            repo_id=episode.repo_id, thread_id=episode.thread_id
+        )
         if stored is None:
             raise RuntimeError("episode ensure failed to return a canonical thread row")
         return stored
@@ -108,7 +122,9 @@ class EpisodesRepo(IEpisodesRepo):
         """This method returns already-imported upstream event keys for one episode."""
 
         rows = self._session.execute(
-            select(episode_events.c.host_event_key).where(episode_events.c.episode_id == episode_id)
+            select(episode_events.c.host_event_key).where(
+                episode_events.c.episode_id == episode_id
+            )
         ).scalars()
         return [str(value) for value in rows]
 
@@ -116,7 +132,9 @@ class EpisodesRepo(IEpisodesRepo):
         """This method returns the next append sequence number for one episode."""
 
         max_seq = self._session.execute(
-            select(func.max(episode_events.c.seq)).where(episode_events.c.episode_id == episode_id)
+            select(func.max(episode_events.c.seq)).where(
+                episode_events.c.episode_id == episode_id
+            )
         ).scalar_one()
         return 1 if max_seq is None else int(max_seq) + 1
 
@@ -190,14 +208,20 @@ class EpisodesRepo(IEpisodesRepo):
         ).scalars()
         return [str(value) for value in rows]
 
-    def list_visible_event_ids(self, *, repo_id: str, event_ids: Sequence[str]) -> list[str]:
+    def list_visible_event_ids(
+        self, *, repo_id: str, event_ids: Sequence[str]
+    ) -> list[str]:
         """This method returns stored event ids visible to one repo."""
 
         if not event_ids:
             return []
         rows = self._session.execute(
             select(episode_events.c.id)
-            .select_from(episode_events.join(episodes, episode_events.c.episode_id == episodes.c.id))
+            .select_from(
+                episode_events.join(
+                    episodes, episode_events.c.episode_id == episodes.c.id
+                )
+            )
             .where(
                 episodes.c.repo_id == repo_id,
                 episode_events.c.id.in_(event_ids),
@@ -217,7 +241,11 @@ class EpisodesRepo(IEpisodesRepo):
         rows = (
             self._session.execute(
                 select(episode_events)
-                .select_from(episode_events.join(episodes, episode_events.c.episode_id == episodes.c.id))
+                .select_from(
+                    episode_events.join(
+                        episodes, episode_events.c.episode_id == episodes.c.id
+                    )
+                )
                 .where(
                     episodes.c.repo_id == repo_id,
                     episode_events.c.episode_id == episode_id,

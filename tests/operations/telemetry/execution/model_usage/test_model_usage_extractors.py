@@ -5,10 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.infrastructure.host_transcripts.claude_code import extract_claude_code_model_usage
+from app.infrastructure.host_transcripts.claude_code import (
+    extract_claude_code_model_usage,
+)
 from app.infrastructure.host_transcripts.codex import extract_codex_model_usage
 from app.infrastructure.host_transcripts.cursor import extract_cursor_model_usage
-from app.infrastructure.host_transcripts.model_usage import collect_model_usage_records_for_session
+from app.infrastructure.host_transcripts.model_usage import (
+    collect_model_usage_records_for_session,
+)
 
 
 def test_codex_extractor_should_read_last_token_usage_from_token_count_events(
@@ -66,7 +70,9 @@ def test_claude_extractor_should_dedupe_repeated_request_ids(tmp_path: Path) -> 
             },
         },
     ]
-    transcript_path.write_text("".join(f"{json.dumps(entry)}\n" for entry in entries), encoding="utf-8")
+    transcript_path.write_text(
+        "".join(f"{json.dumps(entry)}\n" for entry in entries), encoding="utf-8"
+    )
 
     rows = extract_claude_code_model_usage(
         host_session_key="claude-session-1",
@@ -90,7 +96,10 @@ def test_cursor_extractor_should_read_per_bubble_token_counts_from_state_db(
     )
 
     assert len(rows) == 2
-    assert [row["host_usage_key"] for row in rows] == ["cursor-request-1", "cursor-request-2"]
+    assert [row["host_usage_key"] for row in rows] == [
+        "cursor-request-1",
+        "cursor-request-2",
+    ]
     assert rows[0]["source_kind"] == "cursor_state_vscdb"
     assert rows[0]["capture_quality"] == "exact"
     assert rows[0]["provider"] == "anthropic"
@@ -105,7 +114,12 @@ def test_cursor_collection_should_include_estimated_statusline_sidecar_rows(
     """Cursor collection should append managed statusline sidecar rows alongside DB-backed exact rows."""
 
     cursor_home = tmp_path / ".cursor"
-    sidecar_path = cursor_home / "shellbrain" / "model-usage" / f"{cursor_transcript_fixture['host_session_key']}.jsonl"
+    sidecar_path = (
+        cursor_home
+        / "shellbrain"
+        / "model-usage"
+        / f"{cursor_transcript_fixture['host_session_key']}.jsonl"
+    )
     sidecar_path.parent.mkdir(parents=True, exist_ok=True)
     sidecar_path.write_text(
         json.dumps(

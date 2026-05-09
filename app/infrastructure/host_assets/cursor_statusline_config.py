@@ -9,16 +9,19 @@ import sys
 
 from app.infrastructure.host_assets.paths import default_cursor_home
 
-CURSOR_STATUSLINE_MARKER = "app.entrypoints.host_hooks.cursor_statusline"
+CURSOR_STATUSLINE_MARKER = "shellbrain-managed:cursor-statusline"
+DEFAULT_CURSOR_STATUSLINE_MODULE = "app.infrastructure.host_identity.cursor_statusline"
 
 
-def install_cursor_statusline(*, force: bool) -> tuple[str, Path, str | None]:
+def install_cursor_statusline(
+    *, force: bool, statusline_module: str = DEFAULT_CURSOR_STATUSLINE_MODULE
+) -> tuple[str, Path, str | None]:
     """Install or update the Shellbrain-managed Cursor CLI statusline command."""
 
     config_path = default_cursor_home() / "cli-config.json"
     statusline_payload = {
         "type": "command",
-        "command": cursor_statusline_command(),
+        "command": cursor_statusline_command(statusline_module=statusline_module),
         "padding": 2,
         "updateIntervalMs": 300,
         "timeoutMs": 2000,
@@ -29,7 +32,11 @@ def install_cursor_statusline(*, force: bool) -> tuple[str, Path, str | None]:
         except (OSError, json.JSONDecodeError) as exc:
             return "skipped", config_path, f"unable to read {config_path}: {exc}"
         if not isinstance(payload, dict):
-            return "skipped", config_path, f"unmanaged malformed config exists at {config_path}; rerun with --force to replace"
+            return (
+                "skipped",
+                config_path,
+                f"unmanaged malformed config exists at {config_path}; rerun with --force to replace",
+            )
     else:
         payload = {}
 
@@ -37,14 +44,28 @@ def install_cursor_statusline(*, force: bool) -> tuple[str, Path, str | None]:
     if existing_statusline is not None:
         if not isinstance(existing_statusline, dict):
             if not force:
-                return "skipped", config_path, f"unmanaged statusLine exists in {config_path}; rerun with --force to replace"
+                return (
+                    "skipped",
+                    config_path,
+                    f"unmanaged statusLine exists in {config_path}; rerun with --force to replace",
+                )
         elif not is_managed_cursor_statusline(existing_statusline) and not force:
-            return "skipped", config_path, f"unmanaged statusLine exists in {config_path}; rerun with --force to replace"
+            return (
+                "skipped",
+                config_path,
+                f"unmanaged statusLine exists in {config_path}; rerun with --force to replace",
+            )
 
     payload["statusLine"] = statusline_payload
     config_path.parent.mkdir(parents=True, exist_ok=True)
-    config_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    return ("updated" if existing_statusline is not None else "installed"), config_path, None
+    config_path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+    return (
+        ("updated" if existing_statusline is not None else "installed"),
+        config_path,
+        None,
+    )
 
 
 def inspect_cursor_statusline() -> dict[str, object]:
@@ -52,18 +73,28 @@ def inspect_cursor_statusline() -> dict[str, object]:
 
     config_path = default_cursor_home() / "cli-config.json"
     if not config_path.exists():
-        return _statusline_report(config_path, installed=False, managed=False, malformed=False)
+        return _statusline_report(
+            config_path, installed=False, managed=False, malformed=False
+        )
     try:
         payload = json.loads(config_path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
-        return _statusline_report(config_path, installed=False, managed=False, malformed=True)
+        return _statusline_report(
+            config_path, installed=False, managed=False, malformed=True
+        )
     if not isinstance(payload, dict):
-        return _statusline_report(config_path, installed=False, managed=False, malformed=True)
+        return _statusline_report(
+            config_path, installed=False, managed=False, malformed=True
+        )
     statusline = payload.get("statusLine")
     if not isinstance(statusline, dict):
-        return _statusline_report(config_path, installed=False, managed=False, malformed=False)
+        return _statusline_report(
+            config_path, installed=False, managed=False, malformed=False
+        )
     executable = command_executable(statusline.get("command"))
-    installed = isinstance(statusline.get("command"), str) and bool(statusline.get("command", "").strip())
+    installed = isinstance(statusline.get("command"), str) and bool(
+        statusline.get("command", "").strip()
+    )
     return {
         "path": str(config_path),
         "installed": installed,
@@ -74,10 +105,13 @@ def inspect_cursor_statusline() -> dict[str, object]:
     }
 
 
-def cursor_statusline_command() -> str:
+def cursor_statusline_command(
+    *, statusline_module: str = DEFAULT_CURSOR_STATUSLINE_MODULE
+) -> str:
     """Return the managed Cursor CLI statusline command."""
 
-    return shlex.join([str(Path(sys.executable).resolve()), "-m", "app.entrypoints.host_hooks.cursor_statusline"])
+    command = shlex.join([str(Path(sys.executable).resolve()), "-m", statusline_module])
+    return f"{command} # {CURSOR_STATUSLINE_MARKER}"
 
 
 def is_managed_cursor_statusline(statusline_payload: dict[str, object]) -> bool:
@@ -101,7 +135,9 @@ def command_executable(command: object) -> str | None:
     return str(Path(parsed[0]).expanduser().resolve())
 
 
-def _statusline_report(config_path: Path, *, installed: bool, managed: bool, malformed: bool) -> dict[str, object]:
+def _statusline_report(
+    config_path: Path, *, installed: bool, managed: bool, malformed: bool
+) -> dict[str, object]:
     return {
         "path": str(config_path),
         "installed": installed,

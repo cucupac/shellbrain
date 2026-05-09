@@ -9,21 +9,36 @@ from pathlib import Path
 import pytest
 
 from app.core.entities.episodes import EpisodeStatus
-from app.core.use_cases.metrics.agent_behavior_analysis import build_agent_behavior_report
+from app.core.use_cases.metrics.analyze_agent_behavior import (
+    build_agent_behavior_report,
+)
 from app.infrastructure.db.models.episodes import episode_events, episodes
-from app.infrastructure.db.models.telemetry import operation_invocations, read_invocation_summaries, write_invocation_summaries
+from app.infrastructure.db.models.telemetry import (
+    operation_invocations,
+    read_invocation_summaries,
+    write_invocation_summaries,
+)
+from app.infrastructure.db.queries.agent_behavior import fetch_agent_behavior_rows
 
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
 
 
-def test_build_agent_behavior_report_should_compare_pre_and_post_rollout_behavior(integration_engine) -> None:
+def test_build_agent_behavior_report_should_compare_pre_and_post_rollout_behavior(
+    integration_engine,
+) -> None:
     """The behavior report should surface timing, checkpoint, and writeback quality shifts."""
 
     cutoff_at = datetime(2026, 4, 7, 0, 0, tzinfo=timezone.utc)
     _seed_behavior_dataset(integration_engine, cutoff_at=cutoff_at)
 
-    report = build_agent_behavior_report(engine=integration_engine, cutoff_at=cutoff_at, window_days=2)
+    report = build_agent_behavior_report(
+        cutoff_at=cutoff_at,
+        window_days=2,
+        **fetch_agent_behavior_rows(
+            engine=integration_engine, cutoff_at=cutoff_at, window_days=2
+        ),
+    )
 
     pre = report["pre"]["overall"]
     post = report["post"]["overall"]
@@ -48,13 +63,19 @@ def test_build_agent_behavior_report_should_compare_pre_and_post_rollout_behavio
     assert report["delta"]["multi_read_thread_rate"] == 0.5
 
 
-def test_agent_behavior_analysis_script_should_print_json_report(monkeypatch, capsys, integration_engine) -> None:
+def test_agent_behavior_analysis_script_should_print_json_report(
+    monkeypatch, capsys, integration_engine
+) -> None:
     """The internal analysis script should resolve DSNs and emit JSON to stdout."""
 
     cutoff_at = datetime(2026, 4, 7, 0, 0, tzinfo=timezone.utc)
     _seed_behavior_dataset(integration_engine, cutoff_at=cutoff_at)
-    script_path = Path(__file__).resolve().parents[5] / "scripts" / "agent_behavior_analysis.py"
-    spec = importlib.util.spec_from_file_location("agent_behavior_analysis_script", script_path)
+    script_path = (
+        Path(__file__).resolve().parents[5] / "scripts" / "agent_behavior_analysis.py"
+    )
+    spec = importlib.util.spec_from_file_location(
+        "agent_behavior_analysis_script", script_path
+    )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -147,15 +168,30 @@ def _seed_behavior_dataset(integration_engine, *, cutoff_at: datetime) -> None:
         ),
     ]
     read_rows = [
-        _read_row(invocation_id="pre-read-1", created_at=pre_base, query_text="pre startup read", zero_results=False),
-        _read_row(invocation_id="post-read-1", created_at=post_base, query_text="post startup read", zero_results=False),
+        _read_row(
+            invocation_id="pre-read-1",
+            created_at=pre_base,
+            query_text="pre startup read",
+            zero_results=False,
+        ),
+        _read_row(
+            invocation_id="post-read-1",
+            created_at=post_base,
+            query_text="post startup read",
+            zero_results=False,
+        ),
         _read_row(
             invocation_id="post-read-2",
             created_at=post_base + timedelta(minutes=20),
             query_text="oauth callback loop in staging",
             zero_results=False,
         ),
-        _read_row(invocation_id="claude-read-1", created_at=claude_base, query_text="claude startup read", zero_results=False),
+        _read_row(
+            invocation_id="claude-read-1",
+            created_at=claude_base,
+            query_text="claude startup read",
+            zero_results=False,
+        ),
     ]
     write_rows = [
         _write_row(
@@ -174,9 +210,27 @@ def _seed_behavior_dataset(integration_engine, *, cutoff_at: datetime) -> None:
         ),
     ]
     episode_rows = [
-        _episode_row(episode_id="episode-pre-1", repo_id=repo_primary, host_app="codex", thread_id="codex:pre-1", started_at=pre_base),
-        _episode_row(episode_id="episode-post-1", repo_id=repo_primary, host_app="codex", thread_id="codex:post-1", started_at=post_base),
-        _episode_row(episode_id="episode-claude-1", repo_id=repo_secondary, host_app="claude", thread_id="claude:post-1", started_at=claude_base),
+        _episode_row(
+            episode_id="episode-pre-1",
+            repo_id=repo_primary,
+            host_app="codex",
+            thread_id="codex:pre-1",
+            started_at=pre_base,
+        ),
+        _episode_row(
+            episode_id="episode-post-1",
+            repo_id=repo_primary,
+            host_app="codex",
+            thread_id="codex:post-1",
+            started_at=post_base,
+        ),
+        _episode_row(
+            episode_id="episode-claude-1",
+            repo_id=repo_secondary,
+            host_app="claude",
+            thread_id="claude:post-1",
+            started_at=claude_base,
+        ),
     ]
     event_rows = [
         _event_row(
@@ -250,7 +304,9 @@ def _operation_row(
     }
 
 
-def _read_row(*, invocation_id: str, created_at: datetime, query_text: str, zero_results: bool) -> dict[str, object]:
+def _read_row(
+    *, invocation_id: str, created_at: datetime, query_text: str, zero_results: bool
+) -> dict[str, object]:
     """Return one read_invocation_summaries row."""
 
     return {
@@ -298,7 +354,14 @@ def _write_row(
     }
 
 
-def _episode_row(*, episode_id: str, repo_id: str, host_app: str, thread_id: str, started_at: datetime) -> dict[str, object]:
+def _episode_row(
+    *,
+    episode_id: str,
+    repo_id: str,
+    host_app: str,
+    thread_id: str,
+    started_at: datetime,
+) -> dict[str, object]:
     """Return one episodes row."""
 
     return {

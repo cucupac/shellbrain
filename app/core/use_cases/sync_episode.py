@@ -8,8 +8,13 @@ import json
 from typing import Any
 from uuid import uuid4
 
-from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource, EpisodeStatus
-from app.core.interfaces.unit_of_work import IUnitOfWork
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeEvent,
+    EpisodeEventSource,
+    EpisodeStatus,
+)
+from app.core.ports.unit_of_work import IUnitOfWork
 
 
 def sync_episode(
@@ -27,7 +32,9 @@ def sync_episode(
     counts = _count_normalized_events(normalized_events)
     uow.episodes.acquire_thread_sync_guard(repo_id=repo_id, thread_id=thread_id)
     imported_count = 0
-    started_at = _earliest_event_timestamp(normalized_events) or datetime.now(timezone.utc)
+    started_at = _earliest_event_timestamp(normalized_events) or datetime.now(
+        timezone.utc
+    )
     episode = uow.episodes.get_or_create_episode_for_thread(
         Episode(
             id=str(uuid4()),

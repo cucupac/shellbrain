@@ -7,8 +7,8 @@ from collections.abc import Callable
 import pytest
 from sqlalchemy import text
 
-from app.core.contracts.responses import OperationResult
-from app.startup.agent_operations import handle_recall
+from app.core.contracts.responses import UseCaseResult
+from tests.operations._shared.handler_calls import handle_recall
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -53,7 +53,9 @@ def test_recall_schema_should_create_summary_and_source_tables_with_source_item_
     assert recall_summary_fk_count == 1
 
 
-def test_recall_command_telemetry_can_be_inserted_after_migration(integration_engine) -> None:
+def test_recall_command_telemetry_can_be_inserted_after_migration(
+    integration_engine,
+) -> None:
     """operation invocation command constraints should allow recall rows."""
 
     with integration_engine.begin() as conn:
@@ -111,7 +113,9 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert read_request.query == "recall telemetry"
     assert read_request.limit == 2
 
-    operation_rows = fetch_relation_rows("operation_invocations", order_by="created_at DESC, id DESC")
+    operation_rows = fetch_relation_rows(
+        "operation_invocations", order_by="created_at DESC, id DESC"
+    )
     assert len(operation_rows) == 1
     assert operation_rows[0]["command"] == "recall"
     assert operation_rows[0]["outcome"] == "ok"
@@ -119,13 +123,22 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     summary_rows = fetch_relation_rows("recall_invocation_summaries")
     assert len(summary_rows) == 1
     assert summary_rows[0]["query_text"] == "recall telemetry"
-    assert summary_rows[0]["candidate_token_estimate"] > summary_rows[0]["brief_token_estimate"] > 0
+    assert (
+        summary_rows[0]["candidate_token_estimate"]
+        > summary_rows[0]["brief_token_estimate"]
+        > 0
+    )
     assert summary_rows[0]["fallback_reason"] is None
 
     source_rows = fetch_relation_rows("recall_source_items", order_by="ordinal ASC")
     assert [row["ordinal"] for row in source_rows] == [1, 2, 3]
     source_tuples = [
-        (row["source_kind"], row["source_id"], row["input_section"], row["output_section"])
+        (
+            row["source_kind"],
+            row["source_id"],
+            row["input_section"],
+            row["output_section"],
+        )
         for row in source_rows
     ]
     assert source_tuples == [
@@ -203,22 +216,32 @@ def test_recall_token_estimates_should_be_deterministic(
         )
         assert result["status"] == "ok"
 
-    rows = fetch_relation_rows("recall_invocation_summaries", order_by="created_at ASC, invocation_id ASC")
-    estimates = {(row["candidate_token_estimate"], row["brief_token_estimate"]) for row in rows}
+    rows = fetch_relation_rows(
+        "recall_invocation_summaries", order_by="created_at ASC, invocation_id ASC"
+    )
+    estimates = {
+        (row["candidate_token_estimate"], row["brief_token_estimate"]) for row in rows
+    }
     assert len(rows) == 2
     assert len(estimates) == 1
 
 
-def _stub_internal_read(monkeypatch: pytest.MonkeyPatch, *, pack: dict) -> dict[str, object]:
+def _stub_internal_read(
+    monkeypatch: pytest.MonkeyPatch, *, pack: dict
+) -> dict[str, object]:
     """Patch recall's internal read dependency and capture the forwarded request."""
 
     captured: dict[str, object] = {}
 
-    def _fake_execute_read_memory(request, uow) -> OperationResult:
+    def _fake_execute_read_memory(request, uow, **kwargs) -> UseCaseResult:
+        del kwargs
         captured["request"] = request
-        return OperationResult(status="ok", data={"pack": pack})
+        return UseCaseResult(data={"pack": pack})
 
-    monkeypatch.setattr("app.core.use_cases.memory_retrieval.recall_memory.execute_read_memory", _fake_execute_read_memory)
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.recall.execute_read_memory",
+        _fake_execute_read_memory,
+    )
     return captured
 
 
@@ -226,7 +249,11 @@ def _candidate_pack() -> dict:
     """Return one deterministic read pack with memory and concept candidates."""
 
     return {
-        "meta": {"mode": "targeted", "limit": 2, "counts": {"direct": 1, "explicit_related": 1, "implicit_related": 0}},
+        "meta": {
+            "mode": "targeted",
+            "limit": 2,
+            "counts": {"direct": 1, "explicit_related": 1, "implicit_related": 0},
+        },
         "direct": [
             {
                 "memory_id": "direct-1",
@@ -265,11 +292,20 @@ def _empty_pack() -> dict:
     """Return one deterministic read pack with no memory or concept candidates."""
 
     return {
-        "meta": {"mode": "targeted", "limit": 8, "counts": {"direct": 0, "explicit_related": 0, "implicit_related": 0}},
+        "meta": {
+            "mode": "targeted",
+            "limit": 8,
+            "counts": {"direct": 0, "explicit_related": 0, "implicit_related": 0},
+        },
         "direct": [],
         "explicit_related": [],
         "implicit_related": [],
-        "concepts": {"mode": "auto", "items": [], "missing_refs": [], "guidance": "No concepts matched."},
+        "concepts": {
+            "mode": "auto",
+            "items": [],
+            "missing_refs": [],
+            "guidance": "No concepts matched.",
+        },
     }
 
 

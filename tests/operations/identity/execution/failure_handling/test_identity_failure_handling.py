@@ -2,7 +2,10 @@
 
 from pathlib import Path
 
-from app.infrastructure.host_identity.resolver import resolve_caller_identity, resolve_trusted_events_source
+from app.infrastructure.host_identity.resolver import (
+    resolve_caller_identity,
+    resolve_trusted_events_source,
+)
 
 
 def test_identity_failure_handling_should_return_host_hook_missing_when_claude_runtime_is_detected_without_trusted_shellbrain_identity(
@@ -29,7 +32,10 @@ def test_identity_failure_handling_should_return_host_identity_drifted_when_one_
     source = resolve_trusted_events_source(
         caller_identity=resolved.caller_identity,
         repo_root=tmp_path / "missing-repo",
-        search_roots_by_host={"codex": [tmp_path / "missing-transcripts"], "claude_code": []},
+        search_roots_by_host={
+            "codex": [tmp_path / "missing-transcripts"],
+            "claude_code": [],
+        },
     )
 
     assert source.caller_identity is not None

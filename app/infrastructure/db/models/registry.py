@@ -15,6 +15,17 @@ from app.infrastructure.db.models import (
 from app.infrastructure.db.models.metadata import metadata
 
 
-_ = (associations, concepts, episodes, evidence, experiences, instance_metadata, memories, problem_runs, telemetry, utility)
+_ = (
+    associations,
+    concepts,
+    episodes,
+    evidence,
+    experiences,
+    instance_metadata,
+    memories,
+    problem_runs,
+    telemetry,
+    utility,
+)
 
 target_metadata = metadata

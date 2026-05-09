@@ -26,5 +26,7 @@ def restore_backup(
             f"Refusing to restore into protected database name '{target_db}'. Use a fresh scratch database name."
         )
     if not target_db.lower().startswith("shellbrain_restore"):
-        raise BackupPolicyError("Restore target must be a scratch database named shellbrain_restore*.")
+        raise BackupPolicyError(
+            "Restore target must be a scratch database named shellbrain_restore*."
+        )
     return restore_logical_backup(target_db=target_db, **kwargs)

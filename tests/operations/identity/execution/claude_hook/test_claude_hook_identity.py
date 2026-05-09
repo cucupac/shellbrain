@@ -13,7 +13,10 @@ def test_claude_hook_identity_should_resolve_one_trusted_main_caller_from_shellb
     assert resolved.error is None
     assert resolved.caller_identity is not None
     assert resolved.caller_identity.host_app == "claude_code"
-    assert resolved.caller_identity.canonical_id == claude_hook_runtime_identity["canonical_id"]
+    assert (
+        resolved.caller_identity.canonical_id
+        == claude_hook_runtime_identity["canonical_id"]
+    )
     assert resolved.caller_identity.trust_level == "trusted"
 
 
@@ -26,6 +29,12 @@ def test_claude_hook_identity_should_resolve_one_trusted_subagent_caller_when_ag
 
     assert resolved.error is None
     assert resolved.caller_identity is not None
-    assert resolved.caller_identity.agent_key == claude_hook_subagent_runtime_identity["agent_key"]
-    assert resolved.caller_identity.canonical_id == claude_hook_subagent_runtime_identity["canonical_id"]
+    assert (
+        resolved.caller_identity.agent_key
+        == claude_hook_subagent_runtime_identity["agent_key"]
+    )
+    assert (
+        resolved.caller_identity.canonical_id
+        == claude_hook_subagent_runtime_identity["canonical_id"]
+    )
     assert resolved.caller_identity.trust_level == "trusted"

@@ -1,6 +1,6 @@
 """Threshold-config usage contracts for retrieval boot helpers."""
 
-from app.core.use_cases.memory_retrieval.seed_retrieval import retrieve_seeds
+from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
 
 
 class _StubSemanticRetrieval:
@@ -25,11 +25,13 @@ class _StubKeywordRetrieval:
         ]
 
 
-def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thresholds(monkeypatch) -> None:
+def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thresholds(
+    monkeypatch,
+) -> None:
     """seed retrieval should always apply configured semantic and keyword thresholds."""
 
     monkeypatch.setattr(
-        "app.core.use_cases.memory_retrieval.seed_retrieval.get_threshold_settings",
+        "app.core.use_cases.retrieval.seed_retrieval.get_threshold_settings",
         lambda: {"semantic_threshold": 0.5, "keyword_threshold": 0.5},
     )
 
@@ -47,5 +49,7 @@ def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thre
     )
 
     assert seeds["semantic"] == [{"memory_id": "semantic-keep", "score": 0.8}]
-    assert [candidate["memory_id"] for candidate in seeds["keyword"]] == ["keyword-keep"]
+    assert [candidate["memory_id"] for candidate in seeds["keyword"]] == [
+        "keyword-keep"
+    ]
     assert float(seeds["keyword"][0]["score"]) >= 0.5

@@ -11,7 +11,10 @@ import sqlite3
 from typing import Any
 from urllib.parse import unquote, urlparse
 
-from app.infrastructure.host_transcripts.tool_filter import should_keep_tool_result, summarize_tool_result
+from app.infrastructure.host_transcripts.tool_filter import (
+    should_keep_tool_result,
+    summarize_tool_result,
+)
 
 
 _CURSOR_GLOBAL_DB = Path("globalStorage") / "state.vscdb"
@@ -43,7 +46,11 @@ def resolve_cursor_transcript_path(
 ) -> Path:
     """Resolve Cursor's global state database for one composer id."""
 
-    if last_known_path is not None and last_known_path.exists() and _cursor_db_has_composer(last_known_path, host_session_key):
+    if (
+        last_known_path is not None
+        and last_known_path.exists()
+        and _cursor_db_has_composer(last_known_path, host_session_key)
+    ):
         return last_known_path
     for root in _cursor_user_roots(search_roots):
         global_db = root / _CURSOR_GLOBAL_DB
@@ -54,16 +61,22 @@ def resolve_cursor_transcript_path(
     )
 
 
-def find_latest_cursor_session_for_repo(*, repo_root: Path, search_roots: Sequence[Path]) -> dict[str, Any] | None:
+def find_latest_cursor_session_for_repo(
+    *, repo_root: Path, search_roots: Sequence[Path]
+) -> dict[str, Any] | None:
     """Return the most recently updated Cursor composer for one repo root."""
 
-    candidates = list_cursor_sessions_for_repo(repo_root=repo_root, search_roots=search_roots)
+    candidates = list_cursor_sessions_for_repo(
+        repo_root=repo_root, search_roots=search_roots
+    )
     if not candidates:
         return None
     return max(candidates, key=lambda candidate: candidate["updated_at"])
 
 
-def list_cursor_sessions_for_repo(*, repo_root: Path, search_roots: Sequence[Path]) -> list[dict[str, Any]]:
+def list_cursor_sessions_for_repo(
+    *, repo_root: Path, search_roots: Sequence[Path]
+) -> list[dict[str, Any]]:
     """Return all repo-matching active Cursor composers under the bounded search roots."""
 
     resolved_repo_root = repo_root.resolve()
@@ -72,9 +85,13 @@ def list_cursor_sessions_for_repo(*, repo_root: Path, search_roots: Sequence[Pat
         global_db = user_root / _CURSOR_GLOBAL_DB
         if not global_db.exists():
             continue
-        for workspace_db in user_root.glob(str(_CURSOR_WORKSPACE_GLOB / "*" / "state.vscdb")):
+        for workspace_db in user_root.glob(
+            str(_CURSOR_WORKSPACE_GLOB / "*" / "state.vscdb")
+        ):
             workspace_root = workspace_db.parent
-            workspace_path = _resolve_workspace_path(workspace_root / _CURSOR_WORKSPACE_META)
+            workspace_path = _resolve_workspace_path(
+                workspace_root / _CURSOR_WORKSPACE_META
+            )
             if workspace_path is None:
                 continue
             try:
@@ -90,13 +107,17 @@ def list_cursor_sessions_for_repo(*, repo_root: Path, search_roots: Sequence[Pat
                     "host_app": "cursor",
                     "host_session_key": composer_id,
                     "transcript_path": global_db,
-                    "updated_at": _composer_updated_at(composer, fallback_path=global_db),
+                    "updated_at": _composer_updated_at(
+                        composer, fallback_path=global_db
+                    ),
                 }
                 deduped[(global_db, composer_id)] = candidate
     return list(deduped.values())
 
 
-def normalize_cursor_transcript(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
+def normalize_cursor_transcript(
+    *, host_session_key: str, transcript_path: Path
+) -> list[dict[str, Any]]:
     """Normalize one Cursor composer thread into shared compact event dictionaries."""
 
     composer = _read_cursor_json(transcript_path, f"composerData:{host_session_key}")
@@ -115,9 +136,15 @@ def normalize_cursor_transcript(*, host_session_key: str, transcript_path: Path)
         if not isinstance(header, dict):
             continue
         bubble_id = header.get("bubbleId")
-        if not isinstance(bubble_id, str) or not bubble_id or bubble_id in generating_ids:
+        if (
+            not isinstance(bubble_id, str)
+            or not bubble_id
+            or bubble_id in generating_ids
+        ):
             continue
-        bubble = _read_cursor_json(transcript_path, f"bubbleId:{host_session_key}:{bubble_id}")
+        bubble = _read_cursor_json(
+            transcript_path, f"bubbleId:{host_session_key}:{bubble_id}"
+        )
         if not isinstance(bubble, dict):
             continue
         message = _normalize_cursor_message(
@@ -138,7 +165,9 @@ def normalize_cursor_transcript(*, host_session_key: str, transcript_path: Path)
     return events
 
 
-def extract_cursor_model_usage(*, host_session_key: str, transcript_path: Path) -> list[dict[str, Any]]:
+def extract_cursor_model_usage(
+    *, host_session_key: str, transcript_path: Path
+) -> list[dict[str, Any]]:
     """Extract per-bubble token usage from one Cursor global state database."""
 
     composer = _read_cursor_json(transcript_path, f"composerData:{host_session_key}")
@@ -157,9 +186,15 @@ def extract_cursor_model_usage(*, host_session_key: str, transcript_path: Path) 
         if not isinstance(header, dict):
             continue
         bubble_id = header.get("bubbleId")
-        if not isinstance(bubble_id, str) or not bubble_id or bubble_id in generating_ids:
+        if (
+            not isinstance(bubble_id, str)
+            or not bubble_id
+            or bubble_id in generating_ids
+        ):
             continue
-        bubble = _read_cursor_json(transcript_path, f"bubbleId:{host_session_key}:{bubble_id}")
+        bubble = _read_cursor_json(
+            transcript_path, f"bubbleId:{host_session_key}:{bubble_id}"
+        )
         if not isinstance(bubble, dict):
             continue
         token_count = bubble.get("tokenCount")
@@ -168,18 +203,36 @@ def extract_cursor_model_usage(*, host_session_key: str, transcript_path: Path) 
         model_id = _cursor_model_id(bubble)
         rows.append(
             {
-                "host_usage_key": str(_first_string(bubble, ("requestId", "responseId", "conversationRequestId")) or bubble_id),
+                "host_usage_key": str(
+                    _first_string(
+                        bubble, ("requestId", "responseId", "conversationRequestId")
+                    )
+                    or bubble_id
+                ),
                 "source_kind": "cursor_state_vscdb",
                 "occurred_at": _timestamp_to_iso(bubble.get("createdAt")),
                 "agent_role": "foreground",
                 "provider": _provider_from_model_id(model_id),
                 "model_id": model_id,
-                "input_tokens": token_count.get("inputTokens", token_count.get("input_tokens")),
-                "output_tokens": token_count.get("outputTokens", token_count.get("output_tokens")),
-                "reasoning_output_tokens": token_count.get("reasoningOutputTokens", token_count.get("reasoning_output_tokens")),
-                "cached_input_tokens_total": token_count.get("cachedInputTokens", token_count.get("cached_input_tokens")),
-                "cache_read_input_tokens": token_count.get("cacheReadInputTokens", token_count.get("cache_read_input_tokens")),
-                "cache_creation_input_tokens": token_count.get("cacheCreationInputTokens", token_count.get("cache_creation_input_tokens")),
+                "input_tokens": token_count.get(
+                    "inputTokens", token_count.get("input_tokens")
+                ),
+                "output_tokens": token_count.get(
+                    "outputTokens", token_count.get("output_tokens")
+                ),
+                "reasoning_output_tokens": token_count.get(
+                    "reasoningOutputTokens", token_count.get("reasoning_output_tokens")
+                ),
+                "cached_input_tokens_total": token_count.get(
+                    "cachedInputTokens", token_count.get("cached_input_tokens")
+                ),
+                "cache_read_input_tokens": token_count.get(
+                    "cacheReadInputTokens", token_count.get("cache_read_input_tokens")
+                ),
+                "cache_creation_input_tokens": token_count.get(
+                    "cacheCreationInputTokens",
+                    token_count.get("cache_creation_input_tokens"),
+                ),
                 "capture_quality": "exact",
                 "raw_usage_json": {
                     "tokenCount": token_count,
@@ -217,14 +270,18 @@ def _connect_read_only(db_path: Path) -> sqlite3.Connection:
     return conn
 
 
-def _read_cursor_json(db_path: Path, key: str, *, table: str = "cursorDiskKV") -> dict[str, Any] | None:
+def _read_cursor_json(
+    db_path: Path, key: str, *, table: str = "cursorDiskKV"
+) -> dict[str, Any] | None:
     """Read and decode one JSON object from one Cursor SQLite key-value table."""
 
     if not db_path.exists():
         return None
     try:
         with _connect_read_only(db_path) as conn:
-            row = conn.execute(f"SELECT value FROM {table} WHERE key = ?", (key,)).fetchone()
+            row = conn.execute(
+                f"SELECT value FROM {table} WHERE key = ?", (key,)
+            ).fetchone()
     except sqlite3.Error:
         return None
     if row is None:
@@ -270,11 +327,18 @@ def _active_workspace_composer_ids(workspace_db: Path) -> list[str]:
     if not isinstance(payload, dict):
         return []
     ordered_ids: list[str] = []
-    for raw_ids in (payload.get("selectedComposerIds"), payload.get("lastFocusedComposerIds")):
+    for raw_ids in (
+        payload.get("selectedComposerIds"),
+        payload.get("lastFocusedComposerIds"),
+    ):
         if not isinstance(raw_ids, list):
             continue
         for composer_id in raw_ids:
-            if isinstance(composer_id, str) and composer_id and composer_id not in ordered_ids:
+            if (
+                isinstance(composer_id, str)
+                and composer_id
+                and composer_id not in ordered_ids
+            ):
                 ordered_ids.append(composer_id)
     return ordered_ids
 
@@ -472,7 +536,11 @@ def _build_tool_event(
     """Construct one shared Cursor tool_result event payload."""
 
     normalized_tool_name = _normalized_tool_name(tool_name=tool_name, command=command)
-    normalized_status = "error" if is_error else _normalized_tool_status(status=status, text=text, summary=summary)
+    normalized_status = (
+        "error"
+        if is_error
+        else _normalized_tool_status(status=status, text=text, summary=summary)
+    )
     return _build_event(
         composer_id=composer_id,
         host_event_key=f"{bubble_id}:tool:{suffix}",
@@ -581,7 +649,15 @@ def _stringify_tool_value(value: Any) -> str | None:
     if isinstance(value, dict):
         parts = [
             part
-            for key in ("text", "content", "message", "output", "stderr", "stdout", "summary")
+            for key in (
+                "text",
+                "content",
+                "message",
+                "output",
+                "stderr",
+                "stdout",
+                "summary",
+            )
             if (part := _stringify_tool_value(value.get(key)))
         ]
         if parts:
@@ -603,7 +679,9 @@ def _first_string(item: dict[str, Any], keys: tuple[str, ...]) -> str | None:
     return None
 
 
-def _infer_tool_error(*, item: dict[str, Any], text: str | None, status: str | None) -> bool:
+def _infer_tool_error(
+    *, item: dict[str, Any], text: str | None, status: str | None
+) -> bool:
     """Infer whether one generic Cursor tool result represents an error."""
 
     if bool(item.get("isError")) or bool(item.get("is_error")):
@@ -676,7 +754,9 @@ def _normalized_tool_name(*, tool_name: str | None, command: str | None) -> str:
     return "exec_command"
 
 
-def _normalized_tool_status(*, status: str | None, text: str | None, summary: str | None) -> str:
+def _normalized_tool_status(
+    *, status: str | None, text: str | None, summary: str | None
+) -> str:
     """Infer a stable ok/error status for Cursor tool results."""
 
     lowered_status = (status or "").strip().lower()
@@ -709,7 +789,11 @@ def _timestamp_to_iso(value: Any) -> str:
     epoch_seconds = _timestamp_to_epoch_seconds(value)
     if epoch_seconds is None:
         return ""
-    return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    return (
+        datetime.fromtimestamp(epoch_seconds, tz=timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
 
 
 def _cursor_model_id(bubble: dict[str, Any]) -> str | None:

@@ -10,9 +10,13 @@ from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
 from app.startup.use_cases import get_uow_factory
-from app.core.entities.telemetry import ModelUsageRecord
-from app.core.use_cases.record_model_usage_telemetry import record_model_usage_telemetry
-from app.infrastructure.host_transcripts.model_usage import collect_model_usage_records_for_session
+from app.infrastructure.observability.telemetry.records import ModelUsageRecord
+from app.infrastructure.observability.telemetry.recorder import (
+    record_model_usage_telemetry,
+)
+from app.infrastructure.host_transcripts.model_usage import (
+    collect_model_usage_records_for_session,
+)
 
 
 @dataclass(frozen=True)
@@ -60,8 +64,12 @@ def backfill_model_usage(*, engine: Engine) -> BackfillSummary:
                 repo_id=str(row["repo_id"]),
                 host_app=str(row["host_app"]),
                 host_session_key=str(row["host_session_key"]),
-                thread_id=str(row["thread_id"]) if row["thread_id"] is not None else None,
-                episode_id=str(row["episode_id"]) if row["episode_id"] is not None else None,
+                thread_id=str(row["thread_id"])
+                if row["thread_id"] is not None
+                else None,
+                episode_id=str(row["episode_id"])
+                if row["episode_id"] is not None
+                else None,
                 transcript_path=transcript_path,
             )
         except Exception as exc:

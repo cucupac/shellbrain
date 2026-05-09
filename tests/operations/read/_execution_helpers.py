@@ -1,6 +1,6 @@
 """Shared helper builders for read execution tests."""
 
-from app.core.contracts.requests import MemoryReadRequest
+from app.core.contracts.retrieval import MemoryReadRequest
 
 
 def make_read_request(
@@ -39,8 +39,6 @@ def make_read_request(
 
 def item_ids(result) -> list[str]:
     """Extract ordered shellbrain IDs from a read operation result."""
-
-    assert result.status == "ok"
     assert "pack" in result.data
     pack = result.data["pack"]
     return [

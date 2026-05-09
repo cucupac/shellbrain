@@ -6,7 +6,7 @@ from collections.abc import Callable
 import os
 from pathlib import Path
 
-from app.startup.agent_operations import handle_events
+from tests.operations._shared.handler_calls import handle_events
 from app.infrastructure.db.models.episodes import episode_events
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
@@ -31,7 +31,9 @@ def test_events_syncs_the_resolved_active_session_and_returns_recent_events_newe
 
     assert result["status"] == "ok"
     assert result["data"]["host_app"] == "codex"
-    assert result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    assert (
+        result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    )
     assert count_rows("episode_events") == 3
 
     events = result["data"]["events"]
@@ -53,7 +55,9 @@ def test_events_selects_the_most_recent_matching_host_session_across_supported_h
     claude_path = Path(str(claude_code_transcript_fixture["transcript_path"]))
     os.utime(codex_path, (codex_path.stat().st_atime, codex_path.stat().st_mtime - 10))
     os.utime(claude_path, None)
-    monkeypatch.setenv("CODEX_THREAD_ID", str(codex_transcript_fixture["host_session_key"]))
+    monkeypatch.setenv(
+        "CODEX_THREAD_ID", str(codex_transcript_fixture["host_session_key"])
+    )
 
     result = handle_events(
         {},
@@ -68,7 +72,9 @@ def test_events_selects_the_most_recent_matching_host_session_across_supported_h
 
     assert result["status"] == "ok"
     assert result["data"]["host_app"] == "codex"
-    assert result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    assert (
+        result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    )
 
     rows = fetch_rows(episode_events)
     assert len(rows) == 3
@@ -94,7 +100,9 @@ def test_events_should_fall_back_to_cursor_when_no_trusted_host_exists(
 
     assert result["status"] == "ok"
     assert result["data"]["host_app"] == "cursor"
-    assert result["data"]["thread_id"] == cursor_transcript_fixture["canonical_thread_id"]
+    assert (
+        result["data"]["thread_id"] == cursor_transcript_fixture["canonical_thread_id"]
+    )
 
 
 def test_events_should_keep_trusted_codex_over_a_newer_cursor_candidate(
@@ -105,7 +113,9 @@ def test_events_should_keep_trusted_codex_over_a_newer_cursor_candidate(
 ) -> None:
     """trusted caller identity should still win even when Cursor has the newer fallback candidate."""
 
-    monkeypatch.setenv("CODEX_THREAD_ID", str(codex_transcript_fixture["host_session_key"]))
+    monkeypatch.setenv(
+        "CODEX_THREAD_ID", str(codex_transcript_fixture["host_session_key"])
+    )
 
     result = handle_events(
         {},
@@ -121,4 +131,6 @@ def test_events_should_keep_trusted_codex_over_a_newer_cursor_candidate(
 
     assert result["status"] == "ok"
     assert result["data"]["host_app"] == "codex"
-    assert result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    assert (
+        result["data"]["thread_id"] == codex_transcript_fixture["canonical_thread_id"]
+    )

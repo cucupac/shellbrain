@@ -6,7 +6,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Mapping
 
-from app.core.entities.memory import MATURE_MEMORY_KIND_VALUES
+from app.core.entities.memories import MATURE_MEMORY_KIND_VALUES
 
 
 SUPPORTED_READ_MODES = ("targeted", "ambient")
@@ -37,7 +37,9 @@ class ReadPolicySettings:
     def resolve_mode(self, mode: str | None, *, field: str = "read.mode") -> str:
         resolved = self.default_mode if mode is None else mode
         if not isinstance(resolved, str) or resolved not in SUPPORTED_READ_MODES:
-            raise ValueError(f"{field} must be one of: {', '.join(SUPPORTED_READ_MODES)}")
+            raise ValueError(
+                f"{field} must be one of: {', '.join(SUPPORTED_READ_MODES)}"
+            )
         return resolved
 
     def resolve_limit(self, *, mode: str, explicit_limit: int | None) -> int:
@@ -81,8 +83,7 @@ class ReadPolicySettings:
             "limits_by_mode": dict(self.limits_by_mode),
             "expand": deepcopy(dict(self.expand)),
             "quotas_by_mode": {
-                mode: dict(quotas)
-                for mode, quotas in self.quotas_by_mode.items()
+                mode: dict(quotas) for mode, quotas in self.quotas_by_mode.items()
             },
             "retrieval": dict(self.retrieval),
         }

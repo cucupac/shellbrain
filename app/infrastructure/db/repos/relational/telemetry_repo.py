@@ -9,20 +9,8 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.entities.guidance import PendingUtilityCandidate
-from app.core.entities.telemetry import (
-    EpisodeSyncRunRecord,
-    EpisodeSyncToolTypeRecord,
-    ModelUsageRecord,
-    OperationInvocationRecord,
-    RecallSourceItemRecord,
-    RecallSummaryRecord,
-    ReadResultItemRecord,
-    ReadSummaryRecord,
-    WriteEffectItemRecord,
-    WriteSummaryRecord,
-)
+from app.core.ports.guidance import IPendingUtilityCandidatesRepo
 from app.infrastructure.db.models.memories import memories
-from app.core.interfaces.repos import ITelemetryRepo
 from app.infrastructure.db.models.telemetry import (
     episode_sync_runs,
     episode_sync_tool_types,
@@ -36,9 +24,21 @@ from app.infrastructure.db.models.telemetry import (
     write_invocation_summaries,
 )
 from app.infrastructure.db.models.utility import utility_observations
+from app.infrastructure.observability.telemetry.records import (
+    EpisodeSyncRunRecord,
+    EpisodeSyncToolTypeRecord,
+    ModelUsageRecord,
+    OperationInvocationRecord,
+    RecallSourceItemRecord,
+    RecallSummaryRecord,
+    ReadResultItemRecord,
+    ReadSummaryRecord,
+    WriteEffectItemRecord,
+    WriteSummaryRecord,
+)
 
 
-class TelemetryRepo(ITelemetryRepo):
+class TelemetryRepo(IPendingUtilityCandidatesRepo):
     """Append-heavy relational persistence for operational telemetry."""
 
     def __init__(self, session) -> None:
@@ -59,13 +59,23 @@ class TelemetryRepo(ITelemetryRepo):
         """Replace one read summary row and its ordered result items."""
 
         invocation_id = summary.invocation_id
-        self._session.execute(delete(read_result_items).where(read_result_items.c.invocation_id == invocation_id))
         self._session.execute(
-            delete(read_invocation_summaries).where(read_invocation_summaries.c.invocation_id == invocation_id)
+            delete(read_result_items).where(
+                read_result_items.c.invocation_id == invocation_id
+            )
         )
-        self._session.execute(read_invocation_summaries.insert().values(**asdict(summary)))
+        self._session.execute(
+            delete(read_invocation_summaries).where(
+                read_invocation_summaries.c.invocation_id == invocation_id
+            )
+        )
+        self._session.execute(
+            read_invocation_summaries.insert().values(**asdict(summary))
+        )
         if items:
-            self._session.execute(read_result_items.insert(), [asdict(item) for item in items])
+            self._session.execute(
+                read_result_items.insert(), [asdict(item) for item in items]
+            )
 
     def insert_recall_summary(
         self,
@@ -75,13 +85,23 @@ class TelemetryRepo(ITelemetryRepo):
         """Replace one recall summary row and its ordered source items."""
 
         invocation_id = summary.invocation_id
-        self._session.execute(delete(recall_source_items).where(recall_source_items.c.invocation_id == invocation_id))
         self._session.execute(
-            delete(recall_invocation_summaries).where(recall_invocation_summaries.c.invocation_id == invocation_id)
+            delete(recall_source_items).where(
+                recall_source_items.c.invocation_id == invocation_id
+            )
         )
-        self._session.execute(recall_invocation_summaries.insert().values(**asdict(summary)))
+        self._session.execute(
+            delete(recall_invocation_summaries).where(
+                recall_invocation_summaries.c.invocation_id == invocation_id
+            )
+        )
+        self._session.execute(
+            recall_invocation_summaries.insert().values(**asdict(summary))
+        )
         if items:
-            self._session.execute(recall_source_items.insert(), [asdict(item) for item in items])
+            self._session.execute(
+                recall_source_items.insert(), [asdict(item) for item in items]
+            )
 
     def insert_write_summary(
         self,
@@ -91,26 +111,41 @@ class TelemetryRepo(ITelemetryRepo):
         """Replace one write summary row and its ordered effect items."""
 
         invocation_id = summary.invocation_id
-        self._session.execute(delete(write_effect_items).where(write_effect_items.c.invocation_id == invocation_id))
         self._session.execute(
-            delete(write_invocation_summaries).where(write_invocation_summaries.c.invocation_id == invocation_id)
+            delete(write_effect_items).where(
+                write_effect_items.c.invocation_id == invocation_id
+            )
         )
-        self._session.execute(write_invocation_summaries.insert().values(**asdict(summary)))
+        self._session.execute(
+            delete(write_invocation_summaries).where(
+                write_invocation_summaries.c.invocation_id == invocation_id
+            )
+        )
+        self._session.execute(
+            write_invocation_summaries.insert().values(**asdict(summary))
+        )
         if items:
-            self._session.execute(write_effect_items.insert(), [asdict(item) for item in items])
+            self._session.execute(
+                write_effect_items.insert(), [asdict(item) for item in items]
+            )
 
     def insert_episode_sync_run(
         self,
         run: EpisodeSyncRunRecord,
-        tool_types: tuple[EpisodeSyncToolTypeRecord, ...] | list[EpisodeSyncToolTypeRecord],
+        tool_types: tuple[EpisodeSyncToolTypeRecord, ...]
+        | list[EpisodeSyncToolTypeRecord],
     ) -> None:
         """Append one sync-run row and its per-tool counts."""
 
         self._session.execute(episode_sync_runs.insert().values(**asdict(run)))
         if tool_types:
-            self._session.execute(episode_sync_tool_types.insert(), [asdict(item) for item in tool_types])
+            self._session.execute(
+                episode_sync_tool_types.insert(), [asdict(item) for item in tool_types]
+            )
 
-    def insert_model_usage(self, records: tuple[ModelUsageRecord, ...] | list[ModelUsageRecord]) -> None:
+    def insert_model_usage(
+        self, records: tuple[ModelUsageRecord, ...] | list[ModelUsageRecord]
+    ) -> None:
         """Append normalized model-usage rows idempotently."""
 
         if not records:
@@ -122,10 +157,14 @@ class TelemetryRepo(ITelemetryRepo):
                 payload["created_at"] = datetime.now(timezone.utc)
             rows.append(payload)
         statement = pg_insert(model_usage).values(rows)
-        statement = statement.on_conflict_do_nothing(constraint="uq_model_usage_host_session_usage")
+        statement = statement.on_conflict_do_nothing(
+            constraint="uq_model_usage_host_session_usage"
+        )
         self._session.execute(statement)
 
-    def update_operation_polling(self, invocation_id: str, *, attempted: bool, started: bool) -> None:
+    def update_operation_polling(
+        self, invocation_id: str, *, attempted: bool, started: bool
+    ) -> None:
         """Patch poller-start bookkeeping on an existing invocation row."""
 
         self._session.execute(
@@ -176,7 +215,9 @@ class TelemetryRepo(ITelemetryRepo):
                 utility_observations.c.id.is_(None),
             )
             .group_by(read_result_items.c.memory_id)
-            .order_by(func.count().desc(), func.max(operation_invocations.c.created_at).desc())
+            .order_by(
+                func.count().desc(), func.max(operation_invocations.c.created_at).desc()
+            )
         )
         rows = self._session.execute(stmt).mappings().all()
         return [
