@@ -1,7 +1,7 @@
 """Session idle-expiry contracts."""
 
 from app.core.entities.session_state import SessionState
-from app.handlers.session_state import SessionStateManager
+from app.infrastructure.cli.handlers.session_state import SessionStateManager
 
 
 def test_idle_expiry_should_reset_working_session_fields_after_24_hours(

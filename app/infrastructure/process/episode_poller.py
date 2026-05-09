@@ -26,11 +26,11 @@ from app.infrastructure.host_transcripts.source_discovery import (
 from app.infrastructure.local_state.episode_sync_status_store import (
     record_episode_sync_status,
 )
-from app.infrastructure.observability.telemetry.recorder import (
+from app.infrastructure.telemetry.recorder import (
     record_episode_sync_telemetry,
     record_model_usage_telemetry,
 )
-from app.infrastructure.observability.telemetry.sync_records import (
+from app.infrastructure.telemetry.sync_records import (
     build_episode_sync_records,
 )
 from app.infrastructure.local_state.poller_lock import (

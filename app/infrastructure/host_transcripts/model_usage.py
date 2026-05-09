@@ -15,7 +15,7 @@ from app.infrastructure.host_transcripts.claude_code import (
 )
 from app.infrastructure.host_transcripts.codex import extract_codex_model_usage
 from app.infrastructure.host_transcripts.cursor import extract_cursor_model_usage
-from app.infrastructure.observability.telemetry.records import ModelUsageRecord
+from app.infrastructure.telemetry.records import ModelUsageRecord
 
 
 def collect_model_usage_records_for_session(

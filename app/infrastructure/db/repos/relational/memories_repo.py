@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
-from app.core.ports.memory_repositories import IMemoriesRepo
+from app.core.ports.db.memory_repositories import IMemoriesRepo
 from app.infrastructure.db.models.memories import memories, memory_embeddings
 
 

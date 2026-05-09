@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from app.core.contracts.requests import StrictBaseModel
+from app.core.contracts.base import StrictBaseModel
 
 
 ConceptKindValue = Literal[

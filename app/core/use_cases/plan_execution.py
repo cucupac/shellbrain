@@ -15,15 +15,15 @@ from app.core.contracts.planned_effects import (
     EffectType,
     FactUpdateCreateEffectParams,
     MemoryArchiveStateEffectParams,
-    MemoryCreateEffectParams,
+    MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
     MemoryEvidenceAttachEffectParams,
     PlannedEffect,
     ProblemAttemptCreateEffectParams,
     UtilityObservationAppendEffectParams,
 )
-from app.core.ports.embeddings import IEmbeddingProvider
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.embeddings.provider import IEmbeddingProvider
+from app.core.ports.db.unit_of_work import IUnitOfWork
 
 
 def apply_side_effects(
@@ -39,7 +39,7 @@ def apply_side_effects(
         params = effect.params
 
         if effect_type is EffectType.MEMORY_CREATE:
-            assert isinstance(params, MemoryCreateEffectParams)
+            assert isinstance(params, MemoryAddEffectParams)
             uow.memories.create(
                 Memory(
                     id=params.memory_id,

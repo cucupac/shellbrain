@@ -10,7 +10,7 @@ from app.core.entities.associations import (
     AssociationSourceMode,
     AssociationState,
 )
-from app.core.ports.memory_repositories import IAssociationsRepo
+from app.core.ports.db.memory_repositories import IAssociationsRepo
 from app.infrastructure.db.models.associations import (
     association_edges,
     association_observations,

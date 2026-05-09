@@ -14,7 +14,7 @@ from app.core.entities.episodes import (
     EpisodeEventSource,
     EpisodeStatus,
 )
-from app.core.contracts.requests import MemoryCreateRequest
+from app.core.contracts.memories import MemoryAddRequest
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.engine import get_engine
@@ -63,7 +63,7 @@ def test_create_persists_memory_embedding_row() -> None:
                 joined = ", ".join(table_names)
                 conn.execute(text(f"TRUNCATE TABLE {joined} RESTART IDENTITY CASCADE;"))
 
-        request = MemoryCreateRequest.model_validate(
+        request = MemoryAddRequest.model_validate(
             {
                 "op": "create",
                 "repo_id": "repo-integration",

@@ -1,6 +1,6 @@
 """Deterministic ID generators for operation use-case tests."""
 
-from app.core.ports.idgen import IIdGenerator
+from app.core.ports.runtime.idgen import IIdGenerator
 
 
 class SequenceIdGenerator(IIdGenerator):

@@ -1,0 +1,1 @@
+Core contains domain types, contracts, pure policies, use cases, and ports. It may import only from `app.core` and must not know about CLI, startup, DB, filesystems, subprocesses, or telemetry storage.

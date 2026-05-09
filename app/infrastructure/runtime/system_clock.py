@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from app.core.ports.clock import IClock
+from app.core.ports.runtime.clock import IClock
 
 
 class SystemClock(IClock):

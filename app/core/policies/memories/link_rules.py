@@ -1,17 +1,17 @@
 """Pure memory link rules."""
 
 from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.requests import (
+from app.core.contracts.memories import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
     MemoryBatchUpdateRequest,
-    MemoryCreateRequest,
+    MemoryAddRequest,
     MemoryUpdateRequest,
 )
 from app.core.entities.memories import MemoryKind, is_mature_memory_kind
 
 
-def validate_create_semantics(request: MemoryCreateRequest) -> list[ErrorDetail]:
+def validate_create_semantics(request: MemoryAddRequest) -> list[ErrorDetail]:
     """Validate semantic constraints for create operations."""
 
     errors: list[ErrorDetail] = []

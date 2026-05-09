@@ -4,7 +4,8 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from app.core.contracts.requests import MemoryKindValue, StrictBaseModel
+from app.core.contracts.base import StrictBaseModel
+from app.core.contracts.memories import MemoryKindValue
 from app.core.entities.ids import RepoId
 
 

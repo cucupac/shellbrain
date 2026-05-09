@@ -7,7 +7,8 @@ from pathlib import Path
 import pytest
 
 import app.entrypoints.cli.main as cli_main
-import app.entrypoints.cli.parser as cli_parser
+import app.infrastructure.cli.parser.builder as cli_parser
+import app.infrastructure.cli.runner as cli_runner
 import app.startup.cli as startup_cli
 from app.startup.repo_context import RepoContext, resolve_repo_context
 
@@ -156,10 +157,10 @@ def test_init_should_forward_storage_flags_to_run_init(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        cli_main, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root
+        cli_runner, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root
     )
     monkeypatch.setattr(
-        cli_main, "_should_register_repo_during_init", lambda **kwargs: False
+        startup_cli, "should_register_repo_during_init", lambda **kwargs: False
     )
     monkeypatch.setattr(
         "app.startup.runtime_admin.run_init",
@@ -227,7 +228,7 @@ def test_metrics_help_should_include_one_example(
 def test_metrics_parser_should_reject_days_and_no_open_flags() -> None:
     """metrics parser should reject removed legacy flags."""
 
-    parser = cli_main.build_parser()
+    parser = cli_parser.build_parser()
 
     with pytest.raises(SystemExit) as days_exc:
         parser.parse_args(["metrics", "--days", "14"])
@@ -297,7 +298,7 @@ def test_concept_parser_should_require_add_or_update_and_accept_payloads(
 ) -> None:
     """concept should use the same single-payload-source shape as other operational commands."""
 
-    parser = cli_main.build_parser()
+    parser = cli_parser.build_parser()
 
     with pytest.raises(SystemExit) as bare_exc:
         parser.parse_args(
@@ -332,7 +333,7 @@ def test_concept_parser_should_require_add_or_update_and_accept_payloads(
     assert file_args.command == "concept"
     assert file_args.concept_command == "update"
     assert (
-        cli_main._load_payload(file_args.json_text, file_args.json_file)["actions"][0][
+        cli_runner._load_payload(file_args.json_text, file_args.json_file)["actions"][0][
             "type"
         ]
         == "update_concept"
@@ -603,25 +604,12 @@ def test_main_accepts_repo_targeting_flags_before_subcommand(
     captured: dict[str, object] = {}
     sync_calls: list[object] = []
 
-    def _fake_dispatch(
-        command: str, payload: dict[str, object], repo_context
-    ) -> dict[str, object]:
-        captured["command"] = command
-        captured["payload"] = payload
-        captured["repo_context"] = repo_context
-        return {"status": "ok", "data": {"memory_id": "mem-1"}}
-
-    monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
-    monkeypatch.setattr(
-        cli_main,
-        "_print_operation_result",
-        lambda result: captured.setdefault("result", result),
-    )
-
     def _fake_run_operation_command(**kwargs):
-        result = kwargs["dispatch_operation"](
-            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
-        )
+        captured["command"] = kwargs["command"]
+        captured["payload"] = kwargs["payload"]
+        captured["repo_context"] = kwargs["repo_context"]
+        result = {"status": "ok", "data": {"memory_id": "mem-1"}}
+        captured["result"] = result
         sync_calls.append(kwargs["repo_context"])
         return result
 
@@ -658,21 +646,11 @@ def test_main_accepts_repo_targeting_flags_after_subcommand(
     repo_root.mkdir()
     captured: dict[str, object] = {}
 
-    def _fake_dispatch(
-        command: str, payload: dict[str, object], repo_context
-    ) -> dict[str, object]:
-        captured["command"] = command
-        captured["payload"] = payload
-        captured["repo_context"] = repo_context
-        return {"status": "ok", "data": {"episode_id": "ep-1"}}
-
-    monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
-    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
-
     def _fake_run_operation_command(**kwargs):
-        return kwargs["dispatch_operation"](
-            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
-        )
+        captured["command"] = kwargs["command"]
+        captured["payload"] = kwargs["payload"]
+        captured["repo_context"] = kwargs["repo_context"]
+        return {"status": "ok", "data": {"episode_id": "ep-1"}}
 
     monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
 
@@ -704,31 +682,19 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
     repo_root.mkdir()
     captured: dict[str, object] = {}
 
-    def _fake_dispatch(
-        command: str, payload: dict[str, object], repo_context
-    ) -> dict[str, object]:
-        captured["command"] = command
-        captured["payload"] = payload
-        captured["repo_context"] = repo_context
-        return {
+    def _fake_run_operation_command(**kwargs):
+        captured["command"] = kwargs["command"]
+        captured["payload"] = kwargs["payload"]
+        captured["repo_context"] = kwargs["repo_context"]
+        result = {
             "status": "ok",
             "data": {
                 "brief": {"summary": "stub", "sources": []},
                 "fallback_reason": None,
             },
         }
-
-    monkeypatch.setattr(cli_main, "_dispatch_operation_command", _fake_dispatch)
-    monkeypatch.setattr(
-        cli_main,
-        "_print_operation_result",
-        lambda result: captured.setdefault("result", result),
-    )
-
-    def _fake_run_operation_command(**kwargs):
-        return kwargs["dispatch_operation"](
-            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
-        )
+        captured["result"] = result
+        return result
 
     monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
 
@@ -754,17 +720,8 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
     repo_root.mkdir()
     sync_calls: list[object] = []
 
-    monkeypatch.setattr(
-        cli_main,
-        "_dispatch_operation_command",
-        lambda *args, **kwargs: {"status": "ok", "data": {}},
-    )
-    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
-
     def _fake_run_operation_command(**kwargs):
-        result = kwargs["dispatch_operation"](
-            kwargs["command"], kwargs["payload"], kwargs["repo_context"]
-        )
+        result = {"status": "ok", "data": {}}
         if not kwargs["no_sync"]:
             sync_calls.append(kwargs["repo_context"])
         return result
@@ -848,12 +805,6 @@ def test_operational_command_should_fail_cleanly_when_app_role_is_unsafe(
     repo_root = tmp_path / "unsafe-role-repo"
     repo_root.mkdir()
 
-    monkeypatch.setattr(
-        cli_main,
-        "_dispatch_operation_command",
-        lambda *args, **kwargs: {"status": "ok", "data": {}},
-    )
-    monkeypatch.setattr(cli_main, "_print_operation_result", lambda result: None)
     monkeypatch.setattr(
         startup_cli,
         "run_operation_command",

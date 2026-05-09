@@ -1,6 +1,6 @@
 """Request-shape contracts for the concept endpoints."""
 
-from app.entrypoints.cli.protocol.payload_validation import (
+from app.infrastructure.cli.protocol.payload_validation import (
     validate_concept_add_schema,
     validate_concept_show_schema,
     validate_concept_update_schema,

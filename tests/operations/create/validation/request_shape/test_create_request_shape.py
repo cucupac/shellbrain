@@ -1,7 +1,7 @@
 """Request-shape contracts for create-path requests."""
 
-from app.entrypoints.cli.protocol.hydration import hydrate_create_payload
-from app.entrypoints.cli.protocol.payload_validation import validate_create_schema
+from app.infrastructure.cli.protocol.hydration import hydrate_memory_add_payload
+from app.infrastructure.cli.protocol.payload_validation import validate_create_schema
 
 
 def test_create_rejects_unknown_fields() -> None:
@@ -84,7 +84,7 @@ def test_create_rejects_transport_fields_at_agent_interface() -> None:
 def test_create_hydration_infers_configured_scope_default() -> None:
     """create hydration should always infer configured scope when omitted."""
 
-    hydrated = hydrate_create_payload(
+    hydrated = hydrate_memory_add_payload(
         {
             "memory": {
                 "text": "Repo-scoped defaulted memory.",
@@ -122,7 +122,7 @@ def test_create_hydration_preserves_explicit_scope() -> None:
         },
     }
 
-    hydrated = hydrate_create_payload(
+    hydrated = hydrate_memory_add_payload(
         payload,
         inferred_repo_id="repo-inferred",
         defaults={"scope": "global"},

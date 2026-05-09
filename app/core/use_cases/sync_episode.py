@@ -14,7 +14,7 @@ from app.core.entities.episodes import (
     EpisodeEventSource,
     EpisodeStatus,
 )
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 
 
 def sync_episode(

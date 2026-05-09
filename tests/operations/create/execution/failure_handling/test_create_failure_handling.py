@@ -4,11 +4,11 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.contracts.requests import MemoryCreateRequest
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.contracts.memories import MemoryAddRequest
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
-from tests.operations._shared.handler_calls import handle_create
+from tests.operations._shared.handler_calls import handle_memory_add
 from app.infrastructure.db.uow import PostgresUnitOfWork
 
 
@@ -35,7 +35,7 @@ def test_validation_failure_writes_nothing(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: None,
@@ -66,7 +66,7 @@ def test_embedding_failure_writes_nothing(
         },
     }
 
-    result = handle_create(
+    result = handle_memory_add(
         payload,
         uow_factory=uow_factory,
         embedding_provider_factory=lambda: _FailingEmbeddingProvider(),
@@ -88,7 +88,7 @@ def test_side_effect_failure_mid_write_rolls_back_all_prior_effects(
 ) -> None:
     """mid-write side-effect failures should always roll back all prior side effects."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",

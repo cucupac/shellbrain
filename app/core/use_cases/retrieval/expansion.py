@@ -3,7 +3,7 @@
 from typing import Any
 
 from app.core.entities.settings import ReadPolicySettings, default_read_policy_settings
-from app.core.ports.retrieval_repositories import (
+from app.core.ports.db.retrieval_repositories import (
     IReadPolicyRepo,
     ISemanticRetrievalRepo,
 )

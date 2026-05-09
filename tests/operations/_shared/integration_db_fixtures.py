@@ -22,7 +22,7 @@ from app.core.entities.episodes import (
     EpisodeStatus,
 )
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.models.registry import target_metadata
 from app.infrastructure.db.session import get_session_factory

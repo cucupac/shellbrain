@@ -13,7 +13,7 @@ from app.core.entities.episodes import (
     EpisodeStatus,
     SessionTransfer,
 )
-from app.core.ports.episode_repositories import IEpisodesRepo
+from app.core.ports.db.episode_repositories import IEpisodesRepo
 from app.infrastructure.db.models.episodes import (
     episode_events,
     episodes,

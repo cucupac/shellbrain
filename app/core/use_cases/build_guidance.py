@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from app.core.entities.guidance import GuidanceDecision
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
 from app.core.entities.session_state import SessionState
-from app.core.ports.guidance import IPendingUtilityCandidatesRepo
+from app.core.ports.db.guidance import IPendingUtilityCandidatesRepo
 
 
 GUIDANCE_REMINDER_INTERVAL = timedelta(minutes=30)

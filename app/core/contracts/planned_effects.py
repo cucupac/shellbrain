@@ -19,7 +19,7 @@ class EffectType(str, Enum):
 
 
 @dataclass(frozen=True)
-class MemoryCreateEffectParams:
+class MemoryAddEffectParams:
     memory_id: str
     repo_id: str
     scope: str
@@ -89,7 +89,7 @@ class AssociationUpsertAndObserveEffectParams:
 
 
 EffectParams: TypeAlias = (
-    MemoryCreateEffectParams
+    MemoryAddEffectParams
     | MemoryEmbeddingUpsertEffectParams
     | MemoryEvidenceAttachEffectParams
     | ProblemAttemptCreateEffectParams

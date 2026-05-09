@@ -7,7 +7,7 @@ from app.core.contracts.concepts import (
     ConceptShowRequest,
     ConceptUpdateRequest,
 )
-from app.core.ports.idgen import IIdGenerator
+from app.core.ports.runtime.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.show import show_concept
 from app.core.use_cases.concepts.update import update_concepts

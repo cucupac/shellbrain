@@ -9,7 +9,7 @@ from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.entities.guidance import PendingUtilityCandidate
-from app.core.ports.guidance import IPendingUtilityCandidatesRepo
+from app.core.ports.db.guidance import IPendingUtilityCandidatesRepo
 from app.infrastructure.db.models.memories import memories
 from app.infrastructure.db.models.telemetry import (
     episode_sync_runs,
@@ -24,7 +24,7 @@ from app.infrastructure.db.models.telemetry import (
     write_invocation_summaries,
 )
 from app.infrastructure.db.models.utility import utility_observations
-from app.infrastructure.observability.telemetry.records import (
+from app.infrastructure.telemetry.records import (
     EpisodeSyncRunRecord,
     EpisodeSyncToolTypeRecord,
     ModelUsageRecord,

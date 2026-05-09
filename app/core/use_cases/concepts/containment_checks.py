@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from app.core.entities.concepts import ConceptRelationPredicate
-from app.core.ports.unit_of_work import IUnitOfWork
+from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.concepts.relation_rules import validate_no_contains_cycle
 
 

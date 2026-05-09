@@ -1,6 +1,6 @@
 """Schema contracts for read-path requests."""
 
-from app.entrypoints.cli.protocol.payload_validation import validate_read_schema
+from app.infrastructure.cli.protocol.payload_validation import validate_read_schema
 
 
 def test_read_rejects_unknown_fields() -> None:

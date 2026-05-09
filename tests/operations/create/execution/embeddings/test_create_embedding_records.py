@@ -2,8 +2,8 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryCreateRequest
-from app.core.ports.embeddings import IEmbeddingProvider
+from app.core.contracts.memories import MemoryAddRequest
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.models.memories import memory_embeddings
@@ -17,7 +17,7 @@ def test_create_persists_memory_embedding_row(
 ) -> None:
     """create should always persist one memory_embedding row for the new memory."""
 
-    request = MemoryCreateRequest.model_validate(
+    request = MemoryAddRequest.model_validate(
         {
             "op": "create",
             "repo_id": "repo-a",

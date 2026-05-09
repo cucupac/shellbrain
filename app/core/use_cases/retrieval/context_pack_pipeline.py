@@ -8,9 +8,9 @@ from app.core.entities.settings import (
     default_read_policy_settings,
     default_threshold_settings,
 )
-from app.core.ports.memory_repositories import IMemoriesRepo
-from app.core.ports.retrieval import IVectorSearch
-from app.core.ports.retrieval_repositories import (
+from app.core.ports.db.memory_repositories import IMemoriesRepo
+from app.core.ports.embeddings.retrieval import IVectorSearch
+from app.core.ports.db.retrieval_repositories import (
     IKeywordRetrievalRepo,
     IReadPolicyRepo,
     ISemanticRetrievalRepo,

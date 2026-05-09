@@ -6,7 +6,7 @@ from typing import Any, Sequence
 
 from sqlalchemy import select
 
-from app.core.ports.retrieval_repositories import IKeywordRetrievalRepo
+from app.core.ports.db.retrieval_repositories import IKeywordRetrievalRepo
 from app.infrastructure.db.models.memories import memories
 
 

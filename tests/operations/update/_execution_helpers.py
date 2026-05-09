@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.requests import MemoryUpdateRequest
+from app.core.contracts.memories import MemoryUpdateRequest
 
 
 def make_update_request(

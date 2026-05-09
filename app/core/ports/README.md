@@ -1,0 +1,1 @@
+Ports are behavior protocols the core requires from outside systems. They are grouped by the outside adapter category that implements them, such as `db`, `embeddings`, `local_state`, `reporting`, `runtime`, and `settings`; core depends only on these abstractions.

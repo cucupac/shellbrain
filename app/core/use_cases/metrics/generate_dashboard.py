@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.core.ports.metrics import (
+from app.core.ports.reporting.metrics import (
     MetricsArtifactWriter,
     MetricsDashboardBrowser,
     MetricsHtmlRenderer,

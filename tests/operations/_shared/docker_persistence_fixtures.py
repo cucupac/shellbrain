@@ -24,8 +24,8 @@ from app.core.entities.episodes import (
     EpisodeEventSource,
     EpisodeStatus,
 )
-from app.core.ports.embeddings import IEmbeddingProvider
-from tests.operations._shared.handler_calls import handle_create
+from app.core.ports.embeddings.provider import IEmbeddingProvider
+from tests.operations._shared.handler_calls import handle_memory_add
 from app.infrastructure.db.engine import get_engine
 from app.infrastructure.db.models.evidence import evidence_refs
 from app.infrastructure.db.models.episodes import episode_events, episodes
@@ -219,7 +219,7 @@ class IsolatedDockerPostgres:
                 )
             )
 
-        result = handle_create(
+        result = handle_memory_add(
             {
                 "memory": {
                     "text": self._sentinel.memory_text,
