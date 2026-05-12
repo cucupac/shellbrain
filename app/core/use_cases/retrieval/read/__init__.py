@@ -12,11 +12,16 @@ __all__ = [
     "ReadConceptsExpandRequest",
     "ReadExpandRequest",
     "ReadMemoryResult",
+    "build_context_pack",
     "execute_read_memory",
 ]
 
 
 def __getattr__(name: str):
+    if name == "build_context_pack":
+        from app.core.use_cases.retrieval.context_pack_pipeline import build_context_pack
+
+        return build_context_pack
     if name == "execute_read_memory":
         from app.core.use_cases.retrieval.read.execute import execute_read_memory
 

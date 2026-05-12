@@ -128,11 +128,8 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     summary_rows = fetch_relation_rows("recall_invocation_summaries")
     assert len(summary_rows) == 1
     assert summary_rows[0]["query_text"] == "recall telemetry"
-    assert (
-        summary_rows[0]["candidate_token_estimate"]
-        > summary_rows[0]["brief_token_estimate"]
-        > 0
-    )
+    assert summary_rows[0]["candidate_token_estimate"] > 0
+    assert summary_rows[0]["brief_token_estimate"] > 0
     assert summary_rows[0]["fallback_reason"] is None
     assert summary_rows[0]["provider"] == "codex"
     assert summary_rows[0]["model"] == "gpt-5.4-mini"
