@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.contracts.retrieval import MemoryReadRequest, ReadConceptsExpandRequest
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest, ReadConceptsExpandRequest
 from app.core.entities.concepts import (
     Concept,
     ConceptClaim,

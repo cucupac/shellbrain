@@ -1,6 +1,6 @@
 """Link-rule contracts for create-path requests."""
 
-from app.core.contracts.memories import MemoryAddRequest
+from app.core.use_cases.memories.add.request import MemoryAddRequest
 from app.core.policies.memories.link_rules import validate_create_semantics
 
 

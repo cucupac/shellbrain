@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
-from app.core.contracts.memories import MemoryBatchUpdateRequest, MemoryUpdateRequest
+from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
+from app.core.use_cases.memories.update.request import MemoryBatchUpdateRequest, MemoryUpdateRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     ReturnHandledError,
     dump_errors,
@@ -20,7 +20,7 @@ from app.entrypoints.cli.handlers.internal_agent.memories.utility_vote_evidence 
     attach_guidance,
     build_guidance_payloads,
 )
-from app.entrypoints.cli.handlers.command_context import ensure_telemetry_context
+from app.startup.operation_dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.internal_agent.memories.utility_vote_evidence import (
     hydrate_update_request_evidence_from_session_state,
 )
@@ -57,6 +57,7 @@ def run_update_memory_operation(
     )
     result: dict | None = None
     error_stage: str | None = None
+    planned_side_effects = ()
     try:
         policy_errors = list(dependencies.update_policy_errors)
         if policy_errors:
@@ -95,14 +96,14 @@ def run_update_memory_operation(
                 request = None
                 raise ReturnHandledError()
             with uow_factory() as uow:
-                result = ok_envelope(
-                    execute_update_memory(
-                        request,
-                        uow,
-                        id_generator=dependencies.id_generator,
-                        policy_settings=dependencies.update_policy,
-                    )
+                core_result = execute_update_memory(
+                    request,
+                    uow,
+                    id_generator=dependencies.id_generator,
+                    policy_settings=dependencies.update_policy,
                 )
+                planned_side_effects = core_result.planned_effects
+                result = ok_envelope(core_result)
                 guidance = build_guidance_payloads(
                     uow_factory=uow_factory,
                     repo_id=inferred_repo_id,
@@ -144,6 +145,7 @@ def run_update_memory_operation(
         result=result,
         error_stage=error_stage,
         request=request,
+        planned_side_effects=planned_side_effects,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result

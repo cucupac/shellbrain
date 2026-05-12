@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
+from app.core.errors import ErrorCode, ErrorDetail
 from pydantic import BaseModel, Field
 
 
@@ -33,6 +33,8 @@ def ok_envelope(result: Any = None) -> dict:
         data: dict[str, Any] = {}
     elif isinstance(result, dict):
         data = dict(result)
+    elif hasattr(result, "to_response_data"):
+        data = dict(result.to_response_data())
     elif hasattr(result, "data") and isinstance(result.data, dict):
         data = dict(result.data)
     elif isinstance(result, BaseModel):

@@ -9,7 +9,7 @@ from app.startup.admin_db import (
     should_fail_on_unsafe_app_role,
 )
 from app.startup.db import get_db_dsn
-from app.settings.loader import YamlConfigProvider
+from app.startup.settings import YamlConfigProvider
 from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,

@@ -257,10 +257,10 @@ def test_read_help_should_include_one_example(
     assert "deposit-addresses" in output
 
 
-def test_recall_help_should_describe_minimal_read_only_contract(
+def test_recall_help_should_describe_read_only_synthesis_contract(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """recall help should keep the Phase 1 input surface intentionally small."""
+    """recall help should describe the worker-facing synthesis payload."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["recall", "--help"])
@@ -270,6 +270,7 @@ def test_recall_help_should_describe_minimal_read_only_contract(
     assert "shellbrain recall --json" in output
     assert "query" in output
     assert "optional `limit`" in output
+    assert "optional `current_problem`" in output
     assert "does not mutate" in output
 
 
@@ -613,7 +614,7 @@ def test_main_accepts_repo_targeting_flags_before_subcommand(
         sync_calls.append(kwargs["repo_context"])
         return result
 
-    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -652,7 +653,7 @@ def test_main_accepts_repo_targeting_flags_after_subcommand(
         captured["repo_context"] = kwargs["repo_context"]
         return {"status": "ok", "data": {"episode_id": "ep-1"}}
 
-    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -696,7 +697,7 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
         captured["result"] = result
         return result
 
-    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -726,7 +727,7 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
             sync_calls.append(kwargs["repo_context"])
         return result
 
-    monkeypatch.setattr(startup_cli, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
 
     exit_code = cli_main.main(
         [
@@ -806,7 +807,7 @@ def test_operational_command_should_fail_cleanly_when_app_role_is_unsafe(
     repo_root.mkdir()
 
     monkeypatch.setattr(
-        startup_cli,
+        cli_runner,
         "run_operation_command",
         lambda **kwargs: (_ for _ in ()).throw(ValueError("unsafe role")),
     )

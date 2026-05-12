@@ -6,7 +6,7 @@ from datetime import datetime
 import json
 from typing import Any
 
-from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.infrastructure.telemetry.records import (
     ReadResultItemRecord,
     ReadSummaryRecord,

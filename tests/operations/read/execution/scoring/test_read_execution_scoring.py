@@ -4,7 +4,7 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.expansion import expand_candidates
 from app.core.policies.retrieval.fusion_rrf import fuse_with_rrf
 from app.core.policies.retrieval.scoring import score_candidates

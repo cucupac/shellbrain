@@ -3,7 +3,7 @@
 from typing import Any
 
 from app.startup.config import get_config_provider
-from app.core.contracts.errors import ErrorCode, ErrorDetail
+from app.core.errors import ErrorCode, ErrorDetail
 from app.core.entities.settings import CreatePolicySettings
 
 

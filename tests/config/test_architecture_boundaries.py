@@ -55,6 +55,10 @@ def test_core_does_not_import_edge_packages() -> None:
     )
 
 
+def test_core_does_not_import_subprocess() -> None:
+    _assert_no_forbidden_imports("core", ("subprocess",))
+
+
 def test_infrastructure_does_not_import_startup_or_entrypoints() -> None:
     _assert_no_forbidden_imports(
         "infrastructure",
@@ -72,19 +76,8 @@ def test_entrypoints_do_not_import_infrastructure_directly() -> None:
     )
 
 
-def test_startup_imports_only_cli_entrypoint_adapters() -> None:
-    violations: list[str] = []
-    for path in _python_files(APP_ROOT / "startup"):
-        for line_no, module_name in _imported_modules(path):
-            if module_name.startswith("app.entrypoints") and not module_name.startswith(
-                "app.entrypoints.cli"
-            ):
-                rel_path = path.relative_to(REPO_ROOT)
-                violations.append(f"{rel_path}:{line_no} imports {module_name}")
-    assert not violations, (
-        "Startup may compose CLI adapters, but must not import other entrypoints:\n"
-        + "\n".join(violations)
-    )
+def test_startup_does_not_import_entrypoints() -> None:
+    _assert_no_forbidden_imports("startup", ("app.entrypoints",))
 
 
 def test_followup_refactor_removed_old_layer_paths() -> None:
@@ -106,9 +99,11 @@ def test_followup_refactor_removed_old_layer_paths() -> None:
         APP_ROOT / "infrastructure" / "db" / "admin" / "destructive_guard.py",
         APP_ROOT / "infrastructure" / "db" / "admin" / "logical_backup.py",
         APP_ROOT / "infrastructure" / "db" / "admin" / "restore.py",
+        APP_ROOT / "core" / "contracts",
         APP_ROOT / "core" / "contracts" / "requests.py",
         APP_ROOT / "core" / "ports" / "runtime",
         APP_ROOT / "entrypoints" / "cli" / "endpoints",
+        APP_ROOT / "entrypoints" / "cli" / "protocol",
     )
     violations = [
         str(path.relative_to(REPO_ROOT)) for path in forbidden_paths if path.exists()
@@ -139,6 +134,23 @@ def test_infrastructure_adapter_families_are_grouped() -> None:
     )
 
 
+def test_packaged_settings_are_data_not_runtime_layer() -> None:
+    settings_root = APP_ROOT / "settings"
+    assert settings_root.is_dir()
+    violations = [
+        str(path.relative_to(REPO_ROOT))
+        for path in settings_root.rglob("*")
+        if path.is_file()
+        and "__pycache__" not in path.parts
+        and path.name != "__init__.py"
+        and path.suffix not in {".yaml", ".yml", ".toml", ".json"}
+    ]
+    assert not violations, (
+        "app/settings should contain app-owned package data, not runtime behavior:\n"
+        + "\n".join(violations)
+    )
+
+
 def test_cli_entrypoint_main_is_startup_shim() -> None:
     path = APP_ROOT / "entrypoints" / "cli" / "main.py"
     app_imports = [
@@ -146,7 +158,7 @@ def test_cli_entrypoint_main_is_startup_shim() -> None:
         for _line_no, module_name in _imported_modules(path)
         if module_name.startswith("app.")
     ]
-    assert app_imports == ["app.startup.cli"]
+    assert app_imports == ["app.entrypoints.cli.runner", "app.startup.cli"]
 
 
 def test_cli_adapter_lives_under_entrypoints() -> None:
@@ -155,7 +167,7 @@ def test_cli_adapter_lives_under_entrypoints() -> None:
         APP_ROOT / "entrypoints" / "cli" / "handlers",
         APP_ROOT / "entrypoints" / "cli" / "parser",
         APP_ROOT / "entrypoints" / "cli" / "presenters",
-        APP_ROOT / "entrypoints" / "cli" / "protocol",
+        APP_ROOT / "entrypoints" / "cli" / "request_parsing",
     )
     missing = [
         str(path.relative_to(REPO_ROOT)) for path in expected_paths if not path.exists()
@@ -222,9 +234,9 @@ def test_core_ports_are_grouped_by_adapter_category() -> None:
     expected_categories = {
         "db",
         "embeddings",
+        "host_apps",
         "local_state",
         "reporting",
-        "settings",
         "system",
     }
     categories = {
@@ -394,6 +406,67 @@ def test_core_does_not_import_sqlalchemy() -> None:
     )
 
 
+def test_no_code_imports_removed_architecture_paths() -> None:
+    forbidden_prefixes = (
+        "app.core.contracts",
+        "app.entrypoints.cli.protocol",
+    )
+    violations: list[str] = []
+    for root in (APP_ROOT, REPO_ROOT / "tests"):
+        for path in _python_files(root):
+            for line_no, module_name in _imported_modules(path):
+                if module_name.startswith(forbidden_prefixes):
+                    rel_path = path.relative_to(REPO_ROOT)
+                    violations.append(f"{rel_path}:{line_no} imports {module_name}")
+    assert not violations, (
+        "Removed architecture paths must not be imported:\n" + "\n".join(violations)
+    )
+
+
+def test_core_settings_port_requires_core_use_case_dependency() -> None:
+    settings_port_root = APP_ROOT / "core" / "ports" / "settings"
+    if not settings_port_root.exists():
+        return
+    use_case_imports_settings_port = False
+    for path in _python_files(APP_ROOT / "core" / "use_cases"):
+        for _, module_name in _imported_modules(path):
+            if module_name.startswith("app.core.ports.settings"):
+                use_case_imports_settings_port = True
+                break
+        if use_case_imports_settings_port:
+            break
+    assert use_case_imports_settings_port, (
+        "core/ports/settings should not exist unless a core use case truly depends "
+        "on substitutable config-reading behavior."
+    )
+
+
+def test_startup_does_not_own_sqlalchemy_queries() -> None:
+    violations: list[str] = []
+    forbidden_imports = ("sqlalchemy",)
+    for path in _python_files(APP_ROOT / "startup"):
+        for line_no, module_name in _imported_modules(path):
+            if module_name.startswith(forbidden_imports):
+                rel_path = path.relative_to(REPO_ROOT)
+                violations.append(f"{rel_path}:{line_no} imports {module_name}")
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if isinstance(node.func, ast.Name) and node.func.id == "text":
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} calls text(...)"
+                )
+            if isinstance(node.func, ast.Attribute) and node.func.attr == "text":
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} calls .text(...)"
+                )
+    assert not violations, (
+        "Startup should compose DB adapters, not own SQLAlchemy query code:\n"
+        + "\n".join(violations)
+    )
+
+
 def test_core_use_case_apply_files_are_gone() -> None:
     violations = [
         str(path.relative_to(REPO_ROOT))
@@ -506,14 +579,13 @@ def test_telemetry_builders_use_injected_timestamps() -> None:
     )
 
 
-def test_handlers_and_refactored_use_cases_use_injected_clock_and_ids() -> None:
+def test_core_use_cases_and_policies_use_ports_for_runtime_effects() -> None:
     violations: list[str] = []
     scan_roots = (
-        APP_ROOT / "entrypoints" / "cli" / "handlers",
-        APP_ROOT / "core" / "use_cases" / "memories",
-        APP_ROOT / "core" / "use_cases" / "concepts",
-        APP_ROOT / "core" / "use_cases" / "retrieval",
+        APP_ROOT / "core" / "use_cases",
+        APP_ROOT / "core" / "policies",
     )
+    forbidden_methods = {"exists", "read_text", "write_text"}
     for scan_root in scan_roots:
         for path in _python_files(scan_root):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -536,8 +608,16 @@ def test_handlers_and_refactored_use_cases_use_injected_clock_and_ids() -> None:
                     violations.append(
                         f"{path.relative_to(REPO_ROOT)}:{node.lineno} calls uuid4()"
                     )
+                if (
+                    isinstance(node, ast.Call)
+                    and isinstance(node.func, ast.Attribute)
+                    and node.func.attr in forbidden_methods
+                ):
+                    violations.append(
+                        f"{path.relative_to(REPO_ROOT)}:{node.lineno} calls .{node.func.attr}()"
+                    )
     assert not violations, (
-        "Handlers and refactored use cases should use injected clock and id generator:\n"
+        "Core use cases and policies should use injected ports for time, IDs, and filesystem checks:\n"
         + "\n".join(violations)
     )
 
@@ -547,7 +627,7 @@ def test_deleted_agent_operations_tree_is_not_a_guardrail_target() -> None:
 
 
 def test_planned_effects_use_typed_params() -> None:
-    path = APP_ROOT / "core" / "contracts" / "planned_effects.py"
+    path = APP_ROOT / "core" / "use_cases" / "memories" / "effect_plan.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
     violations: list[str] = []
     handled_source = "\n".join(
@@ -578,7 +658,7 @@ def test_planned_effects_use_typed_params() -> None:
             violations.append(
                 f"{path.relative_to(REPO_ROOT)}:{node.lineno} keeps mapping-style compatibility"
             )
-    from app.core.contracts.planned_effects import EffectType
+    from app.core.use_cases.memories.effect_plan import EffectType
 
     for effect_type in EffectType:
         if f"EffectType.{effect_type.name}" not in handled_source:

@@ -6,13 +6,13 @@ from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.episodes import EpisodeEventsRequest
+from app.core.errors import ErrorCode, ErrorDetail
+from app.core.use_cases.episodes.events.request import EpisodeEventsRequest
 from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
 )
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
@@ -24,10 +24,10 @@ from app.entrypoints.cli.handlers.internal_agent.episodes.selection import (
     resolve_events_source,
     selection_summary_from_events_source,
 )
-from app.entrypoints.cli.handlers.command_context import ensure_telemetry_context
+from app.startup.operation_dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.internal_agent.episodes.serialization import serialize_episode_event
 from app.entrypoints.cli.handlers.session_state import SessionStateManager
-from app.core.use_cases.sync_episode import sync_episode
+from app.core.use_cases.episodes.sync_episode import SyncEpisodeRequest, sync_episode
 
 
 def run_read_events_operation(
@@ -92,24 +92,28 @@ def run_read_events_operation(
                 )
                 with uow_factory() as uow:
                     sync_result = sync_episode(
-                        repo_id=request.repo_id,
-                        host_app=str(source.host_app),
-                        host_session_key=str(source.host_session_key),
-                        thread_id=str(source.canonical_thread_id),
-                        transcript_path=str(source.transcript_path),
-                        normalized_events=normalized_events,
+                        SyncEpisodeRequest.from_raw_events(
+                            repo_id=request.repo_id,
+                            host_app=str(source.host_app),
+                            host_session_key=str(source.host_session_key),
+                            thread_id=str(source.canonical_thread_id),
+                            transcript_path=str(source.transcript_path),
+                            normalized_events=normalized_events,
+                        ),
                         uow=uow,
+                        clock=dependencies.clock,
+                        id_generator=dependencies.id_generator,
                     )
                     events = uow.episodes.list_recent_events(
                         repo_id=request.repo_id,
-                        episode_id=str(sync_result["episode_id"]),
+                        episode_id=sync_result.episode_id,
                         limit=request.limit,
                     )
                     result = ok_envelope(
                         {
-                            "episode_id": sync_result["episode_id"],
+                            "episode_id": sync_result.episode_id,
                             "host_app": source.host_app,
-                            "thread_id": sync_result["thread_id"],
+                            "thread_id": sync_result.thread_id,
                             "events": [
                                 serialize_episode_event(event) for event in events
                             ],
@@ -117,13 +121,13 @@ def run_read_events_operation(
                     )
                 selection_summary = replace(
                     selection_summary,
-                    selected_episode_id=str(sync_result["episode_id"]),
+                    selected_episode_id=sync_result.episode_id,
                 )
                 if source.trusted:
                     session_manager.record_events(
                         repo_root=resolved_repo_root,
                         caller_identity=resolved_telemetry_context.caller_identity,
-                        episode_id=str(sync_result["episode_id"]),
+                        episode_id=sync_result.episode_id,
                         event_ids=[
                             str(event["id"]) for event in result["data"]["events"]
                         ],
@@ -135,20 +139,20 @@ def run_read_events_operation(
                     "repo_id": request.repo_id,
                     "host_app": str(source.host_app),
                     "host_session_key": str(source.host_session_key),
-                    "thread_id": str(sync_result["thread_id"]),
-                    "episode_id": str(sync_result["episode_id"]),
-                    "transcript_path": str(sync_result["transcript_path"]),
+                    "thread_id": sync_result.thread_id,
+                    "episode_id": sync_result.episode_id,
+                    "transcript_path": sync_result.transcript_path,
                     "outcome": "ok",
                     "error_stage": None,
                     "error_message": None,
                     "duration_ms": int((perf_counter() - sync_started_at) * 1000),
-                    "imported_event_count": int(sync_result["imported_event_count"]),
-                    "total_event_count": int(sync_result["total_event_count"]),
-                    "user_event_count": int(sync_result["user_event_count"]),
-                    "assistant_event_count": int(sync_result["assistant_event_count"]),
-                    "tool_event_count": int(sync_result["tool_event_count"]),
-                    "system_event_count": int(sync_result["system_event_count"]),
-                    "tool_type_counts": dict(sync_result["tool_type_counts"]),
+                    "imported_event_count": sync_result.imported_event_count,
+                    "total_event_count": sync_result.total_event_count,
+                    "user_event_count": sync_result.user_event_count,
+                    "assistant_event_count": sync_result.assistant_event_count,
+                    "tool_event_count": sync_result.tool_event_count,
+                    "system_event_count": sync_result.system_event_count,
+                    "tool_type_counts": dict(sync_result.tool_type_counts),
                     "created_at": dependencies.clock.now(),
                 }
                 try:
@@ -157,9 +161,9 @@ def run_read_events_operation(
                             repo_id=request.repo_id,
                             host_app=str(source.host_app),
                             host_session_key=str(source.host_session_key),
-                            thread_id=str(sync_result["thread_id"]),
-                            episode_id=str(sync_result["episode_id"]),
-                            transcript_path=Path(str(sync_result["transcript_path"])),
+                            thread_id=sync_result.thread_id,
+                            episode_id=sync_result.episode_id,
+                            transcript_path=Path(sync_result.transcript_path),
                         )
                     )
                 except Exception:

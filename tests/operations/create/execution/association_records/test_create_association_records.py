@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.memories import MemoryAddRequest
+from app.core.use_cases.memories.add.request import MemoryAddRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory

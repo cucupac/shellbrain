@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from app.core.contracts.errors import ErrorDetail
+from app.core.errors import ErrorDetail
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
 from app.infrastructure.host_apps.transcripts.source_discovery import (
     SUPPORTED_HOSTS,

@@ -6,12 +6,8 @@ from dataclasses import asdict
 from datetime import datetime
 from typing import Any
 
-from app.core.contracts.memories import (
-    MemoryAddRequest,
-    MemoryBatchUpdateRequest,
-    MemoryUpdateRequest,
-)
-from app.core.contracts.planned_effects import (
+from app.core.use_cases.memories.add.request import MemoryAddRequest
+from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     EffectParams,
     EffectType,
@@ -23,6 +19,10 @@ from app.core.contracts.planned_effects import (
     PlannedEffect,
     ProblemAttemptCreateEffectParams,
     UtilityObservationAppendEffectParams,
+)
+from app.core.use_cases.memories.update.request import (
+    MemoryBatchUpdateRequest,
+    MemoryUpdateRequest,
 )
 from app.infrastructure.telemetry.records import (
     WriteEffectItemRecord,

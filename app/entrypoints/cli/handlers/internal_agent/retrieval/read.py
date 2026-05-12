@@ -5,17 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.errors import ErrorCode, ErrorDetail
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.entrypoints.cli.handlers.command_context import ensure_telemetry_context
+from app.startup.operation_dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.internal_agent.retrieval.execution import (
     execute_read_memory_with_dependencies,
 )

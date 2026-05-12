@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.memories import MemoryAddRequest
+from app.core.use_cases.memories.add.request import MemoryAddRequest
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator

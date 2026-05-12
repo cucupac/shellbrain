@@ -1,6 +1,6 @@
 """Hydration contracts for read-path requests."""
 
-from app.entrypoints.cli.protocol.hydration import hydrate_read_payload
+from app.entrypoints.cli.request_parsing.hydration import hydrate_read_payload
 
 
 def test_read_hydration_infers_missing_defaults() -> None:

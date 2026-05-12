@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from app.core.contracts.retrieval import MemoryRecallRequest
+from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.infrastructure.telemetry.read_records import (
     _compact_json,
     _estimate_tokens_from_text,
@@ -55,12 +55,40 @@ def build_recall_summary_records(
         )
 
     brief_payload = {"brief": brief, "fallback_reason": fallback_reason}
+    inner_agent = recall_telemetry.get("inner_agent")
+    if not isinstance(inner_agent, dict):
+        inner_agent = {}
     summary = RecallSummaryRecord(
         invocation_id=invocation_id,
         query_text=request.query,
         candidate_token_estimate=int(candidate_size["pack_token_estimate"]),
         brief_token_estimate=_estimate_tokens_from_text(_compact_json(brief_payload)),
         fallback_reason=fallback_reason,
+        provider=_optional_string(inner_agent.get("provider")),
+        model=_optional_string(inner_agent.get("model")),
+        reasoning=_optional_string(inner_agent.get("reasoning")),
+        private_read_count=_inner_agent_count(
+            recall_telemetry, "private_read_count"
+        ),
+        concept_expansion_count=_inner_agent_count(
+            recall_telemetry, "concept_expansion_count"
+        ),
         created_at=created_at,
     )
     return summary, source_items
+
+
+def _inner_agent_count(recall_telemetry: dict[str, Any], key: str) -> int:
+    """Return a non-negative inner-agent counter."""
+
+    inner_agent = recall_telemetry.get("inner_agent")
+    if not isinstance(inner_agent, dict):
+        return 0
+    value = inner_agent.get(key)
+    if isinstance(value, bool):
+        return 0
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return 0
+    return parsed if parsed >= 0 else 0

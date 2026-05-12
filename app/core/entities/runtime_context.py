@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.contracts.errors import ErrorDetail
+from app.core.errors import ErrorDetail
 from app.core.entities.identity import CallerIdentity
 
 

@@ -7,7 +7,7 @@ from collections.abc import Callable
 import pytest
 from sqlalchemy import text
 
-from app.core.contracts.responses import UseCaseResult
+from app.core.use_cases.retrieval.read.result import ReadMemoryResult
 from tests.operations._shared.handler_calls import handle_recall
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -22,6 +22,7 @@ def test_recall_schema_should_create_summary_and_source_tables_with_source_item_
 
     assert_relation_exists("recall_invocation_summaries")
     assert_relation_exists("recall_source_items")
+    assert_relation_exists("inner_agent_invocations")
 
     with integration_engine.connect() as conn:
         primary_key_columns = conn.execute(
@@ -129,6 +130,11 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
         > 0
     )
     assert summary_rows[0]["fallback_reason"] is None
+    assert summary_rows[0]["provider"] == "codex"
+    assert summary_rows[0]["model"] == "gpt-5.4-mini"
+    assert summary_rows[0]["reasoning"] == "low"
+    assert summary_rows[0]["private_read_count"] == 0
+    assert summary_rows[0]["concept_expansion_count"] == 0
 
     source_rows = fetch_relation_rows("recall_source_items", order_by="ordinal ASC")
     assert [row["ordinal"] for row in source_rows] == [1, 2, 3]
@@ -149,6 +155,12 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
 
     assert fetch_relation_rows("read_invocation_summaries") == []
     assert fetch_relation_rows("read_result_items") == []
+    inner_agent_rows = fetch_relation_rows("inner_agent_invocations")
+    assert len(inner_agent_rows) == 1
+    assert inner_agent_rows[0]["agent_name"] == "build_context"
+    assert inner_agent_rows[0]["provider"] == "codex"
+    assert inner_agent_rows[0]["status"] == "provider_unavailable"
+    assert inner_agent_rows[0]["fallback_used"] is True
 
 
 def test_no_candidate_recall_should_write_no_candidates_fallback(
@@ -169,6 +181,7 @@ def test_no_candidate_recall_should_write_no_candidates_fallback(
     assert result["status"] == "ok"
     assert result["data"]["fallback_reason"] == "no_candidates"
     assert result["data"]["brief"]["sources"] == []
+    assert result["data"]["brief"]["gaps"]
 
     summary_rows = fetch_relation_rows("recall_invocation_summaries")
     assert len(summary_rows) == 1
@@ -233,13 +246,13 @@ def _stub_internal_read(
 
     captured: dict[str, object] = {}
 
-    def _fake_execute_read_memory(request, uow, **kwargs) -> UseCaseResult:
+    def _fake_execute_read_memory(request, uow, **kwargs) -> ReadMemoryResult:
         del kwargs
         captured["request"] = request
-        return UseCaseResult(data={"pack": pack})
+        return ReadMemoryResult(pack=pack)
 
     monkeypatch.setattr(
-        "app.core.use_cases.retrieval.recall.execute_read_memory",
+        "app.core.use_cases.retrieval.build_context.execute.execute_read_memory",
         _fake_execute_read_memory,
     )
     return captured

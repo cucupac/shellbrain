@@ -4,25 +4,17 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
-from typing import Any, Sequence
 from uuid import uuid4
 
-from app.entrypoints.cli.runner import main as run_cli_runner
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    """Run the CLI using startup-composed concrete dependencies."""
-
-    return run_cli_runner(argv, runtime_factory=build_cli_runtime)
+from app.startup.cli_runtime import CliRuntime
 
 
 def build_cli_runtime():
     """Build the concrete dependency set for the CLI runner."""
 
-    from app.entrypoints.cli.runner import CliRuntime
-    from app.startup import cli_handlers
     from app.startup import create_policy
     from app.startup import metrics as startup_metrics
+    from app.startup import operation_dependencies
     from app.startup import read_policy
     from app.startup import repo_context
     from app.startup import runtime_admin
@@ -31,7 +23,7 @@ def build_cli_runtime():
 
     return CliRuntime(
         resolve_repo_context=repo_context.resolve_repo_context,
-        run_operation_command=run_operation_command,
+        build_operation_dependencies=operation_dependencies.build_operation_dependencies,
         get_create_hydration_defaults=create_policy.get_create_hydration_defaults,
         get_read_hydration_defaults=read_policy.get_read_hydration_defaults,
         get_uow_factory=use_cases.get_uow_factory,
@@ -40,13 +32,13 @@ def build_cli_runtime():
         get_operation_telemetry_context=(
             startup_runtime_context.get_operation_telemetry_context
         ),
-        handle_memory_add=cli_handlers.handle_memory_add,
-        handle_update=cli_handlers.handle_update,
-        handle_read=cli_handlers.handle_read,
-        handle_recall=cli_handlers.handle_recall,
-        handle_events=cli_handlers.handle_events,
-        handle_concept_add=cli_handlers.handle_concept_add,
-        handle_concept_update=cli_handlers.handle_concept_update,
+        new_invocation_id=lambda: str(uuid4()),
+        resolve_caller_identity=resolve_cli_caller_identity,
+        set_operation_context=set_cli_operation_context,
+        reset_operation_context=reset_cli_operation_context,
+        ensure_repo_registration=ensure_repo_registration_for_operation,
+        maybe_start_sync=maybe_start_sync,
+        update_operation_polling_status=update_operation_polling_status,
         should_register_repo_during_init=should_register_repo_during_init,
         run_init=runtime_admin.run_init,
         init_success_presenter_context=runtime_admin.init_success_presenter_context,
@@ -60,7 +52,6 @@ def build_cli_runtime():
 def build_admin_command_dependencies():
     """Build concrete dependencies for human admin CLI commands."""
 
-    from app.entrypoints.cli.handlers.human.admin import AdminCommandDependencies
     from app.startup import admin as startup_admin
     from app.startup import admin_db
     from app.startup import admin_diagnose
@@ -68,6 +59,7 @@ def build_admin_command_dependencies():
     from app.startup import db as startup_db
     from app.startup import migrations
     from app.startup import model_usage_backfill
+    from app.startup.admin_dependencies import AdminCommandDependencies
 
     return AdminCommandDependencies(
         upgrade_database=migrations.upgrade_database,
@@ -127,42 +119,6 @@ def reset_cli_operation_context(token) -> None:
     from app.startup import runtime_context as startup_runtime_context
 
     startup_runtime_context.reset_operation_telemetry_context(token)
-
-
-def run_operation_command(
-    *,
-    command: str,
-    payload: dict[str, Any],
-    repo_context,
-    repo_id_override: str | None,
-    no_sync: bool,
-    dispatch_operation,
-) -> dict[str, Any]:
-    """Run one hydrated CLI operation with concrete startup side effects."""
-
-    from app.entrypoints.cli.handlers.cli_operation import (
-        CliOperationEffects,
-        run_cli_operation,
-    )
-
-    return run_cli_operation(
-        command=command,
-        payload=payload,
-        repo_context=repo_context,
-        repo_id_override=repo_id_override,
-        no_sync=no_sync,
-        dispatch_operation=dispatch_operation,
-        effects=CliOperationEffects(
-            new_invocation_id=lambda: str(uuid4()),
-            resolve_caller_identity=resolve_cli_caller_identity,
-            set_operation_context=set_cli_operation_context,
-            reset_operation_context=reset_cli_operation_context,
-            warn_or_fail_on_unsafe_app_role=warn_or_fail_on_unsafe_app_role,
-            ensure_repo_registration=ensure_repo_registration_for_operation,
-            maybe_start_sync=maybe_start_sync,
-            update_operation_polling_status=update_operation_polling_status,
-        ),
-    )
 
 
 def should_register_repo_during_init(

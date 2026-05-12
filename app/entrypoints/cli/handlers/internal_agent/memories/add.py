@@ -5,10 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
-from app.core.contracts.memories import MemoryAddRequest
+from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
+from app.core.use_cases.memories.add.request import MemoryAddRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
@@ -19,7 +19,7 @@ from app.entrypoints.cli.handlers.internal_agent.memories.utility_vote_evidence 
     attach_guidance,
     build_guidance_payloads,
 )
-from app.entrypoints.cli.handlers.command_context import ensure_telemetry_context
+from app.startup.operation_dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.session_state import SessionStateManager
 from app.core.use_cases.memories.add import execute_create_memory
 
@@ -51,6 +51,7 @@ def run_create_memory_operation(
     )
     result: dict | None = None
     error_stage: str | None = None
+    planned_side_effects = ()
 
     try:
         policy_errors = list(dependencies.create_policy_errors)
@@ -77,7 +78,7 @@ def run_create_memory_operation(
         else:
             with uow_factory() as uow:
                 embedding_provider = embedding_provider_factory()
-                result = execute_create_memory(
+                core_result = execute_create_memory(
                     request,
                     uow,
                     embedding_provider=embedding_provider,
@@ -85,7 +86,8 @@ def run_create_memory_operation(
                     id_generator=dependencies.id_generator,
                     policy_settings=dependencies.create_policy,
                 )
-                result = ok_envelope(result)
+                planned_side_effects = core_result.planned_effects
+                result = ok_envelope(core_result)
                 if result.get("status") == "ok":
                     session_state = session_manager.load_active_state(
                         repo_root=resolved_repo_root,
@@ -147,6 +149,7 @@ def run_create_memory_operation(
         result=result,
         error_stage=error_stage,
         request=request,
+        planned_side_effects=planned_side_effects,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result

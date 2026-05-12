@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-
-from sqlalchemy.engine import Engine
+from typing import Any
 
 from app.core.use_cases.admin.generate_analytics_report import (
     build_analytics_report as build_analytics_report_from_rows,
@@ -20,7 +19,7 @@ from app.infrastructure.db.runtime.queries.analytics import (
 )
 
 
-def build_analytics_report(*, engine: Engine, days: int) -> dict:
+def build_analytics_report(*, engine: Any, days: int) -> dict:
     """Fetch analytics rows through SQL adapters and build the core report."""
 
     if days <= 0:

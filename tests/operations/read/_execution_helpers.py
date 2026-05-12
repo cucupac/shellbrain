@@ -1,6 +1,6 @@
 """Shared helper builders for read execution tests."""
 
-from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 
 
 def make_read_request(

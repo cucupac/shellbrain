@@ -5,17 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.retrieval import MemoryRecallRequest
+from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
+from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.entrypoints.cli.handlers.command_context import ensure_telemetry_context
+from app.startup.operation_dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.internal_agent.retrieval.execution import (
     execute_recall_memory_with_dependencies,
 )
@@ -72,7 +72,10 @@ def run_recall_memory_operation(
             with uow_factory() as uow:
                 result = ok_envelope(
                     execute_recall_memory_with_dependencies(
-                        request=request, uow=uow, dependencies=dependencies
+                        request=request,
+                        uow=uow,
+                        dependencies=dependencies,
+                        repo_root=str(resolved_repo_root),
                     )
                 )
             data = result.get("data")
@@ -80,6 +83,9 @@ def run_recall_memory_operation(
                 telemetry_payload = data.pop("_telemetry", None)
                 if isinstance(telemetry_payload, dict):
                     recall_telemetry = telemetry_payload
+    except DomainValidationError as exc:
+        error_stage = "semantic_validation"
+        result = error_response(exc.errors)
     except Exception as exc:  # pragma: no cover - defensive fallback envelope
         error_stage = "internal_error"
         result = error_response(

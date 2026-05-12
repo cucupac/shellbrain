@@ -181,6 +181,48 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
     assert "# Shellbrain Usage Review" in completed.stdout
 
 
+def test_git_file_install_should_package_internal_agent_settings(
+    tmp_path: Path,
+) -> None:
+    """git-url installs should carry packaged internal-agent YAML defaults."""
+
+    if shutil.which("git") is None:
+        pytest.skip("git is required for git+file install smoke tests")
+
+    repo_root = resolve_repo_root()
+    git_snapshot = prepare_git_snapshot(tmp_path, repo_root)
+    external_repo = tmp_path / "external-internal-agent-settings-repo"
+    external_repo.mkdir()
+    python_executable, _ = create_isolated_install(
+        tmp_path=tmp_path,
+        name="internal-agent-settings-git-install",
+        install_spec=f"git+file://{git_snapshot}",
+        editable=False,
+        install_runtime_deps=False,
+    )
+
+    completed = subprocess.run(
+        [
+            str(python_executable),
+            "-c",
+            (
+                "from importlib import resources; "
+                    "settings = resources.files('app').joinpath('settings', 'internal-agents', 'defaults.yaml').read_text(); "
+                "print(settings)"
+            ),
+        ],
+        check=True,
+        cwd=external_repo,
+        text=True,
+        capture_output=True,
+        env=os.environ.copy(),
+    )
+
+    assert "build_context:" in completed.stdout
+    assert "model: gpt-5.4-mini" in completed.stdout
+    assert "reasoning: low" in completed.stdout
+
+
 def test_admin_migrate_should_initialize_schema_from_an_installed_package(
     tmp_path: Path,
 ) -> None:
@@ -235,7 +277,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
         assert memories_table is not None
         assert episode_events_table is not None
         assert concepts_table is not None
-        assert alembic_version == "20260508_0016"
+        assert alembic_version == "20260511_0017"
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
         drop_temp_database(admin_dsn, db_name)
@@ -331,7 +373,7 @@ def test_admin_migrate_should_preserve_pre_frontier_data_and_enable_frontier_sup
         with psycopg.connect(raw_package_dsn, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT version_num FROM alembic_version;")
-                assert cur.fetchone()[0] == "20260508_0016"
+                assert cur.fetchone()[0] == "20260511_0017"
 
                 cur.execute(
                     "SELECT kind, text FROM memories WHERE id = 'pre0009-problem';"

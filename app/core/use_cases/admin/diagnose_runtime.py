@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 from typing import Any
 
@@ -23,6 +22,9 @@ class DiagnoseRuntimePorts:
     fetch_schema_revision: Callable[[str], str | None]
     get_shellbrain_home: Callable[[], Path]
     disk_usage: Callable[[Path], Any]
+    now: Callable[[], datetime]
+    path_exists: Callable[[Path], bool]
+    serialize_backup_manifest: Callable[[Any], dict[str, Any]]
     inspect_host_assets: Callable[[], Any]
     resolve_git_root: Callable[[Path], Path | None]
     load_repo_registration_for_target: Callable[[Path], Any | None]
@@ -52,8 +54,8 @@ def build_diagnose_runtime_report(
     backups = ports.list_backups(backup_root)
     app_role_warnings = [] if not app_dsn else ports.inspect_role_safety(app_dsn)
     admin_role_warnings = [] if not admin_dsn else ports.inspect_role_safety(admin_dsn)
-    checked_at = datetime.now(timezone.utc)
-    latest_backup = None if not backups else json.loads(json.dumps(backups[0].__dict__))
+    checked_at = ports.now()
+    latest_backup = None if not backups else ports.serialize_backup_manifest(backups[0])
     backup_age_seconds = None
     if backups:
         created_at = datetime.fromisoformat(
@@ -63,7 +65,7 @@ def build_diagnose_runtime_report(
             (checked_at - created_at.astimezone(timezone.utc)).total_seconds()
         )
     home_root = ports.get_shellbrain_home()
-    disk = ports.disk_usage(home_root if home_root.exists() else home_root.parent)
+    disk = ports.disk_usage(home_root if ports.path_exists(home_root) else home_root.parent)
     repo_report = _build_repo_report(repo_root=repo_root, ports=ports)
     host_integrations = ports.inspect_host_assets()
     cursor_statusline = getattr(
@@ -157,7 +159,7 @@ def _build_repo_report(
     if (
         registration is None
         and git_root is None
-        and not (target / ".shellbrain").exists()
+        and not ports.path_exists(target / ".shellbrain")
     ):
         return None
     return {

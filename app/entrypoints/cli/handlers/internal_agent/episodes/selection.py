@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
+from app.core.errors import ErrorCode, ErrorDetail
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
 from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
 )
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 
 
 class EventsSelectionError(Exception):

@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from app.core.contracts.errors import ErrorCode
+from app.core.errors import ErrorCode
 from app.core.entities.runtime_context import RuntimeContext, SessionSelectionSummary
 from app.infrastructure.telemetry.records import OperationInvocationRecord
 

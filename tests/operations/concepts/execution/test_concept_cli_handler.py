@@ -3,7 +3,8 @@
 from collections.abc import Callable
 from pathlib import Path
 
-from app.core.contracts.concepts import ConceptAddRequest, ConceptUpdateRequest
+from app.core.use_cases.concepts.add.request import ConceptAddRequest
+from app.core.use_cases.concepts.update.request import ConceptUpdateRequest
 from tests.operations._shared.handler_calls import handle_concept_add, handle_concept_update
 from app.infrastructure.db.runtime.models.concepts import concepts
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork

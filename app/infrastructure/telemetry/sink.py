@@ -16,6 +16,9 @@ from app.core.ports.system.clock import IClock
 from app.infrastructure.telemetry.operation_invocations import (
     build_operation_invocation_record,
 )
+from app.infrastructure.telemetry.inner_agent_records import (
+    build_inner_agent_invocation_records,
+)
 from app.infrastructure.telemetry.read_records import build_read_summary_records
 from app.infrastructure.telemetry.recall_records import build_recall_summary_records
 from app.infrastructure.telemetry.recorder import (
@@ -48,6 +51,7 @@ class TelemetrySink:
         selection_summary: SessionSelectionSummary | None = None,
         sync_run_payload: dict[str, Any] | None = None,
         model_usage_records: Iterable[object] = (),
+        planned_side_effects: Iterable[object] = (),
         recall_telemetry: dict | None = None,
         total_latency_ms: int | None = None,
     ) -> None:
@@ -80,6 +84,7 @@ class TelemetrySink:
                 read_items = ()
                 recall_summary = None
                 recall_items = ()
+                inner_agent_invocations = ()
                 write_summary = None
                 write_items = ()
 
@@ -118,21 +123,26 @@ class TelemetrySink:
                                 else None,
                                 created_at=created_at,
                             )
+                            inner_agent_invocations = (
+                                build_inner_agent_invocation_records(
+                                    invocation_id=telemetry_context.invocation_id,
+                                    recall_telemetry=recall_telemetry,
+                                    created_at=created_at,
+                                )
+                            )
 
                 if (
                     result.get("status") == "ok"
                     and command in {"create", "update"}
                     and request is not None
                 ):
-                    planned_side_effects = result.get("data", {}).get(
-                        "planned_side_effects", []
-                    )
-                    if isinstance(planned_side_effects, list):
+                    effect_plan = list(planned_side_effects)
+                    if effect_plan:
                         write_summary, write_items = build_write_summary_records(
                             invocation_id=telemetry_context.invocation_id,
                             command=command,
                             request=request,
-                            planned_side_effects=planned_side_effects,
+                            planned_side_effects=effect_plan,
                             created_at=created_at,
                         )
 
@@ -143,6 +153,7 @@ class TelemetrySink:
                     read_items=read_items,
                     recall_summary=recall_summary,
                     recall_items=recall_items,
+                    inner_agent_invocations=inner_agent_invocations,
                     write_summary=write_summary,
                     write_items=write_items,
                 )

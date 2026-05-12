@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
 import shutil
 from typing import Any
@@ -56,6 +57,9 @@ def build_doctor_report(
             fetch_schema_revision=fetch_schema_revision,
             get_shellbrain_home=get_shellbrain_home,
             disk_usage=shutil.disk_usage,
+            now=lambda: datetime.now(timezone.utc),
+            path_exists=Path.exists,
+            serialize_backup_manifest=lambda backup: dict(backup.__dict__),
             inspect_host_assets=inspect_host_assets,
             resolve_git_root=resolve_git_root,
             load_repo_registration_for_target=load_repo_registration_for_target,
