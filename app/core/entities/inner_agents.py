@@ -14,7 +14,6 @@ class _StrictModel(BaseModel):
 InnerAgentName = Literal["build_context", "build_knowledge"]
 InnerAgentProviderName = Literal["codex"]
 InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
-InnerAgentFallbackMode = Literal["deterministic", "no_context", "error", "disabled"]
 InnerAgentRunStatus = Literal[
     "ok",
     "no_context",
@@ -29,7 +28,6 @@ InnerAgentRunStatus = Literal[
 class InnerAgentSettings(_StrictModel):
     """Typed model/runtime settings for one inner agent."""
 
-    enabled: bool = True
     provider: InnerAgentProviderName
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
@@ -37,15 +35,6 @@ class InnerAgentSettings(_StrictModel):
     max_private_reads: int = Field(default=0, ge=0, le=10)
     max_candidate_tokens: int = Field(ge=1, le=200_000)
     max_brief_tokens: int | None = Field(default=None, ge=1, le=100_000)
-    fallback: InnerAgentFallbackMode
-
-    @model_validator(mode="after")
-    def _validate_fallback_for_enabled_agent(self) -> "InnerAgentSettings":
-        """Reject disabled fallback for enabled agents that should produce a result."""
-
-        if self.enabled and self.fallback == "disabled":
-            raise ValueError("enabled inner agents cannot use fallback=disabled")
-        return self
 
 
 class InnerAgentProviderConfig(_StrictModel):
@@ -53,7 +42,7 @@ class InnerAgentProviderConfig(_StrictModel):
 
     command: str = Field(min_length=1)
     working_directory: Literal["repo_root"] = "repo_root"
-    allow_unbounded_cli: bool = False
+    allow_shellbrain_cli: bool = True
 
 
 class InternalAgentsConfig(_StrictModel):
@@ -77,7 +66,7 @@ class InternalAgentsConfig(_StrictModel):
 
     @model_validator(mode="after")
     def _validate_referenced_providers(self) -> "InternalAgentsConfig":
-        """Require every enabled or configured agent to reference a known provider."""
+        """Require every configured agent to reference a known provider."""
 
         for agent_name in ("build_context", "build_knowledge"):
             agent = getattr(self, agent_name)

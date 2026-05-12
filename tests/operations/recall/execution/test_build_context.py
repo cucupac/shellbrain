@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from app.core.errors import DomainValidationError, ErrorCode
 from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.ports.host_apps.inner_agents import InnerAgentRunResult
 from app.core.use_cases.retrieval.read.result import ReadMemoryResult
@@ -36,59 +35,46 @@ class _FakeRunner:
             },
             input_token_estimate=100,
             output_token_estimate=40,
+            read_trace={
+                "commands": [
+                    {
+                        "command": "shellbrain read --json '{\"query\":\"migration timeout\"}'",
+                        "source_ids": ["direct-1"],
+                        "concept_refs": ["db-admin"],
+                    },
+                    {
+                        "command": "shellbrain concept show --json '{\"schema_version\":\"concept.v1\",\"concept\":\"db-admin\"}'",
+                        "concept_refs": ["db-admin"],
+                    },
+                ],
+                "source_ids": ["direct-1"],
+                "concept_refs": ["db-admin"],
+            },
         )
 
 
-class _ExpansionRunner:
-    """Fake provider that requests one private concept expansion before synthesis."""
-
-    def __init__(self) -> None:
-        self.requests = []
+class _ErrorRunner:
+    """Fake inner-agent runner that cannot produce a valid brief."""
 
     def run(self, request):
-        self.requests.append(request)
-        if len(self.requests) == 1:
-            return InnerAgentRunResult(
-                status="ok",
-                provider=request.provider,
-                model=request.model,
-                reasoning=request.reasoning,
-                requested_expansions=[
-                    {
-                        "read_payload": {
-                            "query": request.query,
-                            "expand": {
-                                "concepts": {
-                                    "mode": "explicit",
-                                    "refs": ["db-admin"],
-                                    "facets": ["groundings"],
-                                }
-                            },
-                        }
-                    }
-                ],
-            )
         return InnerAgentRunResult(
-            status="ok",
+            status="invalid_output",
             provider=request.provider,
             model=request.model,
             reasoning=request.reasoning,
-            brief={
-                "summary": "Expanded concept context points to admin migrations.",
-                "constraints": [],
-                "known_traps": [],
-                "prior_cases": [],
-                "concept_orientation": ["Use DB admin grounding details."],
-                "anchors": ["app/infrastructure/db/admin/migrations.py"],
-                "gaps": [],
-            },
+            fallback_used=True,
+            error_code="invalid_output",
+            error_message="bad JSON",
         )
 
 
 def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) -> None:
     """build_context should accept provider synthesis through a core port."""
 
-    _stub_internal_read(monkeypatch, pack=_candidate_pack())
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.build_context.execute.execute_read_memory",
+        lambda *args, **kwargs: pytest.fail("provider path must not pre-read"),
+    )
     runner = _FakeRunner()
 
     result = execute_build_context(
@@ -97,7 +83,7 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
                 "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": {"goal": "fix migration"},
+                "current_problem": _current_problem(),
             }
         ),
         object(),
@@ -109,53 +95,48 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     assert result.data["brief"]["sources"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
-    assert runner.request.current_problem == {
-        "goal": "fix migration",
-        "surface": None,
-        "obstacle": None,
-        "hypothesis": None,
-    }
+    assert runner.request.current_problem == _current_problem()
+    assert not hasattr(runner.request, "candidate_" "context")
+    telemetry = result.data["_telemetry"]["inner_agent"]
+    assert telemetry["private_read_count"] == 2
+    assert telemetry["concept_expansion_count"] == 1
 
 
-def test_build_context_executes_bounded_private_expansion_requests(monkeypatch) -> None:
-    """build_context should execute approved private reads before final synthesis."""
+def test_build_context_provider_unavailable_uses_deterministic_fallback(
+    monkeypatch,
+) -> None:
+    """build_context should read internally only when the provider path cannot run."""
 
     read_requests = []
 
     def _fake_execute_read_memory(request, uow, **kwargs) -> ReadMemoryResult:
         del uow, kwargs
         read_requests.append(request)
-        pack = _candidate_pack() if len(read_requests) == 1 else _expansion_pack()
-        return ReadMemoryResult(pack=pack)
+        return ReadMemoryResult(pack=_candidate_pack())
 
     monkeypatch.setattr(
         "app.core.use_cases.retrieval.build_context.execute.execute_read_memory",
         _fake_execute_read_memory,
     )
-    runner = _ExpansionRunner()
 
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
-            {"op": "recall", "repo_id": "repo-a", "query": "migration timeout"}
+            {
+                "op": "recall",
+                "repo_id": "repo-a",
+                "query": "migration timeout",
+                "current_problem": _current_problem(),
+            }
         ),
         object(),
-        inner_agent_runner=runner,
         build_context_settings=_enabled_build_context_settings(),
     )
 
-    assert len(read_requests) == 2
-    assert len(runner.requests) == 2
-    assert "private_expansions" in runner.requests[1].candidate_context
-    assert result.data["brief"]["summary"] == (
-        "Expanded concept context points to admin migrations."
-    )
+    assert len(read_requests) == 1
+    assert result.data["brief"]["summary"] == "Shellbrain synthesized 2 recall source(s) for this query."
     telemetry = result.data["_telemetry"]["inner_agent"]
-    assert telemetry["private_read_count"] == 1
-    assert telemetry["concept_expansion_count"] == 1
-    assert any(
-        source["input_section"].startswith("private_expansion_1")
-        for source in result.data["_telemetry"]["source_items"]
-    )
+    assert telemetry["status"] == "provider_unavailable"
+    assert telemetry["fallback_used"] is True
 
 
 def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
@@ -165,7 +146,12 @@ def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
 
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
-            {"op": "recall", "repo_id": "repo-a", "query": "nothing"}
+            {
+                "op": "recall",
+                "repo_id": "repo-a",
+                "query": "nothing",
+                "current_problem": _current_problem(),
+            }
         ),
         object(),
     )
@@ -175,25 +161,35 @@ def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
     assert "no relevant memories" in result.data["brief"]["gaps"][0]
 
 
-def test_build_context_error_fallback_returns_structured_provider_error(
+def test_build_context_provider_error_uses_deterministic_fallback(
     monkeypatch,
 ) -> None:
-    """build_context should honor fallback=error for provider failures."""
+    """build_context should use deterministic fallback when the provider fails."""
 
     _stub_internal_read(monkeypatch, pack=_candidate_pack())
 
-    with pytest.raises(DomainValidationError) as exc_info:
-        execute_build_context(
-            MemoryRecallRequest.model_validate(
-                {"op": "recall", "repo_id": "repo-a", "query": "migration timeout"}
-            ),
-            object(),
-            inner_agent_runner=None,
-            build_context_settings=_enabled_build_context_settings(fallback="error"),
-        )
+    result = execute_build_context(
+        MemoryRecallRequest.model_validate(
+            {
+                "op": "recall",
+                "repo_id": "repo-a",
+                "query": "migration timeout",
+                "current_problem": _current_problem(),
+            }
+        ),
+        object(),
+        inner_agent_runner=_ErrorRunner(),
+        build_context_settings=_enabled_build_context_settings(),
+    )
 
-    assert exc_info.value.errors[0].code == ErrorCode.INNER_AGENT_ERROR
-    assert exc_info.value.errors[0].field == "inner_agent"
+    assert result.data["fallback_reason"] is None
+    assert result.data["brief"]["summary"] == (
+        "Shellbrain synthesized 2 recall source(s) for this query."
+    )
+    telemetry = result.data["_telemetry"]["inner_agent"]
+    assert telemetry["status"] == "invalid_output"
+    assert telemetry["fallback_used"] is True
+    assert telemetry["error_code"] == "invalid_output"
 
 
 def _stub_internal_read(monkeypatch, *, pack: dict) -> None:
@@ -209,13 +205,10 @@ def _stub_internal_read(monkeypatch, *, pack: dict) -> None:
     )
 
 
-def _enabled_build_context_settings(
-    *, fallback: str = "deterministic"
-) -> InnerAgentSettings:
+def _enabled_build_context_settings() -> InnerAgentSettings:
     """Return enabled build_context settings for provider-path tests."""
 
     return InnerAgentSettings(
-        enabled=True,
         provider="codex",
         model="gpt-5.4-mini",
         reasoning="low",
@@ -223,8 +216,18 @@ def _enabled_build_context_settings(
         max_private_reads=3,
         max_candidate_tokens=10_000,
         max_brief_tokens=1_800,
-        fallback=fallback,
     )
+
+
+def _current_problem() -> dict[str, str]:
+    """Return the mandatory worker problem context for recall tests."""
+
+    return {
+        "goal": "fix migration",
+        "surface": "db admin",
+        "obstacle": "lock timeout",
+        "hypothesis": "missing timeout guard",
+    }
 
 
 def _candidate_pack() -> dict:
@@ -262,41 +265,6 @@ def _candidate_pack() -> dict:
         },
     }
 
-
-def _expansion_pack() -> dict:
-    """Return one private concept expansion pack."""
-
-    return {
-        "meta": {
-            "mode": "targeted",
-            "limit": 2,
-            "counts": {"direct": 1, "explicit_related": 0, "implicit_related": 0},
-        },
-        "direct": [
-            {
-                "memory_id": "expanded-1",
-                "kind": "solution",
-                "text": "Admin migrations need bounded lock acquisition.",
-                "why_included": "concept_grounding",
-            }
-        ],
-        "explicit_related": [],
-        "implicit_related": [],
-        "concepts": {
-            "mode": "explicit",
-            "items": [
-                {
-                    "id": "concept-1",
-                    "ref": "db-admin",
-                    "name": "DB Admin",
-                    "kind": "workflow",
-                    "orientation": "Admin migrations are lifecycle operations.",
-                }
-            ],
-            "missing_refs": [],
-            "guidance": "Grounding details included.",
-        },
-    }
 
 
 def _empty_pack() -> dict:

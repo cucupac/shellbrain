@@ -13,7 +13,7 @@ class InnerAgentOutputParseError(ValueError):
 def parse_inner_agent_brief_output(output: str) -> dict[str, Any]:
     """Parse a provider final response into a worker brief object."""
 
-    brief, _requested_expansions = parse_inner_agent_response_output(output)
+    brief, _read_trace = parse_inner_agent_response_output(output)
     if brief is None:
         raise InnerAgentOutputParseError("inner-agent output must include a brief")
     return brief
@@ -21,8 +21,8 @@ def parse_inner_agent_brief_output(output: str) -> dict[str, Any]:
 
 def parse_inner_agent_response_output(
     output: str,
-) -> tuple[dict[str, Any] | None, list[dict[str, Any]]]:
-    """Parse provider output into either a final brief or expansion requests."""
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Parse provider output into a final brief and best-effort read trace."""
 
     text = _strip_code_fence(output.strip())
     try:
@@ -32,25 +32,17 @@ def parse_inner_agent_response_output(
     if not isinstance(payload, dict):
         raise InnerAgentOutputParseError("inner-agent output must be a JSON object")
 
-    requested_expansions = _requested_expansions(payload.get("requested_expansions"))
     brief = payload.get("brief")
     if brief is None and "summary" in payload:
         brief = payload
     if not isinstance(brief, dict):
-        if requested_expansions:
-            return None, requested_expansions
         raise InnerAgentOutputParseError("inner-agent output must include an object brief")
     if not isinstance(brief.get("summary"), str) or not brief["summary"].strip():
         raise InnerAgentOutputParseError("inner-agent brief.summary is required")
-    return brief, requested_expansions
-
-
-def _requested_expansions(value: Any) -> list[dict[str, Any]]:
-    """Return dict expansion requests from provider output."""
-
-    if not isinstance(value, list):
-        return []
-    return [item for item in value if isinstance(item, dict)]
+    read_trace = payload.get("read_trace")
+    if not isinstance(read_trace, dict):
+        read_trace = {}
+    return brief, read_trace
 
 
 def _strip_code_fence(text: str) -> str:

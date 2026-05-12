@@ -33,27 +33,36 @@ _TOP_LEVEL_HELP = dedent(
       - Start a repo session in Codex, Claude Code, or Cursor (see shellbrain.ai/humans).
       - If readiness is unclear, run `shellbrain admin doctor`.
 
-    Mental model:
-      - `read` retrieves durable memories related to the concrete problem or subproblem.
-      - `recall` returns a compact read-only synthesis brief from targeted Shellbrain retrieval.
-      - `events` inspects episodic transcript evidence from the active session.
-      - `memory add` authors durable memories from that evidence.
-      - `memory update` records utility, truth-evolution links, and explicit associations.
+    Audience lanes:
+      Humans:
+        - Bootstrap or repair with `shellbrain init`.
+        - Upgrade with `shellbrain upgrade`.
+        - Check health with `shellbrain admin doctor`.
+        - Review usage with `shellbrain metrics`.
 
-    Typical workflow:
-      0. `shellbrain init` is the one-time machine bootstrap and repair command. The website installer already runs it for you.
-      1. Query with the concrete bug, subsystem, decision, or constraint you are working on.
-         Avoid generic prompts like "what should I know about this repo?"
-      2. Re-run `read` whenever the search shifts or you get stuck.
-      3. Run `events` before every write and reuse returned ids verbatim as `evidence_refs`.
-      4. At session end, normalize the episode into `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories, then record `utility_vote` updates for memories that helped or misled.
+      Working agents:
+        - Use only `shellbrain recall`.
+        - Send a concrete `query` plus required `current_problem`.
+        - Avoid generic prompts like "what should I know about this repo?"
+
+      Internal recall agents:
+        - Start with `shellbrain events`.
+        - Use `shellbrain read` for memories and concept orientation.
+        - Use `shellbrain concept show` for progressive concept disclosure.
+        - These commands are read-only.
+
+      Knowledge-builder agents:
+        - Run `shellbrain events` before every write.
+        - Use returned `episode_event` ids as `evidence_refs`.
+        - At session end, write `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories.
+        - Use `memory update` for `utility_vote`, truth evolution, and associations.
 
     Examples:
       shellbrain init
       shellbrain upgrade
       shellbrain metrics
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
-      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?"}'
+      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"lock timeout","hypothesis":"missing timeout guard"}}'
       shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
       shellbrain events --json '{"limit":10}'
       shellbrain memory add --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
@@ -98,9 +107,10 @@ _CREATE_HELP = dedent(
 
 _READ_HELP = dedent(
     """\
-    Retrieve Shellbrain context without mutating state.
+    Internal recall-agent endpoint for reading Shellbrain context without mutating state.
 
     Use concrete failure modes, subsystem names, decisions, or constraints.
+    Internal recall agents should call this after `events`; working agents should call `recall`.
     Avoid generic prompts like "what should I know about this repo?"
 
     Returned pack sections:
@@ -119,12 +129,14 @@ _RECALL_HELP = dedent(
     """\
     Return a compact read-only recall brief.
 
-    Accepts `query`, optional `limit`, and optional `current_problem`.
+    Requires `query` and `current_problem`.
+    `current_problem` must include non-empty `goal`, `surface`, `obstacle`, and
+    `hypothesis`; use an explicit value like "none yet" when there is no hypothesis.
+    Accepts optional `limit`.
     It does not mutate memories, concepts, utility observations, or problem runs.
 
     Example:
-      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?"}'
-      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"Docker unavailable"}}'
+      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"Docker unavailable","hypothesis":"none yet"}}'
     """
 )
 
@@ -134,23 +146,39 @@ _CONCEPT_HELP = dedent(
 
     This endpoint is intended for tests, manual seeding, and future librarian integration.
     Working agents should use `recall`. Internal agents may use `read`, `events`,
-    `memory add`, `memory update`, `concept add`, and `concept update`.
+    `concept show`, `memory add`, `memory update`, `concept add`, and `concept update`.
 
     Phase 1 supports:
       - concept add: create concept containers; fails when the concept exists
       - concept update: change existing concept records and graph links
+      - concept show: inspect one concept and requested facets without mutating state
 
     Examples:
+      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","groundings"]}'
       shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"manual","note":"Seeded from planning."}]}]}'
     """
 )
 
+_CONCEPT_SHOW_HELP = dedent(
+    """\
+    Internal recall-agent read-only endpoint for inspecting one concept.
+
+    Use this for progressive disclosure after `read` returns a concept ref that may
+    affect the synthesis brief. Working agents should call `recall`, not this command.
+
+    Example:
+      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
+    """
+)
+
 _EVENTS_HELP = dedent(
     """\
-    Inspect the newest repo-matching host session and return recent `episode_event` ids.
+    Internal-agent endpoint for inspecting the newest repo-matching host session.
 
     `events` performs an inline transcript sync before returning normalized episodic evidence.
+    Recall agents should run this before private reads. Knowledge-builder agents should
+    run this before durable writes and use returned ids as `evidence_refs`.
 
     Example:
       shellbrain events --json '{"limit":10}'
@@ -408,7 +436,7 @@ def build_parser() -> argparse.ArgumentParser:
     concept_parser = subparsers.add_parser(
         "concept",
         help="Internal concept graph endpoints.",
-        description="Add or update typed concept graph substrate records.",
+        description="Inspect, add, or update typed concept graph substrate records.",
         epilog=_CONCEPT_HELP,
         formatter_class=_HelpFormatter,
     )
@@ -416,6 +444,15 @@ def build_parser() -> argparse.ArgumentParser:
     concept_subparsers = concept_parser.add_subparsers(
         dest="concept_command", required=True, metavar="concept-command"
     )
+    concept_show_parser = concept_subparsers.add_parser(
+        "show",
+        help="Inspect one concept graph record.",
+        description="Inspect one concept graph record and requested facets.",
+        epilog=_CONCEPT_SHOW_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(concept_show_parser, suppress_default=True)
+    _add_payload_arguments(concept_show_parser)
     concept_add_parser = concept_subparsers.add_parser(
         "add",
         help="Add concept graph records.",
@@ -447,8 +484,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     memory_parser = subparsers.add_parser(
         "memory",
-        help="Internal memory write endpoints.",
-        description="Add or update durable Shellbrain memories.",
+        help="Internal knowledge-builder memory write endpoints.",
+        description="Add or update durable Shellbrain memories from evidence.",
         epilog=_CREATE_HELP + "\n" + _UPDATE_HELP,
         formatter_class=_HelpFormatter,
     )

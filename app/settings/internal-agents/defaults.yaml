@@ -1,6 +1,5 @@
 # Default model/runtime settings for Shellbrain inner agents.
 build_context:
-  enabled: true
   provider: codex
   model: gpt-5.4-mini
   reasoning: low
@@ -8,10 +7,8 @@ build_context:
   max_private_reads: 3
   max_candidate_tokens: 10000
   max_brief_tokens: 1800
-  fallback: deterministic
 
 build_knowledge:
-  enabled: false
   provider: codex
   model: gpt-5.4
   reasoning: medium
@@ -19,10 +16,9 @@ build_knowledge:
   max_private_reads: 0
   max_candidate_tokens: 20000
   max_brief_tokens: 4000
-  fallback: disabled
 
 providers:
   codex:
     command: codex
     working_directory: repo_root
-    allow_unbounded_cli: false
+    allow_shellbrain_cli: true

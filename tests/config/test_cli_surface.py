@@ -91,6 +91,13 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "case-based memory system" in output
+    assert "Audience lanes" in output
+    assert "Humans:" in output
+    assert "Working agents:" in output
+    assert "Internal recall agents:" in output
+    assert "Knowledge-builder agents:" in output
+    assert "Use only `shellbrain recall`" in output
+    assert "Use `shellbrain concept show` for progressive concept disclosure" in output
     assert "Avoid generic prompts like" in output
     assert "At session end" in output
     assert "utility_vote" in output
@@ -249,6 +256,8 @@ def test_read_help_should_include_one_example(
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
+    assert "Internal recall-agent endpoint" in output
+    assert "working agents should call `recall`" in output
     assert "shellbrain read --json" in output
     assert "Avoid generic prompts" in output
     assert "explicit_related" in output
@@ -269,8 +278,10 @@ def test_recall_help_should_describe_read_only_synthesis_contract(
     output = capsys.readouterr().out
     assert "shellbrain recall --json" in output
     assert "query" in output
-    assert "optional `limit`" in output
-    assert "optional `current_problem`" in output
+    assert "Requires `query` and `current_problem`" in output
+    assert "goal" in output
+    assert "hypothesis" in output
+    assert "Accepts optional `limit`" in output
     assert "does not mutate" in output
 
 
@@ -286,15 +297,23 @@ def test_concept_help_should_describe_internal_json_endpoint(
     output = capsys.readouterr().out
     assert "Internal JSON-first endpoint" in output
     assert "Internal agents may use" in output
+    assert "shellbrain concept show --json" in output
     assert "shellbrain concept add --json" in output
     assert "shellbrain concept update --json" in output
+    with pytest.raises(SystemExit) as show_exc:
+        cli_main.main(["concept", "show", "--help"])
+    assert show_exc.value.code == 0
+    show_output = capsys.readouterr().out
+    assert "Internal recall-agent read-only endpoint" in show_output
+    assert "progressive disclosure" in show_output
+    assert "Working agents should call `recall`" in show_output
     with pytest.raises(SystemExit) as add_exc:
         cli_main.main(["concept", "add", "--help"])
     assert add_exc.value.code == 0
     assert "--json-file" in capsys.readouterr().out
 
 
-def test_concept_parser_should_require_add_or_update_and_accept_payloads(
+def test_concept_parser_should_require_subcommand_and_accept_payloads(
     tmp_path: Path,
 ) -> None:
     """concept should use the same single-payload-source shape as other operational commands."""
@@ -322,6 +341,17 @@ def test_concept_parser_should_require_add_or_update_and_accept_payloads(
     assert inline_args.command == "concept"
     assert inline_args.concept_command == "add"
     assert inline_args.json_text
+
+    show_args = parser.parse_args(
+        [
+            "concept",
+            "show",
+            "--json",
+            '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims"]}',
+        ]
+    )
+    assert show_args.command == "concept"
+    assert show_args.concept_command == "show"
 
     payload_file = tmp_path / "concept.json"
     payload_file.write_text(
@@ -351,6 +381,9 @@ def test_events_help_should_include_one_example(
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
+    assert "Internal-agent endpoint" in output
+    assert "Recall agents should run this before private reads" in output
+    assert "Knowledge-builder agents should" in output
     assert "shellbrain events --json" in output
     assert "inline transcript sync" in output
 
@@ -705,13 +738,42 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
             str(repo_root),
             "recall",
             "--json",
-            '{"query":"x"}',
+            (
+                '{"query":"x","current_problem":{"goal":"g","surface":"s",'
+                '"obstacle":"o","hypothesis":"none yet"}}'
+            ),
         ]
     )
 
     assert exit_code == 0
     assert captured["command"] == "recall"
-    assert captured["payload"] == {"query": "x"}
+    assert captured["payload"] == {
+        "query": "x",
+        "current_problem": {
+            "goal": "g",
+            "surface": "s",
+            "obstacle": "o",
+            "hypothesis": "none yet",
+        },
+    }
+
+
+def test_inner_agent_read_only_mode_allows_only_read_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """inner-agent read-only mode should reject write routes before dispatch."""
+
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_READ_ONLY", "1")
+
+    cli_runner._enforce_inner_agent_read_only("read")
+    cli_runner._enforce_inner_agent_read_only("events")
+    cli_runner._enforce_inner_agent_read_only("concept:show")
+    with pytest.raises(ValueError):
+        cli_runner._enforce_inner_agent_read_only("recall")
+    with pytest.raises(ValueError):
+        cli_runner._enforce_inner_agent_read_only("memory:add")
+    with pytest.raises(ValueError):
+        cli_runner._enforce_inner_agent_read_only("concept:update")
 
 
 def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 from collections.abc import Callable
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any, Sequence
@@ -12,6 +13,10 @@ from typing import Any, Sequence
 from app.entrypoints.cli.parser import build_parser
 from app.entrypoints.cli.presenters.json import render
 from app.startup.cli_runtime import CliRuntime
+
+
+_INNER_AGENT_READ_ONLY_ENV = "SHELLBRAIN_INNER_AGENT_READ_ONLY"
+_INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS = {"read", "events", "concept:show"}
 
 
 def run_operation_command(**kwargs):
@@ -32,6 +37,12 @@ def main(
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    command = _operation_route_command(args)
+    try:
+        _enforce_inner_agent_read_only(command)
+    except ValueError as exc:
+        parser.error(str(exc))
+        return 2
     runtime = _require_runtime(runtime=runtime, runtime_factory=runtime_factory)
 
     if args.command == "init":
@@ -88,7 +99,7 @@ def main(
 
     try:
         result = run_operation_command(
-            command=_operation_route_command(args),
+            command=command,
             payload=payload,
             repo_context=repo_context,
             repo_id_override=getattr(args, "repo_id", None),
@@ -138,6 +149,26 @@ def _operation_route_command(args: argparse.Namespace) -> str:
     if args.command == "concept" and getattr(args, "concept_command", None):
         return f"concept:{args.concept_command}"
     return str(args.command)
+
+
+def _enforce_inner_agent_read_only(command: str) -> None:
+    """Reject non-read routes when Shellbrain is running inside an inner agent."""
+
+    if not _inner_agent_read_only_enabled():
+        return
+    if command in _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS:
+        return
+    allowed = ", ".join(sorted(_INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS))
+    raise ValueError(
+        f"{_INNER_AGENT_READ_ONLY_ENV}=1 allows only read-only routes: {allowed}"
+    )
+
+
+def _inner_agent_read_only_enabled() -> bool:
+    """Return whether the inner-agent read-only CLI mode is active."""
+
+    value = os.environ.get(_INNER_AGENT_READ_ONLY_ENV, "")
+    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _dispatch_operation_command(
@@ -252,6 +283,25 @@ def _dispatch_operation_command(
 
         prepared = prepare_concept_add_request(payload, inferred_repo_id=repo_id)
         return run_concept_add_operation(
+            prepared.request,
+            dependencies=dependencies,
+            uow_factory=runtime.get_uow_factory(),
+            inferred_repo_id=repo_id,
+            validation_errors=prepared.errors,
+            validation_error_stage=prepared.error_stage,
+            telemetry_context=runtime.get_operation_telemetry_context(),
+            repo_root=repo_root,
+        )
+    if command == "concept:show":
+        from app.entrypoints.cli.handlers.internal_agent.concepts.show import (
+            run_concept_show_operation,
+        )
+        from app.entrypoints.cli.request_parsing.concepts import (
+            prepare_concept_show_request,
+        )
+
+        prepared = prepare_concept_show_request(payload, inferred_repo_id=repo_id)
+        return run_concept_show_operation(
             prepared.request,
             dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
