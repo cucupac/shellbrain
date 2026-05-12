@@ -35,7 +35,7 @@ _TOP_LEVEL_HELP = dedent(
 
     Mental model:
       - `read` retrieves durable memories related to the concrete problem or subproblem.
-      - `recall` returns a compact read-only brief from targeted Shellbrain retrieval.
+      - `recall` returns a compact read-only synthesis brief from targeted Shellbrain retrieval.
       - `events` inspects episodic transcript evidence from the active session.
       - `memory add` authors durable memories from that evidence.
       - `memory update` records utility, truth-evolution links, and explicit associations.
@@ -119,11 +119,12 @@ _RECALL_HELP = dedent(
     """\
     Return a compact read-only recall brief.
 
-    Phase 1 accepts only `query` and optional `limit`.
+    Accepts `query`, optional `limit`, and optional `current_problem`.
     It does not mutate memories, concepts, utility observations, or problem runs.
 
     Example:
       shellbrain recall --json '{"query":"What context matters for this migration lock timeout?"}'
+      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"Docker unavailable"}}'
     """
 )
 
@@ -397,7 +398,7 @@ def build_parser() -> argparse.ArgumentParser:
     recall_parser = subparsers.add_parser(
         "recall",
         help="Return a compact read-only Shellbrain brief.",
-        description="Return a compact deterministic brief from targeted Shellbrain retrieval.",
+        description="Return a compact synthesis brief from targeted Shellbrain retrieval.",
         epilog=_RECALL_HELP,
         formatter_class=_HelpFormatter,
     )

@@ -167,7 +167,7 @@ def test_events_sync_failures_should_always_append_one_failed_operation_invocati
     """events sync failures should always append one failed operation invocation and one failed episode sync run."""
 
     monkeypatch.setattr(
-        "app.startup.cli_handlers.normalize_host_transcript",
+        "app.startup.operation_dependencies.normalize_host_transcript",
         lambda **kwargs: (_ for _ in ()).throw(FileNotFoundError("missing transcript")),
     )
 

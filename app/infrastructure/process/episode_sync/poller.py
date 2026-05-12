@@ -23,6 +23,8 @@ from app.infrastructure.host_apps.transcripts.source_discovery import (
     discover_active_host_session,
     resolve_host_transcript_source,
 )
+from app.infrastructure.system.clock import SystemClock
+from app.infrastructure.system.id_generator import UuidGenerator
 from app.infrastructure.process.episode_sync.status_store import (
     record_episode_sync_status,
 )
@@ -71,6 +73,8 @@ def sync_episode_from_host(
         search_roots=search_roots,
         resolve_host_transcript_source=resolve_host_transcript_source,
         normalize_host_transcript=normalize_host_transcript,
+        clock=SystemClock(),
+        id_generator=UuidGenerator(),
         last_known_path=last_known_path,
     )
 

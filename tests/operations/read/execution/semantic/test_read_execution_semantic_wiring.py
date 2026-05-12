@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from app.core.contracts.errors import ErrorCode
+from app.core.errors import ErrorCode
 from app.core.use_cases.retrieval.read import execute_read_memory
 from tests.operations._shared.handler_calls import handle_read
 from app.infrastructure.db.runtime.repos.semantic.semantic_retrieval_repo import (

@@ -1,6 +1,6 @@
 """Hydration contracts for update-path requests."""
 
-from app.entrypoints.cli.protocol.hydration import hydrate_update_payload
+from app.entrypoints.cli.request_parsing.hydration import hydrate_update_payload
 
 
 def test_update_hydration_infers_missing_repo_id() -> None:

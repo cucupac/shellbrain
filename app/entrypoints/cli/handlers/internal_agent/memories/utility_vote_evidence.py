@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
-from app.core.contracts.memories import (
+from app.core.errors import ErrorCode, ErrorDetail
+from app.core.use_cases.memories.update.request import (
     MemoryBatchUpdateRequest,
     MemoryUpdateRequest,
 )

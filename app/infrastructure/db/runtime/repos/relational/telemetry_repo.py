@@ -14,6 +14,7 @@ from app.infrastructure.db.runtime.models.memories import memories
 from app.infrastructure.db.runtime.models.telemetry import (
     episode_sync_runs,
     episode_sync_tool_types,
+    inner_agent_invocations,
     model_usage,
     operation_invocations,
     recall_invocation_summaries,
@@ -27,6 +28,7 @@ from app.infrastructure.db.runtime.models.utility import utility_observations
 from app.infrastructure.telemetry.records import (
     EpisodeSyncRunRecord,
     EpisodeSyncToolTypeRecord,
+    InnerAgentInvocationRecord,
     ModelUsageRecord,
     OperationInvocationRecord,
     RecallSourceItemRecord,
@@ -101,6 +103,26 @@ class TelemetryRepo(IPendingUtilityCandidatesRepo):
         if items:
             self._session.execute(
                 recall_source_items.insert(), [asdict(item) for item in items]
+            )
+
+    def insert_inner_agent_invocations(
+        self,
+        records: tuple[InnerAgentInvocationRecord, ...]
+        | list[InnerAgentInvocationRecord],
+    ) -> None:
+        """Append inner-agent invocation rows."""
+
+        if records:
+            operation_ids = {record.operation_invocation_id for record in records}
+            self._session.execute(
+                delete(inner_agent_invocations).where(
+                    inner_agent_invocations.c.operation_invocation_id.in_(
+                        operation_ids
+                    )
+                )
+            )
+            self._session.execute(
+                inner_agent_invocations.insert(), [asdict(record) for record in records]
             )
 
     def insert_write_summary(

@@ -5,17 +5,17 @@ from __future__ import annotations
 from pathlib import Path
 from time import perf_counter
 
-from app.core.contracts.concepts import ConceptAddRequest
-from app.core.contracts.errors import DomainValidationError, ErrorCode, ErrorDetail
+from app.core.use_cases.concepts.add.request import ConceptAddRequest
+from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.entrypoints.cli.handlers.command_context import OperationDependencies
+from app.startup.operation_dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.entrypoints.cli.handlers.command_context import (
+from app.startup.operation_dependencies import (
     ensure_telemetry_context,
 )
 from app.core.use_cases.concepts.add import add_concepts

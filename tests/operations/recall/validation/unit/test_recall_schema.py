@@ -1,10 +1,10 @@
-"""Schema contracts for minimal recall requests."""
+"""Schema contracts for worker recall requests."""
 
-from app.entrypoints.cli.protocol.payload_validation import validate_recall_schema
+from app.entrypoints.cli.request_parsing.payload_validation import validate_recall_schema
 
 
 def test_recall_accepts_query_only() -> None:
-    """recall should accept the minimal Phase 1 public input."""
+    """recall should keep accepting minimal public input."""
 
     request, errors = validate_recall_schema({"query": "find migration context"})
 
@@ -12,6 +12,28 @@ def test_recall_accepts_query_only() -> None:
     assert request is not None
     assert request.query == "find migration context"
     assert request.limit is None
+    assert request.current_problem is None
+
+
+def test_recall_accepts_current_problem_context() -> None:
+    """recall should accept optional worker problem context for synthesis."""
+
+    request, errors = validate_recall_schema(
+        {
+            "query": "find migration context",
+            "current_problem": {
+                "goal": "fix migration",
+                "surface": "db admin",
+                "obstacle": "lock timeout",
+                "hypothesis": "missing timeout guard",
+            },
+        }
+    )
+
+    assert errors == []
+    assert request is not None
+    assert request.current_problem is not None
+    assert request.current_problem.goal == "fix migration"
 
 
 def test_recall_accepts_limit_with_read_bounds() -> None:
@@ -38,8 +60,8 @@ def test_recall_rejects_limit_above_read_bounds() -> None:
     assert any(error.field == "limit" for error in errors)
 
 
-def test_recall_rejects_unused_phase_one_fields() -> None:
-    """recall should reject every public field not used by the Phase 1 stub."""
+def test_recall_rejects_internal_agent_runtime_fields() -> None:
+    """recall should reject provider/model/reasoning runtime fields from workers."""
 
     payload = {
         "query": "find migration context",
@@ -47,6 +69,9 @@ def test_recall_rejects_unused_phase_one_fields() -> None:
         "expand": {"concepts": {"mode": "auto"}},
         "token_budget": 1200,
         "synthesis": {"model": "stub"},
+        "provider": "codex",
+        "model": "gpt-5.4-mini",
+        "reasoning": "low",
         "unknown": "nope",
     }
 
@@ -54,4 +79,13 @@ def test_recall_rejects_unused_phase_one_fields() -> None:
 
     assert request is None
     fields = {error.field for error in errors}
-    assert {"mode", "expand", "token_budget", "synthesis", "unknown"}.issubset(fields)
+    assert {
+        "mode",
+        "expand",
+        "token_budget",
+        "synthesis",
+        "provider",
+        "model",
+        "reasoning",
+        "unknown",
+    }.issubset(fields)

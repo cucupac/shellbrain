@@ -1,6 +1,6 @@
 """Semantic contracts for update-path requests."""
 
-from app.core.contracts.memories import MemoryUpdateRequest
+from app.core.use_cases.memories.update.request import MemoryUpdateRequest
 from app.core.policies.memories.link_rules import validate_update_semantics
 
 

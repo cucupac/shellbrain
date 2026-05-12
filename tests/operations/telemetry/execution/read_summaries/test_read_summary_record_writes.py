@@ -7,7 +7,7 @@ import json
 
 import pytest
 
-from app.core.contracts.responses import UseCaseResult
+from app.core.use_cases.retrieval.read.result import ReadMemoryResult
 from tests.operations._shared.handler_calls import handle_read
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -185,36 +185,34 @@ def test_read_summary_should_record_concept_context_telemetry(
 
     monkeypatch.setattr(
         "app.entrypoints.cli.handlers.internal_agent.retrieval.execution.execute_read_memory",
-        lambda request, uow, **kwargs: UseCaseResult(
-            data={
-                "pack": {
-                    "meta": {
-                        "mode": "targeted",
-                        "limit": 8,
-                        "counts": {
-                            "direct": 0,
-                            "explicit_related": 0,
-                            "implicit_related": 0,
-                        },
+        lambda request, uow, **kwargs: ReadMemoryResult(
+            pack={
+                "meta": {
+                    "mode": "targeted",
+                    "limit": 8,
+                    "counts": {
+                        "direct": 0,
+                        "explicit_related": 0,
+                        "implicit_related": 0,
                     },
-                    "direct": [],
-                    "explicit_related": [],
-                    "implicit_related": [],
-                    "concepts": {
-                        "mode": "explicit",
-                        "items": [
-                            {
-                                "ref": "deposit-addresses",
-                                "name": "Deposit Addresses",
-                                "kind": "domain",
-                                "orientation": "Deposit address orientation.",
-                                "groundings": [{"role": "implementation"}],
-                            }
-                        ],
-                        "missing_refs": [],
-                        "guidance": "Use expand payloads.",
-                    },
-                }
+                },
+                "direct": [],
+                "explicit_related": [],
+                "implicit_related": [],
+                "concepts": {
+                    "mode": "explicit",
+                    "items": [
+                        {
+                            "ref": "deposit-addresses",
+                            "name": "Deposit Addresses",
+                            "kind": "domain",
+                            "orientation": "Deposit address orientation.",
+                            "groundings": [{"role": "implementation"}],
+                        }
+                    ],
+                    "missing_refs": [],
+                    "guidance": "Use expand payloads.",
+                },
             },
         ),
     )

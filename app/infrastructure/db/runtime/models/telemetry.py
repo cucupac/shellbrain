@@ -129,6 +129,13 @@ recall_invocation_summaries = Table(
     Column("candidate_token_estimate", Integer, nullable=False),
     Column("brief_token_estimate", Integer, nullable=False),
     Column("fallback_reason", String),
+    Column("provider", String),
+    Column("model", String),
+    Column("reasoning", String),
+    Column("private_read_count", Integer, nullable=False, server_default=text("0")),
+    Column(
+        "concept_expansion_count", Integer, nullable=False, server_default=text("0")
+    ),
     Column(
         "created_at",
         TIMESTAMP(timezone=True),
@@ -145,6 +152,13 @@ recall_invocation_summaries = Table(
     CheckConstraint(
         "fallback_reason IS NULL OR fallback_reason = 'no_candidates'",
         name="ck_recall_fallback_reason",
+    ),
+    CheckConstraint(
+        "private_read_count >= 0", name="ck_recall_private_read_count_nonnegative"
+    ),
+    CheckConstraint(
+        "concept_expansion_count >= 0",
+        name="ck_recall_concept_expansion_count_nonnegative",
     ),
 )
 
@@ -174,6 +188,65 @@ recall_source_items = Table(
     CheckConstraint(
         "output_section IS NULL OR output_section IN ('summary', 'sources')",
         name="ck_recall_source_items_output_section",
+    ),
+)
+
+inner_agent_invocations = Table(
+    "inner_agent_invocations",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column(
+        "operation_invocation_id",
+        String,
+        ForeignKey("operation_invocations.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("agent_name", String, nullable=False),
+    Column("provider", String),
+    Column("model", String),
+    Column("reasoning", String),
+    Column("status", String, nullable=False),
+    Column("fallback_used", Boolean, nullable=False, server_default=text("FALSE")),
+    Column("timeout_seconds", Integer),
+    Column("duration_ms", Integer, nullable=False, server_default=text("0")),
+    Column("input_token_estimate", Integer),
+    Column("output_token_estimate", Integer),
+    Column("private_read_count", Integer, nullable=False, server_default=text("0")),
+    Column(
+        "concept_expansion_count", Integer, nullable=False, server_default=text("0")
+    ),
+    Column("error_code", String),
+    Column("error_message", Text),
+    Column(
+        "created_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+    CheckConstraint(
+        "agent_name IN ('build_context', 'build_knowledge')",
+        name="ck_inner_agent_invocations_agent_name",
+    ),
+    CheckConstraint(
+        "status IN ('ok', 'no_context', 'provider_unavailable', 'timeout', 'invalid_output', 'error', 'disabled')",
+        name="ck_inner_agent_invocations_status",
+    ),
+    CheckConstraint("duration_ms >= 0", name="ck_inner_agent_duration_nonnegative"),
+    CheckConstraint(
+        "input_token_estimate IS NULL OR input_token_estimate >= 0",
+        name="ck_inner_agent_input_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "output_token_estimate IS NULL OR output_token_estimate >= 0",
+        name="ck_inner_agent_output_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "private_read_count >= 0",
+        name="ck_inner_agent_private_read_count_nonnegative",
+    ),
+    CheckConstraint(
+        "concept_expansion_count >= 0",
+        name="ck_inner_agent_concept_expansion_count_nonnegative",
     ),
 )
 
@@ -348,6 +421,16 @@ Index(
     recall_source_items.c.source_kind,
     recall_source_items.c.source_id,
     recall_source_items.c.invocation_id,
+)
+Index(
+    "idx_inner_agent_invocations_operation",
+    inner_agent_invocations.c.operation_invocation_id,
+)
+Index(
+    "idx_inner_agent_invocations_agent_status_created_at",
+    inner_agent_invocations.c.agent_name,
+    inner_agent_invocations.c.status,
+    inner_agent_invocations.c.created_at,
 )
 Index(
     "idx_write_effect_items_repo_effect_invocation",

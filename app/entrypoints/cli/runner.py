@@ -4,49 +4,22 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable
-from dataclasses import dataclass
 import json
 from pathlib import Path
 import sys
 from typing import Any, Sequence
 
-from app.entrypoints.cli.handlers.human.admin import (
-    AdminCommandDependencies,
-    run_admin_command,
-)
-from app.entrypoints.cli.handlers.human.init import run as run_init_command
-from app.entrypoints.cli.handlers.human.metrics import run_metrics_command
-from app.entrypoints.cli.handlers.human.upgrade import run as run_upgrade_command
 from app.entrypoints.cli.parser import build_parser
 from app.entrypoints.cli.presenters.json import render
+from app.startup.cli_runtime import CliRuntime
 
 
-@dataclass(frozen=True)
-class CliRuntime:
-    """Startup-provided concrete dependencies for the CLI runner."""
+def run_operation_command(**kwargs):
+    """Lazy operation-command wrapper so CLI help stays dependency-light."""
 
-    resolve_repo_context: Callable[..., Any]
-    run_operation_command: Callable[..., dict[str, Any]]
-    get_create_hydration_defaults: Callable[[], dict[str, Any]]
-    get_read_hydration_defaults: Callable[[], dict[str, Any]]
-    get_uow_factory: Callable[[], Any]
-    get_embedding_provider_factory: Callable[[], Any]
-    get_embedding_model: Callable[[], str]
-    get_operation_telemetry_context: Callable[[], Any]
-    handle_memory_add: Callable[..., dict[str, Any]]
-    handle_update: Callable[..., dict[str, Any]]
-    handle_read: Callable[..., dict[str, Any]]
-    handle_recall: Callable[..., dict[str, Any]]
-    handle_events: Callable[..., dict[str, Any]]
-    handle_concept_add: Callable[..., dict[str, Any]]
-    handle_concept_update: Callable[..., dict[str, Any]]
-    should_register_repo_during_init: Callable[..., bool]
-    run_init: Callable[..., Any]
-    init_success_presenter_context: Callable[[], dict[str, Any]]
-    run_upgrade_command: Callable[[], int]
-    warn_or_fail_on_unsafe_app_role: Callable[[], None]
-    run_metrics_dashboard: Callable[..., object]
-    admin_dependencies: AdminCommandDependencies
+    from app.entrypoints.cli.operation_command import run_operation_command as run
+
+    return run(**kwargs)
 
 
 def main(
@@ -62,6 +35,8 @@ def main(
     runtime = _require_runtime(runtime=runtime, runtime_factory=runtime_factory)
 
     if args.command == "init":
+        from app.entrypoints.cli.handlers.human.init import run as run_init_command
+
         try:
             return run_init_command(
                 args,
@@ -75,9 +50,15 @@ def main(
             return 2
 
     if args.command == "upgrade":
+        from app.entrypoints.cli.handlers.human.upgrade import (
+            run as run_upgrade_command,
+        )
+
         return run_upgrade_command(run_upgrade_command=runtime.run_upgrade_command)
 
     if args.command == "metrics":
+        from app.entrypoints.cli.handlers.human.metrics import run_metrics_command
+
         return run_metrics_command(
             args,
             warn_or_fail_on_unsafe_app_role=runtime.warn_or_fail_on_unsafe_app_role,
@@ -85,6 +66,8 @@ def main(
         )
 
     if args.command == "admin":
+        from app.entrypoints.cli.handlers.human.admin import run_admin_command
+
         return run_admin_command(
             args,
             resolve_admin_repo_root=_resolve_admin_repo_root,
@@ -104,12 +87,13 @@ def main(
         return 2
 
     try:
-        result = runtime.run_operation_command(
+        result = run_operation_command(
             command=_operation_route_command(args),
             payload=payload,
             repo_context=repo_context,
             repo_id_override=getattr(args, "repo_id", None),
             no_sync=bool(getattr(args, "no_sync", False)),
+            runtime=runtime,
             dispatch_operation=lambda command, payload, context: (
                 _dispatch_operation_command(command, payload, context, runtime=runtime)
             ),
@@ -163,12 +147,17 @@ def _dispatch_operation_command(
 
     repo_id = repo_context.repo_id
     repo_root = repo_context.repo_root
+    dependencies = runtime.build_operation_dependencies()
     if command == "recall":
-        from app.entrypoints.cli.protocol.retrieval import prepare_recall_request
+        from app.entrypoints.cli.handlers.working_agent.recall import (
+            run_recall_memory_operation,
+        )
+        from app.entrypoints.cli.request_parsing.retrieval import prepare_recall_request
 
         prepared = prepare_recall_request(payload, inferred_repo_id=repo_id)
-        return runtime.handle_recall(
+        return run_recall_memory_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
@@ -177,15 +166,19 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "read":
-        from app.entrypoints.cli.protocol.retrieval import prepare_read_request
+        from app.entrypoints.cli.handlers.internal_agent.retrieval.read import (
+            run_read_memory_operation,
+        )
+        from app.entrypoints.cli.request_parsing.retrieval import prepare_read_request
 
         prepared = prepare_read_request(
             payload,
             inferred_repo_id=repo_id,
             defaults=runtime.get_read_hydration_defaults(),
         )
-        return runtime.handle_read(
+        return run_read_memory_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
@@ -195,11 +188,15 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "events":
-        from app.entrypoints.cli.protocol.episodes import prepare_events_request
+        from app.entrypoints.cli.handlers.internal_agent.episodes.events import (
+            run_read_events_operation,
+        )
+        from app.entrypoints.cli.request_parsing.episodes import prepare_events_request
 
         prepared = prepare_events_request(payload, inferred_repo_id=repo_id)
-        return runtime.handle_events(
+        return run_read_events_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
@@ -208,15 +205,19 @@ def _dispatch_operation_command(
             telemetry_context=runtime.get_operation_telemetry_context(),
         )
     if command == "memory:add":
-        from app.entrypoints.cli.protocol.memories import prepare_memory_add_request
+        from app.entrypoints.cli.handlers.internal_agent.memories.add import (
+            run_create_memory_operation,
+        )
+        from app.entrypoints.cli.request_parsing.memories import prepare_memory_add_request
 
         prepared = prepare_memory_add_request(
             payload,
             inferred_repo_id=repo_id,
             defaults=runtime.get_create_hydration_defaults(),
         )
-        return runtime.handle_memory_add(
+        return run_create_memory_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             embedding_provider_factory=runtime.get_embedding_provider_factory(),
             embedding_model=runtime.get_embedding_model(),
@@ -227,11 +228,15 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "memory:update":
-        from app.entrypoints.cli.protocol.memories import prepare_update_request
+        from app.entrypoints.cli.handlers.internal_agent.memories.update import (
+            run_update_memory_operation,
+        )
+        from app.entrypoints.cli.request_parsing.memories import prepare_update_request
 
         prepared = prepare_update_request(payload, inferred_repo_id=repo_id)
-        return runtime.handle_update(
+        return run_update_memory_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
@@ -240,11 +245,15 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "concept:add":
-        from app.entrypoints.cli.protocol.concepts import prepare_concept_add_request
+        from app.entrypoints.cli.handlers.internal_agent.concepts.add import (
+            run_concept_add_operation,
+        )
+        from app.entrypoints.cli.request_parsing.concepts import prepare_concept_add_request
 
         prepared = prepare_concept_add_request(payload, inferred_repo_id=repo_id)
-        return runtime.handle_concept_add(
+        return run_concept_add_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
@@ -253,13 +262,17 @@ def _dispatch_operation_command(
             repo_root=repo_root,
         )
     if command == "concept:update":
-        from app.entrypoints.cli.protocol.concepts import (
+        from app.entrypoints.cli.handlers.internal_agent.concepts.update import (
+            run_concept_update_operation,
+        )
+        from app.entrypoints.cli.request_parsing.concepts import (
             prepare_concept_update_request,
         )
 
         prepared = prepare_concept_update_request(payload, inferred_repo_id=repo_id)
-        return runtime.handle_concept_update(
+        return run_concept_update_operation(
             prepared.request,
+            dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,

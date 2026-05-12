@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.retrieval import MemoryReadRequest
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.core.use_cases.retrieval.read import execute_read_memory
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork

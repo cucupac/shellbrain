@@ -10,7 +10,7 @@ from app.core.entities.associations import (
 from app.core.entities.facts import FactUpdate, ProblemAttempt, ProblemAttemptRole
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.entities.utility import UtilityObservation
-from app.core.contracts.planned_effects import (
+from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     EffectType,
     FactUpdateCreateEffectParams,

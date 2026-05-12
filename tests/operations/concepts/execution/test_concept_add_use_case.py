@@ -2,7 +2,7 @@
 
 from collections.abc import Callable
 
-from app.core.contracts.concepts import ConceptAddRequest
+from app.core.use_cases.concepts.add.request import ConceptAddRequest
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.infrastructure.db.runtime.models.concepts import concepts

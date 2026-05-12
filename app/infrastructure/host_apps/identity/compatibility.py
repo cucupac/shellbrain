@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.contracts.errors import ErrorCode, ErrorDetail
+from app.core.errors import ErrorCode, ErrorDetail
 
 
 def host_hook_missing_error() -> ErrorDetail:

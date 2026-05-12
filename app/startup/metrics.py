@@ -3,9 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Callable
-
-from sqlalchemy.engine import Engine
+from typing import Any, Callable
 
 from app.core.use_cases.metrics import build_snapshot as core_metrics
 from app.core.use_cases.metrics.generate_dashboard import (
@@ -23,14 +21,14 @@ from app.startup import admin_db, db as startup_db
 _REAL_DATETIME = datetime
 
 
-def list_metrics_repo_ids(*, engine: Engine) -> list[str]:
+def list_metrics_repo_ids(*, engine: Any) -> list[str]:
     """Return repo ids using SQL query adapters."""
 
     with engine.connect() as conn:
         return core_metrics.list_metrics_repo_ids(queries=SqlMetricsQueries(conn))
 
 
-def build_metrics_snapshot(*, engine: Engine, repo_id: str, days: int) -> dict:
+def build_metrics_snapshot(*, engine: Any, repo_id: str, days: int) -> dict:
     """Return a metrics snapshot using SQL query adapters."""
 
     end_at = _REAL_DATETIME.now(timezone.utc)

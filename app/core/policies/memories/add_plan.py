@@ -2,9 +2,9 @@
 
 from typing import Any
 
-from app.core.contracts.planned_effects import (
+from app.core.use_cases.memories.add.result import CreatePlanIds
+from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
-    CreatePlanIds,
     MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
     MemoryEvidenceAttachEffectParams,

@@ -1,9 +1,9 @@
-"""This module defines boot-time helpers that load YAML-backed configuration providers."""
+"""Boot-time helpers that load app-packaged configuration."""
 
 from functools import lru_cache
 from pathlib import Path
 
-from app.settings.loader import YamlConfigProvider
+from app.startup.settings import YamlConfigProvider
 
 
 @lru_cache(maxsize=1)

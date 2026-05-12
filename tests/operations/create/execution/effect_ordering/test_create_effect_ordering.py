@@ -1,7 +1,8 @@
 """Effect-ordering contracts for create execution."""
 
-from app.core.contracts.planned_effects import CreatePlanIds, EffectType
 from app.core.policies.memories.add_plan import build_create_plan
+from app.core.use_cases.memories.add.result import CreatePlanIds
+from app.core.use_cases.memories.effect_plan import EffectType
 
 
 def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type() -> (

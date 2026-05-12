@@ -5,7 +5,8 @@ from collections.abc import Callable
 from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
 
-from app.core.contracts.concepts import ConceptAddRequest, ConceptUpdateRequest
+from app.core.use_cases.concepts.add.request import ConceptAddRequest
+from app.core.use_cases.concepts.update.request import ConceptUpdateRequest
 from app.core.entities.concepts import ConceptLifecycleStatus
 from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.ports.system.idgen import IIdGenerator

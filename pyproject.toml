@@ -27,6 +27,7 @@ include = ["app*", "migrations*", "onboarding_assets*"]
 [tool.setuptools.package-data]
 app = [
   "settings/defaults/*.yaml",
+  "settings/internal-agents/*.yaml",
 ]
 migrations = [
   "env.py",

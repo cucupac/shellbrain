@@ -5,13 +5,14 @@ from __future__ import annotations
 import sys
 from typing import Sequence
 
-from app.startup.cli import main as startup_main
+from app.entrypoints.cli.runner import main as runner_main
+from app.startup.cli import build_cli_runtime
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Delegate CLI startup to the composition root."""
+    """Run the CLI with startup-composed concrete dependencies."""
 
-    return startup_main(argv)
+    return runner_main(argv, runtime_factory=build_cli_runtime)
 
 
 if __name__ == "__main__":

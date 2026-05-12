@@ -2,15 +2,15 @@
 
 from typing import Any
 
-from app.core.contracts.planned_effects import (
+from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     FactUpdateCreateEffectParams,
     MemoryArchiveStateEffectParams,
     PlannedEffect,
-    UpdatePlanIds,
     UtilityObservationAppendEffectParams,
     make_side_effect,
 )
+from app.core.use_cases.memories.update.result import UpdatePlanIds
 from app.core.entities.associations import AssociationSourceMode, AssociationState
 from app.core.entities.memories import (
     ConfidenceValue,

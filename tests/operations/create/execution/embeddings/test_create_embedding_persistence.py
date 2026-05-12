@@ -14,7 +14,7 @@ from app.core.entities.episodes import (
     EpisodeEventSource,
     EpisodeStatus,
 )
-from app.core.contracts.memories import MemoryAddRequest
+from app.core.use_cases.memories.add.request import MemoryAddRequest
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.runtime.engine import get_engine

@@ -2,9 +2,15 @@
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Final
+from typing import Final, Literal
 
 from app.core.entities.ids import MemoryId, RepoId
+
+
+MemoryKindValue = Literal[
+    "problem", "solution", "failed_tactic", "fact", "preference", "change", "frontier"
+]
+AssociationRelationValue = Literal["depends_on", "associated_with", "matures_into"]
 
 
 class MemoryKind(str, Enum):

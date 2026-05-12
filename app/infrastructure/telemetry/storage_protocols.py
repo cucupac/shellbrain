@@ -25,6 +25,9 @@ class TelemetryWriteRepository(Protocol):
     ) -> None:
         """Persist one recall summary row and its ordered source items."""
 
+    def insert_inner_agent_invocations(self, records: Sequence[object]) -> None:
+        """Append inner-agent invocation rows."""
+
     def insert_write_summary(
         self,
         summary: object,

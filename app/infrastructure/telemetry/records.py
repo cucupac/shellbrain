@@ -89,6 +89,11 @@ class RecallSummaryRecord:
     candidate_token_estimate: int
     brief_token_estimate: int
     fallback_reason: str | None
+    provider: str | None
+    model: str | None
+    reasoning: str | None
+    private_read_count: int
+    concept_expansion_count: int
     created_at: datetime
 
 
@@ -102,6 +107,29 @@ class RecallSourceItemRecord:
     source_id: str
     input_section: str
     output_section: str | None
+
+
+@dataclass(frozen=True)
+class InnerAgentInvocationRecord:
+    """One provider-backed inner-agent run or fallback decision."""
+
+    id: str
+    operation_invocation_id: str
+    agent_name: str
+    provider: str | None
+    model: str | None
+    reasoning: str | None
+    status: str
+    fallback_used: bool
+    timeout_seconds: int | None
+    duration_ms: int
+    input_token_estimate: int | None
+    output_token_estimate: int | None
+    private_read_count: int
+    concept_expansion_count: int
+    error_code: str | None
+    error_message: str | None
+    created_at: datetime
 
 
 @dataclass(frozen=True)

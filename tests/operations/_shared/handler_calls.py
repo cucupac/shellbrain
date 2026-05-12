@@ -1,4 +1,4 @@
-"""Test adapters for operation handlers after protocol/handler separation."""
+"""Test adapters for operation handlers after request-parsing/handler separation."""
 
 from __future__ import annotations
 
@@ -6,21 +6,22 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from app.core.contracts.episodes import EpisodeEventsRequest
-from app.core.contracts.memories import (
+from app.core.use_cases.episodes.events.request import EpisodeEventsRequest
+from app.core.use_cases.memories.add.request import MemoryAddRequest
+from app.core.use_cases.memories.update.request import (
     MemoryBatchUpdateRequest,
-    MemoryAddRequest,
     MemoryUpdateRequest,
 )
-from app.core.contracts.retrieval import MemoryReadRequest, MemoryRecallRequest
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
+from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.ports.system.idgen import IIdGenerator
-from app.entrypoints.cli.protocol.episodes import prepare_events_request
-from app.entrypoints.cli.protocol.memories import (
+from app.entrypoints.cli.request_parsing.episodes import prepare_events_request
+from app.entrypoints.cli.request_parsing.memories import (
     prepare_memory_add_request,
     prepare_update_request,
 )
-from app.entrypoints.cli.protocol.prepared import PreparedOperationRequest
-from app.entrypoints.cli.protocol.retrieval import (
+from app.entrypoints.cli.request_parsing.prepared import PreparedOperationRequest
+from app.entrypoints.cli.request_parsing.retrieval import (
     prepare_read_request,
     prepare_recall_request,
 )
@@ -29,7 +30,9 @@ from app.entrypoints.cli.handlers.internal_agent.memories.add import run_create_
 from app.entrypoints.cli.handlers.internal_agent.memories.update import run_update_memory_operation
 from app.entrypoints.cli.handlers.internal_agent.retrieval.read import run_read_memory_operation
 from app.entrypoints.cli.handlers.working_agent.recall import run_recall_memory_operation
-from app.startup import cli_handlers as startup_handlers
+from app.entrypoints.cli.handlers.internal_agent.concepts.add import run_concept_add_operation
+from app.entrypoints.cli.handlers.internal_agent.concepts.update import run_concept_update_operation
+from app.startup import operation_dependencies as startup_handlers
 from app.startup.create_policy import get_create_hydration_defaults
 from app.startup.read_policy import get_read_hydration_defaults
 
@@ -156,11 +159,13 @@ def handle_events(
 
 
 def handle_concept_add(*args: Any, **kwargs: Any) -> dict[str, Any]:
-    return startup_handlers.handle_concept_add(*args, **kwargs)
+    dependencies = startup_handlers.build_operation_dependencies()
+    return run_concept_add_operation(*args, dependencies=dependencies, **kwargs)
 
 
 def handle_concept_update(*args: Any, **kwargs: Any) -> dict[str, Any]:
-    return startup_handlers.handle_concept_update(*args, **kwargs)
+    dependencies = startup_handlers.build_operation_dependencies()
+    return run_concept_update_operation(*args, dependencies=dependencies, **kwargs)
 
 
 def _prepare_create(
