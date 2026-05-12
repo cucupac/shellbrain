@@ -2,14 +2,7 @@
 
 from typing import Any, Literal
 
-from pydantic import (
-    BaseModel,
-    ConfigDict,
-    Field,
-    ValidationError,
-    field_validator,
-    model_validator,
-)
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.core.use_cases.episodes.events.request import EpisodeEventsRequest
 from app.core.errors import ErrorCode, ErrorDetail
@@ -71,27 +64,20 @@ class AgentReadRequest(StrictBaseModel):
 class AgentRecallCurrentProblem(StrictBaseModel):
     """Agent-facing current-problem context for recall synthesis."""
 
-    goal: str | None = Field(default=None, min_length=1)
-    surface: str | None = Field(default=None, min_length=1)
-    obstacle: str | None = Field(default=None, min_length=1)
-    hypothesis: str | None = Field(default=None, min_length=1)
+    goal: str = Field(min_length=1)
+    surface: str = Field(min_length=1)
+    obstacle: str = Field(min_length=1)
+    hypothesis: str = Field(min_length=1)
 
-    @field_validator("goal", "surface", "obstacle", "hypothesis", mode="before")
+    @field_validator("goal", "surface", "obstacle", "hypothesis")
     @classmethod
-    def _blank_to_none(cls, value):
-        """Normalize blank problem context fields before validation."""
+    def _validate_non_blank(cls, value: str) -> str:
+        """Require every problem context field to be explicit."""
 
-        if value == "":
-            return None
-        return value
-
-    @model_validator(mode="after")
-    def _validate_any_context(self) -> "AgentRecallCurrentProblem":
-        """Require at least one populated problem-context field."""
-
-        if not any((self.goal, self.surface, self.obstacle, self.hypothesis)):
-            raise ValueError("current_problem must include at least one field")
-        return self
+        text = value.strip()
+        if not text:
+            raise ValueError("current_problem fields must be non-empty strings")
+        return text
 
 
 class AgentRecallRequest(StrictBaseModel):
@@ -99,7 +85,7 @@ class AgentRecallRequest(StrictBaseModel):
 
     query: str = Field(min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
-    current_problem: AgentRecallCurrentProblem | None = None
+    current_problem: AgentRecallCurrentProblem
 
 
 class AgentMemoryAddBody(StrictBaseModel):

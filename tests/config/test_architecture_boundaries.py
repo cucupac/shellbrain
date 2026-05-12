@@ -59,6 +59,19 @@ def test_core_does_not_import_subprocess() -> None:
     _assert_no_forbidden_imports("core", ("subprocess",))
 
 
+def test_core_does_not_read_environment() -> None:
+    violations: list[str] = []
+    forbidden = ("os.environ", "os.getenv", "environ.get(", "getenv(")
+    for path in _python_files(APP_ROOT / "core"):
+        text = path.read_text(encoding="utf-8")
+        for needle in forbidden:
+            if needle in text:
+                violations.append(f"{path.relative_to(REPO_ROOT)} contains {needle!r}")
+    assert not violations, "Core must not read process environment:\n" + "\n".join(
+        violations
+    )
+
+
 def test_infrastructure_does_not_import_startup_or_entrypoints() -> None:
     _assert_no_forbidden_imports(
         "infrastructure",

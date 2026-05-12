@@ -99,7 +99,11 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     captured = _stub_internal_read(monkeypatch, pack=_candidate_pack())
 
     result = handle_recall(
-        {"query": "recall telemetry", "limit": 2},
+        {
+            "query": "recall telemetry",
+            "limit": 2,
+            "current_problem": _current_problem(),
+        },
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -173,7 +177,7 @@ def test_no_candidate_recall_should_write_no_candidates_fallback(
     _stub_internal_read(monkeypatch, pack=_empty_pack())
 
     result = handle_recall(
-        {"query": "nothing matches"},
+        {"query": "nothing matches", "current_problem": _current_problem()},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -203,7 +207,7 @@ def test_recall_should_not_mutate_knowledge_state(
     before = _knowledge_counts(fetch_relation_rows)
 
     result = handle_recall(
-        {"query": "read-only recall"},
+        {"query": "read-only recall", "current_problem": _current_problem()},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -223,7 +227,10 @@ def test_recall_token_estimates_should_be_deterministic(
 
     for _ in range(2):
         result = handle_recall(
-            {"query": "deterministic estimates"},
+            {
+                "query": "deterministic estimates",
+                "current_problem": _current_problem(),
+            },
             uow_factory=uow_factory,
             inferred_repo_id="repo-a",
         )
@@ -245,6 +252,10 @@ def _stub_internal_read(
     """Patch recall's internal read dependency and capture the forwarded request."""
 
     captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
+        lambda: None,
+    )
 
     def _fake_execute_read_memory(request, uow, **kwargs) -> ReadMemoryResult:
         del kwargs
@@ -298,6 +309,17 @@ def _candidate_pack() -> dict:
             "missing_refs": [],
             "guidance": "Use the compact brief.",
         },
+    }
+
+
+def _current_problem() -> dict[str, str]:
+    """Return mandatory recall problem context for telemetry handler tests."""
+
+    return {
+        "goal": "verify recall telemetry",
+        "surface": "telemetry",
+        "obstacle": "ensure summaries are written",
+        "hypothesis": "fallback recall path still emits telemetry",
     }
 
 

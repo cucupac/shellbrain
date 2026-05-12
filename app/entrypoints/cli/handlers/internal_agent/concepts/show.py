@@ -1,4 +1,4 @@
-"""Agent operation workflow for worker recall briefs."""
+"""Agent operation workflow for read-only concept graph inspection."""
 
 from __future__ import annotations
 
@@ -6,24 +6,21 @@ from pathlib import Path
 from time import perf_counter
 
 from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
-from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.startup.operation_dependencies import OperationDependencies
+from app.core.use_cases.concepts.show import show_concept
+from app.core.use_cases.concepts.show.request import ConceptShowRequest
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
+from app.startup.operation_dependencies import OperationDependencies
 from app.startup.operation_dependencies import ensure_telemetry_context
-from app.entrypoints.cli.handlers.internal_agent.retrieval.execution import (
-    execute_recall_memory_with_dependencies,
-)
-from app.entrypoints.cli.handlers.session_state import SessionStateManager
 
 
-def run_recall_memory_operation(
-    request: MemoryRecallRequest | None,
+def run_concept_show_operation(
+    request: ConceptShowRequest | None,
     *,
     dependencies: OperationDependencies,
     uow_factory,
@@ -33,7 +30,7 @@ def run_recall_memory_operation(
     telemetry_context: OperationDispatchTelemetryContext | None = None,
     repo_root: Path | None = None,
 ):
-    """Dispatch a typed read-only recall request."""
+    """Dispatch a typed read-only concept-show payload."""
 
     started_at = perf_counter()
     resolved_repo_root = (repo_root or Path.cwd()).resolve()
@@ -42,15 +39,7 @@ def run_recall_memory_operation(
         telemetry_context=telemetry_context,
         repo_root=resolved_repo_root,
     )
-    session_manager = SessionStateManager(
-        store=dependencies.session_state_store, clock=dependencies.clock
-    )
-    session_manager.load_active_state(
-        repo_root=resolved_repo_root,
-        caller_identity=resolved_telemetry_context.caller_identity,
-    )
     result: dict | None = None
-    recall_telemetry: dict | None = None
     error_stage: str | None = None
     try:
         if validation_errors:
@@ -64,22 +53,17 @@ def run_recall_memory_operation(
                 [
                     ErrorDetail(
                         code=ErrorCode.SCHEMA_ERROR,
-                        message="recall request is required",
+                        message="concept show request is required",
                     )
                 ]
             )
         else:
             with uow_factory() as uow:
-                core_result = execute_recall_memory_with_dependencies(
-                    request=request,
-                    uow=uow,
-                    dependencies=dependencies,
-                    repo_root=str(resolved_repo_root),
-                )
-                recall_telemetry = core_result.telemetry
-                result = ok_envelope(core_result)
+                result = ok_envelope(show_concept(request, uow))
     except DomainValidationError as exc:
-        error_stage = "semantic_validation"
+        error_stage = infer_error_stage_from_errors(
+            dump_errors(exc.errors), default_stage="semantic_validation"
+        )
         result = error_response(exc.errors)
     except Exception as exc:  # pragma: no cover - defensive fallback envelope
         error_stage = "internal_error"
@@ -89,14 +73,13 @@ def run_recall_memory_operation(
 
     assert result is not None
     dependencies.telemetry_sink.record(
-        command="recall",
+        command="concept.show",
         uow_factory=uow_factory,
         repo_id=inferred_repo_id,
         telemetry_context=resolved_telemetry_context,
         result=result,
         error_stage=error_stage,
         request=request,
-        recall_telemetry=recall_telemetry,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result

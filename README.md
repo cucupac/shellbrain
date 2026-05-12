@@ -31,11 +31,11 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 **Working agents call `recall`.** That is the entire interface they have to think about. One command, **one _carefully curated_ compact brief**, with sources cited.
 
 ```bash
-shellbrain recall --json '{"query":"what context matters for this migration lock timeout?"}'
+shellbrain recall --json '{"query":"what context matters for this migration lock timeout?","current_problem":{"goal":"fix the migration hang","surface":"db admin","obstacle":"lock timeout","hypothesis":"none yet"}}'
 ```
 
 Lower-level commands exist for inner agents.
-- `read`, `events`, `memory add`, `memory update`, `concept add`, `concept update`
+- `read`, `events`, `concept show`, `memory add`, `memory update`, `concept add`, `concept update`
 
 **Working agents focus on only their work.**
 

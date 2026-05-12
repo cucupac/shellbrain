@@ -81,7 +81,9 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(
     )
 
     assert shellbrain_executable.exists()
-    assert "Typical workflow" in completed.stdout
+    assert "Audience lanes" in completed.stdout
+    assert "Working agents" in completed.stdout
+    assert "Internal recall agents" in completed.stdout
     assert "shellbrain upgrade" in completed.stdout
     assert "read" in completed.stdout
     assert "events" in completed.stdout

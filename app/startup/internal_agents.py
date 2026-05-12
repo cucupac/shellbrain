@@ -36,8 +36,6 @@ def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
 
     config = get_internal_agents_config()
     settings = config.build_context
-    if not settings.enabled:
-        return None
     provider = config.providers.get(settings.provider)
     if provider is None:
         return None
@@ -45,7 +43,7 @@ def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
         return CodexCliInnerAgentRunner(
             command=provider.command,
             working_directory=provider.working_directory,
-            allow_unbounded_cli=provider.allow_unbounded_cli,
+            allow_shellbrain_cli=provider.allow_shellbrain_cli,
         )
     return None
 
