@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/cucupac/shellbrain/main/docs/assets/shellbrain_logo.png" alt="ShellBrain logo" width="220">
+  <img src="https://raw.githubusercontent.com/cucupac/shellbrain/main/docs/assets/shellbrain_logo_mark.png" alt="ShellBrain logo" height="92">
 </p>
 
-<h1 align="center">ShellBrain</h1>
+<h3 align="center">ShellBrain</h3>
 
-<p align="center"><strong>Long-term Memory for AI Agents.</strong></p>
+<p align="center">Long-term Memory for AI Agents.</p>
 
 Agents are amnesiacs across sessions. They rediscover the same problems, repeat the same mistakes, and relearn what you already taught them. **ShellBrain makes their work compound.**
 
