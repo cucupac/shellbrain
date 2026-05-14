@@ -283,6 +283,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
                     "score": 0.99,
                     "kind": "problem",
                     "text": "Primary direct memory.",
+                    "created_at": "2024-01-01T00:00:00+00:00",
                     "why_included": "direct_match",
                 }
             ]
@@ -300,6 +301,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
                         "score": 0.88,
                         "kind": "solution",
                         "text": "Linked association memory.",
+                        "created_at": "2024-01-01T00:00:00+00:00",
                         "why_included": "association_link",
                         "anchor_memory_id": "direct-1",
                         "relation_type": "depends_on",

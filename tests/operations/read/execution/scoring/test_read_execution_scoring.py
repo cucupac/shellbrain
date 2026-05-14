@@ -359,6 +359,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
                 "rank_keyword": 1,
                 "kind": "problem",
                 "text": "Anchor memory.",
+                "created_at": "2024-01-01T00:00:00+00:00",
                 "why_included": "direct_match",
             }
         ],
@@ -375,6 +376,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
                     "expansion_type": "problem_attempt",
                     "kind": "solution",
                     "text": "Deep memory.",
+                    "created_at": "2024-01-01T00:00:00+00:00",
                 },
                 {
                     "memory_id": "shallow",
@@ -384,6 +386,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
                     "expansion_type": "problem_attempt",
                     "kind": "solution",
                     "text": "Shallow memory.",
+                    "created_at": "2024-01-01T00:00:00+00:00",
                 },
             ],
             "implicit": [],
