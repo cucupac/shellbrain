@@ -118,6 +118,8 @@ def _shape_item(candidate: dict[str, Any], bucket_name: str) -> dict[str, Any]:
         item["kind"] = _normalize_kind(candidate["kind"])
     if "text" in candidate:
         item["text"] = str(candidate["text"])
+    if "created_at" in candidate:
+        item["created_at"] = candidate["created_at"]
     if bucket_name != "direct" and "anchor_memory_id" in candidate:
         item["anchor_memory_id"] = str(candidate["anchor_memory_id"])
     if "relation_type" in candidate:

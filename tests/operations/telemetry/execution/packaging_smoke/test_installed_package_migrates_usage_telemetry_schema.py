@@ -103,6 +103,6 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert usage_read_before_solve_roi_legacy_view is not None
         assert usage_problem_run_tokens_view is not None
         assert concepts_table is not None
-        assert alembic_version == "20260511_0017"
+        assert alembic_version == "20260513_0018"
     finally:
         drop_temp_database(admin_dsn, db_name)
