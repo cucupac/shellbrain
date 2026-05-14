@@ -6,7 +6,7 @@
 
 <p align="center">Long-term Memory for AI Agents.</p>
 
-Agents are amnesiacs across sessions. They rediscover the same problems, repeat the same mistakes, and relearn what you already taught them. **ShellBrain makes their work compound.**
+Agents forget across sessions. They rediscover the same problems, repeat the same mistakes, and relearn what you already taught them. **ShellBrain makes their work compound.**
 
 ### Recall in one command.
 Episodic, empirical, conceptual. Three categories, one retrieval surface.
