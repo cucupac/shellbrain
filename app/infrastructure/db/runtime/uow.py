@@ -9,6 +9,9 @@ from app.infrastructure.db.runtime.repos.relational.concepts_repo import Concept
 from app.infrastructure.db.runtime.repos.relational.episodes_repo import EpisodesRepo
 from app.infrastructure.db.runtime.repos.relational.evidence_repo import EvidenceRepo
 from app.infrastructure.db.runtime.repos.relational.experiences_repo import ExperiencesRepo
+from app.infrastructure.db.runtime.repos.relational.knowledge_builder_repo import (
+    KnowledgeBuildRunsRepo,
+)
 from app.infrastructure.db.runtime.repos.relational.memories_repo import MemoriesRepo
 from app.infrastructure.db.runtime.repos.relational.read_policy_repo import ReadPolicyRepo
 from app.infrastructure.db.runtime.repos.relational.telemetry_repo import TelemetryRepo
@@ -58,6 +61,7 @@ class PostgresUnitOfWork(IUnitOfWork):
         self.read_policy = ReadPolicyRepo(self._session)
         self.telemetry = TelemetryRepo(self._session)
         self.guidance = self.telemetry
+        self.knowledge_build_runs = KnowledgeBuildRunsRepo(self._session)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:

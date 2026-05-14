@@ -9,12 +9,21 @@ import subprocess
 import tempfile
 from time import perf_counter
 
-from app.core.ports.host_apps.inner_agents import InnerAgentRunRequest, InnerAgentRunResult
+from app.core.ports.host_apps.inner_agents import (
+    BuildKnowledgeAgentRequest,
+    BuildKnowledgeAgentResult,
+    InnerAgentRunRequest,
+    InnerAgentRunResult,
+)
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
+    parse_build_knowledge_output,
     parse_inner_agent_response_output,
 )
-from app.infrastructure.host_apps.inner_agents.prompt import render_build_context_prompt
+from app.infrastructure.host_apps.inner_agents.prompt import (
+    render_build_context_prompt,
+    render_build_knowledge_prompt,
+)
 
 
 class CodexCliInnerAgentRunner:
@@ -89,7 +98,7 @@ class CodexCliInnerAgentRunner:
                     capture_output=True,
                     timeout=request.timeout_seconds,
                     check=False,
-                    env=_inner_agent_env(),
+                    env=_inner_agent_env(mode="build_context"),
                 )
                 output_file.seek(0)
                 final_message = output_file.read()
@@ -138,6 +147,111 @@ class CodexCliInnerAgentRunner:
             read_trace=read_trace,
         )
 
+    def run_build_knowledge(
+        self, request: BuildKnowledgeAgentRequest
+    ) -> BuildKnowledgeAgentResult:
+        """Run one Codex CLI build_knowledge request."""
+
+        if not self._allow_shellbrain_cli:
+            return _build_knowledge_result(
+                request,
+                status="provider_unavailable",
+                error_code="shellbrain_cli_not_allowed",
+                error_message=(
+                    "Codex CLI provider is configured, but Shellbrain CLI access "
+                    "is not allowed"
+                ),
+            )
+
+        command_path = shutil.which(self._command)
+        if command_path is None:
+            return _build_knowledge_result(
+                request,
+                status="provider_unavailable",
+                error_code="command_not_found",
+                error_message=f"Codex command not found: {self._command}",
+            )
+
+        prompt = render_build_knowledge_prompt(request)
+        cwd = _working_directory(request, configured=self._working_directory)
+        started = perf_counter()
+        try:
+            with tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file:
+                completed = subprocess.run(
+                    [
+                        command_path,
+                        "exec",
+                        "--ephemeral",
+                        "--ignore-rules",
+                        "--skip-git-repo-check",
+                        "--sandbox",
+                        "read-only",
+                        "--ask-for-approval",
+                        "never",
+                        "--model",
+                        request.model,
+                        "-c",
+                        f'model_reasoning_effort="{request.reasoning}"',
+                        "--cd",
+                        str(cwd),
+                        "--output-last-message",
+                        output_file.name,
+                        "-",
+                    ],
+                    input=prompt,
+                    text=True,
+                    capture_output=True,
+                    timeout=request.timeout_seconds,
+                    check=False,
+                    env=_inner_agent_env(mode="build_knowledge"),
+                )
+                output_file.seek(0)
+                final_message = output_file.read()
+        except subprocess.TimeoutExpired:
+            return _build_knowledge_result(
+                request,
+                status="timeout",
+                duration_ms=_duration_ms(started),
+                input_token_estimate=_estimate_tokens(prompt),
+                error_code="timeout",
+                error_message="Codex CLI timed out",
+            )
+
+        duration_ms = _duration_ms(started)
+        if completed.returncode != 0:
+            return _build_knowledge_result(
+                request,
+                status="error",
+                duration_ms=duration_ms,
+                input_token_estimate=_estimate_tokens(prompt),
+                error_code="codex_nonzero_exit",
+                error_message=_truncate(completed.stderr or completed.stdout, 500),
+            )
+        try:
+            parsed = parse_build_knowledge_output(final_message)
+        except InnerAgentOutputParseError as exc:
+            return _build_knowledge_result(
+                request,
+                status="invalid_output",
+                duration_ms=duration_ms,
+                input_token_estimate=_estimate_tokens(prompt),
+                output_token_estimate=_estimate_tokens(final_message),
+                error_code="invalid_output",
+                error_message=str(exc),
+            )
+        return _build_knowledge_result(
+            request,
+            status=parsed["status"],
+            duration_ms=duration_ms,
+            input_token_estimate=_estimate_tokens(prompt),
+            output_token_estimate=_estimate_tokens(final_message),
+            write_count=int(parsed["write_count"]),
+            skipped_item_count=int(parsed["skipped_item_count"]),
+            run_summary=parsed["run_summary"],
+            read_trace=parsed["read_trace"],
+            code_trace=parsed["code_trace"],
+        )
+
 
 def _result(
     request: InnerAgentRunRequest,
@@ -171,7 +285,45 @@ def _result(
     )
 
 
-def _working_directory(request: InnerAgentRunRequest, *, configured: str) -> Path:
+def _build_knowledge_result(
+    request: BuildKnowledgeAgentRequest,
+    *,
+    status,
+    duration_ms: int = 0,
+    input_token_estimate: int | None = None,
+    output_token_estimate: int | None = None,
+    write_count: int = 0,
+    skipped_item_count: int = 0,
+    error_code: str | None = None,
+    error_message: str | None = None,
+    run_summary: str | None = None,
+    read_trace: dict | None = None,
+    code_trace: dict | None = None,
+) -> BuildKnowledgeAgentResult:
+    """Build one provider-neutral build_knowledge result."""
+
+    return BuildKnowledgeAgentResult(
+        status=status,
+        provider=request.provider,
+        model=request.model,
+        reasoning=request.reasoning,
+        timeout_seconds=request.timeout_seconds,
+        duration_ms=duration_ms,
+        input_token_estimate=input_token_estimate,
+        output_token_estimate=output_token_estimate,
+        write_count=write_count,
+        skipped_item_count=skipped_item_count,
+        error_code=error_code,
+        error_message=error_message,
+        run_summary=run_summary,
+        read_trace=read_trace or {},
+        code_trace=code_trace or {},
+    )
+
+
+def _working_directory(
+    request: InnerAgentRunRequest | BuildKnowledgeAgentRequest, *, configured: str
+) -> Path:
     """Resolve the adapter working directory."""
 
     if configured == "repo_root" and request.repo_root is not None:
@@ -185,12 +337,28 @@ def _duration_ms(started: float) -> int:
     return int((perf_counter() - started) * 1000)
 
 
-def _inner_agent_env() -> dict[str, str]:
-    """Return the subprocess environment with Shellbrain read-only mode enabled."""
+def _inner_agent_env(*, mode: str) -> dict[str, str]:
+    """Return the subprocess environment with inner-agent CLI mode enabled."""
 
     env = dict(os.environ)
-    env["SHELLBRAIN_INNER_AGENT_READ_ONLY"] = "1"
+    env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
+    env.pop("SHELLBRAIN_INNER_AGENT_READ_ONLY", None)
+    if mode == "build_knowledge":
+        _scrub_admin_env(env)
     return env
+
+
+def _scrub_admin_env(env: dict[str, str]) -> None:
+    """Remove administrative/destructive DB credentials from provider env."""
+
+    for name in (
+        "SHELLBRAIN_DB_ADMIN_DSN",
+        "SHELLBRAIN_ADMIN_DSN",
+        "SHELLBRAIN_PROTECTED_LIVE_DSN",
+        "SHELLBRAIN_ALLOW_DESTRUCTIVE",
+        "SHELLBRAIN_CONFIRM_RESTORE",
+    ):
+        env.pop(name, None)
 
 
 def _estimate_tokens(value: str) -> int:

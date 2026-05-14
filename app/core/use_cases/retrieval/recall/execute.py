@@ -24,7 +24,7 @@ def execute_recall_memory(
     build_context_settings: InnerAgentSettings | None = None,
     repo_root: str | None = None,
 ) -> RecallMemoryResult:
-    """Run the read-only build_context workflow and return a recall brief."""
+    """Run build_context and return a recall brief."""
 
     return execute_build_context(
         request,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
 from app.core.use_cases.retrieval.read.request import MemoryReadRequest, ReadConceptsExpandRequest
@@ -185,6 +186,9 @@ def _render_concept_item(
         "id": concept.id,
         "name": concept.name,
         "kind": concept.kind.value,
+        "status": concept.status.value,
+        "created_at": _iso(concept.created_at),
+        "updated_at": _iso(concept.updated_at),
         "orientation": _orientation(concept, claims),
         "why_matched": why_matched,
         "freshness": _freshness(bundle),
@@ -342,6 +346,10 @@ def _claim_payload(claim: ConceptClaim) -> dict[str, Any]:
         "text": claim.text,
         "status": claim.lifecycle.status.value,
         "confidence": claim.lifecycle.confidence,
+        "observed_at": _iso(claim.lifecycle.observed_at),
+        "validated_at": _iso(claim.lifecycle.validated_at),
+        "created_at": _iso(claim.created_at),
+        "updated_at": _iso(claim.updated_at),
     }
 
 
@@ -381,6 +389,10 @@ def _relation_payloads(
                 ),
                 "status": relation.lifecycle.status.value,
                 "confidence": relation.lifecycle.confidence,
+                "observed_at": _iso(relation.lifecycle.observed_at),
+                "validated_at": _iso(relation.lifecycle.validated_at),
+                "created_at": _iso(relation.created_at),
+                "updated_at": _iso(relation.updated_at),
             }
         )
     return payloads
@@ -399,11 +411,17 @@ def _grounding_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
                 "role": grounding.role.value,
                 "status": grounding.lifecycle.status.value,
                 "confidence": grounding.lifecycle.confidence,
+                "observed_at": _iso(grounding.lifecycle.observed_at),
+                "validated_at": _iso(grounding.lifecycle.validated_at),
+                "created_at": _iso(grounding.created_at),
+                "updated_at": _iso(grounding.updated_at),
                 "anchor": {
                     "id": anchor.id,
                     "kind": anchor.kind.value,
                     "locator": anchor.locator_json,
                     "status": anchor.status.value,
+                    "created_at": _iso(anchor.created_at),
+                    "updated_at": _iso(anchor.updated_at),
                 }
                 if anchor is not None
                 else None,
@@ -429,9 +447,14 @@ def _memory_link_payloads(
                 "role": link.role.value,
                 "status": link.lifecycle.status.value,
                 "confidence": link.lifecycle.confidence,
+                "observed_at": _iso(link.lifecycle.observed_at),
+                "validated_at": _iso(link.lifecycle.validated_at),
+                "created_at": _iso(link.created_at),
+                "updated_at": _iso(link.updated_at),
                 "memory_id": link.memory_id,
                 "kind": memory.kind.value if memory else None,
                 "text": memory.text if memory else None,
+                "memory_created_at": _iso(memory.created_at) if memory else None,
             }
         )
     return payloads
@@ -449,6 +472,7 @@ def _evidence_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
             "commit_ref": evidence.commit_ref,
             "transcript_ref": evidence.transcript_ref,
             "note": evidence.note,
+            "created_at": _iso(evidence.created_at),
         }
         for evidence in sorted(
             bundle["evidence"],
@@ -512,3 +536,11 @@ def _truncate(value: str, limit: int) -> str:
     if len(value) <= limit:
         return value
     return value[: max(0, limit - 3)].rstrip() + "..."
+
+
+def _iso(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()

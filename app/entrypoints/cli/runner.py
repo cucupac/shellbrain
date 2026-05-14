@@ -16,7 +16,20 @@ from app.startup.cli_runtime import CliRuntime
 
 
 _INNER_AGENT_READ_ONLY_ENV = "SHELLBRAIN_INNER_AGENT_READ_ONLY"
+_INNER_AGENT_MODE_ENV = "SHELLBRAIN_INNER_AGENT_MODE"
 _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS = {"read", "events", "concept:show"}
+_INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
+    "build_context": _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS,
+    "build_knowledge": {
+        "read",
+        "events",
+        "concept:show",
+        "memory:add",
+        "memory:update",
+        "concept:add",
+        "concept:update",
+    },
+}
 
 
 def run_operation_command(**kwargs):
@@ -39,7 +52,7 @@ def main(
     args = parser.parse_args(argv)
     command = _operation_route_command(args)
     try:
-        _enforce_inner_agent_read_only(command)
+        _enforce_inner_agent_mode(command)
     except ValueError as exc:
         parser.error(str(exc))
         return 2
@@ -151,17 +164,33 @@ def _operation_route_command(args: argparse.Namespace) -> str:
     return str(args.command)
 
 
-def _enforce_inner_agent_read_only(command: str) -> None:
-    """Reject non-read routes when Shellbrain is running inside an inner agent."""
+def _enforce_inner_agent_mode(command: str) -> None:
+    """Reject routes outside the current inner-agent allowlist."""
 
-    if not _inner_agent_read_only_enabled():
+    mode = _inner_agent_mode()
+    if mode is None:
         return
-    if command in _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS:
+    allowed_commands = _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE.get(mode)
+    if allowed_commands is None:
+        valid = ", ".join(sorted(_INNER_AGENT_ALLOWED_COMMANDS_BY_MODE))
+        raise ValueError(f"{_INNER_AGENT_MODE_ENV} must be one of: {valid}")
+    if command in allowed_commands:
         return
-    allowed = ", ".join(sorted(_INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS))
+    allowed = ", ".join(sorted(allowed_commands))
     raise ValueError(
-        f"{_INNER_AGENT_READ_ONLY_ENV}=1 allows only read-only routes: {allowed}"
+        f"{_INNER_AGENT_MODE_ENV}={mode} allows only these routes: {allowed}"
     )
+
+
+def _inner_agent_mode() -> str | None:
+    """Return the active inner-agent mode, including legacy read-only support."""
+
+    value = os.environ.get(_INNER_AGENT_MODE_ENV, "").strip()
+    if value:
+        return value
+    if _inner_agent_read_only_enabled():
+        return "build_context"
+    return None
 
 
 def _inner_agent_read_only_enabled() -> bool:

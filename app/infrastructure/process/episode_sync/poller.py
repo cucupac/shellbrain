@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import time
@@ -9,6 +10,7 @@ from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
+from app.core.entities.knowledge_builder import KnowledgeBuildTrigger
 from app.core.use_cases.episodes.close_replaced_episode import close_replaced_episode
 from app.core.use_cases.episodes.sync_discovered_host_session import (
     sync_discovered_host_session,
@@ -52,6 +54,7 @@ class _HostState:
     session_key: str
     transcript_path: Path
     last_freshness: float
+    episode_id: str | None = None
 
 
 def sync_episode_from_host(
@@ -79,7 +82,14 @@ def sync_episode_from_host(
     )
 
 
-def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
+def run_episode_poller(
+    *,
+    repo_id: str,
+    repo_root: Path,
+    uow_factory,
+    run_build_knowledge: Callable[..., object] | None = None,
+    idle_stable_seconds: int | None = None,
+) -> None:
     """Run until the repo appears idle for long enough."""
 
     repo_root = repo_root.resolve()
@@ -89,6 +99,9 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
 
     known_state: dict[str, _HostState] = {}
     last_change_at = time.monotonic()
+    resolved_idle_stable_seconds = (
+        IDLE_EXIT_SECONDS if idle_stable_seconds is None else idle_stable_seconds
+    )
     try:
         _write_pid_artifact(repo_root=repo_root)
         while True:
@@ -121,11 +134,18 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
                     and state.session_key != candidate["host_session_key"]
                 )
                 if session_changed:
-                    _close_episode(
+                    closed_episode_id = _close_episode(
                         repo_id=repo_id,
                         host_app=host_app,
                         host_session_key=state.session_key,
                         uow_factory=uow_factory,
+                    )
+                    _run_build_knowledge_best_effort(
+                        run_build_knowledge=run_build_knowledge,
+                        repo_id=repo_id,
+                        repo_root=repo_root,
+                        episode_id=closed_episode_id or state.episode_id,
+                        trigger=KnowledgeBuildTrigger.SESSION_REPLACED,
                     )
 
                 freshness = float(candidate.get("updated_at") or 0.0)
@@ -138,6 +158,10 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
                     session_key=str(candidate["host_session_key"]),
                     transcript_path=transcript_path,
                     last_freshness=freshness,
+                    episode_id=_carried_episode_id(
+                        state=state,
+                        session_changed=session_changed,
+                    ),
                 )
                 if not should_sync:
                     continue
@@ -196,6 +220,12 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
                         tool_type_counts=dict(sync_result["tool_type_counts"]),
                         model_usage_records=model_usage_records,
                     )
+                    known_state[host_app] = _HostState(
+                        session_key=str(candidate["host_session_key"]),
+                        transcript_path=transcript_path,
+                        last_freshness=freshness,
+                        episode_id=str(sync_result["episode_id"]),
+                    )
                     saw_change = True
                 except Exception as exc:
                     record_episode_sync_status(
@@ -229,7 +259,13 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
 
             if saw_change:
                 last_change_at = time.monotonic()
-            elif time.monotonic() - last_change_at >= IDLE_EXIT_SECONDS:
+            elif time.monotonic() - last_change_at >= resolved_idle_stable_seconds:
+                _run_idle_builds_best_effort(
+                    run_build_knowledge=run_build_knowledge,
+                    repo_id=repo_id,
+                    repo_root=repo_root,
+                    known_state=known_state,
+                )
                 break
 
             time.sleep(POLL_INTERVAL_SECONDS)
@@ -239,17 +275,73 @@ def run_episode_poller(*, repo_id: str, repo_root: Path, uow_factory) -> None:
 
 def _close_episode(
     *, repo_id: str, host_app: str, host_session_key: str, uow_factory
-) -> None:
+) -> str | None:
     """Close one active episode when a newer session replaces it."""
 
     with uow_factory() as uow:
-        close_replaced_episode(
+        return close_replaced_episode(
             repo_id=repo_id,
             host_app=host_app,
             host_session_key=host_session_key,
             ended_at=_utc_now(),
             uow=uow,
         )
+
+
+def _run_idle_builds_best_effort(
+    *,
+    run_build_knowledge: Callable[..., object] | None,
+    repo_id: str,
+    repo_root: Path,
+    known_state: dict[str, _HostState],
+) -> None:
+    """Run build_knowledge for known active episodes before idle poller exit."""
+
+    seen_episode_ids: set[str] = set()
+    for state in known_state.values():
+        if state.episode_id is None or state.episode_id in seen_episode_ids:
+            continue
+        seen_episode_ids.add(state.episode_id)
+        _run_build_knowledge_best_effort(
+            run_build_knowledge=run_build_knowledge,
+            repo_id=repo_id,
+            repo_root=repo_root,
+            episode_id=state.episode_id,
+            trigger=KnowledgeBuildTrigger.IDLE_STABLE,
+        )
+
+
+def _carried_episode_id(
+    *, state: _HostState | None, session_changed: bool
+) -> str | None:
+    """Return the known active episode id while a host session stays stable."""
+
+    if state is None or session_changed:
+        return None
+    return state.episode_id
+
+
+def _run_build_knowledge_best_effort(
+    *,
+    run_build_knowledge: Callable[..., object] | None,
+    repo_id: str,
+    repo_root: Path,
+    episode_id: str | None,
+    trigger: KnowledgeBuildTrigger,
+) -> None:
+    """Run the lifecycle builder without disrupting transcript sync."""
+
+    if run_build_knowledge is None or episode_id is None:
+        return
+    try:
+        run_build_knowledge(
+            repo_id=repo_id,
+            repo_root=repo_root,
+            episode_id=episode_id,
+            trigger=trigger,
+        )
+    except Exception:
+        return
 
 
 def _record_missing_source(

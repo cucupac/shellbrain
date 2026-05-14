@@ -32,6 +32,15 @@ class IEpisodesRepo(ABC):
         """This method fetches one episode by canonical host session key."""
 
     @abstractmethod
+    def get_episode(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+    ) -> Episode | None:
+        """This method fetches one repo-visible episode by id."""
+
+    @abstractmethod
     def list_event_keys(self, *, episode_id: str) -> Sequence[str]:
         """This method returns already-imported upstream event keys for one episode."""
 
@@ -74,3 +83,18 @@ class IEpisodesRepo(ABC):
         limit: int,
     ) -> Sequence[EpisodeEvent]:
         """This method returns recent events for one visible episode ordered newest first."""
+
+    @abstractmethod
+    def list_events_range(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+        after_seq: int,
+        up_to_seq: int,
+    ) -> Sequence[EpisodeEvent]:
+        """Return visible episode events in (after_seq, up_to_seq] ordered oldest first."""
+
+    @abstractmethod
+    def event_watermark(self, *, repo_id: str, episode_id: str) -> int:
+        """Return the highest imported event sequence for one repo-visible episode."""

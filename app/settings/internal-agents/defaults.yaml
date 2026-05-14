@@ -13,9 +13,11 @@ build_knowledge:
   model: gpt-5.4
   reasoning: medium
   timeout_seconds: 180
-  max_private_reads: 0
-  max_candidate_tokens: 20000
-  max_brief_tokens: 4000
+  max_shellbrain_reads: 8
+  max_code_files: 24
+  max_write_commands: 20
+  idle_stable_seconds: 900
+  running_run_stale_seconds: 3600
 
 providers:
   codex:

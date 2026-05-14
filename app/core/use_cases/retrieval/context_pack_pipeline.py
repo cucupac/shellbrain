@@ -1,5 +1,6 @@
 """This module defines read-policy pipeline orchestration for context-pack generation."""
 
+from datetime import datetime, timezone
 from typing import Any
 
 from app.core.entities.settings import (
@@ -80,7 +81,7 @@ def _hydrate_pack_items(
         for item in pack[section_name]:
             memory_id = str(item["memory_id"])
             if (
-                "kind" not in item or "text" not in item
+                "kind" not in item or "text" not in item or "created_at" not in item
             ) and memory_id not in seen_memory_ids:
                 seen_memory_ids.add(memory_id)
                 missing_memory_ids.append(memory_id)
@@ -91,7 +92,7 @@ def _hydrate_pack_items(
         }
         for section_name in ("direct", "explicit_related", "implicit_related"):
             for item in pack[section_name]:
-                if "kind" in item and "text" in item:
+                if "kind" in item and "text" in item and "created_at" in item:
                     continue
                 memory_id = str(item["memory_id"])
                 memory = hydrated_memories.get(memory_id)
@@ -101,9 +102,20 @@ def _hydrate_pack_items(
                     )
                 item.setdefault("kind", memory.kind.value)
                 item.setdefault("text", memory.text)
-                if "kind" not in item or "text" not in item:
+                item.setdefault("created_at", _iso(memory.created_at))
+                if "kind" not in item or "text" not in item or "created_at" not in item:
                     raise ValueError(
                         f"Incomplete hydrated memory for context-pack item: {memory_id}"
                     )
 
     return pack
+
+
+def _iso(value: datetime | None) -> str | None:
+    """Return a stable ISO timestamp for JSON-facing read-pack fields."""
+
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.isoformat()

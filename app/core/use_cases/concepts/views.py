@@ -45,6 +45,8 @@ def serialize_concept_bundle(
         "name": concept.name,
         "kind": concept.kind.value,
         "status": concept.status.value,
+        "created_at": _iso(concept.created_at),
+        "updated_at": _iso(concept.updated_at),
         "aliases": aliases,
         "status_rollup": _status_rollup(relations, claims, groundings, memory_links),
         "evidence_counts": evidence_counts,
@@ -69,7 +71,11 @@ def serialize_concept_bundle(
 
 
 def _alias_to_payload(alias) -> dict[str, Any]:
-    return {"alias": alias.alias, "normalized_alias": alias.normalized_alias}
+    return {
+        "alias": alias.alias,
+        "normalized_alias": alias.normalized_alias,
+        "created_at": _iso(alias.created_at),
+    }
 
 
 def _relation_to_payload(relation: ConceptRelation) -> dict[str, Any]:
@@ -78,6 +84,8 @@ def _relation_to_payload(relation: ConceptRelation) -> dict[str, Any]:
         "subject_concept_id": relation.subject_concept_id,
         "predicate": relation.predicate.value,
         "object_concept_id": relation.object_concept_id,
+        "created_at": _iso(relation.created_at),
+        "updated_at": _iso(relation.updated_at),
         **_lifecycle_payload(relation.lifecycle),
     }
 
@@ -88,6 +96,8 @@ def _claim_to_payload(claim: ConceptClaim) -> dict[str, Any]:
         "concept_id": claim.concept_id,
         "claim_type": claim.claim_type.value,
         "text": claim.text,
+        "created_at": _iso(claim.created_at),
+        "updated_at": _iso(claim.updated_at),
         **_lifecycle_payload(claim.lifecycle),
     }
 
@@ -101,6 +111,8 @@ def _grounding_to_payload(
         "role": grounding.role.value,
         "anchor_id": grounding.anchor_id,
         "anchor": anchors_by_id.get(grounding.anchor_id),
+        "created_at": _iso(grounding.created_at),
+        "updated_at": _iso(grounding.updated_at),
         **_lifecycle_payload(grounding.lifecycle),
     }
 
@@ -111,6 +123,8 @@ def _memory_link_to_payload(memory_link: ConceptMemoryLink) -> dict[str, Any]:
         "concept_id": memory_link.concept_id,
         "role": memory_link.role.value,
         "memory_id": memory_link.memory_id,
+        "created_at": _iso(memory_link.created_at),
+        "updated_at": _iso(memory_link.updated_at),
         **_lifecycle_payload(memory_link.lifecycle),
     }
 
@@ -122,6 +136,8 @@ def _anchor_to_payload(anchor: Anchor) -> dict[str, Any]:
         "locator": anchor.locator_json,
         "canonical_locator_hash": anchor.canonical_locator_hash,
         "status": anchor.status.value,
+        "created_at": _iso(anchor.created_at),
+        "updated_at": _iso(anchor.updated_at),
     }
 
 

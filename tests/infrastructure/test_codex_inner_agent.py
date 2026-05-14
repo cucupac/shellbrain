@@ -4,13 +4,20 @@ from __future__ import annotations
 
 import subprocess
 
-from app.core.ports.host_apps.inner_agents import InnerAgentRunRequest
+from app.core.ports.host_apps.inner_agents import (
+    BuildKnowledgeAgentRequest,
+    InnerAgentRunRequest,
+)
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.output_parser import (
+    parse_build_knowledge_output,
     parse_inner_agent_brief_output,
     parse_inner_agent_response_output,
 )
-from app.infrastructure.host_apps.inner_agents.prompt import render_build_context_prompt
+from app.infrastructure.host_apps.inner_agents.prompt import (
+    render_build_context_prompt,
+    render_build_knowledge_prompt,
+)
 
 
 def test_codex_runner_requires_shellbrain_cli_access() -> None:
@@ -38,7 +45,7 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
 
     def _fake_run(args, *, input, text, capture_output, timeout, check, env):
         del input, text, capture_output, timeout, check
-        assert env["SHELLBRAIN_INNER_AGENT_READ_ONLY"] == "1"
+        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context"
         output_path = args[args.index("--output-last-message") + 1]
         assert "--model" in args
         assert 'model_reasoning_effort="low"' in args
@@ -97,6 +104,63 @@ def test_inner_agent_output_parser_accepts_read_trace() -> None:
     assert read_trace == {"source_ids": ["mem-1"]}
 
 
+def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path) -> None:
+    """Codex build_knowledge runs with the writer-scoped inner-agent mode."""
+
+    def _fake_which(command: str) -> str:
+        assert command == "codex"
+        return "/usr/bin/codex"
+
+    def _fake_run(args, *, input, text, capture_output, timeout, check, env):
+        del input, text, capture_output, timeout, check
+        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_knowledge"
+        assert "SHELLBRAIN_DB_ADMIN_DSN" not in env
+        output_path = args[args.index("--output-last-message") + 1]
+        assert 'model_reasoning_effort="medium"' in args
+        with open(output_path, "w", encoding="utf-8") as handle:
+            handle.write(
+                '{"status":"ok","run_summary":"Wrote durable knowledge.",'
+                '"write_count":2,"skipped_items":[{"summary":"unclear","reason":"low confidence"}],'
+                '"read_trace":{"commands":[]},"code_trace":{"files":[]}}'
+            )
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setenv("SHELLBRAIN_DB_ADMIN_DSN", "postgresql://admin")
+    monkeypatch.setattr(
+        "app.infrastructure.host_apps.inner_agents.codex_cli.shutil.which",
+        _fake_which,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.host_apps.inner_agents.codex_cli.subprocess.run",
+        _fake_run,
+    )
+    runner = CodexCliInnerAgentRunner(
+        command="codex",
+        working_directory="repo_root",
+        allow_shellbrain_cli=True,
+    )
+
+    result = runner.run_build_knowledge(_build_knowledge_request(repo_root=str(tmp_path)))
+
+    assert result.status == "ok"
+    assert result.write_count == 2
+    assert result.skipped_item_count == 1
+    assert result.run_summary == "Wrote durable knowledge."
+
+
+def test_build_knowledge_output_parser_accepts_no_write_skips() -> None:
+    """Parser should accept valid no-write builder output."""
+
+    parsed = parse_build_knowledge_output(
+        '{"status":"skipped","run_summary":"No durable write justified.",'
+        '"write_count":0,"skipped_items":[{"summary":"duplicate","reason":"already stored"}]}'
+    )
+
+    assert parsed["status"] == "skipped"
+    assert parsed["write_count"] == 0
+    assert parsed["skipped_item_count"] == 1
+
+
 def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     """Prompt should instruct Codex to query Shellbrain directly without expansion loops."""
 
@@ -105,6 +169,7 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "ROLE\n" in prompt
     assert "REQUIRED WORKFLOW\n" in prompt
     assert "READINESS TO SYNTHESIZE\n" in prompt
+    assert "OPERATING PRINCIPLES\n" in prompt
     assert prompt.index("shellbrain events") < prompt.index("shellbrain read")
     assert "Run `shellbrain events" in prompt
     assert "Run at least one targeted `shellbrain read`" in prompt
@@ -112,6 +177,13 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "If read results include concept refs" in prompt
     assert "Synthesize only when" in prompt
     assert "no_context_reason" in prompt
+    assert "maximally useful to the working agent" in prompt
+    assert "reduce solving time and token spend" in prompt
+    assert "created_at" in prompt
+    assert "updated_at" in prompt
+    assert "Separate sourced facts from inference" in prompt
+    assert "knowledge_builder_notes" not in prompt
+    assert "preferred_source_id" not in prompt
     assert "shellbrain --help" in prompt
     assert "shellbrain read --help" in prompt
     assert "shellbrain events --help" in prompt
@@ -123,6 +195,27 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "requested_" "expansions" not in prompt
     assert "candidate_" "context" not in prompt
     assert "expansion_" "handles" not in prompt
+
+
+def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
+    """Build prompt should define write authority, code limits, help, and readiness."""
+
+    prompt = render_build_knowledge_prompt(_build_knowledge_request())
+
+    assert "# ROLE" in prompt
+    assert "internal knowledge builder" in prompt
+    assert "shellbrain memory add" in prompt
+    assert "shellbrain concept update" in prompt
+    assert "Do not edit code or config files" in prompt
+    assert "Inspect exact episode events first" in prompt
+    assert "Treat idle-stable episodes as partial sessions" in prompt
+    assert "event_watermark" in prompt
+    assert '\\"after_seq\\":3' in prompt
+    assert '\\"up_to_seq\\":8' in prompt
+    assert '\\"limit\\":100' not in prompt
+    assert "shellbrain --help" in prompt
+    assert "shellbrain memory add --help" in prompt
+    assert "write_count" in prompt
 
 
 def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:
@@ -142,4 +235,24 @@ def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:
             "hypothesis": "none yet",
         },
         repo_root=repo_root,
+    )
+
+
+def _build_knowledge_request(
+    *, repo_root: str = "/tmp/repo"
+) -> BuildKnowledgeAgentRequest:
+    return BuildKnowledgeAgentRequest(
+        provider="codex",
+        model="gpt-5.4",
+        reasoning="medium",
+        timeout_seconds=180,
+        repo_id="repo-a",
+        repo_root=repo_root,
+        episode_id="episode-1",
+        trigger="idle_stable",
+        event_watermark=8,
+        previous_event_watermark=3,
+        max_shellbrain_reads=8,
+        max_code_files=24,
+        max_write_commands=20,
     )

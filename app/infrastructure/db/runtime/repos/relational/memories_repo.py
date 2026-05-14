@@ -29,7 +29,7 @@ class MemoriesRepo(IMemoriesRepo):
                 scope=memory.scope.value,
                 kind=memory.kind.value,
                 text=memory.text,
-                created_at=datetime.now(timezone.utc),
+                created_at=memory.created_at or datetime.now(timezone.utc),
                 archived=memory.archived,
             )
         )
@@ -73,6 +73,7 @@ class MemoriesRepo(IMemoriesRepo):
             scope=MemoryScope(row["scope"]),
             kind=MemoryKind(row["kind"]),
             text=row["text"],
+            created_at=row["created_at"],
             archived=row["archived"],
         )
 

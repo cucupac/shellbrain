@@ -49,6 +49,12 @@ def test_concept_show_should_return_dynamic_preview_concept(
 
     payload = show.data["concept"]
     assert payload["slug"] == "deposit-addresses"
+    assert payload["created_at"]
+    assert payload["updated_at"]
+    assert payload["claims"][0]["created_at"]
+    assert payload["claims"][0]["observed_at"]
+    assert payload["relations"][0]["created_at"]
+    assert payload["relations"][0]["observed_at"]
     assert payload["preview_concept"]["name"] == "Deposit Addresses"
     assert payload["preview_concept"]["claim_count"] == 1
     assert payload["status_rollup"]["active"] == 2

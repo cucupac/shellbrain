@@ -4,9 +4,13 @@ from pathlib import Path
 
 import pytest
 
-from app.core.entities.inner_agents import InternalAgentsConfig
+import app.core.entities.inner_agents as core_inner_agents
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
-from app.startup.internal_agents import get_build_context_inner_agent_runner
+from app.startup.internal_agent_config import InternalAgentsConfig
+from app.startup.internal_agents import (
+    get_build_context_inner_agent_runner,
+    get_build_knowledge_inner_agent_runner,
+)
 from app.startup.settings import YamlConfigProvider
 
 
@@ -38,6 +42,12 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert "enabled" not in settings["build_knowledge"]
     assert "fallback" not in settings["build_knowledge"]
     assert settings["build_knowledge"]["model"] == "gpt-5.4"
+    assert settings["build_knowledge"]["max_shellbrain_reads"] == 8
+    assert settings["build_knowledge"]["max_code_files"] == 24
+    assert settings["build_knowledge"]["max_write_commands"] == 20
+    assert settings["build_knowledge"]["idle_stable_seconds"] == 900
+    assert settings["build_knowledge"]["running_run_stale_seconds"] == 3600
+    assert "max_private_reads" not in settings["build_knowledge"]
     assert settings["providers"]["codex"]["command"] == "codex"
     assert settings["providers"]["codex"]["allow_shellbrain_cli"] is True
 
@@ -54,9 +64,24 @@ def test_internal_agent_config_rejects_removed_toggle_fields() -> None:
         InternalAgentsConfig.model_validate(settings)
 
 
+def test_provider_runtime_config_is_startup_owned() -> None:
+    """provider command settings should stay out of core domain entities."""
+
+    assert not hasattr(core_inner_agents, "InnerAgentProviderConfig")
+    assert not hasattr(core_inner_agents, "InternalAgentsConfig")
+
+
 def test_startup_still_wires_codex_build_context_runner() -> None:
     """startup should still compose the configured Codex build_context runner."""
 
     runner = get_build_context_inner_agent_runner()
+
+    assert isinstance(runner, CodexCliInnerAgentRunner)
+
+
+def test_startup_wires_codex_build_knowledge_runner() -> None:
+    """startup should compose the configured Codex build_knowledge runner."""
+
+    runner = get_build_knowledge_inner_agent_runner()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)

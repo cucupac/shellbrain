@@ -42,6 +42,77 @@ def test_events_syncs_the_resolved_active_session_and_returns_recent_events_newe
     assert events[0]["content"]["content_text"] == "pytest failed"
 
 
+def test_events_with_episode_id_reads_exact_stored_episode_without_syncing(
+    codex_transcript_fixture: dict[str, object],
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    count_rows: Callable[[str], int],
+) -> None:
+    """events with episode_id should read stored evidence without active-session selection."""
+
+    first_result = handle_events(
+        {},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={
+            "codex": list(codex_transcript_fixture["search_roots"]),
+            "claude_code": [],
+        },
+    )
+    episode_id = first_result["data"]["episode_id"]
+
+    result = handle_events(
+        {"episode_id": episode_id, "limit": 2},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={"codex": [], "claude_code": [], "cursor": []},
+    )
+
+    assert result["status"] == "ok"
+    assert result["data"]["episode_id"] == episode_id
+    assert [event["seq"] for event in result["data"]["events"]] == [3, 2]
+    assert count_rows("episode_events") == 3
+
+
+def test_events_with_episode_range_returns_all_matching_events_oldest_first(
+    codex_transcript_fixture: dict[str, object],
+    uow_factory: Callable[[], PostgresUnitOfWork],
+) -> None:
+    """exact event ranges should cover (after_seq, up_to_seq] deterministically."""
+
+    first_result = handle_events(
+        {},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={
+            "codex": list(codex_transcript_fixture["search_roots"]),
+            "claude_code": [],
+        },
+    )
+    episode_id = first_result["data"]["episode_id"]
+
+    result = handle_events(
+        {"episode_id": episode_id, "after_seq": 1, "up_to_seq": 3},
+        uow_factory=uow_factory,
+        inferred_repo_id="shellbrain",
+        repo_root=Path.cwd().resolve(),
+        search_roots_by_host={"codex": [], "claude_code": [], "cursor": []},
+    )
+
+    assert result["status"] == "ok"
+    assert [event["seq"] for event in result["data"]["events"]] == [2, 3]
+    assert result["data"]["event_range"] == {
+        "after_seq": 1,
+        "up_to_seq": 3,
+        "order": "oldest_first",
+        "returned_count": 2,
+        "expected_count": 2,
+        "complete": True,
+    }
+
+
 def test_events_selects_the_most_recent_matching_host_session_across_supported_hosts(
     codex_transcript_fixture: dict[str, object],
     claude_code_transcript_fixture: dict[str, object],

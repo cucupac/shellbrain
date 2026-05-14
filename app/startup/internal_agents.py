@@ -7,12 +7,16 @@ from typing import Any
 from pydantic import ValidationError
 
 from app.core.entities.inner_agents import (
+    BuildKnowledgeSettings,
     InnerAgentSettings,
-    InternalAgentsConfig,
 )
-from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
+from app.core.ports.host_apps.inner_agents import (
+    IBuildKnowledgeAgentRunner,
+    IInnerAgentRunner,
+)
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.startup.config import get_config_provider
+from app.startup.internal_agent_config import InternalAgentsConfig
 
 
 def get_internal_agents_config() -> InternalAgentsConfig:
@@ -31,11 +35,34 @@ def get_build_context_settings() -> InnerAgentSettings:
     return get_internal_agents_config().build_context
 
 
+def get_build_knowledge_settings() -> BuildKnowledgeSettings:
+    """Return typed settings for the build_knowledge agent."""
+
+    return get_internal_agents_config().build_knowledge
+
+
 def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
     """Return the configured build_context provider adapter."""
 
     config = get_internal_agents_config()
     settings = config.build_context
+    provider = config.providers.get(settings.provider)
+    if provider is None:
+        return None
+    if settings.provider == "codex":
+        return CodexCliInnerAgentRunner(
+            command=provider.command,
+            working_directory=provider.working_directory,
+            allow_shellbrain_cli=provider.allow_shellbrain_cli,
+        )
+    return None
+
+
+def get_build_knowledge_inner_agent_runner() -> IBuildKnowledgeAgentRunner | None:
+    """Return the configured build_knowledge provider adapter."""
+
+    config = get_internal_agents_config()
+    settings = config.build_knowledge
     provider = config.providers.get(settings.provider)
     if provider is None:
         return None

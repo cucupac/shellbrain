@@ -1,4 +1,4 @@
-"""Read-only recall synthesis workflow."""
+"""Recall synthesis workflow."""
 
 __all__ = ["execute_build_context"]
 
