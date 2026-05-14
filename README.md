@@ -74,7 +74,7 @@ The install script also works as an upgrade path: `curl -L shellbrain.ai/upgrade
 
 ---
 
-## Use it
+## How to Use ShellBrain
 
 Use Shellbrain Session Start in your agent of choice. Then, just work normally.
 
