@@ -100,8 +100,13 @@ _CREATE_HELP = dedent(
 
     `solution` and `failed_tactic` require `memory.links.problem_id`.
 
-    Example:
-      shellbrain memory add --json '{"memory":{"text":"The staging DB migration needs a 30s lock timeout","kind":"fact","evidence_refs":["evt-123"]}}'
+    Examples:
+      shellbrain memory add --json '{"memory":{"text":"Migration deadlocked because lock_timeout was unset","kind":"problem","evidence_refs":["evt-123"]}}'
+      shellbrain memory add --json '{"memory":{"text":"Set lock_timeout before the migration transaction","kind":"solution","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-124"]}}'
+      shellbrain memory add --json '{"memory":{"text":"Retrying without changing lock_timeout failed again","kind":"failed_tactic","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-125"]}}'
+      shellbrain memory add --json '{"memory":{"text":"The staging DB migration needs a 30s lock timeout","kind":"fact","evidence_refs":["evt-126"]}}'
+      shellbrain memory add --json '{"memory":{"text":"Prefer narrow architecture changes with guardrail tests","kind":"preference","evidence_refs":["evt-127"]}}'
+      shellbrain memory add --json '{"memory":{"text":"Memory add contracts now require current problem evidence","kind":"change","evidence_refs":["evt-128"]}}'
     """
 )
 
@@ -157,6 +162,11 @@ _CONCEPT_HELP = dedent(
       shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","groundings"]}'
       shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"manual","note":"Seeded from planning."}]}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"update_concept","concept":"deposit-addresses","status":"validated"}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_relation","subject":"deposit-addresses","predicate":"depends_on","object":"refunds","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"ensure_anchor","kind":"file","locator":{"path":"app/refunds.py"}}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_grounding","concept":"deposit-addresses","role":"implementation","anchor":{"kind":"symbol","locator":{"path":"app/refunds.py","symbol":"resolve_deposit_address"}},"evidence":[{"kind":"transcript","transcript_ref":"evt-124"}]}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"deposit-addresses","role":"example_of","memory_id":"mem-123","evidence":[{"kind":"memory","memory_id":"mem-123"}]}]}'
     """
 )
 
@@ -180,8 +190,9 @@ _EVENTS_HELP = dedent(
     Recall agents should run this before private reads. Knowledge-builder agents should
     run this before durable writes and use returned ids as `evidence_refs`.
 
-    Example:
+    Examples:
       shellbrain events --json '{"limit":10}'
+      shellbrain events --json '{"episode_id":"episode-123","limit":100}'
     """
 )
 
@@ -195,8 +206,11 @@ _UPDATE_HELP = dedent(
       - `fact_update_link`
       - `association_link`
 
-    Example:
+    Examples:
       shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-456"]}}'
+      shellbrain memory update --json '{"memory_id":"mem-old-fact","update":{"type":"fact_update_link","old_fact_id":"mem-old-fact","new_fact_id":"mem-new-fact","evidence_refs":["evt-457"]}}'
+      shellbrain memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","evidence_refs":["evt-458"]}}'
+      shellbrain memory update --json '{"memory_id":"mem-stale","update":{"type":"archive_state","archived":true,"rationale":"Superseded by mem-new-fact"}}'
     """
 )
 

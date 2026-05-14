@@ -1,6 +1,7 @@
 """This module defines immutable shellbrain entities and core shellbrain enums."""
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import Final, Literal
 
@@ -152,6 +153,7 @@ class Memory:
     scope: MemoryScope
     kind: MemoryKind
     text: str
+    created_at: datetime | None = None
     archived: bool = False
 
     def is_visible_in(self, repo_id: RepoId | str) -> bool:

@@ -763,17 +763,39 @@ def test_inner_agent_read_only_mode_allows_only_read_routes(
 ) -> None:
     """inner-agent read-only mode should reject write routes before dispatch."""
 
-    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_READ_ONLY", "1")
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_context")
 
-    cli_runner._enforce_inner_agent_read_only("read")
-    cli_runner._enforce_inner_agent_read_only("events")
-    cli_runner._enforce_inner_agent_read_only("concept:show")
+    cli_runner._enforce_inner_agent_mode("read")
+    cli_runner._enforce_inner_agent_mode("events")
+    cli_runner._enforce_inner_agent_mode("concept:show")
     with pytest.raises(ValueError):
-        cli_runner._enforce_inner_agent_read_only("recall")
+        cli_runner._enforce_inner_agent_mode("recall")
     with pytest.raises(ValueError):
-        cli_runner._enforce_inner_agent_read_only("memory:add")
+        cli_runner._enforce_inner_agent_mode("memory:add")
     with pytest.raises(ValueError):
-        cli_runner._enforce_inner_agent_read_only("concept:update")
+        cli_runner._enforce_inner_agent_mode("concept:update")
+
+
+def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """build_knowledge mode should allow knowledge writes but reject public/admin routes."""
+
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_knowledge")
+
+    for command in (
+        "events",
+        "read",
+        "concept:show",
+        "memory:add",
+        "memory:update",
+        "concept:add",
+        "concept:update",
+    ):
+        cli_runner._enforce_inner_agent_mode(command)
+    for command in ("recall", "admin", "init", "upgrade", "metrics"):
+        with pytest.raises(ValueError):
+            cli_runner._enforce_inner_agent_mode(command)
 
 
 def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> None:

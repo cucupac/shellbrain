@@ -57,6 +57,11 @@ def test_read_should_include_concepts_linked_to_returned_memories(
     assert pack["concepts"]["items"][0]["orientation"].startswith(
         "Relay-controlled EOAs"
     )
+    assert pack["concepts"]["items"][0]["status"] == "active"
+    assert pack["concepts"]["items"][0]["created_at"]
+    assert pack["concepts"]["items"][0]["updated_at"]
+    assert pack["concepts"]["items"][0]["key_claims"][0]["observed_at"]
+    assert pack["concepts"]["items"][0]["key_claims"][0]["created_at"]
     assert pack["concepts"]["items"][0]["why_matched"][0]["reason"] == "linked_memory"
     assert (
         pack["concepts"]["items"][0]["expand"][0]["read_payload"]["expand"]["concepts"][
@@ -171,12 +176,18 @@ def test_read_should_expand_explicit_concept_facets(
 
     concept_item = result.data["pack"]["concepts"]["items"][0]
     assert concept_item["relations"][0]["predicate"] == "contains"
+    assert concept_item["relations"][0]["created_at"]
+    assert concept_item["relations"][0]["observed_at"]
     assert concept_item["groundings"][0]["anchor"]["locator"] == {
         "path": "app/deposit_addresses.py"
     }
+    assert concept_item["groundings"][0]["created_at"]
+    assert concept_item["groundings"][0]["anchor"]["created_at"]
     assert concept_item["memory_links"][0]["memory_id"] == "refund-problem-1"
     assert concept_item["memory_links"][0]["kind"] == "problem"
+    assert concept_item["memory_links"][0]["memory_created_at"]
     assert concept_item["evidence"]
+    assert concept_item["evidence"][0]["created_at"]
 
 
 def test_read_should_penalize_stale_concept_links_in_auto_mode(

@@ -75,6 +75,13 @@ def run_read_events_operation(
                     )
                 ]
             )
+        elif request.episode_id is not None:
+            result, selection_summary = _read_exact_episode_events(
+                request=request,
+                uow_factory=uow_factory,
+            )
+            if result.get("status") == "error":
+                error_stage = "episode_lookup"
         else:
             source = resolve_events_source(
                 dependencies=dependencies,
@@ -109,6 +116,8 @@ def run_read_events_operation(
                         episode_id=sync_result.episode_id,
                         limit=request.limit,
                     )
+                    if request.order == "oldest_first":
+                        events = list(reversed(events))
                     result = ok_envelope(
                         {
                             "episode_id": sync_result.episode_id,
@@ -221,3 +230,66 @@ def run_read_events_operation(
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result
+
+
+def _read_exact_episode_events(
+    *,
+    request: EpisodeEventsRequest,
+    uow_factory,
+) -> tuple[dict, SessionSelectionSummary]:
+    """Read already-stored events for an explicit episode id without syncing."""
+
+    assert request.episode_id is not None
+    with uow_factory() as uow:
+        episode = uow.episodes.get_episode(
+            repo_id=request.repo_id,
+            episode_id=request.episode_id,
+        )
+        if episode is None:
+            return error_response(
+                [
+                    ErrorDetail(
+                        code=ErrorCode.NOT_FOUND,
+                        message=f"episode not found: {request.episode_id}",
+                        field="episode_id",
+                    )
+                ]
+            ), SessionSelectionSummary(selected_episode_id=request.episode_id)
+        range_payload = None
+        if request.up_to_seq is not None:
+            after_seq = request.after_seq if request.after_seq is not None else 0
+            events = uow.episodes.list_events_range(
+                repo_id=request.repo_id,
+                episode_id=request.episode_id,
+                after_seq=after_seq,
+                up_to_seq=request.up_to_seq,
+            )
+            range_payload = {
+                "after_seq": after_seq,
+                "up_to_seq": request.up_to_seq,
+                "order": "oldest_first",
+                "returned_count": len(events),
+                "expected_count": request.up_to_seq - after_seq,
+                "complete": len(events) == request.up_to_seq - after_seq,
+            }
+        else:
+            events = uow.episodes.list_recent_events(
+                repo_id=request.repo_id,
+                episode_id=request.episode_id,
+                limit=request.limit,
+            )
+            if request.order == "oldest_first":
+                events = list(reversed(events))
+    data = {
+        "episode_id": episode.id,
+        "host_app": episode.host_app,
+        "thread_id": episode.thread_id,
+        "events": [serialize_episode_event(event) for event in events],
+    }
+    if range_payload is not None:
+        data["event_range"] = range_payload
+    return ok_envelope(data), SessionSelectionSummary(
+        selected_host_app=episode.host_app,
+        selected_thread_id=episode.thread_id,
+        selected_episode_id=episode.id,
+    )

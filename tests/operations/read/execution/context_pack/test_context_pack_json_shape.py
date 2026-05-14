@@ -94,6 +94,20 @@ def test_read_context_pack_should_always_include_kind_and_text_for_each_returned
             assert "text" in item
 
 
+def test_read_context_pack_should_always_include_created_at_for_each_returned_memory(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """read context pack should expose immutable memory recency timestamps."""
+
+    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
+
+    for section in ("direct", "explicit_related", "implicit_related"):
+        for item in result.data["pack"][section]:
+            assert item["created_at"] == "2024-01-01T00:00:00+00:00"
+            assert "updated_at" not in item
+
+
 def test_read_context_pack_should_always_include_why_included_for_every_item(
     uow_factory: Callable[[], PostgresUnitOfWork],
     monkeypatch: pytest.MonkeyPatch,
@@ -164,6 +178,7 @@ def _execute_stubbed_read(
                 "score": 0.99,
                 "kind": "problem",
                 "text": "Primary direct memory.",
+                "created_at": "2024-01-01T00:00:00+00:00",
                 "why_included": "direct_match",
             }
         ],
@@ -177,6 +192,7 @@ def _execute_stubbed_read(
                     "score": 0.88,
                     "kind": "solution",
                     "text": "Linked association memory.",
+                    "created_at": "2024-01-01T00:00:00+00:00",
                     "why_included": "association_link",
                     "anchor_memory_id": "direct-1",
                     "relation_type": "depends_on",
@@ -188,6 +204,7 @@ def _execute_stubbed_read(
                     "score": 0.77,
                     "kind": "fact",
                     "text": "Nearby semantic memory.",
+                    "created_at": "2024-01-01T00:00:00+00:00",
                     "why_included": "semantic_neighbor",
                     "anchor_memory_id": "direct-1",
                 }

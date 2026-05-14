@@ -2,7 +2,14 @@
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 
 from app.core.use_cases.episodes.events.request import EpisodeEventsRequest
 from app.core.errors import ErrorCode, ErrorDetail
@@ -118,6 +125,26 @@ class AgentEventsRequest(StrictBaseModel):
     """Agent-facing events payload with transport fields removed."""
 
     limit: int | None = Field(default=None, ge=1, le=100)
+    episode_id: str | None = Field(default=None, min_length=1)
+    after_seq: int | None = Field(default=None, ge=0)
+    up_to_seq: int | None = Field(default=None, ge=1)
+    order: Literal["newest_first", "oldest_first"] | None = None
+
+    @model_validator(mode="after")
+    def _validate_event_range(self) -> "AgentEventsRequest":
+        """Require exact episode selection and upper bound for sequence ranges."""
+
+        has_range = self.after_seq is not None or self.up_to_seq is not None
+        if not has_range:
+            return self
+        if self.episode_id is None:
+            raise ValueError("episode_id is required when using event sequence range")
+        if self.up_to_seq is None:
+            raise ValueError("up_to_seq is required when using event sequence range")
+        after_seq = self.after_seq if self.after_seq is not None else 0
+        if self.up_to_seq <= after_seq:
+            raise ValueError("up_to_seq must be greater than after_seq")
+        return self
 
 
 class AgentUpdateRequest(StrictBaseModel):

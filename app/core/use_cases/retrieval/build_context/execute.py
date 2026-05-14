@@ -1,4 +1,4 @@
-"""Read-only recall synthesis workflow for worker-facing context briefs."""
+"""Recall synthesis workflow for worker-facing context briefs."""
 
 from __future__ import annotations
 
@@ -44,7 +44,7 @@ def execute_build_context(
     build_context_settings: InnerAgentSettings | None = None,
     repo_root: str | None = None,
 ) -> RecallMemoryResult:
-    """Build a compact worker recall brief without mutating durable knowledge."""
+    """Build a compact worker brief."""
 
     read_settings = read_settings or default_read_policy_settings()
     threshold_settings = threshold_settings or default_threshold_settings()
@@ -443,10 +443,17 @@ def _trace_strings(container: Any, key: str) -> list[str]:
     if not isinstance(container, dict):
         return []
     value = container.get(key)
+    strings = _trace_string_list(value)
+    return [] if strings is None else strings
+
+
+def _trace_string_list(value: Any) -> list[str] | None:
+    """Return non-empty strings from a trace list, or None when malformed."""
+
     if isinstance(value, str):
         value = [value]
     if not isinstance(value, list):
-        return []
+        return None
     return [str(item).strip() for item in value if str(item).strip()]
 
 

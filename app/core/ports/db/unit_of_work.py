@@ -6,6 +6,7 @@ from typing import Self
 from app.core.ports.db.concept_repositories import IConceptsRepo
 from app.core.ports.db.episode_repositories import IEpisodesRepo
 from app.core.ports.db.guidance import IPendingUtilityCandidatesRepo
+from app.core.ports.db.knowledge_builder import IKnowledgeBuildRunsRepo
 from app.core.ports.db.memory_repositories import (
     IAssociationsRepo,
     IEvidenceRepo,
@@ -35,6 +36,7 @@ class IUnitOfWork(ABC):
     keyword_retrieval: IKeywordRetrievalRepo
     read_policy: IReadPolicyRepo
     guidance: IPendingUtilityCandidatesRepo
+    knowledge_build_runs: IKnowledgeBuildRunsRepo
     vector_search: IVectorSearch | None
 
     @abstractmethod

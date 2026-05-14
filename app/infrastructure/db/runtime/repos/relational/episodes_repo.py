@@ -118,6 +118,39 @@ class EpisodesRepo(IEpisodesRepo):
             created_at=row["created_at"],
         )
 
+    def get_episode(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+    ) -> Episode | None:
+        """This method fetches one repo-visible episode by id."""
+
+        row = (
+            self._session.execute(
+                select(episodes).where(
+                    episodes.c.repo_id == repo_id,
+                    episodes.c.id == episode_id,
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return None
+        return Episode(
+            id=row["id"],
+            repo_id=row["repo_id"],
+            host_app=row["host_app"],
+            thread_id=row["thread_id"],
+            title=row["title"],
+            objective=row["objective"],
+            status=EpisodeStatus(row["status"]),
+            started_at=row["started_at"],
+            ended_at=row["ended_at"],
+            created_at=row["created_at"],
+        )
+
     def list_event_keys(self, *, episode_id: str) -> list[str]:
         """This method returns already-imported upstream event keys for one episode."""
 
@@ -268,3 +301,62 @@ class EpisodesRepo(IEpisodesRepo):
             )
             for row in rows
         ]
+
+    def list_events_range(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+        after_seq: int,
+        up_to_seq: int,
+    ) -> list[EpisodeEvent]:
+        """Return one exact event sequence range ordered oldest first."""
+
+        rows = (
+            self._session.execute(
+                select(episode_events)
+                .select_from(
+                    episode_events.join(
+                        episodes, episode_events.c.episode_id == episodes.c.id
+                    )
+                )
+                .where(
+                    episodes.c.repo_id == repo_id,
+                    episode_events.c.episode_id == episode_id,
+                    episode_events.c.seq > after_seq,
+                    episode_events.c.seq <= up_to_seq,
+                )
+                .order_by(episode_events.c.seq.asc())
+            )
+            .mappings()
+            .all()
+        )
+        return [
+            EpisodeEvent(
+                id=row["id"],
+                episode_id=row["episode_id"],
+                seq=row["seq"],
+                host_event_key=row["host_event_key"],
+                source=EpisodeEventSource(row["source"]),
+                content=row["content"],
+                created_at=row["created_at"],
+            )
+            for row in rows
+        ]
+
+    def event_watermark(self, *, repo_id: str, episode_id: str) -> int:
+        """Return the highest imported event sequence for one repo-visible episode."""
+
+        value = self._session.execute(
+            select(func.max(episode_events.c.seq))
+            .select_from(
+                episode_events.join(
+                    episodes, episode_events.c.episode_id == episodes.c.id
+                )
+            )
+            .where(
+                episodes.c.repo_id == repo_id,
+                episode_events.c.episode_id == episode_id,
+            )
+        ).scalar_one()
+        return 0 if value is None else int(value)

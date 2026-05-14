@@ -1,4 +1,4 @@
-"""Unit coverage for read-only build_context recall synthesis."""
+"""Unit coverage for build_context recall synthesis."""
 
 from __future__ import annotations
 
