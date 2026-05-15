@@ -105,6 +105,8 @@ def _count_write_commands(payload: dict[str, Any]) -> int:
                 count += 1
             elif text.startswith(("shellbrain concept add", "shellbrain concept update")):
                 count += 1
+            elif text.startswith("shellbrain scenario record"):
+                count += 1
     return count
 
 

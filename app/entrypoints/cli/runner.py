@@ -28,6 +28,7 @@ _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
         "memory:update",
         "concept:add",
         "concept:update",
+        "scenario:record",
     },
 }
 
@@ -161,6 +162,8 @@ def _operation_route_command(args: argparse.Namespace) -> str:
         return f"memory:{args.memory_command}"
     if args.command == "concept" and getattr(args, "concept_command", None):
         return f"concept:{args.concept_command}"
+    if args.command == "scenario":
+        return f"scenario:{args.scenario_command}"
     return str(args.command)
 
 
@@ -350,6 +353,25 @@ def _dispatch_operation_command(
 
         prepared = prepare_concept_update_request(payload, inferred_repo_id=repo_id)
         return run_concept_update_operation(
+            prepared.request,
+            dependencies=dependencies,
+            uow_factory=runtime.get_uow_factory(),
+            inferred_repo_id=repo_id,
+            validation_errors=prepared.errors,
+            validation_error_stage=prepared.error_stage,
+            telemetry_context=runtime.get_operation_telemetry_context(),
+            repo_root=repo_root,
+        )
+    if command == "scenario:record":
+        from app.entrypoints.cli.handlers.internal_agent.scenarios.record import (
+            run_scenario_record_operation,
+        )
+        from app.entrypoints.cli.request_parsing.scenarios import (
+            prepare_scenario_record_request,
+        )
+
+        prepared = prepare_scenario_record_request(payload, inferred_repo_id=repo_id)
+        return run_scenario_record_operation(
             prepared.request,
             dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),

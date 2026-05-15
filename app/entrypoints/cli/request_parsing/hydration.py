@@ -109,3 +109,13 @@ def hydrate_concept_show_payload(
     merged = dict(payload)
     merged.setdefault("repo_id", inferred_repo_id)
     return merged
+
+
+def hydrate_scenario_record_payload(
+    payload: dict[str, Any], *, inferred_repo_id: str
+) -> dict[str, Any]:
+    """Hydrate scenario-record payloads with inferred repo defaults."""
+
+    merged = dict(payload)
+    merged.setdefault("repo_id", inferred_repo_id)
+    return merged

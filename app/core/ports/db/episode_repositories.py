@@ -41,6 +41,16 @@ class IEpisodesRepo(ABC):
         """This method fetches one repo-visible episode by id."""
 
     @abstractmethod
+    def get_event(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+        event_id: str,
+    ) -> EpisodeEvent | None:
+        """This method fetches one repo-visible event by id inside an episode."""
+
+    @abstractmethod
     def list_event_keys(self, *, episode_id: str) -> Sequence[str]:
         """This method returns already-imported upstream event keys for one episode."""
 

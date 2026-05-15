@@ -99,10 +99,12 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "Use only `shellbrain recall`" in output
     assert "Use `shellbrain concept show` for progressive concept disclosure" in output
     assert "Avoid generic prompts like" in output
-    assert "At session end" in output
+    assert "Run from Shellbrain episode lifecycle triggers" in output
+    assert "scenario record" in output
+    assert "Examples by audience" in output
+    assert "Internal knowledge-builder agents:" in output
+    assert 'shellbrain events --json \'{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}\'' in output
     assert "utility_vote" in output
-    assert "shellbrain admin migrate" in output
-    assert "shellbrain admin backup create" in output
     assert "shellbrain admin doctor" in output
     assert "curl -L shellbrain.ai/install | bash" in output
     assert "curl -L shellbrain.ai/upgrade | bash" in output
@@ -115,6 +117,7 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "read" in output
     assert "recall" in output
     assert "memory" in output
+    assert "scenario" in output
     assert "events" in output
     assert "upgrade" in output
 
@@ -257,6 +260,7 @@ def test_read_help_should_include_one_example(
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "Internal recall-agent endpoint" in output
+    assert "retrieval substrate for `build_context`" in output
     assert "working agents should call `recall`" in output
     assert "shellbrain read --json" in output
     assert "Avoid generic prompts" in output
@@ -277,6 +281,8 @@ def test_recall_help_should_describe_read_only_synthesis_contract(
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "shellbrain recall --json" in output
+    assert "normal working-agent interface" in output
+    assert "not internal commands like `read`, `events`, or `concept show`" in output
     assert "query" in output
     assert "Requires `query` and `current_problem`" in output
     assert "goal" in output
@@ -296,7 +302,9 @@ def test_concept_help_should_describe_internal_json_endpoint(
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "Internal JSON-first endpoint" in output
+    assert "internal knowledge-builder concept graph work" in output
     assert "Internal agents may use" in output
+    assert "future librarian integration" not in output
     assert "shellbrain concept show --json" in output
     assert "shellbrain concept add --json" in output
     assert "shellbrain concept update --json" in output
@@ -371,6 +379,37 @@ def test_concept_parser_should_require_subcommand_and_accept_payloads(
     )
 
 
+def test_scenario_parser_should_require_record_subcommand() -> None:
+    """scenario should expose only an explicit record operation."""
+
+    parser = cli_parser.build_parser()
+
+    with pytest.raises(SystemExit) as bare_exc:
+        parser.parse_args(
+            [
+                "scenario",
+                "--json",
+                '{"schema_version":"scenario.v1","scenario":{}}',
+            ]
+        )
+    assert bare_exc.value.code == 2
+
+    args = parser.parse_args(
+        [
+            "scenario",
+            "record",
+            "--json",
+            (
+                '{"schema_version":"scenario.v1","scenario":{"episode_id":"ep",'
+                '"outcome":"abandoned","problem_memory_id":"mem-problem",'
+                '"opened_event_id":"evt-open","closed_event_id":"evt-close"}}'
+            ),
+        ]
+    )
+    assert args.command == "scenario"
+    assert args.scenario_command == "record"
+
+
 def test_events_help_should_include_one_example(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -386,6 +425,8 @@ def test_events_help_should_include_one_example(
     assert "Knowledge-builder agents should" in output
     assert "shellbrain events --json" in output
     assert "inline transcript sync" in output
+    assert "after_seq" in output
+    assert "up_to_seq" in output
 
 
 def test_memory_add_help_should_include_one_example(
@@ -401,6 +442,7 @@ def test_memory_add_help_should_include_one_example(
     assert "shellbrain memory add --json" in output
     assert "failed_tactic" in output
     assert "memory.links.problem_id" in output
+    assert "problem_attempts" in output
 
 
 def test_memory_update_help_should_include_one_example(
@@ -419,6 +461,29 @@ def test_memory_update_help_should_include_one_example(
     assert "positive = helpful" in output
     assert "fact_update_link" in output
     assert "association_link" in output
+
+
+def test_scenario_record_help_should_describe_problem_windows(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """scenario record help should describe bounded problem-solving windows."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["scenario", "record", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "Internal knowledge-builder endpoint" in output
+    assert "A scenario is not a memory" in output
+    assert "token" in output
+    assert "ROI" in output
+    assert "solved" in output
+    assert "abandoned" in output
+    assert "problem_memory_id" in output
+    assert "solution_memory_id" in output
+    assert "opened_event_id" in output
+    assert "closed_event_id" in output
+    assert "scenario.v1" in output
 
 
 def test_admin_help_should_include_one_example(
@@ -774,6 +839,8 @@ def test_inner_agent_read_only_mode_allows_only_read_routes(
         cli_runner._enforce_inner_agent_mode("memory:add")
     with pytest.raises(ValueError):
         cli_runner._enforce_inner_agent_mode("concept:update")
+    with pytest.raises(ValueError):
+        cli_runner._enforce_inner_agent_mode("scenario:record")
 
 
 def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
@@ -791,6 +858,7 @@ def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
         "memory:update",
         "concept:add",
         "concept:update",
+        "scenario:record",
     ):
         cli_runner._enforce_inner_agent_mode(command)
     for command in ("recall", "admin", "init", "upgrade", "metrics"):

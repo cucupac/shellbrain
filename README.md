@@ -80,7 +80,7 @@ Use Shellbrain Session Start in your agent of choice. Then, just work normally.
 
 **Claude Code:** *Use `/shellbrain-session-start` to get up to speed in this repo and record durable evidence-backed learnings.*
 
-**Codex:** *Use `$shellbrain-session-start` to get up to speed in this repo and record durable evidence-backed learnings.*
+**Codex:** *Use $shellbrain-session-start to get up to speed in this repo and record durable evidence-backed learnings.*
 
 **Cursor:** *Use `/shellbrain-session-start` to get up to speed in this repo and record durable evidence-backed learnings.*
 
