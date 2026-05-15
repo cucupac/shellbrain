@@ -52,25 +52,37 @@ _TOP_LEVEL_HELP = dedent(
         - These commands are read-only.
 
       Knowledge-builder agents:
+        - Run from Shellbrain episode lifecycle triggers, not from working agents.
+        - At session end or idle stability, consolidate episode evidence.
+        - Inspect exact episode evidence with `shellbrain events`.
         - Run `shellbrain events` before every write.
         - Use returned `episode_event` ids as `evidence_refs`.
-        - At session end, write `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories.
+        - Write `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories through Shellbrain CLI commands.
         - Use `memory update` for `utility_vote`, truth evolution, and associations.
+        - Use `scenario record` to store solved or abandoned problem-solving windows after memory boundaries exist.
 
-    Examples:
+    Examples by audience:
+      Humans:
       shellbrain init
       shellbrain upgrade
       shellbrain metrics
-      shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
+      shellbrain admin doctor
+      shellbrain admin migrate
+
+      Working agents:
       shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"lock timeout","hypothesis":"missing timeout guard"}}'
-      shellbrain read --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","kinds":["fact","preference","change"]}'
+
+      Internal recall agents:
       shellbrain events --json '{"limit":10}'
+      shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
+      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
+
+      Internal knowledge-builder agents:
+      shellbrain events --json '{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}'
       shellbrain memory add --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
       shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-124"]}}'
-      shellbrain admin migrate
-      shellbrain admin backup create
-      shellbrain admin doctor
-      shellbrain admin analytics --days 2
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"migrations","claim_type":"failure_mode","text":"Lock timeouts can fail long-running schema changes.","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
+      shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-123","closed_event_id":"evt-124"}}'
 
     Docs:
       https://shellbrain.ai/agents — how agents use shellbrain
@@ -99,6 +111,7 @@ _CREATE_HELP = dedent(
       - `change`: truth invalidation or revision
 
     `solution` and `failed_tactic` require `memory.links.problem_id`.
+    Shellbrain creates `problem_attempts` as a side effect for those links.
 
     Examples:
       shellbrain memory add --json '{"memory":{"text":"Migration deadlocked because lock_timeout was unset","kind":"problem","evidence_refs":["evt-123"]}}'
@@ -112,9 +125,10 @@ _CREATE_HELP = dedent(
 
 _READ_HELP = dedent(
     """\
-    Internal recall-agent endpoint for reading Shellbrain context without mutating state.
+    Internal recall-agent endpoint for raw retrieval without mutating state.
 
     Use concrete failure modes, subsystem names, decisions, or constraints.
+    This is the retrieval substrate for `build_context`, not the worker interface.
     Internal recall agents should call this after `events`; working agents should call `recall`.
     Avoid generic prompts like "what should I know about this repo?"
 
@@ -134,6 +148,9 @@ _RECALL_HELP = dedent(
     """\
     Return a compact read-only recall brief.
 
+    This is the normal working-agent interface. Working agents should call
+    `recall`, not internal commands like `read`, `events`, or `concept show`.
+
     Requires `query` and `current_problem`.
     `current_problem` must include non-empty `goal`, `surface`, `obstacle`, and
     `hypothesis`; use an explicit value like "none yet" when there is no hypothesis.
@@ -149,7 +166,7 @@ _CONCEPT_HELP = dedent(
     """\
     Internal JSON-first endpoint for Shellbrain concept graph substrate operations.
 
-    This endpoint is intended for tests, manual seeding, and future librarian integration.
+    This endpoint is intended for internal knowledge-builder concept graph work.
     Working agents should use `recall`. Internal agents may use `read`, `events`,
     `concept show`, `memory add`, `memory update`, `concept add`, and `concept update`.
 
@@ -192,7 +209,7 @@ _EVENTS_HELP = dedent(
 
     Examples:
       shellbrain events --json '{"limit":10}'
-      shellbrain events --json '{"episode_id":"episode-123","limit":100}'
+      shellbrain events --json '{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}'
     """
 )
 
@@ -211,6 +228,29 @@ _UPDATE_HELP = dedent(
       shellbrain memory update --json '{"memory_id":"mem-old-fact","update":{"type":"fact_update_link","old_fact_id":"mem-old-fact","new_fact_id":"mem-new-fact","evidence_refs":["evt-457"]}}'
       shellbrain memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","evidence_refs":["evt-458"]}}'
       shellbrain memory update --json '{"memory_id":"mem-stale","update":{"type":"archive_state","archived":true,"rationale":"Superseded by mem-new-fact"}}'
+    """
+)
+
+_SCENARIO_HELP = dedent(
+    """\
+    Internal knowledge-builder endpoint for recording bounded problem-solving scenarios.
+
+    A scenario is not a memory. It links exact episode evidence to existing
+    problem/solution memories so Shellbrain can measure problem windows, token
+    usage, and recall ROI.
+
+    Record the scenario only after durable problem/solution memory boundaries exist.
+    Shellbrain derives opened_at and closed_at from the referenced episode events.
+
+    Outcomes:
+      - `solved`: requires `problem_memory_id`, `solution_memory_id`,
+        `opened_event_id`, and `closed_event_id`
+      - `abandoned`: requires `problem_memory_id`, `opened_event_id`, and
+        `closed_event_id`; do not include `solution_memory_id`
+
+    Examples:
+      shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-10","closed_event_id":"evt-42"}}'
+      shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"abandoned","problem_memory_id":"mem-problem-1","opened_event_id":"evt-10","closed_event_id":"evt-42"}}'
     """
 )
 
@@ -525,6 +565,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(memory_update_parser, suppress_default=True)
     _add_payload_arguments(memory_update_parser)
+
+    scenario_parser = subparsers.add_parser(
+        "scenario",
+        help="Internal knowledge-builder scenario endpoint.",
+        description="Record bounded problem-solving scenarios from episode evidence.",
+        epilog=_SCENARIO_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(scenario_parser, suppress_default=True)
+    scenario_subparsers = scenario_parser.add_subparsers(
+        dest="scenario_command", required=True, metavar="scenario-command"
+    )
+    scenario_record_parser = scenario_subparsers.add_parser(
+        "record",
+        help="Record one solved or abandoned problem-solving scenario.",
+        description="Record one bounded problem-solving scenario from existing memories and episode events.",
+        epilog=_SCENARIO_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(scenario_record_parser, suppress_default=True)
+    _add_payload_arguments(scenario_record_parser)
 
     admin_parser = subparsers.add_parser(
         "admin",

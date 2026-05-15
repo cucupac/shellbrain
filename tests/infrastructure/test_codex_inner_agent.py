@@ -161,24 +161,38 @@ def test_build_knowledge_output_parser_accepts_no_write_skips() -> None:
     assert parsed["skipped_item_count"] == 1
 
 
+def test_build_knowledge_output_parser_counts_scenario_writes() -> None:
+    """Parser should include scenario writes in derived write counts."""
+
+    parsed = parse_build_knowledge_output(
+        '{"status":"ok","run_summary":"Recorded scenario.",'
+        '"read_trace":{"commands":[{"command":"shellbrain scenario record --json {}"}]},'
+        '"skipped_items":[]}'
+    )
+
+    assert parsed["write_count"] == 1
+
+
 def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     """Prompt should instruct Codex to query Shellbrain directly without expansion loops."""
 
     prompt = render_build_context_prompt(_request())
 
-    assert "ROLE\n" in prompt
-    assert "REQUIRED WORKFLOW\n" in prompt
-    assert "READINESS TO SYNTHESIZE\n" in prompt
-    assert "OPERATING PRINCIPLES\n" in prompt
+    assert "IDENTITY\n" in prompt
+    assert "AUTHORITY\n" in prompt
+    assert "PROTOCOL\n" in prompt
+    assert "JUDGMENT\n" in prompt
     assert prompt.index("shellbrain events") < prompt.index("shellbrain read")
-    assert "Run `shellbrain events" in prompt
-    assert "Run at least one targeted `shellbrain read`" in prompt
-    assert "using both the query and current_problem" in prompt
-    assert "If read results include concept refs" in prompt
-    assert "Synthesize only when" in prompt
+    assert "Shellbrain is a repo-scoped memory system" in prompt
+    assert "Run events first" in prompt
+    assert "Build one search text" in prompt
+    assert "current_problem.goal" in prompt
+    assert "Run at least one targeted read" in prompt
+    assert "expand it before using it" in prompt
+    assert "Run extra reads only when" in prompt
+    assert "Synthesize for the worker" in prompt
     assert "no_context_reason" in prompt
-    assert "maximally useful to the working agent" in prompt
-    assert "reduce solving time and token spend" in prompt
+    assert "reduces worker time and token spend" in prompt
     assert "created_at" in prompt
     assert "updated_at" in prompt
     assert "Separate sourced facts from inference" in prompt
@@ -192,6 +206,7 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "shellbrain read" in prompt
     assert "shellbrain concept show" in prompt
     assert "shellbrain recall" in prompt
+    assert "memory writes" in prompt
     assert "requested_" "expansions" not in prompt
     assert "candidate_" "context" not in prompt
     assert "expansion_" "handles" not in prompt
@@ -202,20 +217,35 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
 
     prompt = render_build_knowledge_prompt(_build_knowledge_request())
 
-    assert "# ROLE" in prompt
+    assert "# IDENTITY" in prompt
     assert "internal knowledge builder" in prompt
+    assert "# AUTHORITY" in prompt
+    assert "# PROTOCOL" in prompt
+    assert "# JUDGMENT" in prompt
     assert "shellbrain memory add" in prompt
     assert "shellbrain concept update" in prompt
-    assert "Do not edit code or config files" in prompt
-    assert "Inspect exact episode events first" in prompt
-    assert "Treat idle-stable episodes as partial sessions" in prompt
+    assert "shellbrain scenario record" in prompt
+    assert "editing files" in prompt
+    assert "Run the exact `first_command`" in prompt
+    assert "Segment the episode into durable boundaries" in prompt
+    assert "Dedupe before writing" in prompt
+    assert "Write memory boundaries in order" in prompt
+    assert "problem_attempts" in prompt
+    assert "links.problem_id" in prompt
+    assert "Treat idle-stable episodes as partial" in prompt
     assert "event_watermark" in prompt
     assert '\\"after_seq\\":3' in prompt
     assert '\\"up_to_seq\\":8' in prompt
     assert '\\"limit\\":100' not in prompt
     assert "shellbrain --help" in prompt
     assert "shellbrain memory add --help" in prompt
+    assert "shellbrain scenario record --help" in prompt
+    assert "Write fewer, stronger records" in prompt
+    assert "solved" in prompt
+    assert "abandoned" in prompt
+    assert "scenario.v1" in prompt
     assert "write_count" in prompt
+    assert "memory/concept/scenario" in prompt
 
 
 def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:

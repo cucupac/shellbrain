@@ -151,6 +151,44 @@ class EpisodesRepo(IEpisodesRepo):
             created_at=row["created_at"],
         )
 
+    def get_event(
+        self,
+        *,
+        repo_id: str,
+        episode_id: str,
+        event_id: str,
+    ) -> EpisodeEvent | None:
+        """This method fetches one repo-visible event by id inside an episode."""
+
+        row = (
+            self._session.execute(
+                select(episode_events)
+                .select_from(
+                    episode_events.join(
+                        episodes, episode_events.c.episode_id == episodes.c.id
+                    )
+                )
+                .where(
+                    episodes.c.repo_id == repo_id,
+                    episode_events.c.episode_id == episode_id,
+                    episode_events.c.id == event_id,
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if row is None:
+            return None
+        return EpisodeEvent(
+            id=row["id"],
+            episode_id=row["episode_id"],
+            seq=row["seq"],
+            host_event_key=row["host_event_key"],
+            source=EpisodeEventSource(row["source"]),
+            content=row["content"],
+            created_at=row["created_at"],
+        )
+
     def list_event_keys(self, *, episode_id: str) -> list[str]:
         """This method returns already-imported upstream event keys for one episode."""
 

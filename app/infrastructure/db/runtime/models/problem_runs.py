@@ -7,7 +7,7 @@ from app.infrastructure.db.runtime.models.metadata import metadata
 
 
 _PROBLEM_RUN_STATUSES = "'open', 'closed', 'abandoned'"
-_PROBLEM_RUN_ACTORS = "'worker', 'librarian', 'manual', 'system'"
+_PROBLEM_RUN_ACTORS = "'worker', 'librarian', 'manual', 'system', 'build_knowledge'"
 
 
 problem_runs = Table(
@@ -24,6 +24,8 @@ problem_runs = Table(
     Column("closed_at", TIMESTAMP(timezone=True)),
     Column("opened_by", String, nullable=False),
     Column("closed_by", String),
+    Column("opened_event_id", String, ForeignKey("episode_events.id", ondelete="SET NULL")),
+    Column("closed_event_id", String, ForeignKey("episode_events.id", ondelete="SET NULL")),
     Column("problem_memory_id", String, ForeignKey("memories.id", ondelete="SET NULL")),
     Column(
         "solution_memory_id", String, ForeignKey("memories.id", ondelete="SET NULL")
@@ -91,3 +93,14 @@ Index(
 )
 Index("idx_problem_runs_problem_memory", problem_runs.c.problem_memory_id)
 Index("idx_problem_runs_solution_memory", problem_runs.c.solution_memory_id)
+Index("idx_problem_runs_opened_event", problem_runs.c.opened_event_id)
+Index("idx_problem_runs_closed_event", problem_runs.c.closed_event_id)
+Index(
+    "uq_problem_runs_scenario_natural_key",
+    problem_runs.c.repo_id,
+    problem_runs.c.episode_id,
+    problem_runs.c.problem_memory_id,
+    problem_runs.c.opened_event_id,
+    unique=True,
+    postgresql_where=problem_runs.c.opened_event_id.is_not(None),
+)

@@ -29,6 +29,7 @@ from app.core.use_cases.retrieval.read.request import (
     MemoryReadRequest,
 )
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
+from app.core.use_cases.scenarios.record.request import ScenarioRecordRequest
 
 
 class StrictBaseModel(BaseModel):
@@ -167,6 +168,34 @@ class AgentBatchUpdateRequest(StrictBaseModel):
     updates: list[AgentBatchUpdateItem] = Field(min_length=1)
 
 
+class AgentScenarioBody(StrictBaseModel):
+    """Agent-facing scenario payload without repo transport details."""
+
+    episode_id: str = Field(min_length=1)
+    outcome: Literal["solved", "abandoned"]
+    problem_memory_id: str = Field(min_length=1)
+    solution_memory_id: str | None = Field(default=None, min_length=1)
+    opened_event_id: str = Field(min_length=1)
+    closed_event_id: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _validate_solution_by_outcome(self) -> "AgentScenarioBody":
+        """Mirror core solved/abandoned scenario shape rules at the CLI boundary."""
+
+        if self.outcome == "solved" and self.solution_memory_id is None:
+            raise ValueError("solved scenarios require solution_memory_id")
+        if self.outcome == "abandoned" and self.solution_memory_id is not None:
+            raise ValueError("abandoned scenarios must not include solution_memory_id")
+        return self
+
+
+class AgentScenarioRecordRequest(StrictBaseModel):
+    """Agent-facing scenario-record payload."""
+
+    schema_version: Literal["scenario.v1"]
+    scenario: AgentScenarioBody
+
+
 def _format_validation_errors(exc: ValidationError) -> list[ErrorDetail]:
     """Convert Pydantic validation errors into contract error details."""
 
@@ -275,6 +304,28 @@ def validate_internal_create_contract(
 
     try:
         return MemoryAddRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_scenario_record_schema(
+    payload: dict[str, Any],
+) -> tuple[AgentScenarioRecordRequest | None, list[ErrorDetail]]:
+    """Validate and parse agent scenario-record payloads."""
+
+    try:
+        return AgentScenarioRecordRequest.model_validate(payload), []
+    except ValidationError as exc:
+        return None, _format_validation_errors(exc)
+
+
+def validate_internal_scenario_record_contract(
+    payload: dict[str, Any],
+) -> tuple[ScenarioRecordRequest | None, list[ErrorDetail]]:
+    """Validate one hydrated scenario-record payload against its core contract."""
+
+    try:
+        return ScenarioRecordRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 
