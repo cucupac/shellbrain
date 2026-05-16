@@ -38,12 +38,25 @@ def test_build_knowledge_records_successful_run_for_new_events() -> None:
     assert result.event_watermark == 7
     assert result.previous_event_watermark == 3
     assert result.write_count == 2
+    assert result.input_tokens == 120
+    assert result.output_tokens == 30
+    assert result.capture_quality == "estimated"
     assert result.run_summary == "Wrote useful knowledge."
     assert runner.request is not None
+    assert runner.request.run_id == "run-1"
     assert runner.request.episode_id == "episode-1"
     assert runner.request.trigger == "session_replaced"
     assert uow.knowledge_build_runs.added[0].status is KnowledgeBuildRunStatus.RUNNING
     assert uow.knowledge_build_runs.completed[0]["status"] is KnowledgeBuildRunStatus.OK
+    assert uow.knowledge_build_runs.completed[0]["input_tokens"] == 120
+    assert uow.knowledge_build_runs.completed[0]["output_tokens"] == 30
+    assert uow.knowledge_build_runs.completed[0]["capture_quality"] == "estimated"
+    assert uow.knowledge_build_runs.completed[0]["read_trace"] == {
+        "commands": ["shellbrain events"]
+    }
+    assert uow.knowledge_build_runs.completed[0]["code_trace"] == {
+        "files": ["app/example.py"]
+    }
 
 
 def test_build_knowledge_skips_when_no_new_events() -> None:
@@ -164,9 +177,14 @@ class _FakeBuildKnowledgeRunner:
             provider=request.provider,
             model=request.model,
             reasoning=request.reasoning,
+            input_tokens=120,
+            output_tokens=30,
+            capture_quality="estimated",
             write_count=2,
             skipped_item_count=1,
             run_summary="Wrote useful knowledge.",
+            read_trace={"commands": ["shellbrain events"]},
+            code_trace={"files": ["app/example.py"]},
         )
 
 

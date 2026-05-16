@@ -108,7 +108,8 @@ class CodexCliInnerAgentRunner:
                 status="timeout",
                 fallback_used=True,
                 duration_ms=_duration_ms(started),
-                input_token_estimate=_estimate_tokens(prompt),
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
                 error_code="timeout",
                 error_message="Codex CLI timed out",
             )
@@ -120,7 +121,8 @@ class CodexCliInnerAgentRunner:
                 status="error",
                 fallback_used=True,
                 duration_ms=duration_ms,
-                input_token_estimate=_estimate_tokens(prompt),
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
                 error_code="codex_nonzero_exit",
                 error_message=_truncate(completed.stderr or completed.stdout, 500),
             )
@@ -132,8 +134,9 @@ class CodexCliInnerAgentRunner:
                 status="invalid_output",
                 fallback_used=True,
                 duration_ms=duration_ms,
-                input_token_estimate=_estimate_tokens(prompt),
-                output_token_estimate=_estimate_tokens(final_message),
+                input_tokens=_estimate_tokens(prompt),
+                output_tokens=_estimate_tokens(final_message),
+                capture_quality="estimated",
                 error_code="invalid_output",
                 error_message=str(exc),
             )
@@ -142,8 +145,9 @@ class CodexCliInnerAgentRunner:
             status="ok",
             brief=brief,
             duration_ms=duration_ms,
-            input_token_estimate=_estimate_tokens(prompt),
-            output_token_estimate=_estimate_tokens(final_message),
+            input_tokens=_estimate_tokens(prompt),
+            output_tokens=_estimate_tokens(final_message),
+            capture_quality="estimated",
             read_trace=read_trace,
         )
 
@@ -203,7 +207,10 @@ class CodexCliInnerAgentRunner:
                     capture_output=True,
                     timeout=request.timeout_seconds,
                     check=False,
-                    env=_inner_agent_env(mode="build_knowledge"),
+                    env=_inner_agent_env(
+                        mode="build_knowledge",
+                        knowledge_build_run_id=request.run_id,
+                    ),
                 )
                 output_file.seek(0)
                 final_message = output_file.read()
@@ -212,7 +219,8 @@ class CodexCliInnerAgentRunner:
                 request,
                 status="timeout",
                 duration_ms=_duration_ms(started),
-                input_token_estimate=_estimate_tokens(prompt),
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
                 error_code="timeout",
                 error_message="Codex CLI timed out",
             )
@@ -223,7 +231,8 @@ class CodexCliInnerAgentRunner:
                 request,
                 status="error",
                 duration_ms=duration_ms,
-                input_token_estimate=_estimate_tokens(prompt),
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
                 error_code="codex_nonzero_exit",
                 error_message=_truncate(completed.stderr or completed.stdout, 500),
             )
@@ -234,8 +243,9 @@ class CodexCliInnerAgentRunner:
                 request,
                 status="invalid_output",
                 duration_ms=duration_ms,
-                input_token_estimate=_estimate_tokens(prompt),
-                output_token_estimate=_estimate_tokens(final_message),
+                input_tokens=_estimate_tokens(prompt),
+                output_tokens=_estimate_tokens(final_message),
+                capture_quality="estimated",
                 error_code="invalid_output",
                 error_message=str(exc),
             )
@@ -243,8 +253,9 @@ class CodexCliInnerAgentRunner:
             request,
             status=parsed["status"],
             duration_ms=duration_ms,
-            input_token_estimate=_estimate_tokens(prompt),
-            output_token_estimate=_estimate_tokens(final_message),
+            input_tokens=_estimate_tokens(prompt),
+            output_tokens=_estimate_tokens(final_message),
+            capture_quality="estimated",
             write_count=int(parsed["write_count"]),
             skipped_item_count=int(parsed["skipped_item_count"]),
             run_summary=parsed["run_summary"],
@@ -260,8 +271,9 @@ def _result(
     brief: dict | None = None,
     fallback_used: bool = False,
     duration_ms: int = 0,
-    input_token_estimate: int | None = None,
-    output_token_estimate: int | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    capture_quality: str | None = None,
     error_code: str | None = None,
     error_message: str | None = None,
     read_trace: dict | None = None,
@@ -277,8 +289,9 @@ def _result(
         fallback_used=fallback_used,
         timeout_seconds=request.timeout_seconds,
         duration_ms=duration_ms,
-        input_token_estimate=input_token_estimate,
-        output_token_estimate=output_token_estimate,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        capture_quality=capture_quality,
         error_code=error_code,
         error_message=error_message,
         read_trace=read_trace or {},
@@ -290,8 +303,9 @@ def _build_knowledge_result(
     *,
     status,
     duration_ms: int = 0,
-    input_token_estimate: int | None = None,
-    output_token_estimate: int | None = None,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    capture_quality: str | None = None,
     write_count: int = 0,
     skipped_item_count: int = 0,
     error_code: str | None = None,
@@ -309,8 +323,9 @@ def _build_knowledge_result(
         reasoning=request.reasoning,
         timeout_seconds=request.timeout_seconds,
         duration_ms=duration_ms,
-        input_token_estimate=input_token_estimate,
-        output_token_estimate=output_token_estimate,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        capture_quality=capture_quality,
         write_count=write_count,
         skipped_item_count=skipped_item_count,
         error_code=error_code,
@@ -337,14 +352,20 @@ def _duration_ms(started: float) -> int:
     return int((perf_counter() - started) * 1000)
 
 
-def _inner_agent_env(*, mode: str) -> dict[str, str]:
+def _inner_agent_env(
+    *, mode: str, knowledge_build_run_id: str | None = None
+) -> dict[str, str]:
     """Return the subprocess environment with inner-agent CLI mode enabled."""
 
     env = dict(os.environ)
     env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
     env.pop("SHELLBRAIN_INNER_AGENT_READ_ONLY", None)
     if mode == "build_knowledge":
+        if knowledge_build_run_id:
+            env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] = knowledge_build_run_id
         _scrub_admin_env(env)
+    else:
+        env.pop("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", None)
     return env
 
 

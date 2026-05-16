@@ -8,6 +8,7 @@ import pytest
 from sqlalchemy import text
 
 from app.core.use_cases.retrieval.read.result import ReadMemoryResult
+from app.core.ports.host_apps.inner_agents import InnerAgentRunResult
 from tests.operations._shared.handler_calls import handle_recall
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -49,9 +50,32 @@ def test_recall_schema_should_create_summary_and_source_tables_with_source_item_
                 """
             )
         ).scalar_one()
+        inner_agent_columns = {
+            row[0]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT column_name
+                      FROM information_schema.columns
+                     WHERE table_name = 'inner_agent_invocations';
+                    """
+                )
+            )
+        }
 
     assert primary_key_columns == ["invocation_id", "ordinal"]
     assert recall_summary_fk_count == 1
+    assert {
+        "input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens",
+        "cached_input_tokens_total",
+        "cache_read_input_tokens",
+        "cache_creation_input_tokens",
+        "capture_quality",
+    }.issubset(inner_agent_columns)
+    assert "input_token_estimate" not in inner_agent_columns
+    assert "output_token_estimate" not in inner_agent_columns
 
 
 def test_recall_command_telemetry_can_be_inserted_after_migration(
@@ -162,6 +186,43 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert inner_agent_rows[0]["provider"] == "codex"
     assert inner_agent_rows[0]["status"] == "provider_unavailable"
     assert inner_agent_rows[0]["fallback_used"] is True
+    assert inner_agent_rows[0]["input_tokens"] is None
+    assert inner_agent_rows[0]["output_tokens"] is None
+    assert inner_agent_rows[0]["capture_quality"] is None
+
+
+def test_provider_recall_should_write_inner_agent_token_profile(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+    fetch_relation_rows,
+) -> None:
+    """provider-backed recall should persist canonical inner-agent token buckets."""
+
+    monkeypatch.setattr(
+        "app.core.use_cases.retrieval.build_context.execute.execute_read_memory",
+        lambda *args, **kwargs: pytest.fail("provider path should not use fallback read"),
+    )
+    monkeypatch.setattr(
+        "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
+        lambda: _FakeInnerAgentRunner(),
+    )
+
+    result = handle_recall(
+        {"query": "provider tokens", "current_problem": _current_problem()},
+        uow_factory=uow_factory,
+        inferred_repo_id="repo-a",
+    )
+
+    assert result["status"] == "ok"
+    inner_agent_rows = fetch_relation_rows("inner_agent_invocations")
+    assert len(inner_agent_rows) == 1
+    assert inner_agent_rows[0]["agent_name"] == "build_context"
+    assert inner_agent_rows[0]["status"] == "ok"
+    assert inner_agent_rows[0]["input_tokens"] == 111
+    assert inner_agent_rows[0]["output_tokens"] == 22
+    assert inner_agent_rows[0]["reasoning_output_tokens"] == 0
+    assert inner_agent_rows[0]["cached_input_tokens_total"] == 0
+    assert inner_agent_rows[0]["capture_quality"] == "estimated"
 
 
 def test_no_candidate_recall_should_write_no_candidates_fallback(
@@ -241,6 +302,36 @@ def test_recall_token_estimates_should_be_deterministic(
     }
     assert len(rows) == 2
     assert len(estimates) == 1
+
+
+class _FakeInnerAgentRunner:
+    """Provider fake that returns a successful synthesized brief and token profile."""
+
+    def run(self, request):
+        return InnerAgentRunResult(
+            status="ok",
+            provider=request.provider,
+            model=request.model,
+            reasoning=request.reasoning,
+            brief={
+                "summary": "Provider synthesized context.",
+                "constraints": [],
+                "known_traps": [],
+                "prior_cases": [],
+                "concept_orientation": [],
+                "anchors": [],
+                "gaps": [],
+                "sources": [],
+            },
+            input_tokens=111,
+            output_tokens=22,
+            reasoning_output_tokens=0,
+            cached_input_tokens_total=0,
+            cache_read_input_tokens=0,
+            cache_creation_input_tokens=0,
+            capture_quality="estimated",
+            read_trace={"commands": [], "source_ids": [], "concept_refs": []},
+        )
 
 
 def _stub_internal_read(

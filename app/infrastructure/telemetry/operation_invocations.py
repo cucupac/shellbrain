@@ -32,6 +32,7 @@ def build_operation_invocation_record(
         repo_id=repo_id,
         repo_root=runtime_context.repo_root,
         no_sync=runtime_context.no_sync,
+        knowledge_build_run_id=runtime_context.knowledge_build_run_id,
         caller_id=caller_identity.canonical_id if caller_identity is not None else None,
         caller_trust_level=caller_identity.trust_level.value
         if caller_identity is not None

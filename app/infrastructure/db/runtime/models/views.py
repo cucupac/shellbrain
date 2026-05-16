@@ -821,6 +821,255 @@ JOIN run_reads rr ON rr.problem_run_id = prun.id;
 """
 
 
+USAGE_PROBLEM_RUN_AGENT_TOKENS_SQL = """
+CREATE OR REPLACE VIEW usage_problem_run_agent_tokens AS
+WITH eligible_runs AS (
+  SELECT *
+  FROM problem_runs
+  WHERE status IN ('closed', 'abandoned')
+    AND closed_at IS NOT NULL
+),
+context_invocations AS (
+  SELECT
+    prun.id AS problem_run_id,
+    iai.*
+  FROM eligible_runs prun
+  JOIN operation_invocations oi
+    ON oi.repo_id = prun.repo_id
+   AND oi.command = 'recall'
+   AND oi.created_at >= prun.opened_at
+   AND oi.created_at <= prun.closed_at
+   AND (
+      (
+        prun.host_app IS NOT NULL
+        AND prun.host_session_key IS NOT NULL
+        AND oi.selected_host_app = prun.host_app
+        AND oi.selected_host_session_key = prun.host_session_key
+      )
+      OR (
+        (prun.host_app IS NULL OR prun.host_session_key IS NULL)
+        AND prun.thread_id IS NOT NULL
+        AND oi.selected_thread_id = prun.thread_id
+      )
+   )
+  JOIN inner_agent_invocations iai
+    ON iai.operation_invocation_id = oi.id
+   AND iai.agent_name = 'build_context'
+),
+context_usage AS (
+  SELECT
+    prun.id AS problem_run_id,
+    COUNT(ci.id)::INTEGER AS build_context_invocation_count,
+    COUNT(ci.id) FILTER (WHERE ci.capture_quality = 'exact')::INTEGER AS build_context_exact_invocation_count,
+    COUNT(ci.id) FILTER (WHERE ci.capture_quality = 'estimated')::INTEGER AS build_context_estimated_invocation_count,
+    COALESCE(SUM(ci.input_tokens), 0)::BIGINT AS build_context_input_tokens,
+    COALESCE(SUM(ci.output_tokens), 0)::BIGINT AS build_context_output_tokens,
+    COALESCE(SUM(ci.reasoning_output_tokens), 0)::BIGINT AS build_context_reasoning_output_tokens,
+    COALESCE(SUM(ci.cached_input_tokens_total), 0)::BIGINT AS build_context_cached_input_tokens_total,
+    COALESCE(SUM(ci.cache_read_input_tokens), 0)::BIGINT AS build_context_cache_read_input_tokens,
+    COALESCE(SUM(ci.cache_creation_input_tokens), 0)::BIGINT AS build_context_cache_creation_input_tokens
+  FROM eligible_runs prun
+  LEFT JOIN context_invocations ci ON ci.problem_run_id = prun.id
+  GROUP BY prun.id
+),
+context_model_breakdown AS (
+  SELECT
+    grouped.problem_run_id,
+    JSONB_AGG(
+      JSONB_BUILD_OBJECT(
+        'provider', grouped.provider,
+        'model', grouped.model,
+        'reasoning', grouped.reasoning,
+        'capture_quality', grouped.capture_quality,
+        'invocation_count', grouped.invocation_count,
+        'input_tokens', grouped.input_tokens,
+        'output_tokens', grouped.output_tokens,
+        'reasoning_output_tokens', grouped.reasoning_output_tokens,
+        'cached_input_tokens_total', grouped.cached_input_tokens_total
+      )
+      ORDER BY grouped.provider, grouped.model, grouped.reasoning, grouped.capture_quality
+    ) AS build_context_model_breakdown_json
+  FROM (
+    SELECT
+      problem_run_id,
+      provider,
+      model,
+      reasoning,
+      capture_quality,
+      COUNT(*)::INTEGER AS invocation_count,
+      COALESCE(SUM(input_tokens), 0)::BIGINT AS input_tokens,
+      COALESCE(SUM(output_tokens), 0)::BIGINT AS output_tokens,
+      COALESCE(SUM(reasoning_output_tokens), 0)::BIGINT AS reasoning_output_tokens,
+      COALESCE(SUM(cached_input_tokens_total), 0)::BIGINT AS cached_input_tokens_total
+    FROM context_invocations
+    GROUP BY problem_run_id, provider, model, reasoning, capture_quality
+  ) grouped
+  GROUP BY grouped.problem_run_id
+),
+knowledge_runs AS (
+  SELECT
+    prun.id AS problem_run_id,
+    kbr.*
+  FROM eligible_runs prun
+  LEFT JOIN episode_events opened_event ON opened_event.id = prun.opened_event_id
+  LEFT JOIN episode_events closed_event ON closed_event.id = prun.closed_event_id
+  JOIN knowledge_build_runs kbr
+    ON kbr.repo_id = prun.repo_id
+   AND kbr.episode_id = prun.episode_id
+   AND (
+      (
+        opened_event.seq IS NOT NULL
+        AND closed_event.seq IS NOT NULL
+        AND kbr.event_watermark >= opened_event.seq
+        AND COALESCE(kbr.previous_event_watermark, 0) <= closed_event.seq
+      )
+      OR (
+        (opened_event.seq IS NULL OR closed_event.seq IS NULL)
+        AND kbr.started_at >= prun.opened_at
+        AND kbr.started_at <= prun.closed_at
+      )
+   )
+),
+knowledge_usage AS (
+  SELECT
+    prun.id AS problem_run_id,
+    COUNT(kr.id)::INTEGER AS build_knowledge_run_count,
+    COUNT(kr.id) FILTER (WHERE kr.capture_quality = 'exact')::INTEGER AS build_knowledge_exact_run_count,
+    COUNT(kr.id) FILTER (WHERE kr.capture_quality = 'estimated')::INTEGER AS build_knowledge_estimated_run_count,
+    COALESCE(SUM(kr.input_tokens), 0)::BIGINT AS build_knowledge_input_tokens,
+    COALESCE(SUM(kr.output_tokens), 0)::BIGINT AS build_knowledge_output_tokens,
+    COALESCE(SUM(kr.reasoning_output_tokens), 0)::BIGINT AS build_knowledge_reasoning_output_tokens,
+    COALESCE(SUM(kr.cached_input_tokens_total), 0)::BIGINT AS build_knowledge_cached_input_tokens_total,
+    COALESCE(SUM(kr.cache_read_input_tokens), 0)::BIGINT AS build_knowledge_cache_read_input_tokens,
+    COALESCE(SUM(kr.cache_creation_input_tokens), 0)::BIGINT AS build_knowledge_cache_creation_input_tokens
+  FROM eligible_runs prun
+  LEFT JOIN knowledge_runs kr ON kr.problem_run_id = prun.id
+  GROUP BY prun.id
+),
+knowledge_model_breakdown AS (
+  SELECT
+    grouped.problem_run_id,
+    JSONB_AGG(
+      JSONB_BUILD_OBJECT(
+        'provider', grouped.provider,
+        'model', grouped.model,
+        'reasoning', grouped.reasoning,
+        'capture_quality', grouped.capture_quality,
+        'run_count', grouped.run_count,
+        'input_tokens', grouped.input_tokens,
+        'output_tokens', grouped.output_tokens,
+        'reasoning_output_tokens', grouped.reasoning_output_tokens,
+        'cached_input_tokens_total', grouped.cached_input_tokens_total
+      )
+      ORDER BY grouped.provider, grouped.model, grouped.reasoning, grouped.capture_quality
+    ) AS build_knowledge_model_breakdown_json
+  FROM (
+    SELECT
+      problem_run_id,
+      provider,
+      model,
+      reasoning,
+      capture_quality,
+      COUNT(*)::INTEGER AS run_count,
+      COALESCE(SUM(input_tokens), 0)::BIGINT AS input_tokens,
+      COALESCE(SUM(output_tokens), 0)::BIGINT AS output_tokens,
+      COALESCE(SUM(reasoning_output_tokens), 0)::BIGINT AS reasoning_output_tokens,
+      COALESCE(SUM(cached_input_tokens_total), 0)::BIGINT AS cached_input_tokens_total
+    FROM knowledge_runs
+    GROUP BY problem_run_id, provider, model, reasoning, capture_quality
+  ) grouped
+  GROUP BY grouped.problem_run_id
+)
+SELECT
+  upt.problem_run_id,
+  upt.repo_id,
+  upt.thread_id,
+  upt.host_app,
+  upt.host_session_key,
+  upt.status,
+  upt.opened_at,
+  upt.closed_at,
+  upt.duration_seconds,
+  upt.foreground_worker_input_tokens AS working_agent_input_tokens,
+  upt.foreground_worker_output_tokens AS working_agent_output_tokens,
+  upt.foreground_worker_fresh_work_tokens AS working_agent_fresh_work_tokens,
+  upt.foreground_worker_all_tokens_including_cache AS working_agent_all_tokens_including_cache,
+  cu.build_context_invocation_count,
+  cu.build_context_exact_invocation_count,
+  cu.build_context_estimated_invocation_count,
+  cu.build_context_input_tokens,
+  cu.build_context_output_tokens,
+  cu.build_context_reasoning_output_tokens,
+  cu.build_context_cached_input_tokens_total,
+  cu.build_context_cache_read_input_tokens,
+  cu.build_context_cache_creation_input_tokens,
+  (
+    cu.build_context_input_tokens
+    + cu.build_context_output_tokens
+  )::BIGINT AS build_context_fresh_work_tokens,
+  (
+    cu.build_context_input_tokens
+    + cu.build_context_cached_input_tokens_total
+    + cu.build_context_output_tokens
+  )::BIGINT AS build_context_all_tokens_including_cache,
+  COALESCE(cmb.build_context_model_breakdown_json, '[]'::jsonb) AS build_context_model_breakdown_json,
+  ku.build_knowledge_run_count,
+  ku.build_knowledge_exact_run_count,
+  ku.build_knowledge_estimated_run_count,
+  ku.build_knowledge_input_tokens,
+  ku.build_knowledge_output_tokens,
+  ku.build_knowledge_reasoning_output_tokens,
+  ku.build_knowledge_cached_input_tokens_total,
+  ku.build_knowledge_cache_read_input_tokens,
+  ku.build_knowledge_cache_creation_input_tokens,
+  (
+    ku.build_knowledge_input_tokens
+    + ku.build_knowledge_output_tokens
+  )::BIGINT AS build_knowledge_fresh_work_tokens,
+  (
+    ku.build_knowledge_input_tokens
+    + ku.build_knowledge_cached_input_tokens_total
+    + ku.build_knowledge_output_tokens
+  )::BIGINT AS build_knowledge_all_tokens_including_cache,
+  COALESCE(kmb.build_knowledge_model_breakdown_json, '[]'::jsonb) AS build_knowledge_model_breakdown_json,
+  (
+    cu.build_context_input_tokens
+    + ku.build_knowledge_input_tokens
+  )::BIGINT AS total_inner_agent_input_tokens,
+  (
+    cu.build_context_output_tokens
+    + ku.build_knowledge_output_tokens
+  )::BIGINT AS total_inner_agent_output_tokens,
+  (
+    cu.build_context_reasoning_output_tokens
+    + ku.build_knowledge_reasoning_output_tokens
+  )::BIGINT AS total_inner_agent_reasoning_output_tokens,
+  (
+    cu.build_context_cached_input_tokens_total
+    + ku.build_knowledge_cached_input_tokens_total
+  )::BIGINT AS total_inner_agent_cached_input_tokens_total,
+  (
+    cu.build_context_input_tokens
+    + cu.build_context_output_tokens
+    + ku.build_knowledge_input_tokens
+    + ku.build_knowledge_output_tokens
+  )::BIGINT AS total_inner_agent_fresh_work_tokens,
+  (
+    cu.build_context_input_tokens
+    + cu.build_context_cached_input_tokens_total
+    + cu.build_context_output_tokens
+    + ku.build_knowledge_input_tokens
+    + ku.build_knowledge_cached_input_tokens_total
+    + ku.build_knowledge_output_tokens
+  )::BIGINT AS total_inner_agent_all_tokens_including_cache
+FROM usage_problem_run_tokens upt
+JOIN context_usage cu ON cu.problem_run_id = upt.problem_run_id
+JOIN knowledge_usage ku ON ku.problem_run_id = upt.problem_run_id
+LEFT JOIN context_model_breakdown cmb ON cmb.problem_run_id = upt.problem_run_id
+LEFT JOIN knowledge_model_breakdown kmb ON kmb.problem_run_id = upt.problem_run_id;
+"""
+
+
 USAGE_TOKEN_CAPTURE_HEALTH_SQL = """
 CREATE OR REPLACE VIEW usage_token_capture_health AS
 WITH synced_sessions AS (

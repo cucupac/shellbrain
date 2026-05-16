@@ -34,8 +34,19 @@ def build_inner_agent_invocation_records(
             fallback_used=bool(payload.get("fallback_used")),
             timeout_seconds=_optional_int(payload.get("timeout_seconds")),
             duration_ms=_optional_int(payload.get("duration_ms")) or 0,
-            input_token_estimate=_optional_int(payload.get("input_token_estimate")),
-            output_token_estimate=_optional_int(payload.get("output_token_estimate")),
+            input_tokens=_optional_int(payload.get("input_tokens")),
+            output_tokens=_optional_int(payload.get("output_tokens")),
+            reasoning_output_tokens=_optional_int(
+                payload.get("reasoning_output_tokens")
+            ),
+            cached_input_tokens_total=_optional_int(
+                payload.get("cached_input_tokens_total")
+            ),
+            cache_read_input_tokens=_optional_int(payload.get("cache_read_input_tokens")),
+            cache_creation_input_tokens=_optional_int(
+                payload.get("cache_creation_input_tokens")
+            ),
+            capture_quality=_optional_string(payload.get("capture_quality")),
             private_read_count=_optional_int(payload.get("private_read_count")) or 0,
             concept_expansion_count=_optional_int(payload.get("concept_expansion_count"))
             or 0,
@@ -65,4 +76,3 @@ def _optional_int(value: Any) -> int | None:
     except (TypeError, ValueError):
         return None
     return parsed if parsed >= 0 else None
-

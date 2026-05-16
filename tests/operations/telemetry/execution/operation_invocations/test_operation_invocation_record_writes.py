@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
+from sqlalchemy import text
 
 from app.core.entities.memories import MemoryKind, MemoryScope
 import app.entrypoints.cli.main as cli_main
@@ -226,6 +228,88 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
     assert rows[0]["no_sync"] is True
 
 
+def test_build_knowledge_inner_agent_invocations_should_record_parent_build_run_id(
+    tmp_path: Path,
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    integration_engine,
+    monkeypatch: pytest.MonkeyPatch,
+    fetch_relation_rows,
+) -> None:
+    """builder-scoped CLI commands should link operation telemetry to the build run."""
+
+    repo_root = tmp_path / "builder-provenance-repo"
+    repo_root.mkdir()
+    _seed_knowledge_build_run(integration_engine)
+    _stub_read_pipeline(monkeypatch, zero_results=False)
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_knowledge")
+    monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
+    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
+
+    exit_code = cli_main.main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--repo-id",
+            "repo-a",
+            "read",
+            "--no-sync",
+            "--json",
+            '{"query":"builder provenance","mode":"targeted"}',
+        ]
+    )
+
+    assert exit_code == 0
+    rows = fetch_relation_rows(
+        "operation_invocations",
+        where_sql="command = :command",
+        params={"command": "read"},
+        order_by="created_at DESC, id DESC",
+    )
+    assert len(rows) == 1
+    assert rows[0]["knowledge_build_run_id"] == "run-1"
+
+
+def test_non_builder_inner_agent_invocations_should_not_record_build_run_id(
+    tmp_path: Path,
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    monkeypatch: pytest.MonkeyPatch,
+    fetch_relation_rows,
+) -> None:
+    """non-builder modes should ignore stale build-run env values."""
+
+    repo_root = tmp_path / "context-provenance-repo"
+    repo_root.mkdir()
+    _stub_read_pipeline(monkeypatch, zero_results=False)
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_context")
+    monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
+    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
+
+    exit_code = cli_main.main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--repo-id",
+            "repo-a",
+            "read",
+            "--no-sync",
+            "--json",
+            '{"query":"builder provenance","mode":"targeted"}',
+        ]
+    )
+
+    assert exit_code == 0
+    rows = fetch_relation_rows(
+        "operation_invocations",
+        where_sql="command = :command",
+        params={"command": "read"},
+        order_by="created_at DESC, id DESC",
+    )
+    assert len(rows) == 1
+    assert rows[0]["knowledge_build_run_id"] is None
+
+
 def test_repo_matching_multi_session_discovery_should_always_record_candidate_count_and_selection_ambiguous_when_more_than_one_session_matches(
     tmp_path: Path,
     seed_competing_same_repo_codex_sessions,
@@ -315,3 +399,68 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
         "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
         lambda bucketed_candidates, payload: bucketed_candidates,
     )
+
+
+def _seed_knowledge_build_run(integration_engine) -> None:
+    """Create a valid build_knowledge run for operation provenance FK tests."""
+
+    now = datetime(2026, 5, 16, tzinfo=timezone.utc)
+    with integration_engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO episodes (
+                  id,
+                  repo_id,
+                  host_app,
+                  thread_id,
+                  status,
+                  started_at,
+                  created_at
+                )
+                VALUES (
+                  'episode-1',
+                  'repo-a',
+                  'codex',
+                  'thread-1',
+                  'active',
+                  :now,
+                  :now
+                );
+                """
+            ),
+            {"now": now},
+        )
+        conn.execute(
+            text(
+                """
+                INSERT INTO knowledge_build_runs (
+                  id,
+                  repo_id,
+                  episode_id,
+                  trigger,
+                  status,
+                  event_watermark,
+                  provider,
+                  model,
+                  reasoning,
+                  started_at,
+                  created_at
+                )
+                VALUES (
+                  'run-1',
+                  'repo-a',
+                  'episode-1',
+                  'idle_stable',
+                  'running',
+                  3,
+                  'codex',
+                  'gpt-5.4',
+                  'medium',
+                  :now,
+                  :now
+                );
+                """
+            ),
+            {"now": now},
+        )

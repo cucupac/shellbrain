@@ -1,6 +1,7 @@
 """SQLAlchemy Core tables for knowledge-builder lifecycle records."""
 
 from sqlalchemy import (
+    BigInteger,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -11,7 +12,7 @@ from sqlalchemy import (
     Text,
     text,
 )
-from sqlalchemy.dialects.postgresql import TIMESTAMP
+from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 
 from app.infrastructure.db.runtime.models.metadata import metadata
 
@@ -43,9 +44,18 @@ knowledge_build_runs = Table(
     Column("reasoning", String, nullable=False),
     Column("write_count", Integer, nullable=False, server_default=text("0")),
     Column("skipped_item_count", Integer, nullable=False, server_default=text("0")),
+    Column("input_tokens", BigInteger),
+    Column("output_tokens", BigInteger),
+    Column("reasoning_output_tokens", BigInteger),
+    Column("cached_input_tokens_total", BigInteger),
+    Column("cache_read_input_tokens", BigInteger),
+    Column("cache_creation_input_tokens", BigInteger),
+    Column("capture_quality", String),
     Column("run_summary", Text),
     Column("error_code", String),
     Column("error_message", Text),
+    Column("read_trace_json", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
+    Column("code_trace_json", JSONB, nullable=False, server_default=text("'{}'::jsonb")),
     Column("started_at", TIMESTAMP(timezone=True), nullable=False),
     Column("finished_at", TIMESTAMP(timezone=True)),
     Column(
@@ -77,6 +87,34 @@ knowledge_build_runs = Table(
     CheckConstraint(
         "skipped_item_count >= 0",
         name="ck_knowledge_build_runs_skipped_count_nonnegative",
+    ),
+    CheckConstraint(
+        "input_tokens IS NULL OR input_tokens >= 0",
+        name="ck_knowledge_build_runs_input_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "output_tokens IS NULL OR output_tokens >= 0",
+        name="ck_knowledge_build_runs_output_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "reasoning_output_tokens IS NULL OR reasoning_output_tokens >= 0",
+        name="ck_knowledge_build_runs_reasoning_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "cached_input_tokens_total IS NULL OR cached_input_tokens_total >= 0",
+        name="ck_knowledge_build_runs_cached_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "cache_read_input_tokens IS NULL OR cache_read_input_tokens >= 0",
+        name="ck_knowledge_build_runs_cache_read_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "cache_creation_input_tokens IS NULL OR cache_creation_input_tokens >= 0",
+        name="ck_knowledge_build_runs_cache_creation_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "capture_quality IS NULL OR capture_quality IN ('exact', 'estimated')",
+        name="ck_knowledge_build_runs_capture_quality",
     ),
 )
 

@@ -342,6 +342,7 @@ def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
     """Render the prompt sent to the autonomous knowledge-builder provider."""
 
     payload = {
+        "run_id": request.run_id,
         "repo_id": request.repo_id,
         "repo_root": request.repo_root,
         "episode_id": request.episode_id,

@@ -28,6 +28,11 @@ operation_invocations = Table(
     Column("repo_id", String, nullable=False),
     Column("repo_root", Text, nullable=False),
     Column("no_sync", Boolean, nullable=False, server_default=text("FALSE")),
+    Column(
+        "knowledge_build_run_id",
+        String,
+        ForeignKey("knowledge_build_runs.id", ondelete="SET NULL"),
+    ),
     Column("caller_id", String),
     Column("caller_trust_level", String),
     Column("identity_failure_code", String),
@@ -209,8 +214,13 @@ inner_agent_invocations = Table(
     Column("fallback_used", Boolean, nullable=False, server_default=text("FALSE")),
     Column("timeout_seconds", Integer),
     Column("duration_ms", Integer, nullable=False, server_default=text("0")),
-    Column("input_token_estimate", Integer),
-    Column("output_token_estimate", Integer),
+    Column("input_tokens", BigInteger),
+    Column("output_tokens", BigInteger),
+    Column("reasoning_output_tokens", BigInteger),
+    Column("cached_input_tokens_total", BigInteger),
+    Column("cache_read_input_tokens", BigInteger),
+    Column("cache_creation_input_tokens", BigInteger),
+    Column("capture_quality", String),
     Column("private_read_count", Integer, nullable=False, server_default=text("0")),
     Column(
         "concept_expansion_count", Integer, nullable=False, server_default=text("0")
@@ -233,12 +243,32 @@ inner_agent_invocations = Table(
     ),
     CheckConstraint("duration_ms >= 0", name="ck_inner_agent_duration_nonnegative"),
     CheckConstraint(
-        "input_token_estimate IS NULL OR input_token_estimate >= 0",
+        "input_tokens IS NULL OR input_tokens >= 0",
         name="ck_inner_agent_input_tokens_nonnegative",
     ),
     CheckConstraint(
-        "output_token_estimate IS NULL OR output_token_estimate >= 0",
+        "output_tokens IS NULL OR output_tokens >= 0",
         name="ck_inner_agent_output_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "reasoning_output_tokens IS NULL OR reasoning_output_tokens >= 0",
+        name="ck_inner_agent_reasoning_output_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "cached_input_tokens_total IS NULL OR cached_input_tokens_total >= 0",
+        name="ck_inner_agent_cached_input_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "cache_read_input_tokens IS NULL OR cache_read_input_tokens >= 0",
+        name="ck_inner_agent_cache_read_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "cache_creation_input_tokens IS NULL OR cache_creation_input_tokens >= 0",
+        name="ck_inner_agent_cache_creation_tokens_nonnegative",
+    ),
+    CheckConstraint(
+        "capture_quality IS NULL OR capture_quality IN ('exact', 'estimated')",
+        name="ck_inner_agent_capture_quality",
     ),
     CheckConstraint(
         "private_read_count >= 0",
@@ -393,6 +423,12 @@ Index(
     "idx_operation_invocations_command_created_at",
     operation_invocations.c.command,
     operation_invocations.c.created_at,
+)
+Index(
+    "idx_operation_invocations_knowledge_build_run_created_at",
+    operation_invocations.c.knowledge_build_run_id,
+    operation_invocations.c.created_at,
+    postgresql_where=operation_invocations.c.knowledge_build_run_id.is_not(None),
 )
 Index(
     "idx_operation_invocations_thread_created_at",
