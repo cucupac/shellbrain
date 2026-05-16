@@ -15,6 +15,7 @@ class RuntimeContext:
     invocation_id: str
     repo_root: str
     no_sync: bool = False
+    knowledge_build_run_id: str | None = None
     caller_identity: CallerIdentity | None = None
     caller_identity_error: ErrorDetail | None = None
 

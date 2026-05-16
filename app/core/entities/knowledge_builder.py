@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
 
@@ -42,9 +42,18 @@ class KnowledgeBuildRun:
     reasoning: str
     write_count: int = 0
     skipped_item_count: int = 0
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    reasoning_output_tokens: int | None = None
+    cached_input_tokens_total: int | None = None
+    cache_read_input_tokens: int | None = None
+    cache_creation_input_tokens: int | None = None
+    capture_quality: str | None = None
     run_summary: str | None = None
     error_code: str | None = None
     error_message: str | None = None
+    read_trace: dict[str, object] = field(default_factory=dict)
+    code_trace: dict[str, object] = field(default_factory=dict)
     started_at: datetime | None = None
     finished_at: datetime | None = None
     created_at: datetime | None = None
@@ -67,3 +76,23 @@ class KnowledgeBuildRun:
             raise ValueError("write_count must be non-negative")
         if self.skipped_item_count < 0:
             raise ValueError("skipped_item_count must be non-negative")
+        for field_name in (
+            "input_tokens",
+            "output_tokens",
+            "reasoning_output_tokens",
+            "cached_input_tokens_total",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+        ):
+            value = getattr(self, field_name)
+            if value is not None and value < 0:
+                raise ValueError(f"{field_name} must be non-negative")
+        if self.capture_quality is not None and self.capture_quality not in {
+            "exact",
+            "estimated",
+        }:
+            raise ValueError("capture_quality must be exact or estimated")
+        if not isinstance(self.read_trace, dict):
+            raise ValueError("read_trace must be a dict")
+        if not isinstance(self.code_trace, dict):
+            raise ValueError("code_trace must be a dict")

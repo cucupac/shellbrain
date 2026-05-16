@@ -42,9 +42,18 @@ class IKnowledgeBuildRunsRepo(ABC):
         status: KnowledgeBuildRunStatus,
         write_count: int,
         skipped_item_count: int,
+        input_tokens: int | None,
+        output_tokens: int | None,
+        reasoning_output_tokens: int | None,
+        cached_input_tokens_total: int | None,
+        cache_read_input_tokens: int | None,
+        cache_creation_input_tokens: int | None,
+        capture_quality: str | None,
         run_summary: str | None,
         error_code: str | None,
         error_message: str | None,
         finished_at: datetime,
+        read_trace: dict[str, object] | None = None,
+        code_trace: dict[str, object] | None = None,
     ) -> None:
         """Finalize one previously-running build_knowledge run."""

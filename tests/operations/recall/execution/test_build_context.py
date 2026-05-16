@@ -33,8 +33,9 @@ class _FakeRunner:
                 "anchors": ["app/infrastructure/db/admin"],
                 "gaps": [],
             },
-            input_token_estimate=100,
-            output_token_estimate=40,
+            input_tokens=100,
+            output_tokens=40,
+            capture_quality="estimated",
             read_trace={
                 "commands": [
                     {
@@ -98,6 +99,9 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     assert runner.request.current_problem == _current_problem()
     assert not hasattr(runner.request, "candidate_" "context")
     telemetry = result.data["_telemetry"]["inner_agent"]
+    assert telemetry["input_tokens"] == 100
+    assert telemetry["output_tokens"] == 40
+    assert telemetry["capture_quality"] == "estimated"
     assert telemetry["private_read_count"] == 2
     assert telemetry["concept_expansion_count"] == 1
 

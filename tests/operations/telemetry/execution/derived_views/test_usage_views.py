@@ -1015,6 +1015,301 @@ def test_usage_problem_run_tokens_should_sum_run_windows_split_agent_roles_and_r
     assert fallback_row["fresh_work_tokens"] == 50
 
 
+def test_usage_problem_run_agent_tokens_should_split_worker_recall_and_builder_usage(
+    integration_engine,
+    assert_relation_exists,
+    fetch_relation_rows,
+) -> None:
+    """usage_problem_run_agent_tokens should keep inner-agent tokens separate by role."""
+
+    with integration_engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO episodes (
+                  id,
+                  repo_id,
+                  host_app,
+                  thread_id,
+                  status,
+                  started_at,
+                  created_at
+                ) VALUES (
+                  'episode-agent-tokens',
+                  'telemetry-repo',
+                  'codex',
+                  'codex:agent-token-thread',
+                  'active',
+                  '2026-03-18T10:00:00+00:00',
+                  '2026-03-18T10:00:00+00:00'
+                );
+
+                INSERT INTO episode_events (
+                  id,
+                  episode_id,
+                  seq,
+                  host_event_key,
+                  source,
+                  content,
+                  created_at
+                ) VALUES
+                  (
+                    'evt-agent-token-open',
+                    'episode-agent-tokens',
+                    1,
+                    'open',
+                    'user',
+                    '{}'::text,
+                    '2026-03-18T10:00:05+00:00'
+                  ),
+                  (
+                    'evt-agent-token-close',
+                    'episode-agent-tokens',
+                    3,
+                    'close',
+                    'assistant',
+                    '{}'::text,
+                    '2026-03-18T10:04:55+00:00'
+                  );
+
+                INSERT INTO problem_runs (
+                  id,
+                  repo_id,
+                  thread_id,
+                  host_app,
+                  host_session_key,
+                  episode_id,
+                  status,
+                  opened_at,
+                  closed_at,
+                  opened_by,
+                  closed_by,
+                  opened_event_id,
+                  closed_event_id
+                ) VALUES (
+                  'problem-run-agent-tokens',
+                  'telemetry-repo',
+                  'codex:agent-token-thread',
+                  'codex',
+                  'agent-token-session',
+                  'episode-agent-tokens',
+                  'closed',
+                  '2026-03-18T10:00:00+00:00',
+                  '2026-03-18T10:05:00+00:00',
+                  'build_knowledge',
+                  'build_knowledge',
+                  'evt-agent-token-open',
+                  'evt-agent-token-close'
+                );
+
+                INSERT INTO model_usage (
+                  id,
+                  repo_id,
+                  thread_id,
+                  episode_id,
+                  host_app,
+                  host_session_key,
+                  host_usage_key,
+                  source_kind,
+                  occurred_at,
+                  agent_role,
+                  provider,
+                  model_id,
+                  input_tokens,
+                  output_tokens,
+                  reasoning_output_tokens,
+                  cached_input_tokens_total,
+                  cache_read_input_tokens,
+                  cache_creation_input_tokens,
+                  capture_quality,
+                  raw_usage_json
+                ) VALUES (
+                  'agent-token-worker-usage',
+                  'telemetry-repo',
+                  'codex:agent-token-thread',
+                  'episode-agent-tokens',
+                  'codex',
+                  'agent-token-session',
+                  'worker-usage',
+                  'codex_transcript',
+                  '2026-03-18T10:01:00+00:00',
+                  'foreground',
+                  'openai',
+                  'gpt-5.5',
+                  100,
+                  20,
+                  5,
+                  10,
+                  0,
+                  0,
+                  'exact',
+                  '{}'::jsonb
+                );
+
+                INSERT INTO operation_invocations (
+                  id,
+                  command,
+                  repo_id,
+                  repo_root,
+                  no_sync,
+                  selected_host_app,
+                  selected_host_session_key,
+                  selected_thread_id,
+                  selected_episode_id,
+                  matching_candidate_count,
+                  selection_ambiguous,
+                  outcome,
+                  total_latency_ms,
+                  poller_start_attempted,
+                  poller_started,
+                  created_at
+                ) VALUES (
+                  'agent-token-recall',
+                  'recall',
+                  'telemetry-repo',
+                  '/tmp/telemetry-repo',
+                  FALSE,
+                  'codex',
+                  'agent-token-session',
+                  'codex:agent-token-thread',
+                  'episode-agent-tokens',
+                  1,
+                  FALSE,
+                  'ok',
+                  12,
+                  FALSE,
+                  FALSE,
+                  '2026-03-18T10:02:00+00:00'
+                );
+
+                INSERT INTO inner_agent_invocations (
+                  id,
+                  operation_invocation_id,
+                  agent_name,
+                  provider,
+                  model,
+                  reasoning,
+                  status,
+                  fallback_used,
+                  timeout_seconds,
+                  duration_ms,
+                  input_tokens,
+                  output_tokens,
+                  reasoning_output_tokens,
+                  cached_input_tokens_total,
+                  cache_read_input_tokens,
+                  cache_creation_input_tokens,
+                  capture_quality,
+                  private_read_count,
+                  concept_expansion_count,
+                  created_at
+                ) VALUES (
+                  'agent-token-recall:build_context:1',
+                  'agent-token-recall',
+                  'build_context',
+                  'codex',
+                  'gpt-5.4-mini',
+                  'low',
+                  'ok',
+                  FALSE,
+                  90,
+                  1200,
+                  30,
+                  10,
+                  0,
+                  0,
+                  0,
+                  0,
+                  'estimated',
+                  2,
+                  1,
+                  '2026-03-18T10:02:01+00:00'
+                );
+
+                INSERT INTO knowledge_build_runs (
+                  id,
+                  repo_id,
+                  episode_id,
+                  trigger,
+                  status,
+                  event_watermark,
+                  previous_event_watermark,
+                  provider,
+                  model,
+                  reasoning,
+                  write_count,
+                  skipped_item_count,
+                  input_tokens,
+                  output_tokens,
+                  reasoning_output_tokens,
+                  cached_input_tokens_total,
+                  cache_read_input_tokens,
+                  cache_creation_input_tokens,
+                  capture_quality,
+                  started_at,
+                  finished_at,
+                  created_at
+                ) VALUES (
+                  'agent-token-build-run',
+                  'telemetry-repo',
+                  'episode-agent-tokens',
+                  'session_replaced',
+                  'ok',
+                  3,
+                  0,
+                  'codex',
+                  'gpt-5.4',
+                  'medium',
+                  3,
+                  0,
+                  50,
+                  20,
+                  0,
+                  0,
+                  0,
+                  0,
+                  'estimated',
+                  '2026-03-18T10:06:00+00:00',
+                  '2026-03-18T10:06:30+00:00',
+                  '2026-03-18T10:06:00+00:00'
+                );
+                """
+            )
+        )
+
+    assert_relation_exists("usage_problem_run_agent_tokens")
+    rows = fetch_relation_rows(
+        "usage_problem_run_agent_tokens",
+        where_sql="problem_run_id = :problem_run_id",
+        params={"problem_run_id": "problem-run-agent-tokens"},
+    )
+
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["working_agent_fresh_work_tokens"] == 120
+    assert row["build_context_invocation_count"] == 1
+    assert row["build_context_estimated_invocation_count"] == 1
+    assert row["build_context_fresh_work_tokens"] == 40
+    assert row["build_knowledge_run_count"] == 1
+    assert row["build_knowledge_estimated_run_count"] == 1
+    assert row["build_knowledge_fresh_work_tokens"] == 70
+    assert row["total_inner_agent_fresh_work_tokens"] == 110
+    context_breakdown = json.loads(
+        row["build_context_model_breakdown_json"]
+        if isinstance(row["build_context_model_breakdown_json"], str)
+        else json.dumps(row["build_context_model_breakdown_json"])
+    )
+    knowledge_breakdown = json.loads(
+        row["build_knowledge_model_breakdown_json"]
+        if isinstance(row["build_knowledge_model_breakdown_json"], str)
+        else json.dumps(row["build_knowledge_model_breakdown_json"])
+    )
+    assert context_breakdown[0]["model"] == "gpt-5.4-mini"
+    assert context_breakdown[0]["capture_quality"] == "estimated"
+    assert knowledge_breakdown[0]["model"] == "gpt-5.4"
+    assert knowledge_breakdown[0]["capture_quality"] == "estimated"
+
+
 def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_and_first_solution_and_latest_solution_when_only_one_solution_exists(
     integration_engine,
     assert_relation_exists,

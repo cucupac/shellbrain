@@ -79,8 +79,9 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         "constraints": ["Keep core clean"],
     }
     assert result.read_trace["source_ids"] == ["mem-1"]
-    assert result.input_token_estimate is not None
-    assert result.output_token_estimate is not None
+    assert result.input_tokens is not None
+    assert result.output_tokens is not None
+    assert result.capture_quality == "estimated"
 
 
 def test_inner_agent_output_parser_accepts_json_fenced_brief() -> None:
@@ -114,6 +115,7 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
     def _fake_run(args, *, input, text, capture_output, timeout, check, env):
         del input, text, capture_output, timeout, check
         assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_knowledge"
+        assert env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] == "run-1"
         assert "SHELLBRAIN_DB_ADMIN_DSN" not in env
         output_path = args[args.index("--output-last-message") + 1]
         assert 'model_reasoning_effort="medium"' in args
@@ -146,6 +148,9 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
     assert result.write_count == 2
     assert result.skipped_item_count == 1
     assert result.run_summary == "Wrote durable knowledge."
+    assert result.input_tokens is not None
+    assert result.output_tokens is not None
+    assert result.capture_quality == "estimated"
 
 
 def test_build_knowledge_output_parser_accepts_no_write_skips() -> None:
@@ -272,6 +277,7 @@ def _build_knowledge_request(
     *, repo_root: str = "/tmp/repo"
 ) -> BuildKnowledgeAgentRequest:
     return BuildKnowledgeAgentRequest(
+        run_id="run-1",
         provider="codex",
         model="gpt-5.4",
         reasoning="medium",

@@ -4,9 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import os
 from typing import Any
 
 from app.core.entities.runtime_context import RuntimeContext
+
+
+_INNER_AGENT_MODE_ENV = "SHELLBRAIN_INNER_AGENT_MODE"
+_KNOWLEDGE_BUILD_RUN_ID_ENV = "SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"
 
 
 @dataclass(frozen=True)
@@ -40,6 +45,7 @@ def run_cli_operation(
         invocation_id=effects.new_invocation_id(),
         repo_root=str(repo_context.repo_root),
         no_sync=no_sync,
+        knowledge_build_run_id=_knowledge_build_run_id_from_env(),
         caller_identity=caller_identity_resolution.caller_identity,
         caller_identity_error=caller_identity_resolution.error,
     )
@@ -68,3 +74,13 @@ def run_cli_operation(
         return result
     finally:
         effects.reset_operation_context(token)
+
+
+def _knowledge_build_run_id_from_env() -> str | None:
+    """Return the parent build_knowledge run id for nested builder commands."""
+
+    mode = os.environ.get(_INNER_AGENT_MODE_ENV, "").strip()
+    if mode != "build_knowledge":
+        return None
+    value = os.environ.get(_KNOWLEDGE_BUILD_RUN_ID_ENV, "").strip()
+    return value or None

@@ -101,9 +101,18 @@ def execute_build_knowledge(
                 status=KnowledgeBuildRunStatus.TIMEOUT,
                 write_count=stale_run.write_count,
                 skipped_item_count=stale_run.skipped_item_count,
+                input_tokens=stale_run.input_tokens,
+                output_tokens=stale_run.output_tokens,
+                reasoning_output_tokens=stale_run.reasoning_output_tokens,
+                cached_input_tokens_total=stale_run.cached_input_tokens_total,
+                cache_read_input_tokens=stale_run.cache_read_input_tokens,
+                cache_creation_input_tokens=stale_run.cache_creation_input_tokens,
+                capture_quality=stale_run.capture_quality,
                 run_summary=stale_run.run_summary,
                 error_code="stale_running_run",
                 error_message="running build_knowledge run exceeded stale timeout",
+                read_trace=stale_run.read_trace,
+                code_trace=stale_run.code_trace,
                 finished_at=now,
             )
 
@@ -129,6 +138,7 @@ def execute_build_knowledge(
         request=request,
         settings=settings,
         runner=agent_runner,
+        run_id=run_id,
         event_watermark=event_watermark,
         previous_watermark=previous_watermark,
     )
@@ -139,9 +149,18 @@ def execute_build_knowledge(
             status=status,
             write_count=provider_result.write_count,
             skipped_item_count=provider_result.skipped_item_count,
+            input_tokens=provider_result.input_tokens,
+            output_tokens=provider_result.output_tokens,
+            reasoning_output_tokens=provider_result.reasoning_output_tokens,
+            cached_input_tokens_total=provider_result.cached_input_tokens_total,
+            cache_read_input_tokens=provider_result.cache_read_input_tokens,
+            cache_creation_input_tokens=provider_result.cache_creation_input_tokens,
+            capture_quality=provider_result.capture_quality,
             run_summary=provider_result.run_summary,
             error_code=provider_result.error_code,
             error_message=provider_result.error_message,
+            read_trace=provider_result.read_trace,
+            code_trace=provider_result.code_trace,
             finished_at=clock.now(),
         )
     return BuildKnowledgeResult(
@@ -154,6 +173,13 @@ def execute_build_knowledge(
         reasoning=provider_result.reasoning,
         write_count=provider_result.write_count,
         skipped_item_count=provider_result.skipped_item_count,
+        input_tokens=provider_result.input_tokens,
+        output_tokens=provider_result.output_tokens,
+        reasoning_output_tokens=provider_result.reasoning_output_tokens,
+        cached_input_tokens_total=provider_result.cached_input_tokens_total,
+        cache_read_input_tokens=provider_result.cache_read_input_tokens,
+        cache_creation_input_tokens=provider_result.cache_creation_input_tokens,
+        capture_quality=provider_result.capture_quality,
         run_summary=provider_result.run_summary,
         error_code=provider_result.error_code,
         error_message=provider_result.error_message,
@@ -165,6 +191,7 @@ def _run_provider(
     request: BuildKnowledgeRequest,
     settings: BuildKnowledgeSettings,
     runner: IBuildKnowledgeAgentRunner | None,
+    run_id: str,
     event_watermark: int,
     previous_watermark: int | None,
 ) -> BuildKnowledgeAgentResult:
@@ -183,6 +210,7 @@ def _run_provider(
     try:
         return runner.run_build_knowledge(
             BuildKnowledgeAgentRequest(
+                run_id=run_id,
                 provider=settings.provider,
                 model=settings.model,
                 reasoning=settings.reasoning,

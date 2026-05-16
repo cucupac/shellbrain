@@ -86,6 +86,26 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
                 usage_read_before_solve_roi_legacy_view = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.usage_problem_run_tokens');")
                 usage_problem_run_tokens_view = cur.fetchone()[0]
+                cur.execute(
+                    "SELECT to_regclass('public.usage_problem_run_agent_tokens');"
+                )
+                usage_problem_run_agent_tokens_view = cur.fetchone()[0]
+                cur.execute(
+                    """
+                    SELECT column_name
+                      FROM information_schema.columns
+                     WHERE table_name = 'inner_agent_invocations';
+                    """
+                )
+                inner_agent_columns = {row[0] for row in cur.fetchall()}
+                cur.execute(
+                    """
+                    SELECT column_name
+                      FROM information_schema.columns
+                     WHERE table_name = 'knowledge_build_runs';
+                    """
+                )
+                knowledge_build_columns = {row[0] for row in cur.fetchall()}
                 cur.execute("SELECT to_regclass('public.concepts');")
                 concepts_table = cur.fetchone()[0]
                 cur.execute("SELECT version_num FROM alembic_version;")
@@ -102,7 +122,28 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert usage_problem_read_roi_legacy_view is not None
         assert usage_read_before_solve_roi_legacy_view is not None
         assert usage_problem_run_tokens_view is not None
+        assert usage_problem_run_agent_tokens_view is not None
+        assert {
+            "input_tokens",
+            "output_tokens",
+            "reasoning_output_tokens",
+            "cached_input_tokens_total",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+            "capture_quality",
+        }.issubset(inner_agent_columns)
+        assert "input_token_estimate" not in inner_agent_columns
+        assert "output_token_estimate" not in inner_agent_columns
+        assert {
+            "input_tokens",
+            "output_tokens",
+            "reasoning_output_tokens",
+            "cached_input_tokens_total",
+            "cache_read_input_tokens",
+            "cache_creation_input_tokens",
+            "capture_quality",
+        }.issubset(knowledge_build_columns)
         assert concepts_table is not None
-        assert alembic_version == "20260515_0019"
+        assert alembic_version == "20260516_0020"
     finally:
         drop_temp_database(admin_dsn, db_name)

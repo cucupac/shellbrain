@@ -11,6 +11,7 @@ from app.core.entities.inner_agents import (
     InnerAgentProviderName,
     InnerAgentReasoningLevel,
     InnerAgentRunStatus,
+    TokenCaptureQuality,
 )
 from app.core.entities.knowledge_builder import (
     KnowledgeBuildRunStatus,
@@ -49,8 +50,13 @@ class InnerAgentRunResult(_StrictModel):
     fallback_used: bool = False
     timeout_seconds: int | None = Field(default=None, ge=1, le=600)
     duration_ms: int = Field(default=0, ge=0)
-    input_token_estimate: int | None = Field(default=None, ge=0)
-    output_token_estimate: int | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    reasoning_output_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens_total: int | None = Field(default=None, ge=0)
+    cache_read_input_tokens: int | None = Field(default=None, ge=0)
+    cache_creation_input_tokens: int | None = Field(default=None, ge=0)
+    capture_quality: TokenCaptureQuality | None = None
     private_read_count: int = Field(default=0, ge=0)
     concept_expansion_count: int = Field(default=0, ge=0)
     error_code: str | None = None
@@ -62,6 +68,7 @@ class BuildKnowledgeAgentRequest(_StrictModel):
     """One autonomous build_knowledge provider request."""
 
     agent_name: InnerAgentName = "build_knowledge"
+    run_id: str = Field(min_length=1)
     provider: InnerAgentProviderName
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
@@ -86,8 +93,13 @@ class BuildKnowledgeAgentResult(_StrictModel):
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int | None = Field(default=None, ge=1, le=1200)
     duration_ms: int = Field(default=0, ge=0)
-    input_token_estimate: int | None = Field(default=None, ge=0)
-    output_token_estimate: int | None = Field(default=None, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    reasoning_output_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens_total: int | None = Field(default=None, ge=0)
+    cache_read_input_tokens: int | None = Field(default=None, ge=0)
+    cache_creation_input_tokens: int | None = Field(default=None, ge=0)
+    capture_quality: TokenCaptureQuality | None = None
     write_count: int = Field(default=0, ge=0)
     skipped_item_count: int = Field(default=0, ge=0)
     error_code: str | None = None

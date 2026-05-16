@@ -16,6 +16,7 @@ class OperationInvocationRecord:
     repo_id: str
     repo_root: str
     no_sync: bool
+    knowledge_build_run_id: str | None
     caller_id: str | None
     caller_trust_level: str | None
     identity_failure_code: str | None
@@ -123,8 +124,13 @@ class InnerAgentInvocationRecord:
     fallback_used: bool
     timeout_seconds: int | None
     duration_ms: int
-    input_token_estimate: int | None
-    output_token_estimate: int | None
+    input_tokens: int | None
+    output_tokens: int | None
+    reasoning_output_tokens: int | None
+    cached_input_tokens_total: int | None
+    cache_read_input_tokens: int | None
+    cache_creation_input_tokens: int | None
+    capture_quality: str | None
     private_read_count: int
     concept_expansion_count: int
     error_code: str | None
