@@ -225,6 +225,17 @@ def test_run_tests_should_fail_closed_when_the_live_machine_config_is_invalid(
     assert "invalid" in completed.stderr
 
 
+def test_ci_tests_job_should_provide_an_explicit_protected_live_dsn() -> None:
+    """CI must satisfy run_tests' fail-closed live-target requirement explicitly."""
+
+    workflow = (_repo_root() / ".github" / "workflows" / "ci.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "SHELLBRAIN_PROTECTED_LIVE_DSN:" in workflow
+    assert "127.0.0.1:5432/shellbrain" in workflow
+
+
 def test_run_tests_should_refuse_a_protected_live_dsn() -> None:
     """run_tests should abort before any DDL when the test DSN points at a protected target."""
 
