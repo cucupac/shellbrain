@@ -76,6 +76,17 @@ def is_shellbrain_managed_asset(*, target_root: Path, asset_kind: str) -> bool:
     )
 
 
+def remove_managed_asset_tree(*, target_root: Path, asset_kind: str) -> bool:
+    """Remove one managed asset tree and leave unmanaged paths untouched."""
+
+    if not target_root.exists():
+        return False
+    if not is_shellbrain_managed_asset(target_root=target_root, asset_kind=asset_kind):
+        return False
+    remove_existing_path(target_root)
+    return True
+
+
 def remove_existing_path(path: Path) -> None:
     """Remove one filesystem path whether it is a file or directory."""
 

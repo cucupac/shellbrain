@@ -31,7 +31,11 @@ class _FakeRunner:
                 "prior_cases": ["A prior migration hang was caused by missing timeout."],
                 "concept_orientation": ["DB admin work belongs under infrastructure."],
                 "anchors": ["app/infrastructure/db/admin"],
+                "conflicts": [
+                    "Older guidance about startup-owned DB admin wiring is stale."
+                ],
                 "gaps": [],
+                "next_checks": ["Inspect db/admin migration wiring first."],
             },
             input_tokens=100,
             output_tokens=40,
@@ -93,6 +97,12 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     )
 
     assert result.data["brief"]["summary"] == "Use the migration timeout precedent."
+    assert result.data["brief"]["conflicts"] == [
+        "Older guidance about startup-owned DB admin wiring is stale."
+    ]
+    assert result.data["brief"]["next_checks"] == [
+        "Inspect db/admin migration wiring first."
+    ]
     assert result.data["brief"]["sources"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
@@ -138,6 +148,8 @@ def test_build_context_provider_unavailable_uses_deterministic_fallback(
 
     assert len(read_requests) == 1
     assert result.data["brief"]["summary"] == "Shellbrain synthesized 2 recall source(s) for this query."
+    assert result.data["brief"]["conflicts"] == []
+    assert result.data["brief"]["next_checks"] == []
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["status"] == "provider_unavailable"
     assert telemetry["fallback_used"] is True
@@ -162,6 +174,8 @@ def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
 
     assert result.data["fallback_reason"] == "no_candidates"
     assert result.data["brief"]["sources"] == []
+    assert result.data["brief"]["conflicts"] == []
+    assert result.data["brief"]["next_checks"] == []
     assert "no relevant memories" in result.data["brief"]["gaps"][0]
 
 

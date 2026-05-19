@@ -76,13 +76,13 @@ The install script also works as an upgrade path: `curl -L shellbrain.ai/upgrade
 
 ## How to Use ShellBrain
 
-Use Shellbrain Session Start in your agent of choice. Then, just work normally.
+Use Shellbrain in your agent of choice. Then, just work normally.
 
-**Claude Code:** *Use `/shellbrain-session-start` to get up to speed in this repo and record durable evidence-backed learnings.*
+**Claude Code:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
-**Codex:** *Use $shellbrain-session-start to get up to speed in this repo and record durable evidence-backed learnings.*
+**Codex:** *Use $shellbrain to remember Shellbrain recall at the right task boundaries.*
 
-**Cursor:** *Use `/shellbrain-session-start` to get up to speed in this repo and record durable evidence-backed learnings.*
+**Cursor:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
 ---
 

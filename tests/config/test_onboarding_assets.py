@@ -28,38 +28,40 @@ def test_readme_should_teach_the_installer_first_happy_path() -> None:
     assert "curl -L shellbrain.ai/upgrade | bash" in readme
     assert "runs `shellbrain init` for you" in readme
     assert "pipx upgrade shellbrain && shellbrain init" in readme
-    assert "Use $shellbrain-session-start" in readme
-    assert "Use Shellbrain Session Start" in readme
+    assert "Use $shellbrain" in readme
+    assert "Use Shellbrain" in readme
     assert "utility_vote" not in readme
     assert "what should I know about this repo?" not in readme
     assert "Repos register themselves on first use." in readme
 
 
 def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
-    """The longer agent-facing surfaces should teach the same Shellbrain mental model."""
+    """The longer agent-facing surfaces should teach the same worker recall model."""
 
     repo_root = Path(__file__).resolve().parents[2]
     assets_root = _onboarding_assets_root()
     texts = [
         _read_text(repo_root / "docs" / "external-quickstart.md"),
-        _read_text(assets_root / "codex" / "shellbrain-session-start" / "SKILL.md"),
+        _read_text(assets_root / "codex" / "shellbrain" / "SKILL.md"),
         _read_text(
-            assets_root / "claude" / "skills" / "shellbrain-session-start" / "SKILL.md"
+            assets_root / "claude" / "skills" / "shellbrain" / "SKILL.md"
         ),
         _read_text(
-            assets_root / "cursor" / "skills" / "shellbrain-session-start" / "SKILL.md"
+            assets_root / "cursor" / "skills" / "shellbrain" / "SKILL.md"
         ),
     ]
 
     required_phrases = [
         "shellbrain init",
         "shellbrain admin doctor",
-        "durable memories",
-        "episodic evidence",
+        "shellbrain recall --json",
+        "current_problem",
         "--repo-root",
         "goal | surface | obstacle | hypothesis",
-        "SB: read |",
-        "utility_vote",
+        "SB: recall |",
+        "As the working agent",
+        "Do not call",
+        "shellbrain read",
         "what should I know about this repo?",
         "sysconfig.get_path('scripts', 'posix_user')",
         "~/.bash_profile",
@@ -68,6 +70,19 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
 
     for phrase in required_phrases:
         assert all(phrase in text for text in texts)
+
+    forbidden_worker_teaching = [
+        "shellbrain create",
+        "shellbrain update",
+        "Run `shellbrain events` before",
+        "Run shellbrain events before",
+        "Before evidence-bearing writes",
+        "At session end, normalize",
+        "record `utility_vote` updates",
+        "reuse returned `data.events[].id` values",
+    ]
+    for phrase in forbidden_worker_teaching:
+        assert all(phrase not in text for text in texts)
 
 
 def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> (
@@ -80,7 +95,7 @@ def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_ti
     session_workflow = _read_text(
         _onboarding_assets_root()
         / "codex"
-        / "shellbrain-session-start"
+        / "shellbrain"
         / "references"
         / "session-workflow.md"
     )
@@ -133,21 +148,22 @@ def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
     openai_yaml = _read_text(
         _onboarding_assets_root()
         / "codex"
-        / "shellbrain-session-start"
+        / "shellbrain"
         / "agents"
         / "openai.yaml"
     )
 
-    assert 'display_name: "Shellbrain Session Start"' in openai_yaml
+    assert 'display_name: "Shellbrain"' in openai_yaml
     assert 'icon_large: "./assets/shellbrain_logo.png"' in openai_yaml
-    assert 'default_prompt: "Use $shellbrain-session-start' in openai_yaml
+    assert 'default_prompt: "Use $shellbrain' in openai_yaml
+    assert "Shellbrain recall" in openai_yaml
 
 
 def test_packaged_codex_asset_should_include_required_files() -> None:
     """The packaged Codex asset should include the files needed by the host."""
 
     packaged_skill_root = (
-        _onboarding_assets_root() / "codex" / "shellbrain-session-start"
+        _onboarding_assets_root() / "codex" / "shellbrain"
     )
 
     relative_paths = [
@@ -194,7 +210,7 @@ def test_packaged_cursor_skill_should_include_the_required_skill_file() -> None:
     """The packaged Cursor skill should ship the SKILL.md file consumed by Cursor."""
 
     packaged_skill_root = (
-        _onboarding_assets_root() / "cursor" / "skills" / "shellbrain-session-start"
+        _onboarding_assets_root() / "cursor" / "skills" / "shellbrain"
     )
 
     assert (packaged_skill_root / "SKILL.md").is_file()

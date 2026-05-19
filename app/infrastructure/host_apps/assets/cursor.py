@@ -9,12 +9,14 @@ from app.infrastructure.host_apps.assets.cursor_statusline_config import (
 from app.infrastructure.host_apps.assets.managed_tree import (
     install_asset_tree,
     is_shellbrain_managed_asset,
+    remove_managed_asset_tree,
 )
 from app.infrastructure.host_apps.assets.packaged_assets import packaged_asset_root
 from app.infrastructure.host_apps.assets.paths import default_cursor_home
 
-PRIMARY_CURSOR_SKILL_NAME = "shellbrain-session-start"
-CURSOR_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
+PRIMARY_CURSOR_SKILL_NAME = "shellbrain"
+CURSOR_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
+LEGACY_CURSOR_SKILL_NAMES = ("shellbrain-session-start",)
 
 
 def install_cursor_assets(
@@ -37,6 +39,11 @@ def install_cursor_assets(
                     force=force,
                 ),
             )
+        )
+    for skill_name in LEGACY_CURSOR_SKILL_NAMES:
+        remove_managed_asset_tree(
+            target_root=cursor_root / "skills" / skill_name,
+            asset_kind="cursor_skill",
         )
     lines.append(
         render_install_status(

@@ -110,10 +110,10 @@ If that directory contains `shellbrain`, call it directly or add that directory 
 
 The repo Dockerfile is for packaging and development smoke coverage. It is not the end-user runtime path.
 
-Steady-state usage, once the CLI is visible, should look like:
+Steady-state working-agent usage, once the CLI is visible, should look like:
 
 ```bash
-shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
+shellbrain recall --json '{"query":"Have we seen this migration lock timeout before?","current_problem":{"goal":"fix migration test failure","surface":"database migrations and schema setup","obstacle":"migration blocks waiting on lock","hypothesis":"a previous test leaves a transaction open"}}'
 ```
 
 ## Repo Targeting
@@ -128,31 +128,26 @@ shellbrain read --json '{"query":"Have we seen this migration lock timeout befor
 
 ## Query and Session Usage
 
-Even in advanced/operator environments, the usage model stays the same: Shellbrain stores durable memories grounded by episodic evidence.
+Even in advanced/operator environments, the working-agent usage model stays simple: use recall when prior context may help.
 
-1. Query first, but query precisely. Do not start with vague prompts like "what should I know about this repo?"
-2. Maintain a mental summary of the current subproblem as `goal | surface | obstacle | hypothesis`.
-3. Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output.
-4. Use `SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>` if prior memory might help, then actually call the Shellbrain CLI to read.
-5. Use `SB: skip | same signature | <one-line reason>` when the tuple has not meaningfully changed and there is no new evidence or failure.
-6. Do not reread just because you can. A reread is a decision, not a reflex.
-7. Before evidence-bearing writes, run:
+As the working agent, use Shellbrain through `shellbrain recall`.
 
-```bash
-shellbrain events --json '{"limit":10}'
-```
+1. Maintain a mental summary of the current subproblem as `goal | surface | obstacle | hypothesis`.
+2. Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output.
+3. Use `SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>` if prior memory might help.
+4. Call `shellbrain recall` with a concrete query and required `current_problem`.
+5. Use `SB: skip | same signature | <one-line reason>` when the tuple has not meaningfully changed and there is no new evidence, failure, or uncertainty.
+6. Do not call recall reflexively.
 
-8. Use returned `episode_event` ids verbatim in `memory add` or evidence-bearing `memory update`.
-9. At session end, normalize the work into durable memories and record `utility_vote` updates.
-
-Examples:
+Example:
 
 ```bash
-shellbrain memory add --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
-shellbrain memory add --json '{"memory":{"text":"Increasing lock_timeout to 30s fixed the migration","kind":"solution","links":{"problem_id":"mem-problem-123"},"evidence_refs":["evt-124"]}}'
-shellbrain memory add --json '{"memory":{"text":"Retrying the migration without changing the timeout failed again","kind":"failed_tactic","links":{"problem_id":"mem-problem-123"},"evidence_refs":["evt-125"]}}'
-shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"rationale":"This prior fix led directly to the right timeout change.","evidence_refs":["evt-126"]}}'
+shellbrain recall --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","current_problem":{"goal":"refactor auth callback handling","surface":"auth routes and callback tests","obstacle":"unclear existing conventions for redirect behavior","hypothesis":"there is a repo-specific callback invariant"}}'
 ```
+
+Avoid vague queries like "what should I know about this repo?", "what should I do?", or "anything relevant?"
+
+Working agents should not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`. Those are internal-agent commands. Shellbrain's internal recall and knowledge-builder agents handle raw retrieval, synthesis, durable memory writing, concept updates, and scenario recording.
 
 ## Host Integration
 
@@ -176,7 +171,7 @@ shellbrain admin install-claude-hook --repo-root /path/to/repo
 ## Repo Registration
 
 - Repo registration is no longer part of the initial machine bootstrap requirement.
-- On first real `read`, `events`, `memory add`, or `memory update` inside a git repo, Shellbrain auto-registers that repo at the git root.
+- On first real `recall` inside a git repo, Shellbrain auto-registers that repo at the git root.
 - If you run Shellbrain outside a git repo, it does not auto-register arbitrary directories like `~`.
 - Use `--repo-root` and `--repo-id` when you need to target or override repo identity explicitly.
 
