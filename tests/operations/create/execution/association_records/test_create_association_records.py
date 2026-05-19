@@ -42,6 +42,8 @@ def test_create_association_links_persist_edge_and_observation(
                         {
                             "to_memory_id": "target-1",
                             "relation_type": "depends_on",
+                            "confidence": 0.7,
+                            "salience": 0.6,
                         }
                     ]
                 },

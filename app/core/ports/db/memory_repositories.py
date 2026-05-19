@@ -80,5 +80,15 @@ class IEvidenceRepo(ABC):
         """This method links a shellbrain to an evidence reference."""
 
     @abstractmethod
+    def link_utility_observation_evidence(
+        self, observation_id: str, evidence_id: str
+    ) -> None:
+        """This method links a utility observation to an evidence reference."""
+
+    @abstractmethod
+    def link_fact_update_evidence(self, fact_update_id: str, evidence_id: str) -> None:
+        """This method links a fact-update row to an evidence reference."""
+
+    @abstractmethod
     def link_association_edge_evidence(self, edge_id: str, evidence_id: str) -> None:
         """This method links an association edge to an evidence reference."""

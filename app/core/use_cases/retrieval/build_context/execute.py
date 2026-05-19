@@ -57,8 +57,20 @@ def execute_build_context(
         repo_root=repo_root,
     )
     if inner_agent_result.status == "ok" and inner_agent_result.brief is not None:
-        return _provider_result(
-            inner_agent_result=inner_agent_result,
+        trace_state = _provider_trace_state(inner_agent_result)
+        if trace_state == "has_sources":
+            return _provider_result(
+                inner_agent_result=inner_agent_result,
+            )
+        if trace_state == "no_context":
+            return _provider_no_context_result(inner_agent_result=inner_agent_result)
+        inner_agent_result = inner_agent_result.model_copy(
+            update={
+                "status": "invalid_output",
+                "fallback_used": True,
+                "error_code": trace_state,
+                "error_message": _provider_trace_error_message(trace_state),
+            }
         )
 
     return _deterministic_result(
@@ -164,6 +176,29 @@ def _provider_result(
             "candidate_pack": {"read_trace": read_trace},
             "source_items": source_items,
             "inner_agent": _with_read_trace_counts(inner_agent_result).model_dump(
+                mode="python"
+            ),
+        },
+    )
+
+
+def _provider_no_context_result(
+    *,
+    inner_agent_result: InnerAgentRunResult,
+) -> RecallMemoryResult:
+    """Convert an explicit provider no-context trace into the public result."""
+
+    read_trace = _read_trace(inner_agent_result)
+    no_context_result = inner_agent_result.model_copy(
+        update={"status": "no_context"}
+    )
+    return RecallMemoryResult(
+        brief=_no_context_brief(),
+        fallback_reason="no_candidates",
+        telemetry={
+            "candidate_pack": {"read_trace": read_trace},
+            "source_items": [],
+            "inner_agent": _with_read_trace_counts(no_context_result).model_dump(
                 mode="python"
             ),
         },
@@ -311,9 +346,7 @@ def _normalize_provider_brief(
         "conflicts": _string_list(brief.get("conflicts")),
         "gaps": _string_list(brief.get("gaps")),
         "next_checks": _string_list(brief.get("next_checks")),
-        "sources": brief.get("sources")
-        if isinstance(brief.get("sources"), list)
-        else deterministic_sources,
+        "sources": deterministic_sources,
     }
     return normalized
 
@@ -342,6 +375,61 @@ def _with_read_trace_counts(result: InnerAgentRunResult) -> InnerAgentRunResult:
             "concept_expansion_count": _concept_expansion_count_from_trace(read_trace),
         }
     )
+
+
+def _provider_trace_state(result: InnerAgentRunResult) -> str:
+    """Classify whether a successful provider result has usable provenance."""
+
+    read_trace = _read_trace(result)
+    if not read_trace:
+        return "missing_read_trace"
+    malformed_reason = _malformed_read_trace_reason(read_trace)
+    if malformed_reason is not None:
+        return malformed_reason
+    if _source_items_from_read_trace(read_trace):
+        return "has_sources"
+    if _read_trace_no_context_reason(read_trace):
+        return "no_context"
+    return "missing_read_trace_sources"
+
+
+def _provider_trace_error_message(trace_state: str) -> str:
+    """Return a stable provider-trace validation error message."""
+
+    return {
+        "missing_read_trace": "provider returned a brief without read_trace provenance",
+        "missing_read_trace_sources": (
+            "provider returned a brief without source_ids, concept_refs, "
+            "or an explicit no_context_reason"
+        ),
+        "malformed_read_trace": "provider returned malformed read_trace provenance",
+    }.get(trace_state, trace_state)
+
+
+def _malformed_read_trace_reason(read_trace: dict[str, Any]) -> str | None:
+    """Return a validation error code when provider provenance is malformed."""
+
+    for key in ("source_ids", "concept_refs"):
+        if key in read_trace and _trace_string_list(read_trace[key]) is None:
+            return "malformed_read_trace"
+    if "no_context_reason" in read_trace and not isinstance(
+        read_trace["no_context_reason"], str
+    ):
+        return "malformed_read_trace"
+
+    commands = read_trace.get("commands")
+    if commands is not None and not isinstance(commands, list):
+        return "malformed_read_trace"
+    if not isinstance(commands, list):
+        return None
+    for command in commands:
+        if not isinstance(command, str) and not isinstance(command, dict):
+            return "malformed_read_trace"
+        if isinstance(command, dict):
+            for key in ("source_ids", "concept_refs"):
+                if key in command and _trace_string_list(command[key]) is None:
+                    return "malformed_read_trace"
+    return None
 
 
 def _private_read_count_from_trace(read_trace: dict[str, Any]) -> int:
@@ -460,7 +548,14 @@ def _trace_string_list(value: Any) -> list[str] | None:
         value = [value]
     if not isinstance(value, list):
         return None
-    return [str(item).strip() for item in value if str(item).strip()]
+    strings: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            return None
+        text = item.strip()
+        if text:
+            strings.append(text)
+    return strings
 
 
 def _trace_command_text(item: Any) -> str:

@@ -98,8 +98,10 @@ def _auto_concept_items(
     ):
         concept_id = str(link_match["concept_id"])
         candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
-        status = str(link_match.get("status") or "active")
-        confidence = float(link_match.get("confidence") or 0.5)
+        status = _required_string(link_match, "status", "concept memory link")
+        confidence = _required_float(
+            link_match, "confidence", "concept memory link"
+        )
         candidate["score"] += 10.0 * _status_multiplier(status) * max(confidence, 0.1)
         _append_linked_memory_reason(candidate["why"], link_match)
 
@@ -110,7 +112,7 @@ def _auto_concept_items(
     ):
         concept_id = str(query_match["concept_id"])
         candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
-        candidate["score"] += float(query_match.get("score") or 1.0)
+        candidate["score"] += _required_float(query_match, "score", "concept query match")
         _append_query_reason(candidate["why"], query_match)
 
     ranked: list[tuple[float, str, dict[str, Any]]] = []
@@ -226,7 +228,7 @@ def _pack_memory_ids(pack: dict[str, Any]) -> list[str]:
 def _append_linked_memory_reason(
     reasons: list[dict[str, Any]], link_match: dict[str, Any]
 ) -> None:
-    role = str(link_match.get("role") or "")
+    role = _required_string(link_match, "role", "concept memory link")
     existing = next(
         (
             item
@@ -244,8 +246,8 @@ def _append_linked_memory_reason(
 def _append_query_reason(
     reasons: list[dict[str, Any]], query_match: dict[str, Any]
 ) -> None:
-    reason = str(query_match.get("reason") or "query_match")
-    matched = str(query_match.get("matched") or "")
+    reason = _required_string(query_match, "reason", "concept query match")
+    matched = _required_string(query_match, "matched", "concept query match")
     if any(
         item.get("reason") == reason and item.get("matched") == matched
         for item in reasons
@@ -261,7 +263,24 @@ def _status_multiplier(status: str) -> float:
         ConceptLifecycleStatus.STALE.value: 0.25,
         ConceptLifecycleStatus.SUPERSEDED.value: 0.1,
         ConceptLifecycleStatus.WRONG.value: 0.0,
-    }.get(status, 0.5)
+    }[ConceptLifecycleStatus(status).value]
+
+
+def _required_string(record: dict[str, Any], field: str, record_type: str) -> str:
+    """Return a required non-empty string from ranking evidence."""
+
+    value = record.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{record_type} is missing required {field}")
+    return value.strip()
+
+
+def _required_float(record: dict[str, Any], field: str, record_type: str) -> float:
+    """Return a required numeric field from ranking evidence."""
+
+    if field not in record or record[field] is None:
+        raise ValueError(f"{record_type} is missing required {field}")
+    return float(record[field])
 
 
 def _freshness_multiplier(bundle: dict[str, Any]) -> float:

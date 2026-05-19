@@ -339,6 +339,8 @@ def test_update_association_link_requires_visible_target_memory(
             "type": "association_link",
             "to_memory_id": "target-missing",
             "relation_type": "depends_on",
+            "confidence": 0.7,
+            "salience": 0.6,
             "evidence_refs": ["session://1"],
         },
     )
@@ -364,6 +366,8 @@ def test_update_association_link_requires_visible_target_memory(
             "type": "association_link",
             "to_memory_id": "target-hidden",
             "relation_type": "depends_on",
+            "confidence": 0.7,
+            "salience": 0.6,
             "evidence_refs": ["session://1"],
         },
     )
@@ -418,6 +422,8 @@ def test_update_association_link_rejects_episode_event_evidence_from_another_rep
             "type": "association_link",
             "to_memory_id": "target-memory",
             "relation_type": "depends_on",
+            "confidence": 0.7,
+            "salience": 0.6,
             "evidence_refs": ["repo-b-event-1"],
         },
     )
@@ -474,6 +480,8 @@ def test_update_matures_into_requires_frontier_source_and_mature_target(
             "type": "association_link",
             "to_memory_id": "target-fact",
             "relation_type": "matures_into",
+            "confidence": 0.7,
+            "salience": 0.6,
             "evidence_refs": ["session://1"],
         },
     )
@@ -484,6 +492,8 @@ def test_update_matures_into_requires_frontier_source_and_mature_target(
             "type": "association_link",
             "to_memory_id": "target-frontier",
             "relation_type": "matures_into",
+            "confidence": 0.7,
+            "salience": 0.6,
             "evidence_refs": ["session://1"],
         },
     )

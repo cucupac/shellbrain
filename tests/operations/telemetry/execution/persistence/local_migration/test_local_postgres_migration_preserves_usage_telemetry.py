@@ -17,8 +17,10 @@ from tests.operations.persistence.execution.local_migration.test_local_postgres_
     APP_USER,
     LEGACY_PASSWORD,
     LEGACY_USER,
+    MIGRATION_CONFIRMATION_ENV,
     _cleanup_project,
     _compose_up,
+    _migration_confirmation,
     _reserve_tcp_port,
     _run_packaged_migrations,
     _wait_for_container_postgres,
@@ -77,6 +79,14 @@ def test_local_migration_should_preserve_sentinel_usage_telemetry_while_promotin
         data_dir.mkdir(parents=True, exist_ok=True)
         port = _compose_up(repo_root, legacy_env)
         migration_env["POSTGRES_PORT"] = str(port)
+        migration_env[MIGRATION_CONFIRMATION_ENV] = _migration_confirmation(
+            legacy_container=legacy_container,
+            legacy_db="memory",
+            shellbrain_container=shellbrain_container,
+            shellbrain_db="shellbrain",
+            port=port,
+            data_dir=data_dir,
+        )
         _wait_for_container_postgres(legacy_container, LEGACY_USER, "memory")
 
         legacy_dsn = f"postgresql+psycopg://{LEGACY_USER}:{LEGACY_PASSWORD}@localhost:{port}/memory"

@@ -25,6 +25,7 @@ def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type()
                         "to_memory_id": "target-1",
                         "relation_type": "depends_on",
                         "confidence": 0.7,
+                        "salience": 0.6,
                     }
                 ],
             },

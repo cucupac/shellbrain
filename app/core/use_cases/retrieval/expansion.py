@@ -38,9 +38,7 @@ def expand_candidates(
 
     for direct_candidate in direct_candidates:
         anchor_memory_id = direct_candidate["memory_id"]
-        anchor_score = float(
-            direct_candidate.get("rrf_score", direct_candidate.get("score", 0.0))
-        )
+        anchor_score = _candidate_anchor_score(direct_candidate)
 
         if expand["include_problem_links"]:
             for neighbor in select_problem_attempt_neighbors(
@@ -152,3 +150,15 @@ def expand_candidates(
                     break
 
     return {"explicit": explicit, "implicit": implicit}
+
+
+def _candidate_anchor_score(candidate: dict[str, Any]) -> float:
+    """Return the explicit score field carried by a direct read candidate."""
+
+    if "rrf_score" in candidate:
+        return float(candidate["rrf_score"])
+    if "score" in candidate:
+        return float(candidate["score"])
+    raise ValueError(
+        f"Direct candidate {candidate.get('memory_id')} is missing a score for expansion"
+    )

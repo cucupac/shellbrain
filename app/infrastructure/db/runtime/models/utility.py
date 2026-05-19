@@ -29,3 +29,20 @@ utility_observations = Table(
         "vote >= -1 AND vote <= 1", name="ck_utility_observations_vote_range"
     ),
 )
+
+utility_observation_evidence = Table(
+    "utility_observation_evidence",
+    metadata,
+    Column(
+        "observation_id",
+        String,
+        ForeignKey("utility_observations.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "evidence_id",
+        String,
+        ForeignKey("evidence_refs.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)

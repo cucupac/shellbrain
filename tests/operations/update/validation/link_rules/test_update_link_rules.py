@@ -16,6 +16,8 @@ def test_update_association_rejects_self_link() -> None:
                 "type": "association_link",
                 "to_memory_id": "memory-1",
                 "relation_type": "depends_on",
+                "confidence": 0.7,
+                "salience": 0.6,
                 "evidence_refs": ["session://1"],
             },
         }

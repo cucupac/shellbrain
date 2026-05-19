@@ -83,6 +83,8 @@ def test_create_association_links_attach_edge_evidence(
                         {
                             "to_memory_id": "target-1",
                             "relation_type": "associated_with",
+                            "confidence": 0.7,
+                            "salience": 0.6,
                         }
                     ]
                 },

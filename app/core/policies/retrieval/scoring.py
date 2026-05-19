@@ -22,7 +22,7 @@ def _score_direct_candidates(candidates: list[dict[str, Any]]) -> list[dict[str,
     scored = []
     for candidate in candidates:
         item = dict(candidate)
-        item["score"] = float(candidate.get("rrf_score", candidate.get("score", 0.0)))
+        item["score"] = _required_float(candidate, "rrf_score", "direct")
         scored.append(item)
     return _sort_scored_candidates(scored)
 
@@ -35,11 +35,13 @@ def _score_explicit_candidates(
     scored = []
     for candidate in candidates:
         item = dict(candidate)
-        anchor_score = float(candidate.get("anchor_score", candidate.get("score", 0.0)))
-        depth = max(1, int(candidate.get("depth", 1)))
+        anchor_score = _required_float(candidate, "anchor_score", "explicit")
+        depth = _required_positive_int(candidate, "depth", "explicit")
         relation_strength = 1.0
         if candidate.get("expansion_type") == "association":
-            relation_strength = float(candidate.get("relation_strength", 1.0))
+            relation_strength = _required_float(
+                candidate, "relation_strength", "explicit association"
+            )
         item["score"] = anchor_score * relation_strength / depth
         scored.append(item)
     return _sort_scored_candidates(scored)
@@ -53,9 +55,11 @@ def _score_implicit_candidates(
     scored = []
     for candidate in candidates:
         item = dict(candidate)
-        anchor_score = float(candidate.get("anchor_score", candidate.get("score", 0.0)))
-        hop = max(1, int(candidate.get("hop", 1)))
-        neighbor_similarity = float(candidate.get("neighbor_similarity", 1.0))
+        anchor_score = _required_float(candidate, "anchor_score", "implicit")
+        hop = _required_positive_int(candidate, "hop", "implicit")
+        neighbor_similarity = _required_float(
+            candidate, "neighbor_similarity", "implicit"
+        )
         item["score"] = anchor_score * neighbor_similarity / hop
         scored.append(item)
     return _sort_scored_candidates(scored)
@@ -67,3 +71,35 @@ def _sort_scored_candidates(candidates: list[dict[str, Any]]) -> list[dict[str, 
     return sorted(
         candidates, key=lambda item: (-float(item["score"]), str(item["memory_id"]))
     )
+
+
+def _required_float(
+    candidate: dict[str, Any], field: str, candidate_type: str
+) -> float:
+    """Return a required numeric candidate field or fail with context."""
+
+    if field not in candidate:
+        raise ValueError(
+            f"{candidate_type} candidate {candidate.get('memory_id')} "
+            f"is missing required {field}"
+        )
+    return float(candidate[field])
+
+
+def _required_positive_int(
+    candidate: dict[str, Any], field: str, candidate_type: str
+) -> int:
+    """Return a required positive integer candidate field or fail with context."""
+
+    if field not in candidate:
+        raise ValueError(
+            f"{candidate_type} candidate {candidate.get('memory_id')} "
+            f"is missing required {field}"
+        )
+    value = int(candidate[field])
+    if value <= 0:
+        raise ValueError(
+            f"{candidate_type} candidate {candidate.get('memory_id')} "
+            f"has invalid {field}: {value}"
+        )
+    return value

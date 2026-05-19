@@ -41,6 +41,7 @@ def build_update_plan(
         ]
 
     if update_type == "utility_vote":
+        evidence_refs = EvidenceRefs.optional(update.get("evidence_refs", [])).values
         return [
             make_side_effect(
                 "utility_observation.append",
@@ -48,30 +49,35 @@ def build_update_plan(
                     id=_required(
                         plan_ids.utility_observation_id, "utility_observation_id"
                     ),
+                    repo_id=repo_id,
                     memory_id=memory_id,
                     problem_id=update["problem_id"],
                     vote=UtilityVoteValue(update["vote"]).value,
                     rationale=update.get("rationale"),
+                    evidence_refs=evidence_refs,
                 ),
             )
         ]
 
     if update_type == "fact_update_link":
+        evidence_refs = EvidenceRefs.optional(update.get("evidence_refs", [])).values
         return [
             make_side_effect(
                 "fact_update.create",
                 FactUpdateCreateEffectParams(
                     id=_required(plan_ids.fact_update_id, "fact_update_id"),
+                    repo_id=repo_id,
                     old_fact_id=update["old_fact_id"],
                     change_id=memory_id,
                     new_fact_id=update["new_fact_id"],
+                    evidence_refs=evidence_refs,
                 ),
             )
         ]
 
     if update_type == "association_link":
-        confidence = ConfidenceValue.from_optional(update.get("confidence")).value
-        salience = SalienceValue.from_optional(update.get("salience")).value
+        confidence = ConfidenceValue(update["confidence"]).value
+        salience = SalienceValue(update["salience"]).value
         evidence_refs = EvidenceRefs.required(update["evidence_refs"]).values
         return [
             make_side_effect(

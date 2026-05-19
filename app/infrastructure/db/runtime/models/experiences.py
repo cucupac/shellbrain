@@ -69,3 +69,20 @@ fact_updates = Table(
         "old_fact_id", "change_id", "new_fact_id", name="uq_fact_updates_chain"
     ),
 )
+
+fact_update_evidence = Table(
+    "fact_update_evidence",
+    metadata,
+    Column(
+        "fact_update_id",
+        String,
+        ForeignKey("fact_updates.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column(
+        "evidence_id",
+        String,
+        ForeignKey("evidence_refs.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)

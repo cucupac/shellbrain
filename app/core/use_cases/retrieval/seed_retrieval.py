@@ -34,9 +34,13 @@ def retrieve_seeds(
     kinds = request_data.get("kinds")
     limit = int(request_data["limit"])
     query_text = request_data["query"]
-    query_vector = (
-        list(vector_search.embed_query(query_text)) if vector_search is not None else []
-    )
+    query_vector = []
+    query_model = None
+    if vector_search is not None:
+        query_vector = list(vector_search.embed_query(query_text))
+        if not query_vector:
+            raise ValueError("Query embedding provider returned an empty vector")
+        query_model = vector_search.model_name
     thresholds = thresholds or _coerce_threshold_settings(get_threshold_settings())
     semantic = [
         candidate
@@ -44,6 +48,7 @@ def retrieve_seeds(
             repo_id=repo_id,
             include_global=include_global,
             query_vector=query_vector,
+            query_model=query_model,
             kinds=kinds,
             limit=limit,
         )

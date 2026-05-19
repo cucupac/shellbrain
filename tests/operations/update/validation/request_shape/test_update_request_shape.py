@@ -79,6 +79,8 @@ def test_update_accepts_matures_into_association_links() -> None:
             "type": "association_link",
             "to_memory_id": "fact-1",
             "relation_type": "matures_into",
+            "confidence": 0.8,
+            "salience": 0.7,
             "evidence_refs": ["session://1"],
         },
     }
@@ -87,3 +89,24 @@ def test_update_accepts_matures_into_association_links() -> None:
 
     assert errors == []
     assert request is not None
+
+
+def test_update_association_requires_explicit_strength_values() -> None:
+    """association_link updates should not invent confidence or salience defaults."""
+
+    payload = {
+        "memory_id": "frontier-1",
+        "update": {
+            "type": "association_link",
+            "to_memory_id": "fact-1",
+            "relation_type": "matures_into",
+            "evidence_refs": ["session://1"],
+        },
+    }
+
+    request, errors = validate_update_schema(payload)
+
+    assert request is None
+    fields = {error.field for error in errors}
+    assert "update.association_link.confidence" in fields
+    assert "update.association_link.salience" in fields

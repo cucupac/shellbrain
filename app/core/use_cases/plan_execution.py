@@ -106,6 +106,11 @@ def apply_side_effects(
                     rationale=params.rationale,
                 )
             )
+            for ref in sorted(params.evidence_refs):
+                evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
+                uow.evidence.link_utility_observation_evidence(
+                    observation_id=params.id, evidence_id=evidence.id
+                )
             continue
 
         if effect_type is EffectType.FACT_UPDATE_CREATE:
@@ -118,6 +123,11 @@ def apply_side_effects(
                     new_fact_id=params.new_fact_id,
                 )
             )
+            for ref in sorted(params.evidence_refs):
+                evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
+                uow.evidence.link_fact_update_evidence(
+                    fact_update_id=params.id, evidence_id=evidence.id
+                )
             continue
 
         if effect_type is EffectType.ASSOCIATION_UPSERT_AND_OBSERVE:

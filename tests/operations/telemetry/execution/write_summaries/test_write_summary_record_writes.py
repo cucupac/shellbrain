@@ -42,6 +42,8 @@ def test_create_should_always_append_one_write_summary_row_with_the_created_memo
                         {
                             "to_memory_id": "target-1",
                             "relation_type": "depends_on",
+                            "confidence": 0.7,
+                            "salience": 0.6,
                         }
                     ]
                 },
@@ -99,6 +101,8 @@ def test_create_should_always_append_one_write_effect_row_per_planned_side_effec
                         {
                             "to_memory_id": "target-1",
                             "relation_type": "depends_on",
+                            "confidence": 0.7,
+                            "salience": 0.6,
                         }
                     ]
                 },
@@ -239,6 +243,8 @@ def test_update_association_link_should_always_append_one_write_summary_row_with
                 "type": "association_link",
                 "to_memory_id": "target-memory",
                 "relation_type": "depends_on",
+                "confidence": 0.9,
+                "salience": 0.8,
                 "evidence_refs": ["session://1"],
             },
         },

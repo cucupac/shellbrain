@@ -144,6 +144,6 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
             "capture_quality",
         }.issubset(knowledge_build_columns)
         assert concepts_table is not None
-        assert alembic_version == "20260519_0021"
+        assert alembic_version == "20260519_0022"
     finally:
         drop_temp_database(admin_dsn, db_name)

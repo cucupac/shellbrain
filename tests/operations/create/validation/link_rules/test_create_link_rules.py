@@ -85,8 +85,18 @@ def test_create_rejects_duplicate_association_pairs() -> None:
                 "kind": "problem",
                 "links": {
                     "associations": [
-                        {"to_memory_id": "m-2", "relation_type": "depends_on"},
-                        {"to_memory_id": "m-2", "relation_type": "depends_on"},
+                        {
+                            "to_memory_id": "m-2",
+                            "relation_type": "depends_on",
+                            "confidence": 0.7,
+                            "salience": 0.6,
+                        },
+                        {
+                            "to_memory_id": "m-2",
+                            "relation_type": "depends_on",
+                            "confidence": 0.8,
+                            "salience": 0.5,
+                        },
                     ]
                 },
                 "evidence_refs": ["session://1"],

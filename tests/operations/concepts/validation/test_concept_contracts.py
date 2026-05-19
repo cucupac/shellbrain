@@ -131,3 +131,30 @@ def test_concept_contract_should_reject_unknown_fields() -> None:
 
     assert request is None
     assert errors
+
+
+def test_concept_add_should_reject_blank_required_strings() -> None:
+    """concept add should not accept whitespace-only identifiers or labels."""
+
+    request, errors = validate_concept_add_schema(
+        {
+            "schema_version": "concept.v1",
+            "repo_id": "   ",
+            "actions": [
+                {
+                    "type": "add_concept",
+                    "slug": "   ",
+                    "name": "   ",
+                    "kind": "domain",
+                    "aliases": ["   "],
+                }
+            ],
+        }
+    )
+
+    assert request is None
+    fields = {error.field for error in errors}
+    assert "repo_id" in fields
+    assert "actions.0.slug" in fields
+    assert "actions.0.name" in fields
+    assert "actions.0.aliases" in fields

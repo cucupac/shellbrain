@@ -37,10 +37,11 @@ def test_read_returns_semantic_direct_matches_through_live_query_embedding_seam_
         repo_id: str,
         include_global: bool,
         query_vector,
-        kinds,
-        limit: int,
+        query_model=None,
+        kinds=None,
+        limit: int = 0,
     ) -> list[dict[str, object]]:
-        _ = (self, repo_id, include_global, kinds, limit)
+        _ = (self, repo_id, include_global, query_model, kinds, limit)
         captured["query_vector"] = list(query_vector)
         if not query_vector:
             return []
@@ -101,10 +102,11 @@ def test_read_fuses_live_semantic_seeds_with_keyword_direct_hits_without_duplica
         repo_id: str,
         include_global: bool,
         query_vector,
-        kinds,
-        limit: int,
+        query_model=None,
+        kinds=None,
+        limit: int = 0,
     ) -> list[dict[str, object]]:
-        _ = (self, repo_id, include_global, kinds, limit)
+        _ = (self, repo_id, include_global, query_model, kinds, limit)
         captured["query_vector"] = list(query_vector)
         if not query_vector:
             return []

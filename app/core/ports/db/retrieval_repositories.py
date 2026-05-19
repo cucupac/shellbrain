@@ -16,6 +16,7 @@ class ISemanticRetrievalRepo(ABC):
         query_vector: Sequence[float],
         kinds: Sequence[str] | None,
         limit: int,
+        query_model: str | None = None,
     ) -> Sequence[dict[str, Any]]:
         """This method returns semantic retrieval candidates with scores."""
 

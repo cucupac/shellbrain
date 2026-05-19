@@ -11,27 +11,22 @@ TEST_DB_PREFIX="${SHELLBRAIN_TEST_DB_PREFIX:-shellbrain_test_}"
 TEST_RETENTION_HOURS="${SHELLBRAIN_TEST_RETENTION_HOURS:-72}"
 KEEP_TEST_DB="${SHELLBRAIN_TEST_KEEP_DB:-0}"
 
+if [[ -z "${SHELLBRAIN_DB_DSN_TEST:-}" ]]; then
+  case "$TEST_DB_PREFIX" in
+    shellbrain_test_*|shellbrain_ci_*) ;;
+    *)
+      echo "SHELLBRAIN_TEST_DB_PREFIX must begin with shellbrain_test_ or shellbrain_ci_ so generated database cleanup stays Shellbrain-owned." >&2
+      exit 1
+      ;;
+  esac
+fi
+
 if [[ -n "${SHELLBRAIN_TEST_PYTHON:-}" ]]; then
   PYTHON_BIN="${SHELLBRAIN_TEST_PYTHON}"
 elif [[ -x "$PWD/.venv/bin/python" ]]; then
   PYTHON_BIN="$PWD/.venv/bin/python"
 else
   PYTHON_BIN="python3"
-fi
-
-if ! command -v docker >/dev/null 2>&1; then
-  echo "docker is required because persistence tests run in the default suite." >&2
-  exit 1
-fi
-
-if ! docker version >/dev/null 2>&1; then
-  echo "docker must be installed and the daemon must be running before scripts/run_tests." >&2
-  exit 1
-fi
-
-if ! docker compose version >/dev/null 2>&1; then
-  echo "docker compose is required because persistence tests run in the default suite." >&2
-  exit 1
 fi
 
 GENERATED_TEST_TARGET=0
@@ -59,37 +54,50 @@ if [[ -z "${SHELLBRAIN_PROTECTED_LIVE_DSN:-}" ]]; then
   RESOLVED_PROTECTED_LIVE_DSN="$("$PYTHON_BIN" - <<'PY'
 import os
 from pathlib import Path
+import sys
 
 from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 machine_config_path = Path(os.environ["SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH"]).expanduser().resolve()
-machine_config, machine_error = try_load_machine_config(machine_config_path)
-if machine_error is None and machine_config is not None:
-    print(machine_config.database.admin_dsn)
+try:
+    machine_config, machine_error = try_load_machine_config(machine_config_path)
+except OSError as exc:
+    print(
+        f"Refusing to run tests because live machine config at {machine_config_path} is unreadable: {exc}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1) from exc
+if machine_error is not None:
+    print(
+        f"Refusing to run tests because live machine config at {machine_config_path} is invalid: {machine_error}",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if machine_config is None:
+    print(
+        f"Refusing to run tests because live machine config at {machine_config_path} could not be resolved. "
+        "Set SHELLBRAIN_PROTECTED_LIVE_DSN explicitly or provide a valid SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH.",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+print(machine_config.database.admin_dsn)
 PY
 )"
-  if [[ -n "$RESOLVED_PROTECTED_LIVE_DSN" ]]; then
-    export SHELLBRAIN_PROTECTED_LIVE_DSN="$RESOLVED_PROTECTED_LIVE_DSN"
-  fi
+  export SHELLBRAIN_PROTECTED_LIVE_DSN="$RESOLVED_PROTECTED_LIVE_DSN"
 fi
 
 "$PYTHON_BIN" - <<'PY'
 import os
-from pathlib import Path
 
 from app.infrastructure.db.admin.instance_guard import assert_disposable_test_dsn, host_port_from_dsn
-from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
 protected_dsn = os.getenv("SHELLBRAIN_PROTECTED_LIVE_DSN") or None
+if protected_dsn is None:
+    raise RuntimeError(
+        "Refusing to run tests because SHELLBRAIN_PROTECTED_LIVE_DSN was not resolved."
+    )
 protected_host_ports: set[tuple[str, int]] = set()
-if protected_dsn:
-    protected_host_ports.add(host_port_from_dsn(protected_dsn))
-else:
-    machine_config_path = Path(os.environ["SHELLBRAIN_LIVE_MACHINE_CONFIG_PATH"]).expanduser().resolve()
-    machine_config, machine_error = try_load_machine_config(machine_config_path)
-    if machine_error is None and machine_config is not None:
-        protected_dsn = machine_config.database.admin_dsn
-        protected_host_ports.add(host_port_from_dsn(machine_config.database.admin_dsn))
+protected_host_ports.add(host_port_from_dsn(protected_dsn))
 
 assert_disposable_test_dsn(
     test_dsn=os.environ["SHELLBRAIN_DB_DSN_TEST"],
@@ -102,6 +110,21 @@ assert_disposable_test_dsn(
     protected_host_ports=protected_host_ports,
 )
 PY
+
+if ! command -v docker >/dev/null 2>&1; then
+  echo "docker is required because persistence tests run in the default suite." >&2
+  exit 1
+fi
+
+if ! docker version >/dev/null 2>&1; then
+  echo "docker must be installed and the daemon must be running before scripts/run_tests." >&2
+  exit 1
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "docker compose is required because persistence tests run in the default suite." >&2
+  exit 1
+fi
 
 if [[ "$GENERATED_TEST_TARGET" == "1" ]]; then
   docker compose -f "$TEST_COMPOSE_FILE" up -d db >/dev/null
@@ -124,6 +147,7 @@ from app.infrastructure.db.admin.instance_guard import (
     SCRATCH,
     TEST,
     assert_destructive_allowed,
+    ensure_instance_metadata,
     fetch_instance_metadata,
 )
 
@@ -185,6 +209,14 @@ with psycopg.connect(admin_root_dsn, autocommit=True) as conn:
             )
             conn.execute(sql.SQL("DROP DATABASE {}").format(sql.Identifier(candidate_name)))
 
+if created:
+    ensure_instance_metadata(
+        os.environ["SHELLBRAIN_DB_ADMIN_DSN"],
+        instance_mode=TEST,
+        created_by="scripts/run_tests",
+        notes="Generated per-run database for scripts/run_tests.",
+    )
+
 if not created:
     assert_destructive_allowed(os.environ["SHELLBRAIN_DB_ADMIN_DSN"])
     with psycopg.connect(admin_dsn, autocommit=True) as conn:
@@ -216,11 +248,18 @@ from urllib.parse import urlparse, urlunparse
 
 import psycopg
 from psycopg import sql
+from app.infrastructure.db.admin.instance_guard import assert_destructive_allowed
 
 admin_dsn = os.environ["SHELLBRAIN_DB_ADMIN_DSN"].replace("+psycopg", "")
 db_name = os.environ["TEST_DB_NAME"]
+if not db_name.startswith(("shellbrain_test_", "shellbrain_ci_")):
+    raise RuntimeError(
+        f"Refusing to drop generated test database with non-Shellbrain-owned name: {db_name}"
+    )
 parsed = urlparse(admin_dsn)
 admin_root_dsn = urlunparse(parsed._replace(path="/postgres"))
+target_dsn = urlunparse(parsed._replace(path=f"/{db_name}"))
+assert_destructive_allowed(target_dsn.replace("postgresql://", "postgresql+psycopg://", 1))
 with psycopg.connect(admin_root_dsn, autocommit=True) as conn:
     conn.execute(
         """

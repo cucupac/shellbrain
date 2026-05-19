@@ -89,6 +89,45 @@ def test_stale_poller_lock_is_removed_and_reacquired(
     handle.release()
 
 
+def test_ownerless_poller_lock_is_corrupt_and_not_reacquired(
+    tmp_path: Path,
+) -> None:
+    """ownerless poller lock should block acquisition without deleting evidence."""
+
+    repo_root = _make_repo_root(tmp_path)
+    lock_root = repo_root / ".shellbrain" / "episode_sync.lock"
+    lock_root.mkdir(parents=True, exist_ok=True)
+
+    inspection = inspect_poller_lock(repo_root=repo_root)
+    handle = acquire_poller_lock(repo_id="repo-a", repo_root=repo_root)
+
+    assert inspection.status == "corrupt"
+    assert inspection.owner is None
+    assert handle is None
+    assert lock_root.exists()
+    assert not (lock_root / "owner.json").exists()
+
+
+def test_malformed_poller_lock_owner_is_corrupt_and_not_reacquired(
+    tmp_path: Path,
+) -> None:
+    """malformed poller lock owner should block acquisition."""
+
+    repo_root = _make_repo_root(tmp_path)
+    lock_root = repo_root / ".shellbrain" / "episode_sync.lock"
+    lock_root.mkdir(parents=True, exist_ok=True)
+    owner_path = lock_root / "owner.json"
+    owner_path.write_text("{not-json", encoding="utf-8")
+
+    inspection = inspect_poller_lock(repo_root=repo_root)
+    handle = acquire_poller_lock(repo_id="repo-a", repo_root=repo_root)
+
+    assert inspection.status == "corrupt"
+    assert inspection.owner is None
+    assert handle is None
+    assert owner_path.read_text(encoding="utf-8") == "{not-json"
+
+
 def test_permission_denied_pid_probe_should_still_count_as_active(
     tmp_path: Path, monkeypatch
 ) -> None:
@@ -119,6 +158,28 @@ def test_permission_denied_pid_probe_should_still_count_as_active(
 
     assert inspection.status == "active"
     assert inspection.owner == owner
+
+
+def test_launcher_does_not_spawn_when_a_corrupt_lock_exists(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """launcher should not spawn a poller that cannot acquire a corrupt lock."""
+
+    repo_root = _make_repo_root(tmp_path)
+    lock_root = repo_root / ".shellbrain" / "episode_sync.lock"
+    lock_root.mkdir(parents=True, exist_ok=True)
+    (lock_root / "owner.json").write_text("[]", encoding="utf-8")
+
+    def _unexpected_spawn(*args, **kwargs):
+        raise AssertionError("launcher should not spawn while the lock is corrupt")
+
+    monkeypatch.setattr(
+        "app.infrastructure.process.episode_sync.launcher.subprocess.Popen",
+        _unexpected_spawn,
+    )
+
+    assert ensure_episode_sync_started(repo_id="repo-a", repo_root=repo_root) is False
+    assert (lock_root / "owner.json").read_text(encoding="utf-8") == "[]"
 
 
 def test_launcher_does_not_spawn_when_an_active_lock_exists(

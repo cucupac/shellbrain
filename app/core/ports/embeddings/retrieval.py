@@ -7,6 +7,11 @@ from typing import Sequence
 class IVectorSearch(ABC):
     """This interface defines vector embedding and similarity lookup capabilities."""
 
+    @property
+    @abstractmethod
+    def model_name(self) -> str:
+        """This property returns the embedding model used for query vectors."""
+
     @abstractmethod
     def embed_query(self, text: str) -> Sequence[float]:
         """This method returns an embedding vector for query text."""

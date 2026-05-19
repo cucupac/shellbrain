@@ -187,7 +187,7 @@ recall_source_items = Table(
         name="ck_recall_source_items_source_kind",
     ),
     CheckConstraint(
-        "input_section IN ('direct', 'explicit_related', 'implicit_related', 'concept_orientation')",
+        "input_section IN ('direct', 'explicit_related', 'implicit_related', 'concept_orientation', 'inner_agent.read_trace')",
         name="ck_recall_source_items_input_section",
     ),
     CheckConstraint(

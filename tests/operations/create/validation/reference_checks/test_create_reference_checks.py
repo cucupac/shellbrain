@@ -133,6 +133,8 @@ def test_create_rejects_invisible_association_target(
                     {
                         "to_memory_id": "target-hidden",
                         "relation_type": "depends_on",
+                        "confidence": 0.7,
+                        "salience": 0.6,
                     }
                 ]
             },
@@ -184,6 +186,8 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
                     {
                         "to_memory_id": "target-fact",
                         "relation_type": "matures_into",
+                        "confidence": 0.7,
+                        "salience": 0.6,
                     }
                 ]
             },
@@ -200,6 +204,8 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
                     {
                         "to_memory_id": "target-frontier",
                         "relation_type": "matures_into",
+                        "confidence": 0.7,
+                        "salience": 0.6,
                     }
                 ]
             },

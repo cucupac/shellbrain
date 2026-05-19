@@ -381,6 +381,19 @@ def test_concept_parser_should_require_subcommand_and_accept_payloads(
     )
 
 
+def test_load_payload_rejects_non_object_json(tmp_path: Path) -> None:
+    """operation payloads should always be JSON objects."""
+
+    with pytest.raises(ValueError, match="JSON payload must be an object"):
+        cli_runner._load_payload("[]", None)
+
+    payload_file = tmp_path / "payload.json"
+    payload_file.write_text('"not an object"', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="JSON payload must be an object"):
+        cli_runner._load_payload(None, str(payload_file))
+
+
 def test_scenario_parser_should_require_record_subcommand() -> None:
     """scenario should expose only an explicit record operation."""
 
@@ -823,6 +836,41 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
             "hypothesis": "none yet",
         },
     }
+
+
+def test_main_returns_nonzero_for_error_operation_envelope(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """operation error envelopes should render normally and produce a failing exit."""
+
+    repo_root = tmp_path / "error-repo"
+    repo_root.mkdir()
+
+    def _fake_run_operation_command(**kwargs):
+        return {
+            "status": "error",
+            "errors": [{"code": "schema_error", "message": "bad request"}],
+        }
+
+    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+
+    exit_code = cli_main.main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "read",
+            "--json",
+            '{"query":"what should fail?"}',
+        ]
+    )
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert (
+        captured.out.strip()
+        == '{"status":"error","errors":[{"code":"schema_error","message":"bad request"}]}'
+    )
+    assert captured.err == ""
 
 
 def test_inner_agent_read_only_mode_allows_only_read_routes(

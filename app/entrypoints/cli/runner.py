@@ -123,6 +123,8 @@ def main(
             ),
         )
         print(render(result))
+        if result.get("status") == "error":
+            return 1
         return 0
     except (RuntimeError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
@@ -132,11 +134,17 @@ def main(
 def _load_payload(json_text: str | None, json_file: str | None) -> dict[str, Any]:
     """Load one JSON payload from inline text or a file path."""
 
-    if json_text:
-        return json.loads(json_text)
+    if json_text is not None:
+        payload = json.loads(json_text)
+        if not isinstance(payload, dict):
+            raise ValueError("JSON payload must be an object")
+        return payload
     if json_file:
         content = Path(json_file).read_text(encoding="utf-8")
-        return json.loads(content)
+        payload = json.loads(content)
+        if not isinstance(payload, dict):
+            raise ValueError("JSON payload must be an object")
+        return payload
     raise ValueError("Either --json or --json-file is required")
 
 

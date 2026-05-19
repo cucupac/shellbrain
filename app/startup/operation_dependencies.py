@@ -42,7 +42,6 @@ from app.infrastructure.system.id_generator import UuidGenerator
 from app.infrastructure.telemetry.sink import TelemetrySink
 from app.startup.create_policy import (
     get_typed_create_policy_settings,
-    validate_create_policy_settings,
 )
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
@@ -53,7 +52,6 @@ from app.startup.runtime_context import get_operation_telemetry_context
 from app.startup.thresholds import get_typed_threshold_settings
 from app.startup.update_policy import (
     get_typed_update_policy_settings,
-    validate_update_policy_settings,
 )
 
 
@@ -88,11 +86,13 @@ def build_operation_dependencies() -> OperationDependencies:
     """Wire concrete runtime ports into core operation orchestration."""
 
     clock = SystemClock()
+    create_policy = get_typed_create_policy_settings()
+    update_policy = get_typed_update_policy_settings()
     return OperationDependencies(
         session_state_store=FileSessionStateStore(),
-        create_policy=_load_create_policy_or_fallback(),
+        create_policy=create_policy,
         read_settings=get_read_policy_settings(),
-        update_policy=_load_update_policy_or_fallback(),
+        update_policy=update_policy,
         threshold_settings=get_typed_threshold_settings(),
         clock=clock,
         id_generator=UuidGenerator(),
@@ -108,20 +108,4 @@ def build_operation_dependencies() -> OperationDependencies:
         telemetry_sink=TelemetrySink(
             clock=clock, summarize_runtime_selection=summarize_runtime_selection
         ),
-        create_policy_errors=tuple(validate_create_policy_settings()),
-        update_policy_errors=tuple(validate_update_policy_settings()),
     )
-
-
-def _load_create_policy_or_fallback() -> CreatePolicySettings:
-    try:
-        return get_typed_create_policy_settings()
-    except ValueError:
-        return CreatePolicySettings(gates=("schema",), defaults={"scope": "repo"})
-
-
-def _load_update_policy_or_fallback() -> UpdatePolicySettings:
-    try:
-        return get_typed_update_policy_settings()
-    except ValueError:
-        return UpdatePolicySettings(gates=("schema",))

@@ -19,6 +19,17 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def _normalize_required_string(value: str, *, field_name: str) -> str:
+    text = value.strip()
+    if not text:
+        raise ValueError(f"{field_name} must be non-empty")
+    return text
+
+
+def _normalize_repo_id(value: RepoId) -> RepoId:
+    return RepoId(_normalize_required_string(str(value), field_name="repo_id"))
+
+
 class ReadConceptsExpandRequest(_StrictModel):
     """Concept-context expansion controls for read requests."""
 
@@ -30,11 +41,13 @@ class ReadConceptsExpandRequest(_StrictModel):
     @field_validator("refs")
     @classmethod
     def _validate_refs_unique(cls, value: list[str]) -> list[str]:
-        if any(not ref.strip() for ref in value):
-            raise ValueError("concept refs must be non-empty")
-        if len(value) != len(set(value)):
+        normalized = [
+            _normalize_required_string(ref, field_name="concept refs")
+            for ref in value
+        ]
+        if len(normalized) != len(set(normalized)):
             raise ValueError("concept refs must be unique")
-        return value
+        return normalized
 
     @field_validator("facets")
     @classmethod
@@ -77,6 +90,16 @@ class MemoryReadRequest(_StrictModel):
     kinds: list[MemoryKindValue] | None = Field(default=None, min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
     expand: ReadExpandRequest | None = None
+
+    @field_validator("repo_id")
+    @classmethod
+    def _validate_repo_id(cls, value: RepoId) -> RepoId:
+        return _normalize_repo_id(value)
+
+    @field_validator("query")
+    @classmethod
+    def _validate_query(cls, value: str) -> str:
+        return _normalize_required_string(value, field_name="query")
 
     @field_validator("kinds")
     @classmethod

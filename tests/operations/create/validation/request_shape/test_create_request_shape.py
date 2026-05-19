@@ -1,7 +1,19 @@
 """Request-shape contracts for create-path requests."""
 
+import pytest
+
 from app.entrypoints.cli.request_parsing.hydration import hydrate_memory_add_payload
 from app.entrypoints.cli.request_parsing.payload_validation import validate_create_schema
+
+
+@pytest.fixture(autouse=True)
+def clear_database() -> None:
+    """Schema-only request-shape tests do not need integration database cleanup."""
+
+
+@pytest.fixture(autouse=True)
+def _seed_repo_a_evidence_events() -> None:
+    """Schema-only request-shape tests do not need create integration fixtures."""
 
 
 def test_create_rejects_unknown_fields() -> None:
@@ -57,6 +69,42 @@ def test_create_requires_non_empty_evidence_refs() -> None:
 
     assert request is None
     assert any(error.code.value == "schema_error" for error in errors)
+    assert any(error.field == "memory.evidence_refs" for error in errors)
+
+
+def test_create_rejects_blank_memory_text() -> None:
+    """create requests should always require real memory text."""
+
+    payload = {
+        "memory": {
+            "text": "   ",
+            "scope": "repo",
+            "kind": "problem",
+            "evidence_refs": ["session://1"],
+        },
+    }
+
+    request, errors = validate_create_schema(payload)
+
+    assert request is None
+    assert any(error.field == "memory.text" for error in errors)
+
+
+def test_create_rejects_blank_evidence_ref_values() -> None:
+    """create evidence refs should be concrete event references."""
+
+    payload = {
+        "memory": {
+            "text": "Evidence refs should be real references.",
+            "scope": "repo",
+            "kind": "problem",
+            "evidence_refs": ["   "],
+        },
+    }
+
+    request, errors = validate_create_schema(payload)
+
+    assert request is None
     assert any(error.field == "memory.evidence_refs" for error in errors)
 
 
@@ -144,6 +192,8 @@ def test_create_accepts_frontier_kind_and_matures_into_association() -> None:
                     {
                         "to_memory_id": "fact-1",
                         "relation_type": "matures_into",
+                        "confidence": 0.8,
+                        "salience": 0.7,
                     }
                 ]
             },
@@ -155,3 +205,50 @@ def test_create_accepts_frontier_kind_and_matures_into_association() -> None:
 
     assert errors == []
     assert request is not None
+
+
+def test_create_associations_require_explicit_strength_values() -> None:
+    """create association links should not invent confidence or salience defaults."""
+
+    payload = {
+        "memory": {
+            "text": "Open question about retrieval behavior.",
+            "scope": "repo",
+            "kind": "frontier",
+            "links": {
+                "associations": [
+                    {
+                        "to_memory_id": "fact-1",
+                        "relation_type": "matures_into",
+                    }
+                ]
+            },
+            "evidence_refs": ["session://1"],
+        },
+    }
+
+    request, errors = validate_create_schema(payload)
+
+    assert request is None
+    fields = {error.field for error in errors}
+    assert "memory.links.associations.0.confidence" in fields
+    assert "memory.links.associations.0.salience" in fields
+
+
+def test_create_rejects_related_memory_ids_until_supported() -> None:
+    """related_memory_ids should not be accepted while create drops them."""
+
+    payload = {
+        "memory": {
+            "text": "Open question about retrieval behavior.",
+            "scope": "repo",
+            "kind": "problem",
+            "links": {"related_memory_ids": ["mem-related"]},
+            "evidence_refs": ["session://1"],
+        },
+    }
+
+    request, errors = validate_create_schema(payload)
+
+    assert request is None
+    assert any(error.field == "memory.links.related_memory_ids" for error in errors)

@@ -10,7 +10,9 @@ from app.core.entities.evidence import EvidenceRef
 from app.core.ports.db.memory_repositories import IEvidenceRepo
 from app.infrastructure.db.runtime.models.associations import association_edge_evidence
 from app.infrastructure.db.runtime.models.evidence import evidence_refs
+from app.infrastructure.db.runtime.models.experiences import fact_update_evidence
 from app.infrastructure.db.runtime.models.memories import memory_evidence
+from app.infrastructure.db.runtime.models.utility import utility_observation_evidence
 
 
 class EvidenceRepo(IEvidenceRepo):
@@ -82,6 +84,26 @@ class EvidenceRepo(IEvidenceRepo):
             insert(memory_evidence)
             .values(memory_id=memory_id, evidence_id=evidence_id)
             .on_conflict_do_nothing(index_elements=["memory_id", "evidence_id"])
+        )
+
+    def link_utility_observation_evidence(
+        self, observation_id: str, evidence_id: str
+    ) -> None:
+        """This method creates utility-observation-to-evidence link rows."""
+
+        self._session.execute(
+            insert(utility_observation_evidence)
+            .values(observation_id=observation_id, evidence_id=evidence_id)
+            .on_conflict_do_nothing(index_elements=["observation_id", "evidence_id"])
+        )
+
+    def link_fact_update_evidence(self, fact_update_id: str, evidence_id: str) -> None:
+        """This method creates fact-update-to-evidence link rows."""
+
+        self._session.execute(
+            insert(fact_update_evidence)
+            .values(fact_update_id=fact_update_id, evidence_id=evidence_id)
+            .on_conflict_do_nothing(index_elements=["fact_update_id", "evidence_id"])
         )
 
     def link_association_edge_evidence(self, edge_id: str, evidence_id: str) -> None:

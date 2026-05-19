@@ -18,6 +18,7 @@ NEW_DB_CONTAINER_NAME="${SHELLBRAIN_DB_CONTAINER_NAME:-shellbrain-postgres}"
 POSTGRES_PORT="${POSTGRES_PORT:-5432}"
 SHELLBRAIN_DB_DATA_DIR="${SHELLBRAIN_DB_DATA_DIR:-./.local/postgres-data}"
 WAIT_TIMEOUT_SECONDS="${WAIT_TIMEOUT_SECONDS:-60}"
+CONFIRMATION_ENV_NAME="SHELLBRAIN_CONFIRM_LOCAL_POSTGRES_MIGRATION"
 
 legacy_container_removed=0
 
@@ -59,6 +60,26 @@ run_compose() {
     cd "$ROOT_DIR"
     env "$@" docker compose up -d db
   )
+}
+
+expected_migration_confirmation() {
+  printf 'legacy=%s/%s;new=%s/%s;port=%s;data=%s' \
+    "$LEGACY_DB_CONTAINER_NAME" \
+    "$LEGACY_POSTGRES_DB" \
+    "$NEW_DB_CONTAINER_NAME" \
+    "$NEW_POSTGRES_DB" \
+    "$POSTGRES_PORT" \
+    "$SHELLBRAIN_DB_DATA_DIR"
+}
+
+require_migration_confirmation() {
+  local expected_confirmation
+  expected_confirmation="$(expected_migration_confirmation)"
+  if [[ "${SHELLBRAIN_CONFIRM_LOCAL_POSTGRES_MIGRATION:-}" == "$expected_confirmation" ]]; then
+    return 0
+  fi
+
+  fail "Refusing local Postgres migration without explicit identity-bound confirmation. Verify that the legacy container/data directory are Shellbrain-owned, then set ${CONFIRMATION_ENV_NAME}='${expected_confirmation}'."
 }
 
 start_legacy_container() {
@@ -214,6 +235,7 @@ preflight() {
 }
 
 main() {
+  require_migration_confirmation
   preflight
 
   if shellbrain_cluster_ready; then

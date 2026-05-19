@@ -83,6 +83,20 @@ def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier(
     assert _candidate_ids(scored["direct"]) == ["memory-a", "memory-b"]
 
 
+def test_read_scoring_should_reject_direct_candidates_without_rrf_scores() -> None:
+    """direct scoring should not invent a zero RRF score for malformed seeds."""
+
+    with pytest.raises(ValueError, match="direct candidate memory-a.*rrf_score"):
+        score_candidates(
+            {
+                "direct": [{"memory_id": "memory-a"}],
+                "explicit": [],
+                "implicit": [],
+            },
+            payload={},
+        )
+
+
 def test_read_scoring_should_always_rank_shallower_explicit_candidates_above_deeper_ones() -> (
     None
 ):
@@ -113,6 +127,50 @@ def test_read_scoring_should_always_rank_shallower_explicit_candidates_above_dee
     )
 
     assert _candidate_ids(scored["explicit"]) == ["shallow", "deep"]
+
+
+def test_read_scoring_should_reject_explicit_candidates_without_anchor_scores() -> (
+    None
+):
+    """explicit scoring should require the anchor relevance it ranks by."""
+
+    with pytest.raises(ValueError, match="explicit candidate related.*anchor_score"):
+        score_candidates(
+            {
+                "direct": [],
+                "explicit": [
+                    {
+                        "memory_id": "related",
+                        "anchor_memory_id": "anchor",
+                        "depth": 1,
+                        "expansion_type": "problem_attempt",
+                    }
+                ],
+                "implicit": [],
+            },
+            payload={},
+        )
+
+
+def test_read_scoring_should_reject_explicit_candidates_without_depth() -> None:
+    """explicit scoring should require the graph distance it ranks by."""
+
+    with pytest.raises(ValueError, match="explicit candidate related.*depth"):
+        score_candidates(
+            {
+                "direct": [],
+                "explicit": [
+                    {
+                        "memory_id": "related",
+                        "anchor_memory_id": "anchor",
+                        "anchor_score": 0.9,
+                        "expansion_type": "problem_attempt",
+                    }
+                ],
+                "implicit": [],
+            },
+            payload={},
+        )
 
 
 def test_read_scoring_should_always_rank_stronger_association_edges_above_weaker_ones() -> (
@@ -147,6 +205,32 @@ def test_read_scoring_should_always_rank_stronger_association_edges_above_weaker
     )
 
     assert _candidate_ids(scored["explicit"]) == ["strong", "weak"]
+
+
+def test_read_scoring_should_reject_association_candidates_without_relation_strength() -> (
+    None
+):
+    """association scoring should require the relation strength it ranks by."""
+
+    with pytest.raises(
+        ValueError, match="explicit association candidate related.*relation_strength"
+    ):
+        score_candidates(
+            {
+                "direct": [],
+                "explicit": [
+                    {
+                        "memory_id": "related",
+                        "anchor_memory_id": "anchor",
+                        "anchor_score": 0.9,
+                        "depth": 1,
+                        "expansion_type": "association",
+                    }
+                ],
+                "implicit": [],
+            },
+            payload={},
+        )
 
 
 def test_read_scoring_should_always_ignore_relation_strength_for_non_association_explicit_links() -> (
@@ -215,6 +299,30 @@ def test_read_scoring_should_always_rank_higher_similarity_implicit_candidates_a
     )
 
     assert _candidate_ids(scored["implicit"]) == ["high-similarity", "low-similarity"]
+
+
+def test_read_scoring_should_reject_implicit_candidates_without_neighbor_similarity() -> (
+    None
+):
+    """implicit scoring should require the semantic-neighbor similarity."""
+
+    with pytest.raises(ValueError, match="implicit candidate neighbor.*neighbor_similarity"):
+        score_candidates(
+            {
+                "direct": [],
+                "explicit": [],
+                "implicit": [
+                    {
+                        "memory_id": "neighbor",
+                        "anchor_memory_id": "anchor",
+                        "anchor_score": 0.9,
+                        "hop": 1,
+                        "expansion_type": "semantic_neighbor",
+                    }
+                ],
+            },
+            payload={},
+        )
 
 
 def test_read_scoring_should_always_rank_lower_hop_implicit_candidates_above_higher_hop_ones() -> (
