@@ -263,7 +263,9 @@ def _deterministic_brief(
             if item.get("orientation") or item.get("name") or item.get("ref")
         ],
         "anchors": _anchors(memory_sections=memory_sections, concept_items=concept_items),
+        "conflicts": [],
         "gaps": [],
+        "next_checks": [],
         "sources": [
             {
                 "kind": item["source_kind"],
@@ -286,7 +288,9 @@ def _no_context_brief() -> dict[str, Any]:
         "prior_cases": [],
         "concept_orientation": [],
         "anchors": [],
+        "conflicts": [],
         "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
+        "next_checks": [],
         "sources": [],
     }
 
@@ -304,7 +308,9 @@ def _normalize_provider_brief(
         "prior_cases": _string_list(brief.get("prior_cases")),
         "concept_orientation": _string_list(brief.get("concept_orientation")),
         "anchors": _string_list(brief.get("anchors")),
+        "conflicts": _string_list(brief.get("conflicts")),
         "gaps": _string_list(brief.get("gaps")),
+        "next_checks": _string_list(brief.get("next_checks")),
         "sources": brief.get("sources")
         if isinstance(brief.get("sources"), list)
         else deterministic_sources,

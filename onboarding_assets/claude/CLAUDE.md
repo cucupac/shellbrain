@@ -1,43 +1,48 @@
 ## Shellbrain
 
-You have a persistent memory system called Shellbrain. This section teaches you a habit for using it well.
+You have a persistent memory system called Shellbrain. This section exists to make you remember to use it at the right moments.
 
-### The core habit
+### The Core Habit
 
-As you work, maintain a mental summary of your current subproblem as a tuple: `goal | surface | obstacle | hypothesis`.
+As you work, maintain a mental summary of your current subproblem as:
 
-Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output. This forces Shellbrain back into your local context so you can make a real decision about whether to use it.
+`goal | surface | obstacle | hypothesis`
+
+When that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output. This keeps Shellbrain in your local attention so you can decide whether recall would help.
 
 Boundary states:
 
-- The goal, surface, obstacle, or hypothesis just changed.
+- The goal, surface, obstacle, or hypothesis changed.
 - The same approach failed twice.
 - An error is repeating.
-- You are about to `create` or `update` a Shellbrain memory with evidence.
+- You are about to make an evidence-bearing decision.
+- You are switching files, subsystems, or implementation strategy.
 - You are closing out a task.
 
-### What to say at the pause
+### What To Say
 
-If prior memory might help right now:
+If prior context might help:
 
-`SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
+`SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
 
-Then actually call the Shellbrain CLI to read.
+Then call Shellbrain recall:
 
-If the tuple has not meaningfully changed and there is no new evidence or failure:
+```bash
+shellbrain recall --json '{"query":"<targeted question>","current_problem":{"goal":"<goal>","surface":"<surface>","obstacle":"<obstacle>","hypothesis":"<hypothesis or none yet>"}}'
+```
+
+If the tuple has not changed and there is no new evidence, failure, or uncertainty:
 
 `SB: skip | same signature | <one-line reason>`
 
-Then move on. Do not reread just because you can. A reread is a decision, not a reflex. Skip it when there is no new failed attempt, no new evidence, and no changed hypothesis.
+Then continue. Do not call recall reflexively.
 
-### Before writing to Shellbrain
+### Worker Boundary
 
-Run `shellbrain events` before any evidence-bearing `create` or `update`. This is mandatory.
+As the working agent, use `shellbrain recall` only. Do not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`.
 
-### At closeout
-
-When work is solved, write durable memories (`problem`, `failed_tactic`, `solution`, `fact`, `preference`, or `change`) and run `utility_vote` updates.
+Shellbrain's internal agents handle raw retrieval, synthesis, memory writing, concept updates, and scenario recording.
 
 ### Reference
 
-Use the installed `shellbrain-session-start` skill for the exact query and writeback workflow.
+Use the installed `shellbrain` skill for the detailed recall workflow.

@@ -9,6 +9,7 @@ from app.infrastructure.host_apps.assets.managed_markdown import (
 from app.infrastructure.host_apps.assets.managed_tree import (
     install_asset_tree,
     is_shellbrain_managed_asset,
+    remove_managed_asset_tree,
 )
 from app.infrastructure.host_apps.assets.packaged_assets import (
     load_packaged_text,
@@ -21,8 +22,9 @@ from app.infrastructure.host_apps.identity.claude_hook_install import (
     install_claude_hook,
 )
 
-PRIMARY_CLAUDE_SKILL_NAME = "shellbrain-session-start"
-CLAUDE_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
+PRIMARY_CLAUDE_SKILL_NAME = "shellbrain"
+CLAUDE_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
+LEGACY_CLAUDE_SKILL_NAMES = ("shellbrain-session-start",)
 CLAUDE_STARTUP_MARKER = "shellbrain-managed:claude-startup"
 
 
@@ -57,6 +59,11 @@ def install_claude_assets(
                     force=force,
                 ),
             )
+        )
+    for skill_name in LEGACY_CLAUDE_SKILL_NAMES:
+        remove_managed_asset_tree(
+            target_root=claude_root / "skills" / skill_name,
+            asset_kind="claude_skill",
         )
     settings_path = install_claude_hook(
         settings_path=default_global_claude_settings_path(),

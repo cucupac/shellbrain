@@ -189,18 +189,33 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "JUDGMENT\n" in prompt
     assert prompt.index("shellbrain events") < prompt.index("shellbrain read")
     assert "Shellbrain is a repo-scoped memory system" in prompt
+    assert "# KNOWLEDGE MODEL" in prompt
+    assert "Concepts are sparse orientation nodes, not tags" in prompt
+    assert "claims become concept orientation" in prompt
+    assert "memory_links connect abstract concepts" in prompt
     assert "Run events first" in prompt
-    assert "Build one search text" in prompt
+    assert "Build a compact search text" in prompt
+    assert 'Omit placeholders\n   such as "none yet"' in prompt
     assert "current_problem.goal" in prompt
     assert "Run at least one targeted read" in prompt
-    assert "expand it before using it" in prompt
+    assert "expand only the concepts likely to change" in prompt
+    assert "Do not rely on\n   detailed concept claims" in prompt
     assert "Run extra reads only when" in prompt
     assert "Synthesize for the worker" in prompt
     assert "no_context_reason" in prompt
     assert "reduces worker time and token spend" in prompt
     assert "created_at" in prompt
     assert "updated_at" in prompt
+    assert "Use recency as a tiebreaker" in prompt
     assert "Separate sourced facts from inference" in prompt
+    assert "Do not inspect repository files directly" in prompt
+    assert "A relevant memory does not need a concept home" in prompt
+    assert "do not provide generic coding" in prompt
+    assert "conflicts" in prompt
+    assert "next_checks" in prompt
+    assert "used_in" in prompt
+    assert "must list only commands actually run" in prompt
+    assert '\\"evidence\\"' in prompt
     assert "knowledge_builder_notes" not in prompt
     assert "preferred_source_id" not in prompt
     assert "shellbrain --help" in prompt
@@ -232,12 +247,29 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "shellbrain scenario record" in prompt
     assert "editing files" in prompt
     assert "Run the exact `first_command`" in prompt
-    assert "Segment the episode into durable boundaries" in prompt
-    assert "Dedupe before writing" in prompt
-    assert "Write memory boundaries in order" in prompt
+    assert "four record classes, not a strict vertical stack" in prompt
+    assert "Concepts are not\n   tags" in prompt
+    assert "memory_link for concept-to-memory" in prompt
+    assert "grounding for concept-to-anchor" in prompt
+    assert "definition, behavior, invariant" in prompt
+    assert "contains, involves, precedes" in prompt
+    assert "Use `involves` sparingly" in prompt
+    assert "created_by: use `librarian`" in prompt
+    assert "Segment the episode into memory boundaries" in prompt
+    assert "Dedupe before every write" in prompt
+    assert "do not create a problem memory without a reusable" in prompt
+    assert "For problem-solving slices" in prompt
     assert "problem_attempts" in prompt
     assert "links.problem_id" in prompt
     assert "Treat idle-stable episodes as partial" in prompt
+    assert "Do not archive historically true memories" in prompt
+    assert "do not vote on ordinary" in prompt.lower()
+    assert "leave the memory unlinked" in prompt
+    assert "stale graph record" in prompt
+    assert "final decisive solution" in prompt
+    assert "failed_tactic records that a tactic failed in this episode's context" in prompt
+    assert "closed_event_id" in prompt
+    assert "terminal_event_id" not in prompt
     assert "event_watermark" in prompt
     assert '\\"after_seq\\":3' in prompt
     assert '\\"up_to_seq\\":8' in prompt

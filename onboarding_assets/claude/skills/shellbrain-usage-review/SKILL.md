@@ -13,7 +13,8 @@ shellbrain admin analytics --days 2
 - where Shellbrain is working well
 - where it is failing
 - what is failing and why
-- where agents are skipping expected capabilities, especially `utility_vote`
+- where working agents are skipping expected `recall`
+- where internal recall or knowledge-builder runs are failing
 - the top priorities that should drive product follow-up
 
 ## Operating Rules

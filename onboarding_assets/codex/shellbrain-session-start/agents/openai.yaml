@@ -1,6 +1,0 @@
-interface:
-  display_name: "Shellbrain Session Start"
-  short_description: "Reconsider shellbrain at subproblem boundaries"
-  icon_small: "./assets/shellbrain-small.svg"
-  icon_large: "./assets/shellbrain_logo.png"
-  default_prompt: "Use $shellbrain-session-start when work shifts to a new surface, repeated failures suggest prior memory may help, a hypothesis changes, an evidence-bearing write is about to happen, or closeout should record durable learnings."

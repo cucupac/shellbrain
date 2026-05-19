@@ -9,6 +9,7 @@ from app.infrastructure.host_apps.assets.managed_markdown import (
 from app.infrastructure.host_apps.assets.managed_tree import (
     install_asset_tree,
     is_shellbrain_managed_asset,
+    remove_managed_asset_tree,
 )
 from app.infrastructure.host_apps.assets.packaged_assets import (
     load_packaged_text,
@@ -16,8 +17,9 @@ from app.infrastructure.host_apps.assets.packaged_assets import (
 )
 from app.infrastructure.host_apps.assets.paths import default_codex_home
 
-PRIMARY_CODEX_SKILL_NAME = "shellbrain-session-start"
-CODEX_SKILL_NAMES = ("shellbrain-session-start", "shellbrain-usage-review")
+PRIMARY_CODEX_SKILL_NAME = "shellbrain"
+CODEX_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
+LEGACY_CODEX_SKILL_NAMES = ("shellbrain-session-start",)
 CODEX_STARTUP_MARKER = "shellbrain-managed:codex-startup"
 
 
@@ -51,6 +53,11 @@ def install_codex_assets(*, force: bool, render_install_status) -> list[str]:
                     force=force,
                 ),
             )
+        )
+    for skill_name in LEGACY_CODEX_SKILL_NAMES:
+        remove_managed_asset_tree(
+            target_root=skills_root / skill_name,
+            asset_kind="codex_skill",
         )
     return lines
 

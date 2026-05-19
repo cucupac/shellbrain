@@ -1,0 +1,6 @@
+interface:
+  display_name: "Shellbrain"
+  short_description: "Reconsider shellbrain at subproblem boundaries"
+  icon_small: "./assets/shellbrain-small.svg"
+  icon_large: "./assets/shellbrain_logo.png"
+  default_prompt: "Use $shellbrain when work starts, the task surface changes, repeated failures suggest prior memory may help, a hypothesis changes, or closeout would benefit from Shellbrain recall."

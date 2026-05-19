@@ -24,12 +24,12 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     inspection = inspect_host_assets()
 
     codex_agents_path = codex_home / "AGENTS.md"
-    codex_skill_root = codex_home / "skills" / "shellbrain-session-start"
+    codex_skill_root = codex_home / "skills" / "shellbrain"
     codex_review_root = codex_home / "skills" / "shellbrain-usage-review"
     claude_startup_path = home_root / ".claude" / "CLAUDE.md"
-    claude_skill_root = home_root / ".claude" / "skills" / "shellbrain-session-start"
+    claude_skill_root = home_root / ".claude" / "skills" / "shellbrain"
     claude_review_root = home_root / ".claude" / "skills" / "shellbrain-usage-review"
-    cursor_skill_root = cursor_home / "skills" / "shellbrain-session-start"
+    cursor_skill_root = cursor_home / "skills" / "shellbrain"
     cursor_review_root = cursor_home / "skills" / "shellbrain-usage-review"
     cursor_cli_config_path = cursor_home / "cli-config.json"
     claude_settings_path = home_root / ".claude" / "settings.json"
@@ -61,7 +61,7 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
         for line in result.lines
     )
     assert any(
-        line.startswith("Codex skill (shellbrain-session-start): installed at ")
+        line.startswith("Codex skill (shellbrain): installed at ")
         for line in result.lines
     )
     assert any(
@@ -73,7 +73,7 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
         for line in result.lines
     )
     assert any(
-        line.startswith("Claude skill (shellbrain-session-start): installed at ")
+        line.startswith("Claude skill (shellbrain): installed at ")
         for line in result.lines
     )
     assert any(
@@ -81,7 +81,7 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
         for line in result.lines
     )
     assert any(
-        line.startswith("Cursor skill (shellbrain-session-start): installed at ")
+        line.startswith("Cursor skill (shellbrain): installed at ")
         for line in result.lines
     )
     assert any(
@@ -94,6 +94,52 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     assert any(
         line.startswith("Claude global hook: installed at ") for line in result.lines
     )
+
+
+def test_install_host_assets_should_remove_legacy_managed_session_start_skills(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """install should remove old managed shellbrain-session-start skills after the rename."""
+
+    home_root = tmp_path / "home"
+    codex_home = home_root / ".codex"
+    cursor_home = home_root / ".cursor"
+    monkeypatch.setenv("HOME", str(home_root))
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    monkeypatch.setenv("CURSOR_HOME", str(cursor_home))
+
+    legacy_roots = [
+        (codex_home / "skills" / "shellbrain-session-start", "codex_skill"),
+        (
+            home_root / ".claude" / "skills" / "shellbrain-session-start",
+            "claude_skill",
+        ),
+        (cursor_home / "skills" / "shellbrain-session-start", "cursor_skill"),
+    ]
+    for legacy_root, asset_kind in legacy_roots:
+        legacy_root.mkdir(parents=True)
+        (legacy_root / "SKILL.md").write_text("stale\n", encoding="utf-8")
+        (legacy_root / ".shellbrain-managed.json").write_text(
+            (
+                '{\n'
+                f'  "asset_kind": "{asset_kind}",\n'
+                '  "managed_by": "shellbrain",\n'
+                '  "version": "0.1.29"\n'
+                "}\n"
+            ),
+            encoding="utf-8",
+        )
+
+    install_host_assets(host_mode="auto", force=False)
+
+    assert not (codex_home / "skills" / "shellbrain-session-start").exists()
+    assert not (
+        home_root / ".claude" / "skills" / "shellbrain-session-start"
+    ).exists()
+    assert not (cursor_home / "skills" / "shellbrain-session-start").exists()
+    assert (codex_home / "skills" / "shellbrain" / "SKILL.md").exists()
+    assert (home_root / ".claude" / "skills" / "shellbrain" / "SKILL.md").exists()
+    assert (cursor_home / "skills" / "shellbrain" / "SKILL.md").exists()
 
 
 def test_install_host_assets_should_merge_startup_guidance_without_overwriting_user_content(
@@ -126,7 +172,7 @@ def test_install_host_assets_should_merge_startup_guidance_without_overwriting_u
     assert "Keep this too." in claude_text
     assert "<!-- shellbrain-managed:claude-startup start -->" in claude_text
     assert (
-        "SB: read | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>"
+        "SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>"
         in claude_text
     )
     assert any(
@@ -146,7 +192,7 @@ def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_
 
     home_root = tmp_path / "home"
     codex_home = home_root / ".codex"
-    unmanaged_root = codex_home / "skills" / "shellbrain-session-start"
+    unmanaged_root = codex_home / "skills" / "shellbrain"
     unmanaged_root.mkdir(parents=True)
     sentinel = unmanaged_root / "SKILL.md"
     sentinel.write_text("custom skill\n", encoding="utf-8")
@@ -158,7 +204,7 @@ def test_install_host_assets_should_not_overwrite_unmanaged_codex_skill_without_
     assert sentinel.read_text(encoding="utf-8") == "custom skill\n"
     assert any(
         line
-        == f"Codex skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
+        == f"Codex skill (shellbrain): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
         for line in result.lines
     )
     assert any(
@@ -178,7 +224,7 @@ def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without
 
     home_root = tmp_path / "home"
     cursor_home = home_root / ".cursor"
-    unmanaged_root = cursor_home / "skills" / "shellbrain-session-start"
+    unmanaged_root = cursor_home / "skills" / "shellbrain"
     unmanaged_root.mkdir(parents=True)
     sentinel = unmanaged_root / "SKILL.md"
     sentinel.write_text("custom cursor skill\n", encoding="utf-8")
@@ -189,7 +235,7 @@ def test_install_host_assets_should_not_overwrite_unmanaged_cursor_skill_without
 
     assert sentinel.read_text(encoding="utf-8") == "custom cursor skill\n"
     assert result.lines[0] == (
-        f"Cursor skill (shellbrain-session-start): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
+        f"Cursor skill (shellbrain): skipped (unmanaged install exists at {unmanaged_root}; rerun with --force to replace)"
     )
     assert any(
         line.startswith("Cursor skill (shellbrain-usage-review): installed at ")
@@ -236,7 +282,7 @@ def test_install_host_assets_should_update_managed_codex_skill_idempotently(
     monkeypatch.setenv("CODEX_HOME", str(codex_home))
 
     first = install_host_assets(host_mode="codex", force=False)
-    skill_root = codex_home / "skills" / "shellbrain-session-start"
+    skill_root = codex_home / "skills" / "shellbrain"
     startup_path = codex_home / "AGENTS.md"
     review_root = codex_home / "skills" / "shellbrain-usage-review"
     (skill_root / "SKILL.md").write_text("stale\n", encoding="utf-8")
@@ -251,7 +297,7 @@ def test_install_host_assets_should_update_managed_codex_skill_idempotently(
         line.startswith("Codex startup guidance: installed at ") for line in first.lines
     )
     assert any(
-        line.startswith("Codex skill (shellbrain-session-start): installed at ")
+        line.startswith("Codex skill (shellbrain): installed at ")
         for line in first.lines
     )
     assert any(
@@ -263,7 +309,7 @@ def test_install_host_assets_should_update_managed_codex_skill_idempotently(
         for line in second.lines
     )
     assert any(
-        line == f"Codex skill (shellbrain-session-start): updated at {skill_root}"
+        line == f"Codex skill (shellbrain): updated at {skill_root}"
         for line in second.lines
     )
     assert any(
@@ -273,7 +319,7 @@ def test_install_host_assets_should_update_managed_codex_skill_idempotently(
     assert "goal | surface | obstacle | hypothesis" in startup_path.read_text(
         encoding="utf-8"
     )
-    assert "Use Shellbrain as a case-based reasoning system" in (
+    assert "Shellbrain Recall Workflow" in (
         skill_root / "SKILL.md"
     ).read_text(encoding="utf-8")
 
