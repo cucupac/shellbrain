@@ -8,26 +8,48 @@ from pathlib import Path
 import pytest
 
 from app.entrypoints.cli.parser import build_parser
-from tests._shared.architecture import (
-    forbidden_import_violations as _shared_forbidden_import_violations,
-    imported_modules as _imported_modules,
-    module_matches_prefix as _module_matches_forbidden_prefix,
-    python_files as _python_files,
-)
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 APP_ROOT = REPO_ROOT / "app"
 
 
+def _python_files(package_dir: Path) -> list[Path]:
+    return sorted(
+        path for path in package_dir.rglob("*.py") if "__pycache__" not in path.parts
+    )
+
+
+def _imported_modules(path: Path) -> list[tuple[int, str]]:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    imports: list[tuple[int, str]] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            imports.extend((node.lineno, alias.name) for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.module:
+            imports.append((node.lineno, node.module))
+    return imports
+
+
+def _module_matches_forbidden_prefix(
+    module_name: str, forbidden_prefixes: tuple[str, ...]
+) -> bool:
+    return any(
+        module_name == prefix or module_name.startswith(f"{prefix}.")
+        for prefix in forbidden_prefixes
+    )
+
+
 def _forbidden_import_violations(
     package: str, forbidden_prefixes: tuple[str, ...]
 ) -> list[str]:
-    return _shared_forbidden_import_violations(
-        _python_files(APP_ROOT / package),
-        forbidden_prefixes,
-        repo_root=REPO_ROOT,
-    )
+    violations: list[str] = []
+    for path in _python_files(APP_ROOT / package):
+        for line_no, module_name in _imported_modules(path):
+            if _module_matches_forbidden_prefix(module_name, forbidden_prefixes):
+                rel_path = path.relative_to(REPO_ROOT)
+                violations.append(f"{rel_path}:{line_no} imports {module_name}")
+    return violations
 
 
 def _assert_no_forbidden_imports(
