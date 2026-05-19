@@ -41,7 +41,9 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert "fallback" not in settings["build_context"]
     assert "enabled" not in settings["build_knowledge"]
     assert "fallback" not in settings["build_knowledge"]
-    assert settings["build_knowledge"]["model"] == "gpt-5.4"
+    assert settings["build_knowledge"]["model"] == "gpt-5.4-mini"
+    assert settings["build_knowledge"]["reasoning"] == "medium"
+    assert settings["build_knowledge"]["timeout_seconds"] == 600
     assert settings["build_knowledge"]["max_shellbrain_reads"] == 8
     assert settings["build_knowledge"]["max_code_files"] == 24
     assert settings["build_knowledge"]["max_write_commands"] == 20
@@ -49,7 +51,8 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["build_knowledge"]["running_run_stale_seconds"] == 3600
     assert "max_private_reads" not in settings["build_knowledge"]
     assert settings["providers"]["codex"]["command"] == "codex"
-    assert settings["providers"]["codex"]["allow_shellbrain_cli"] is True
+    assert "working_directory" not in settings["providers"]["codex"]
+    assert "allow_shellbrain_cli" not in settings["providers"]["codex"]
 
 
 def test_internal_agent_config_rejects_removed_toggle_fields() -> None:
@@ -59,6 +62,18 @@ def test_internal_agent_config_rejects_removed_toggle_fields() -> None:
     settings = provider.get_internal_agents()
     settings["build_context"]["enabled"] = True
     settings["build_context"]["fallback"] = "deterministic"
+
+    with pytest.raises(ValueError):
+        InternalAgentsConfig.model_validate(settings)
+
+
+def test_internal_agent_config_rejects_removed_provider_fields() -> None:
+    """typed provider config should reject stale runtime knobs."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+    settings["providers"]["codex"]["working_directory"] = "repo_root"
+    settings["providers"]["codex"]["allow_shellbrain_cli"] = True
 
     with pytest.raises(ValueError):
         InternalAgentsConfig.model_validate(settings)

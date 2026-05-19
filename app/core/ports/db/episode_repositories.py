@@ -4,7 +4,12 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Sequence
 
-from app.core.entities.episodes import Episode, EpisodeEvent, SessionTransfer
+from app.core.entities.episodes import (
+    Episode,
+    EpisodeBuildSnapshot,
+    EpisodeEvent,
+    SessionTransfer,
+)
 
 
 class IEpisodesRepo(ABC):
@@ -108,3 +113,7 @@ class IEpisodesRepo(ABC):
     @abstractmethod
     def event_watermark(self, *, repo_id: str, episode_id: str) -> int:
         """Return the highest imported event sequence for one repo-visible episode."""
+
+    @abstractmethod
+    def list_build_snapshots(self, *, repo_id: str) -> Sequence[EpisodeBuildSnapshot]:
+        """Return persisted episode state needed to plan build_knowledge runs."""

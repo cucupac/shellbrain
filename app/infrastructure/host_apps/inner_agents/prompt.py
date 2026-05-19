@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shlex
 
 from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
@@ -43,17 +44,17 @@ You may run only read-only Shellbrain commands:
 
 - `events`: inspect recent working-session evidence.
   ```bash
-  shellbrain events --json '{"limit":10}'
+  shellbrain --repo-root "<repo_root>" events --json '{"limit":10}'
   ```
 
 - `read`: retrieve stored memories plus concept orientation.
   ```bash
-  shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
+  shellbrain --repo-root "<repo_root>" read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
   ```
 
 - `concept show`: expand one concept ref before relying on it.
   ```bash
-  shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
+  shellbrain --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
   ```
 
 When using expanded concept context:
@@ -70,9 +71,9 @@ When using expanded concept context:
 Use help only when syntax is unclear or a payload fails:
 ```bash
 shellbrain --help
-shellbrain events --help
-shellbrain read --help
-shellbrain concept show --help
+shellbrain --repo-root "<repo_root>" events --help
+shellbrain --repo-root "<repo_root>" read --help
+shellbrain --repo-root "<repo_root>" concept show --help
 ```
 
 Forbidden: `shellbrain recall`, memory writes, concept writes, scenario writes,
@@ -81,9 +82,11 @@ writes.
 
 # PROTOCOL
 1. Read the payload: `query`, `current_problem`, `repo_root`, and budgets.
+   Use the repo-root-prefixed commands from the payload whenever `repo_root` is
+   provided. Do not omit `--repo-root` in nested Codex.
 2. Run events first:
    ```bash
-   shellbrain events --json '{"limit":10}'
+   shellbrain --repo-root "<repo_root>" events --json '{"limit":10}'
    ```
 3. Build a compact search text from the query and useful parts of
    current_problem.goal, surface, obstacle, and hypothesis. Omit placeholders
@@ -92,7 +95,7 @@ writes.
    events to sharpen the query when they reveal better terms.
 4. Run at least one targeted read:
    ```bash
-   shellbrain read --json '{"query":"<combined search text>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
+   shellbrain --repo-root "<repo_root>" read --json '{"query":"<combined search text>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
    ```
 5. If relevant concept refs appear, expand only the concepts likely to change
    the brief. Prioritize concepts that match the current obstacle, contain
@@ -101,11 +104,11 @@ writes.
    detailed concept claims, relations, groundings, or memory links unless you
    inspected them.
    ```bash
-   shellbrain concept show --json '{"schema_version":"concept.v1","concept":"<concept-ref>","include":["claims","relations","groundings","memory_links"]}'
+   shellbrain --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"<concept-ref>","include":["claims","relations","groundings","memory_links"]}'
    ```
    You may also use explicit read expansion:
    ```bash
-   shellbrain read --json '{"query":"<query>","kinds":["problem","solution","failed_tactic","fact","preference","change"],"expand":{"concepts":{"mode":"explicit","refs":["<concept-ref>"],"facets":["claims","relations","groundings","memory_links","evidence"]}}}'
+   shellbrain --repo-root "<repo_root>" read --json '{"query":"<query>","kinds":["problem","solution","failed_tactic","fact","preference","change"],"expand":{"concepts":{"mode":"explicit","refs":["<concept-ref>"],"facets":["claims","relations","groundings","memory_links","evidence"]}}}'
    ```
    If multiple concepts match, inspect at most the few most relevant within
    budget. Prefer concepts whose claims, groundings, or memory links connect
@@ -241,59 +244,59 @@ You may read Shellbrain:
 
 - `events`: exact episode transcript evidence. Run this first.
   ```bash
-  shellbrain events --json '{"episode_id":"<episode-id>","after_seq":<previous_watermark_or_0>,"up_to_seq":<event_watermark>}'
+  shellbrain --repo-root "<repo_root>" events --json '{"episode_id":"<episode-id>","after_seq":<previous_watermark_or_0>,"up_to_seq":<event_watermark>}'
   ```
 
 - `read`: retrieve existing memories and concept orientation before writing.
   ```bash
-  shellbrain read --json '{"query":"Have we already stored this migration lock timeout?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
+  shellbrain --repo-root "<repo_root>" read --json '{"query":"Have we already stored this migration lock timeout?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
   ```
 
 - `concept show`: inspect concept details before updating or linking them.
   ```bash
-  shellbrain concept show --json '{"schema_version":"concept.v1","concept":"migration-locking","include":["claims","relations","groundings","memory_links"]}'
+  shellbrain --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"migration-locking","include":["claims","relations","groundings","memory_links"]}'
   ```
 
 You may write Shellbrain only through:
 
 - `memory add`: problem, solution, failed_tactic, fact, preference, change.
   ```bash
-  shellbrain memory add --json '{"memory":{"text":"Migration deadlocked because lock_timeout was unset","kind":"problem","evidence_refs":["evt-123"]}}'
+  shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Migration deadlocked because lock_timeout was unset","kind":"problem","evidence_refs":["evt-123"]}}'
   ```
 
 - `memory update`: utility_vote, fact_update_link, association_link, archive_state.
   ```bash
-  shellbrain memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","evidence_refs":["evt-458"]}}'
+  shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","evidence_refs":["evt-458"]}}'
   ```
 
 - `concept add`: concept containers.
   ```bash
-  shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
+  shellbrain --repo-root "<repo_root>" concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
   ```
 
 - `concept update`: update_concept, add_claim, add_relation, ensure_anchor,
   add_grounding, link_memory.
   ```bash
-  shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
+  shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
   ```
 
 - `scenario record`: a solved or abandoned problem-solving window after memory
   boundaries exist. A scenario is not a memory.
   ```bash
-  shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-10","closed_event_id":"evt-42"}}'
+  shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-10","closed_event_id":"evt-42"}}'
   ```
 
 Use help only when syntax is unclear or a payload fails:
 ```bash
 shellbrain --help
-shellbrain events --help
-shellbrain read --help
-shellbrain concept show --help
-shellbrain memory add --help
-shellbrain memory update --help
-shellbrain concept add --help
-shellbrain concept update --help
-shellbrain scenario record --help
+shellbrain --repo-root "<repo_root>" events --help
+shellbrain --repo-root "<repo_root>" read --help
+shellbrain --repo-root "<repo_root>" concept show --help
+shellbrain --repo-root "<repo_root>" memory add --help
+shellbrain --repo-root "<repo_root>" memory update --help
+shellbrain --repo-root "<repo_root>" concept add --help
+shellbrain --repo-root "<repo_root>" concept update --help
+shellbrain --repo-root "<repo_root>" scenario record --help
 ```
 
 You may read/search files, inspect git history/diffs, and identify
@@ -332,13 +335,13 @@ graph_patches, and any write not listed above.
    failed_tactic memories linked to a problem.
 7. Write facts, preferences, and changes only when durable:
    ```bash
-   shellbrain memory add --json '{"memory":{"text":"<durable fact>","kind":"fact","evidence_refs":["<episode-event-id>"]}}'
+   shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"<durable fact>","kind":"fact","evidence_refs":["<episode-event-id>"]}}'
    ```
    ```bash
-   shellbrain memory add --json '{"memory":{"text":"<durable preference>","kind":"preference","evidence_refs":["<episode-event-id>"]}}'
+   shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"<durable preference>","kind":"preference","evidence_refs":["<episode-event-id>"]}}'
    ```
    ```bash
-   shellbrain memory add --json '{"memory":{"text":"<durable change>","kind":"change","evidence_refs":["<episode-event-id>"]}}'
+   shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"<durable change>","kind":"change","evidence_refs":["<episode-event-id>"]}}'
    ```
 8. Record utility only when evidence is clear. For `utility_vote`, `memory_id`
    is the prior memory being judged, and `update.problem_id` is the current
@@ -373,10 +376,10 @@ graph_patches, and any write not listed above.
       windows.
 
     ```bash
-    shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>","outcome":"solved","problem_memory_id":"<problem-memory-id>","solution_memory_id":"<solution-memory-id>","opened_event_id":"<opening-event-id>","closed_event_id":"<closing-event-id>"}}'
+    shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>","outcome":"solved","problem_memory_id":"<problem-memory-id>","solution_memory_id":"<solution-memory-id>","opened_event_id":"<opening-event-id>","closed_event_id":"<closing-event-id>"}}'
     ```
     ```bash
-    shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>","outcome":"abandoned","problem_memory_id":"<problem-memory-id>","opened_event_id":"<opening-event-id>","closed_event_id":"<closing-event-id>"}}'
+    shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>","outcome":"abandoned","problem_memory_id":"<problem-memory-id>","opened_event_id":"<opening-event-id>","closed_event_id":"<closing-event-id>"}}'
     ```
 12. Stop when evidence up to event_watermark is consolidated, max write
     commands is reached, or no durable write is justified.
@@ -384,47 +387,47 @@ graph_patches, and any write not listed above.
 # WRITE EXAMPLES
 Problem/solution boundary:
 ```bash
-shellbrain memory add --json '{"memory":{"text":"Migration failed because the table lock could not be acquired before timeout.","kind":"problem","evidence_refs":["evt-123"]}}'
-shellbrain memory add --json '{"memory":{"text":"Set lock_timeout before entering the migration transaction and retry in a short transaction.","kind":"solution","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-140"]}}'
-shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-123","closed_event_id":"evt-140"}}'
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Migration failed because the table lock could not be acquired before timeout.","kind":"problem","evidence_refs":["evt-123"]}}'
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Set lock_timeout before entering the migration transaction and retry in a short transaction.","kind":"solution","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-140"]}}'
+shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-123","closed_event_id":"evt-140"}}'
 ```
 
 Failed tactic and abandoned scenario:
 ```bash
-shellbrain memory add --json '{"memory":{"text":"Increasing the client timeout did not fix the migration because the database lock remained the bottleneck.","kind":"failed_tactic","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-132","evt-136"]}}'
-shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"abandoned","problem_memory_id":"mem-problem-1","opened_event_id":"evt-123","closed_event_id":"evt-145"}}'
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Increasing the client timeout did not fix the migration because the database lock remained the bottleneck.","kind":"failed_tactic","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-132","evt-136"]}}'
+shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"abandoned","problem_memory_id":"mem-problem-1","opened_event_id":"evt-123","closed_event_id":"evt-145"}}'
 ```
 
 Utility vote:
 ```bash
-shellbrain memory update --json '{"memory_id":"mem-old-solution","update":{"type":"utility_vote","problem_id":"mem-problem-1","vote":1.0,"rationale":"This prior fix identified the same lock-timeout guard and directly shaped the solution.","evidence_refs":["evt-140"]}}'
+shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"mem-old-solution","update":{"type":"utility_vote","problem_id":"mem-problem-1","vote":1.0,"rationale":"This prior fix identified the same lock-timeout guard and directly shaped the solution.","evidence_refs":["evt-140"]}}'
 ```
 
 Concept container and claim:
 ```bash
-shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"migration-locking","name":"Migration Locking","kind":"process","scope_note":"Schema-change lock acquisition and timeout behavior during migrations.","aliases":["lock timeout","migration locks"]}]}'
-shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"migration-locking","claim_type":"failure_mode","text":"Long-running migrations can fail when lock_timeout is unset or too low for the table being changed.","confidence":0.8,"source_kind":"transcript_event","source_ref":"evt-123","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
+shellbrain --repo-root "<repo_root>" concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"migration-locking","name":"Migration Locking","kind":"process","scope_note":"Schema-change lock acquisition and timeout behavior during migrations.","aliases":["lock timeout","migration locks"]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"migration-locking","claim_type":"failure_mode","text":"Long-running migrations can fail when lock_timeout is unset or too low for the table being changed.","confidence":0.8,"source_kind":"transcript_event","source_ref":"evt-123","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
 ```
 
 Concept relation, after both concepts exist:
 ```bash
-shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_relation","subject":"migration-locking","predicate":"depends_on","object":"postgres-migrations","confidence":0.7,"source_kind":"transcript_event","source_ref":"evt-130","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-130"}]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_relation","subject":"migration-locking","predicate":"depends_on","object":"postgres-migrations","confidence":0.7,"source_kind":"transcript_event","source_ref":"evt-130","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-130"}]}]}'
 ```
 
 Code grounding:
 ```bash
-shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_grounding","concept":"migration-locking","role":"implementation","anchor":{"kind":"symbol","locator":{"path":"app/infrastructure/db/admin/migrations.py","symbol":"run_migrations"}},"confidence":0.85,"source_kind":"transcript_event","source_ref":"evt-136","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-136"}]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_grounding","concept":"migration-locking","role":"implementation","anchor":{"kind":"symbol","locator":{"path":"app/infrastructure/db/admin/migrations.py","symbol":"run_migrations"}},"confidence":0.85,"source_kind":"transcript_event","source_ref":"evt-136","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-136"}]}]}'
 ```
 
 Concept-memory bridge:
 ```bash
-shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"solution_for","memory_id":"mem-solution-1","confidence":0.9,"source_kind":"memory","source_ref":"mem-solution-1","created_by":"librarian","evidence":[{"kind":"memory","memory_id":"mem-solution-1"}]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"solution_for","memory_id":"mem-solution-1","confidence":0.9,"source_kind":"memory","source_ref":"mem-solution-1","created_by":"librarian","evidence":[{"kind":"memory","memory_id":"mem-solution-1"}]}]}'
 ```
 
 Contradiction/change bridge:
 ```bash
-shellbrain memory add --json '{"memory":{"text":"Previous guidance to run migrations without an explicit lock timeout is obsolete for managed Postgres migrations.","kind":"change","evidence_refs":["evt-150"]}}'
-shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"contradicted","memory_id":"mem-old-fact","confidence":0.8,"source_kind":"transcript_event","source_ref":"evt-150","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-150"}]}]}'
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Previous guidance to run migrations without an explicit lock timeout is obsolete for managed Postgres migrations.","kind":"change","evidence_refs":["evt-150"]}}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"contradicted","memory_id":"mem-old-fact","confidence":0.8,"source_kind":"transcript_event","source_ref":"evt-150","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-150"}]}]}'
 ```
 
 # JUDGMENT
@@ -464,6 +467,7 @@ code_trace. Count memory, concept, and scenario write commands in write_count.
 def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
     """Render the JSON-first prompt sent to an autonomous read-only provider."""
 
+    shellbrain = _shellbrain_command(request.repo_root)
     payload = {
         "query": request.query,
         "current_problem": request.current_problem,
@@ -475,15 +479,15 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
         },
         "help_commands": [
             "shellbrain --help",
-            "shellbrain events --help",
-            "shellbrain read --help",
-            "shellbrain concept show --help",
+            f"{shellbrain} events --help",
+            f"{shellbrain} read --help",
+            f"{shellbrain} concept show --help",
         ],
         "allowed_shellbrain_commands": [
-            "shellbrain events --json '{\"limit\":10}'",
-            "shellbrain read --json '{\"query\":\"...\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}'",
-            "shellbrain read --json '{\"query\":\"...\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"],\"expand\":{\"concepts\":{\"mode\":\"explicit\",\"refs\":[\"concept-ref\"],\"facets\":[\"claims\",\"relations\",\"groundings\",\"memory_links\",\"evidence\"]}}}'",
-            "shellbrain concept show --json '{\"schema_version\":\"concept.v1\",\"concept\":\"concept-ref\",\"include\":[\"claims\",\"relations\",\"groundings\",\"memory_links\"]}'",
+            f"{shellbrain} events --json '{{\"limit\":10}}'",
+            f"{shellbrain} read --json '{{\"query\":\"...\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}}'",
+            f"{shellbrain} read --json '{{\"query\":\"...\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"],\"expand\":{{\"concepts\":{{\"mode\":\"explicit\",\"refs\":[\"concept-ref\"],\"facets\":[\"claims\",\"relations\",\"groundings\",\"memory_links\",\"evidence\"]}}}}}}'",
+            f"{shellbrain} concept show --json '{{\"schema_version\":\"concept.v1\",\"concept\":\"concept-ref\",\"include\":[\"claims\",\"relations\",\"groundings\",\"memory_links\"]}}'",
         ],
         "forbidden_shellbrain_commands": [
             "shellbrain recall",
@@ -536,6 +540,7 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
 def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
     """Render the prompt sent to the autonomous knowledge-builder provider."""
 
+    shellbrain = _shellbrain_command(request.repo_root)
     payload = {
         "run_id": request.run_id,
         "repo_id": request.repo_id,
@@ -551,54 +556,54 @@ def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
             "timeout_seconds": request.timeout_seconds,
         },
         "first_command": (
-            "shellbrain events --json "
+            f"{shellbrain} events --json "
             f"'{{\"episode_id\":\"{request.episode_id}\","
             f"\"after_seq\":{request.previous_event_watermark or 0},"
             f"\"up_to_seq\":{request.event_watermark}}}'"
         ),
         "help_commands": [
             "shellbrain --help",
-            "shellbrain events --help",
-            "shellbrain read --help",
-            "shellbrain concept show --help",
-            "shellbrain memory add --help",
-            "shellbrain memory update --help",
-            "shellbrain concept add --help",
-            "shellbrain concept update --help",
-            "shellbrain scenario record --help",
+            f"{shellbrain} events --help",
+            f"{shellbrain} read --help",
+            f"{shellbrain} concept show --help",
+            f"{shellbrain} memory add --help",
+            f"{shellbrain} memory update --help",
+            f"{shellbrain} concept add --help",
+            f"{shellbrain} concept update --help",
+            f"{shellbrain} scenario record --help",
         ],
         "command_lexicon": {
             "events": (
-                "shellbrain events --json "
+                f"{shellbrain} events --json "
                 f"'{{\"episode_id\":\"{request.episode_id}\","
                 f"\"after_seq\":{request.previous_event_watermark or 0},"
                 f"\"up_to_seq\":{request.event_watermark}}}'"
             ),
             "read": (
-                "shellbrain read --json "
+                f"{shellbrain} read --json "
                 '\'{"query":"<targeted query>","kinds":["problem","solution",'
                 '"failed_tactic","fact","preference","change"]}\''
             ),
             "memory_add_problem": (
-                "shellbrain memory add --json "
+                f"{shellbrain} memory add --json "
                 '\'{"memory":{"text":"<problem>","kind":"problem",'
                 '"evidence_refs":["<event-id>"]}}\''
             ),
             "memory_add_solution": (
-                "shellbrain memory add --json "
+                f"{shellbrain} memory add --json "
                 '\'{"memory":{"text":"<solution>","kind":"solution",'
                 '"links":{"problem_id":"<problem-memory-id>"},'
                 '"evidence_refs":["<event-id>"]}}\''
             ),
             "concept_update_grounding": (
-                "shellbrain concept update --json "
+                f"{shellbrain} concept update --json "
                 '\'{"schema_version":"concept.v1","actions":[{"type":"add_grounding",'
                 '"concept":"<concept-ref>","role":"implementation","anchor":{"kind":"symbol",'
                 '"locator":{"path":"<path>","symbol":"<symbol>"}},"evidence":[{"kind":"transcript",'
                 '"transcript_ref":"<event-id>"}]}]}\''
             ),
             "scenario_record_solved": (
-                "shellbrain scenario record --json "
+                f"{shellbrain} scenario record --json "
                 '\'{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>",'
                 '"outcome":"solved","problem_memory_id":"<problem-memory-id>",'
                 '"solution_memory_id":"<solution-memory-id>","opened_event_id":"<opening-event-id>",'
@@ -639,3 +644,11 @@ def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
     }
     payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return f"{_BUILD_KNOWLEDGE_PROMPT_TEMPLATE}\n{payload_json}"
+
+
+def _shellbrain_command(repo_root: str | None) -> str:
+    """Return a shell-safe Shellbrain command prefix for one repo target."""
+
+    if not repo_root:
+        return "shellbrain"
+    return f"shellbrain --repo-root {shlex.quote(repo_root)}"

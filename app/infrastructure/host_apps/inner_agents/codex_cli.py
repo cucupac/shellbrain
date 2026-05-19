@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import os
-from pathlib import Path
 import shutil
 import subprocess
 import tempfile
@@ -26,6 +25,11 @@ from app.infrastructure.host_apps.inner_agents.prompt import (
 )
 
 
+# Codex read-only/workspace-write sandboxes block Shellbrain's local Postgres TCP
+# connection. Route allowlists are enforced by SHELLBRAIN_INNER_AGENT_MODE.
+_CODEX_SANDBOX_MODE = "danger-full-access"
+
+
 class CodexCliInnerAgentRunner:
     """Run build_context synthesis through the local Codex CLI when explicitly allowed."""
 
@@ -33,29 +37,13 @@ class CodexCliInnerAgentRunner:
         self,
         *,
         command: str,
-        working_directory: str,
-        allow_shellbrain_cli: bool,
     ) -> None:
         """Store provider configuration."""
 
         self._command = command
-        self._working_directory = working_directory
-        self._allow_shellbrain_cli = allow_shellbrain_cli
 
     def run(self, request: InnerAgentRunRequest) -> InnerAgentRunResult:
         """Run one Codex CLI synthesis request or return a safe fallback status."""
-
-        if not self._allow_shellbrain_cli:
-            return _result(
-                request,
-                status="provider_unavailable",
-                fallback_used=True,
-                error_code="shellbrain_cli_not_allowed",
-                error_message=(
-                    "Codex CLI provider is configured, but Shellbrain CLI access "
-                    "is not allowed"
-                ),
-            )
 
         command_path = shutil.which(self._command)
         if command_path is None:
@@ -68,27 +56,31 @@ class CodexCliInnerAgentRunner:
             )
 
         prompt = render_build_context_prompt(request)
-        cwd = _working_directory(request, configured=self._working_directory)
         started = perf_counter()
         try:
-            with tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file:
+            with (
+                tempfile.TemporaryDirectory(
+                    prefix="shellbrain-inner-agent-"
+                ) as workspace,
+                tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
+            ):
                 completed = subprocess.run(
                     [
                         command_path,
+                        "--ask-for-approval",
+                        "never",
                         "exec",
                         "--ephemeral",
                         "--ignore-rules",
                         "--skip-git-repo-check",
                         "--sandbox",
-                        "read-only",
-                        "--ask-for-approval",
-                        "never",
+                        _CODEX_SANDBOX_MODE,
                         "--model",
                         request.model,
                         "-c",
                         f'model_reasoning_effort="{request.reasoning}"',
                         "--cd",
-                        str(cwd),
+                        workspace,
                         "--output-last-message",
                         output_file.name,
                         "-",
@@ -156,17 +148,6 @@ class CodexCliInnerAgentRunner:
     ) -> BuildKnowledgeAgentResult:
         """Run one Codex CLI build_knowledge request."""
 
-        if not self._allow_shellbrain_cli:
-            return _build_knowledge_result(
-                request,
-                status="provider_unavailable",
-                error_code="shellbrain_cli_not_allowed",
-                error_message=(
-                    "Codex CLI provider is configured, but Shellbrain CLI access "
-                    "is not allowed"
-                ),
-            )
-
         command_path = shutil.which(self._command)
         if command_path is None:
             return _build_knowledge_result(
@@ -177,27 +158,31 @@ class CodexCliInnerAgentRunner:
             )
 
         prompt = render_build_knowledge_prompt(request)
-        cwd = _working_directory(request, configured=self._working_directory)
         started = perf_counter()
         try:
-            with tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file:
+            with (
+                tempfile.TemporaryDirectory(
+                    prefix="shellbrain-inner-agent-"
+                ) as workspace,
+                tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
+            ):
                 completed = subprocess.run(
                     [
                         command_path,
+                        "--ask-for-approval",
+                        "never",
                         "exec",
                         "--ephemeral",
                         "--ignore-rules",
                         "--skip-git-repo-check",
                         "--sandbox",
-                        "read-only",
-                        "--ask-for-approval",
-                        "never",
+                        _CODEX_SANDBOX_MODE,
                         "--model",
                         request.model,
                         "-c",
                         f'model_reasoning_effort="{request.reasoning}"',
                         "--cd",
-                        str(cwd),
+                        workspace,
                         "--output-last-message",
                         output_file.name,
                         "-",
@@ -336,16 +321,6 @@ def _build_knowledge_result(
     )
 
 
-def _working_directory(
-    request: InnerAgentRunRequest | BuildKnowledgeAgentRequest, *, configured: str
-) -> Path:
-    """Resolve the adapter working directory."""
-
-    if configured == "repo_root" and request.repo_root is not None:
-        return Path(request.repo_root)
-    return Path.cwd()
-
-
 def _duration_ms(started: float) -> int:
     """Return elapsed milliseconds from one perf-counter timestamp."""
 
@@ -359,6 +334,7 @@ def _inner_agent_env(
 
     env = dict(os.environ)
     env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
+    _inherit_parent_caller_identity(env)
     if mode == "build_knowledge":
         if knowledge_build_run_id:
             env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] = knowledge_build_run_id
@@ -366,6 +342,24 @@ def _inner_agent_env(
     else:
         env.pop("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", None)
     return env
+
+
+def _inherit_parent_caller_identity(env: dict[str, str]) -> None:
+    """Preserve the outer host identity across a nested Codex inner-agent run."""
+
+    if env.get("CODEX_THREAD_ID"):
+        env["SHELLBRAIN_PARENT_HOST_APP"] = "codex"
+        env["SHELLBRAIN_PARENT_HOST_SESSION_KEY"] = env["CODEX_THREAD_ID"]
+        env.pop("SHELLBRAIN_PARENT_AGENT_KEY", None)
+        env.pop("SHELLBRAIN_PARENT_TRANSCRIPT_PATH", None)
+        return
+    if env.get("SHELLBRAIN_HOST_APP") and env.get("SHELLBRAIN_HOST_SESSION_KEY"):
+        env["SHELLBRAIN_PARENT_HOST_APP"] = env["SHELLBRAIN_HOST_APP"]
+        env["SHELLBRAIN_PARENT_HOST_SESSION_KEY"] = env["SHELLBRAIN_HOST_SESSION_KEY"]
+        if env.get("SHELLBRAIN_AGENT_KEY"):
+            env["SHELLBRAIN_PARENT_AGENT_KEY"] = env["SHELLBRAIN_AGENT_KEY"]
+        if env.get("SHELLBRAIN_TRANSCRIPT_PATH"):
+            env["SHELLBRAIN_PARENT_TRANSCRIPT_PATH"] = env["SHELLBRAIN_TRANSCRIPT_PATH"]
 
 
 def _scrub_admin_env(env: dict[str, str]) -> None:

@@ -246,10 +246,6 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
         lambda **kwargs: None,
     )
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_sync.poller._close_episode",
-        lambda **kwargs: None,
-    )
-    monkeypatch.setattr(
         "app.infrastructure.process.episode_sync.poller.POLL_INTERVAL_SECONDS", 0
     )
     monkeypatch.setattr(
@@ -260,22 +256,24 @@ def test_poller_should_use_candidate_updated_at_instead_of_shared_db_mtime_for_c
         lambda *, repo_root, host_app: [cursor_root] if host_app == "cursor" else [],
     )
 
-    def _discover_active_host_session(*, host_app, repo_root, search_roots):
+    def _discover_host_sessions(*, host_app, repo_root, search_roots):
         if host_app != "cursor":
-            return None
+            return []
         discovery_calls["cursor"] += 1
         if discovery_calls["cursor"] == 2:
             os.utime(transcript_path, (20.0, 20.0))
-        return {
-            "host_app": "cursor",
-            "host_session_key": "cursor-composer-1",
-            "transcript_path": transcript_path,
-            "updated_at": 1234.0,
-        }
+        return [
+            {
+                "host_app": "cursor",
+                "host_session_key": "cursor-composer-1",
+                "transcript_path": transcript_path,
+                "updated_at": 1234.0,
+            }
+        ]
 
     monkeypatch.setattr(
-        "app.infrastructure.process.episode_sync.poller.discover_active_host_session",
-        _discover_active_host_session,
+        "app.infrastructure.process.episode_sync.poller.discover_host_sessions",
+        _discover_host_sessions,
     )
     monkeypatch.setattr(
         "app.infrastructure.process.episode_sync.poller.sync_episode_from_host",

@@ -37,19 +37,6 @@ def resolve_codex_transcript_path(
     return max(candidates, key=lambda path: path.stat().st_mtime)
 
 
-def find_latest_codex_session_for_repo(
-    *, repo_root: Path, search_roots: Sequence[Path]
-) -> dict[str, Any] | None:
-    """Return the most recently updated Codex session for one repo root."""
-
-    candidates = list_codex_sessions_for_repo(
-        repo_root=repo_root, search_roots=search_roots
-    )
-    if not candidates:
-        return None
-    return max(candidates, key=lambda candidate: candidate["updated_at"])
-
-
 def list_codex_sessions_for_repo(
     *, repo_root: Path, search_roots: Sequence[Path]
 ) -> list[dict[str, Any]]:

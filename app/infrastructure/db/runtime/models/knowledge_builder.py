@@ -17,7 +17,7 @@ from sqlalchemy.dialects.postgresql import JSONB, TIMESTAMP
 from app.infrastructure.db.runtime.models.metadata import metadata
 
 
-_TRIGGERS = "'session_replaced', 'idle_stable'"
+_TRIGGERS = "'session_replaced', 'idle_stable', 'watermark_stable'"
 _STATUSES = (
     "'running', 'ok', 'skipped', 'provider_unavailable', "
     "'timeout', 'invalid_output', 'error'"
