@@ -359,7 +359,6 @@ def _inner_agent_env(
 
     env = dict(os.environ)
     env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
-    env.pop("SHELLBRAIN_INNER_AGENT_READ_ONLY", None)
     if mode == "build_knowledge":
         if knowledge_build_run_id:
             env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] = knowledge_build_run_id

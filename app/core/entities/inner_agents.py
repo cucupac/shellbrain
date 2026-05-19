@@ -12,7 +12,7 @@ class _StrictModel(BaseModel):
 
 
 InnerAgentName = Literal["build_context", "build_knowledge"]
-InnerAgentProviderName = Literal["codex"]
+InnerAgentProviderName = str
 InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 TokenCaptureQuality = Literal["exact", "estimated"]
 InnerAgentRunStatus = Literal[
@@ -22,14 +22,13 @@ InnerAgentRunStatus = Literal[
     "timeout",
     "invalid_output",
     "error",
-    "disabled",
 ]
 
 
 class BuildContextSettings(_StrictModel):
     """Typed model/runtime settings for the build_context recall agent."""
 
-    provider: InnerAgentProviderName
+    provider: InnerAgentProviderName = Field(min_length=1)
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=600)
@@ -41,7 +40,7 @@ class BuildContextSettings(_StrictModel):
 class BuildKnowledgeSettings(_StrictModel):
     """Typed model/runtime settings for the build_knowledge maintenance agent."""
 
-    provider: InnerAgentProviderName
+    provider: InnerAgentProviderName = Field(min_length=1)
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=1200)

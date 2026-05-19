@@ -51,7 +51,7 @@ class InitResult:
 class InitializeRuntimePorts:
     """Concrete effects used by the init use case."""
 
-    get_shellbrain_home: Callable[[], Path]
+    ensure_shellbrain_home: Callable[[], Path]
     acquire_init_lock: Callable[[], Any]
     ensure_dependencies: Callable[[], None]
     try_load_machine_config: Callable[[], tuple[Any | None, str | None]]
@@ -96,8 +96,7 @@ def run_initialize_runtime(
 ) -> InitResult:
     """Bootstrap or repair the machine-local Shellbrain environment."""
 
-    home_root = ports.get_shellbrain_home()
-    home_root.mkdir(parents=True, exist_ok=True)
+    ports.ensure_shellbrain_home()
     notes: list[str] = []
     mutated_machine = False
     mutated_repo = False

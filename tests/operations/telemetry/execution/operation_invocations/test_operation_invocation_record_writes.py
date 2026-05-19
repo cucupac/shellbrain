@@ -11,7 +11,6 @@ from sqlalchemy import text
 
 from app.core.entities.memories import MemoryKind, MemoryScope
 import app.entrypoints.cli.main as cli_main
-import app.startup.cli as startup_cli
 from tests.operations._shared.handler_calls import (
     handle_memory_add,
     handle_events,
@@ -200,7 +199,6 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
     repo_root.mkdir()
     _stub_read_pipeline(monkeypatch, zero_results=False)
     monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
 
     exit_code = cli_main.main(
         [
@@ -244,7 +242,6 @@ def test_build_knowledge_inner_agent_invocations_should_record_parent_build_run_
     monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_knowledge")
     monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
     monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
 
     exit_code = cli_main.main(
         [
@@ -284,7 +281,6 @@ def test_non_builder_inner_agent_invocations_should_not_record_build_run_id(
     monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_context")
     monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
     monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
-    monkeypatch.setattr(startup_cli, "maybe_start_sync", lambda repo_context: False)
 
     exit_code = cli_main.main(
         [

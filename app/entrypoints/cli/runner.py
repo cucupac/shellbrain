@@ -12,10 +12,9 @@ from typing import Any, Sequence
 
 from app.entrypoints.cli.parser import build_parser
 from app.entrypoints.cli.presenters.json import render
-from app.startup.cli_runtime import CliRuntime
+from app.entrypoints.cli.runtime import CliRuntime
 
 
-_INNER_AGENT_READ_ONLY_ENV = "SHELLBRAIN_INNER_AGENT_READ_ONLY"
 _INNER_AGENT_MODE_ENV = "SHELLBRAIN_INNER_AGENT_MODE"
 _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS = {"read", "events", "concept:show"}
 _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
@@ -186,21 +185,12 @@ def _enforce_inner_agent_mode(command: str) -> None:
 
 
 def _inner_agent_mode() -> str | None:
-    """Return the active inner-agent mode, including legacy read-only support."""
+    """Return the active inner-agent mode."""
 
     value = os.environ.get(_INNER_AGENT_MODE_ENV, "").strip()
     if value:
         return value
-    if _inner_agent_read_only_enabled():
-        return "build_context"
     return None
-
-
-def _inner_agent_read_only_enabled() -> bool:
-    """Return whether the inner-agent read-only CLI mode is active."""
-
-    value = os.environ.get(_INNER_AGENT_READ_ONLY_ENV, "")
-    return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def _dispatch_operation_command(

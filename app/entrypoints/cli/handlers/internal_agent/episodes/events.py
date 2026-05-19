@@ -12,7 +12,7 @@ from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
 )
-from app.startup.operation_dependencies import OperationDependencies
+from app.entrypoints.cli.handlers.dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
@@ -24,7 +24,7 @@ from app.entrypoints.cli.handlers.internal_agent.episodes.selection import (
     resolve_events_source,
     selection_summary_from_events_source,
 )
-from app.startup.operation_dependencies import ensure_telemetry_context
+from app.entrypoints.cli.handlers.dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.internal_agent.episodes.serialization import serialize_episode_event
 from app.entrypoints.cli.handlers.session_state import SessionStateManager
 from app.core.use_cases.episodes.sync_episode import SyncEpisodeRequest, sync_episode

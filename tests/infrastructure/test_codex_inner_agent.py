@@ -21,7 +21,7 @@ from app.infrastructure.host_apps.inner_agents.prompt import (
 
 
 def test_codex_runner_requires_shellbrain_cli_access() -> None:
-    """Codex adapter should not launch when Shellbrain CLI access is disabled."""
+    """Codex adapter should not launch when Shellbrain CLI access is not allowed."""
 
     runner = CodexCliInnerAgentRunner(
         command="codex",

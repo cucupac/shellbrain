@@ -24,8 +24,8 @@ from app.core.use_cases.retrieval.recall.result import RecallMemoryResult
 
 
 _DEFAULT_SETTINGS = InnerAgentSettings(
-    provider="codex",
-    model="gpt-5.4-mini",
+    provider="configured",
+    model="configured",
     reasoning="low",
     timeout_seconds=90,
     max_private_reads=0,
