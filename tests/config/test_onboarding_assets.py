@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from app.infrastructure.host_apps.assets.codex import CODEX_SKILL_NAMES
 import app.entrypoints.cli.parser.builder as cli_parser
 
 
@@ -178,6 +179,17 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
 
     for relative_path in relative_paths:
         assert (packaged_skill_root / relative_path).is_file()
+
+
+def test_packaged_codex_gate_skills_should_include_required_skill_files() -> None:
+    """Audit-attestation guidance should ship the required Codex skill assets."""
+
+    assets_root = _onboarding_assets_root() / "codex"
+
+    assert "clean-architecture" in CODEX_SKILL_NAMES
+    assert "clean-code" in CODEX_SKILL_NAMES
+    assert (assets_root / "clean-architecture" / "SKILL.md").is_file()
+    assert (assets_root / "clean-code" / "SKILL.md").is_file()
 
 
 def test_packaged_startup_guidance_assets_should_exist_for_codex_and_claude() -> None:
