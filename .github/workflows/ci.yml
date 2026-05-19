@@ -10,6 +10,7 @@ jobs:
 
     env:
       SHELLBRAIN_HOME: ${{ github.workspace }}/.shellbrain-home-test
+      SHELLBRAIN_PROTECTED_LIVE_DSN: postgresql+psycopg://live_user:live_password@127.0.0.1:5432/shellbrain
       HF_HOME: ${{ github.workspace }}/.cache/huggingface
 
     steps:
