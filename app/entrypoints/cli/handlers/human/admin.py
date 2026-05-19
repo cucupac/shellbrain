@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 import sys
 
-from app.startup.admin_dependencies import AdminCommandDependencies
+from app.entrypoints.cli.handlers.human.admin_dependencies import AdminCommandDependencies
 
 
 def run_admin_command(

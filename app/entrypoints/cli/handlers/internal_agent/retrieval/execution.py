@@ -6,7 +6,7 @@ from app.core.use_cases.retrieval.recall import execute_recall_memory
 from app.core.use_cases.retrieval.recall.result import RecallMemoryResult
 from app.core.use_cases.retrieval.read import execute_read_memory
 from app.core.use_cases.retrieval.read.result import ReadMemoryResult
-from app.startup.operation_dependencies import OperationDependencies
+from app.entrypoints.cli.handlers.dependencies import OperationDependencies
 
 
 def execute_read_memory_with_dependencies(

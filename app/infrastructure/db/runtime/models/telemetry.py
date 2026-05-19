@@ -238,7 +238,7 @@ inner_agent_invocations = Table(
         name="ck_inner_agent_invocations_agent_name",
     ),
     CheckConstraint(
-        "status IN ('ok', 'no_context', 'provider_unavailable', 'timeout', 'invalid_output', 'error', 'disabled')",
+        "status IN ('ok', 'no_context', 'provider_unavailable', 'timeout', 'invalid_output', 'error')",
         name="ck_inner_agent_invocations_status",
     ),
     CheckConstraint("duration_ms >= 0", name="ck_inner_agent_duration_nonnegative"),

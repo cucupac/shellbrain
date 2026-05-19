@@ -10,7 +10,11 @@ from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
 
-from app.core.entities.knowledge_builder import KnowledgeBuildTrigger
+from app.core.policies.episodes.knowledge_building import (
+    KnowledgeBuildPlan,
+    plan_idle_stable_builds,
+    plan_replacement_build,
+)
 from app.core.use_cases.episodes.close_replaced_episode import close_replaced_episode
 from app.core.use_cases.episodes.sync_discovered_host_session import (
     sync_discovered_host_session,
@@ -140,12 +144,14 @@ def run_episode_poller(
                         host_session_key=state.session_key,
                         uow_factory=uow_factory,
                     )
-                    _run_build_knowledge_best_effort(
+                    _run_build_knowledge_plan_best_effort(
                         run_build_knowledge=run_build_knowledge,
                         repo_id=repo_id,
                         repo_root=repo_root,
-                        episode_id=closed_episode_id or state.episode_id,
-                        trigger=KnowledgeBuildTrigger.SESSION_REPLACED,
+                        plan=plan_replacement_build(
+                            previous_episode_id=state.episode_id,
+                            closed_episode_id=closed_episode_id,
+                        ),
                     )
 
                 freshness = float(candidate.get("updated_at") or 0.0)
@@ -297,17 +303,14 @@ def _run_idle_builds_best_effort(
 ) -> None:
     """Run build_knowledge for known active episodes before idle poller exit."""
 
-    seen_episode_ids: set[str] = set()
-    for state in known_state.values():
-        if state.episode_id is None or state.episode_id in seen_episode_ids:
-            continue
-        seen_episode_ids.add(state.episode_id)
-        _run_build_knowledge_best_effort(
+    for plan in plan_idle_stable_builds(
+        state.episode_id for state in known_state.values()
+    ):
+        _run_build_knowledge_plan_best_effort(
             run_build_knowledge=run_build_knowledge,
             repo_id=repo_id,
             repo_root=repo_root,
-            episode_id=state.episode_id,
-            trigger=KnowledgeBuildTrigger.IDLE_STABLE,
+            plan=plan,
         )
 
 
@@ -321,24 +324,23 @@ def _carried_episode_id(
     return state.episode_id
 
 
-def _run_build_knowledge_best_effort(
+def _run_build_knowledge_plan_best_effort(
     *,
     run_build_knowledge: Callable[..., object] | None,
     repo_id: str,
     repo_root: Path,
-    episode_id: str | None,
-    trigger: KnowledgeBuildTrigger,
+    plan: KnowledgeBuildPlan | None,
 ) -> None:
     """Run the lifecycle builder without disrupting transcript sync."""
 
-    if run_build_knowledge is None or episode_id is None:
+    if run_build_knowledge is None or plan is None:
         return
     try:
         run_build_knowledge(
             repo_id=repo_id,
             repo_root=repo_root,
-            episode_id=episode_id,
-            trigger=trigger,
+            episode_id=plan.episode_id,
+            trigger=plan.trigger,
         )
     except Exception:
         return

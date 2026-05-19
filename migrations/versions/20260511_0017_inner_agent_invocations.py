@@ -38,8 +38,7 @@ def upgrade() -> None:
               'provider_unavailable',
               'timeout',
               'invalid_output',
-              'error',
-              'disabled'
+              'error'
             )
           ),
           fallback_used BOOLEAN NOT NULL DEFAULT FALSE,

@@ -8,14 +8,14 @@ from time import perf_counter
 from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.startup.operation_dependencies import OperationDependencies
+from app.entrypoints.cli.handlers.dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.startup.operation_dependencies import ensure_telemetry_context
+from app.entrypoints.cli.handlers.dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.internal_agent.retrieval.execution import (
     execute_recall_memory_with_dependencies,
 )

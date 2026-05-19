@@ -27,7 +27,7 @@ class InnerAgentRunRequest(_StrictModel):
     """One autonomous read-only inner-agent synthesis request."""
 
     agent_name: InnerAgentName
-    provider: InnerAgentProviderName
+    provider: InnerAgentProviderName = Field(min_length=1)
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=600)
@@ -43,7 +43,7 @@ class InnerAgentRunResult(_StrictModel):
     """Provider-neutral result from an inner-agent run."""
 
     status: InnerAgentRunStatus
-    provider: InnerAgentProviderName
+    provider: InnerAgentProviderName = Field(min_length=1)
     model: str
     reasoning: InnerAgentReasoningLevel
     brief: dict[str, Any] | None = None
@@ -69,7 +69,7 @@ class BuildKnowledgeAgentRequest(_StrictModel):
 
     agent_name: InnerAgentName = "build_knowledge"
     run_id: str = Field(min_length=1)
-    provider: InnerAgentProviderName
+    provider: InnerAgentProviderName = Field(min_length=1)
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=1200)
@@ -88,7 +88,7 @@ class BuildKnowledgeAgentResult(_StrictModel):
     """Provider-neutral result from one build_knowledge run."""
 
     status: KnowledgeBuildRunStatus
-    provider: InnerAgentProviderName
+    provider: InnerAgentProviderName = Field(min_length=1)
     model: str
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int | None = Field(default=None, ge=1, le=1200)

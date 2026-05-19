@@ -15,8 +15,8 @@ from app.entrypoints.cli.handlers.result_envelopes import (
     infer_error_stage_from_errors,
     ok_envelope,
 )
-from app.startup.operation_dependencies import OperationDependencies
-from app.startup.operation_dependencies import ensure_telemetry_context
+from app.entrypoints.cli.handlers.dependencies import OperationDependencies
+from app.entrypoints.cli.handlers.dependencies import ensure_telemetry_context
 
 
 def run_concept_show_operation(

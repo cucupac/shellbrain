@@ -8,7 +8,7 @@ from time import perf_counter
 from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.use_cases.memories.add.request import MemoryAddRequest
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
-from app.startup.operation_dependencies import OperationDependencies
+from app.entrypoints.cli.handlers.dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
     error_response,
@@ -19,7 +19,7 @@ from app.entrypoints.cli.handlers.internal_agent.memories.utility_vote_evidence 
     attach_guidance,
     build_guidance_payloads,
 )
-from app.startup.operation_dependencies import ensure_telemetry_context
+from app.entrypoints.cli.handlers.dependencies import ensure_telemetry_context
 from app.entrypoints.cli.handlers.session_state import SessionStateManager
 from app.core.use_cases.memories.add import execute_create_memory
 

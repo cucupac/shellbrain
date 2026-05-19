@@ -17,6 +17,7 @@ from app.core.entities.machine_config import (
 )
 from app.infrastructure.db.admin.provisioning import managed_local as managed_runtime
 from app.infrastructure.local_state.repo_registration_store import RepoRegistration
+from app.entrypoints.cli.presenters.init import render_success_lines as render_init_lines
 
 
 @pytest.fixture(autouse=True)
@@ -24,6 +25,12 @@ def _isolate_machine_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> No
     """Prevent init failure paths from mutating the real machine config."""
 
     monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path / "shellbrain-home"))
+
+
+def _render_success_lines(**kwargs) -> list[str]:
+    """Render init success lines through the CLI presenter."""
+
+    return render_init_lines(**kwargs, **init_module.init_success_presenter_context())
 
 
 def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(
@@ -58,6 +65,7 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(
         register_repo_now=True,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT
@@ -129,6 +137,7 @@ def test_run_init_should_report_repaired_when_fixing_existing_machine_state(
         register_repo_now=True,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_REPAIRED
@@ -174,6 +183,7 @@ def test_run_init_should_mark_repair_needed_when_blocked_by_conflict(
         register_repo_now=True,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
@@ -227,6 +237,7 @@ def test_run_init_should_block_cleanly_when_installed_package_is_older_than_data
         register_repo_now=False,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
@@ -282,6 +293,7 @@ def test_run_init_should_defer_repo_registration_outside_any_repo(
         register_repo_now=False,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
@@ -349,6 +361,7 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(
         register_repo_now=False,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
@@ -398,6 +411,7 @@ def test_run_init_should_noop_when_machine_already_ready(
         register_repo_now=True,
         skip_model_download=False,
         skip_host_assets=False,
+        render_success_lines=_render_success_lines,
     )
 
     assert result.outcome == init_module.INIT_OUTCOME_NOOP
@@ -468,6 +482,7 @@ def test_external_init_should_skip_managed_container_setup(
         register_repo_now=False,
         skip_model_download=False,
         skip_host_assets=True,
+        render_success_lines=_render_success_lines,
         storage="external",
         admin_dsn=initial_config.database.admin_dsn,
     )

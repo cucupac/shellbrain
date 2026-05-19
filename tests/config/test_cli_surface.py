@@ -9,6 +9,7 @@ import pytest
 import app.entrypoints.cli.main as cli_main
 import app.entrypoints.cli.parser.builder as cli_parser
 import app.entrypoints.cli.runner as cli_runner
+from app.infrastructure.local_state import operation_registration
 import app.startup.cli as startup_cli
 from app.startup.repo_context import RepoContext, resolve_repo_context
 
@@ -170,7 +171,8 @@ def test_init_should_forward_storage_flags_to_run_init(
         cli_runner, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root
     )
     monkeypatch.setattr(
-        startup_cli, "should_register_repo_during_init", lambda **kwargs: False
+        "app.infrastructure.local_state.operation_registration.should_register_repo_during_init",
+        lambda **kwargs: False,
     )
     monkeypatch.setattr(
         "app.startup.runtime_admin.run_init",
@@ -1180,7 +1182,7 @@ def test_ensure_repo_registration_for_operation_should_register_when_machine_sta
         lambda **kwargs: calls.append(kwargs) or (None, True),
     )
 
-    startup_cli.ensure_repo_registration_for_operation(
+    operation_registration.ensure_repo_registration_for_operation(
         repo_context=RepoContext(
             repo_root=registration_root,
             repo_id="repo-id",
@@ -1210,7 +1212,7 @@ def test_ensure_repo_registration_for_operation_should_skip_when_no_registration
         ),
     )
 
-    startup_cli.ensure_repo_registration_for_operation(
+    operation_registration.ensure_repo_registration_for_operation(
         repo_context=RepoContext(
             repo_root=Path("/tmp/non-repo"),
             repo_id="repo-id",

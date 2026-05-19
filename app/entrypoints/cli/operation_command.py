@@ -8,7 +8,7 @@ from app.entrypoints.cli.handlers.cli_operation import (
     CliOperationEffects,
     run_cli_operation,
 )
-from app.startup.cli_runtime import CliRuntime
+from app.entrypoints.cli.runtime import CliRuntime
 
 
 def run_operation_command(

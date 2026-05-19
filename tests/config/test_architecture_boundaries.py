@@ -89,6 +89,28 @@ def test_entrypoints_do_not_import_infrastructure_directly() -> None:
     )
 
 
+def test_non_bootstrap_entrypoints_do_not_import_startup() -> None:
+    allowed_startup_importers = {
+        "app/entrypoints/cli/main.py",
+        "app/entrypoints/jobs/episode_sync.py",
+        "app/entrypoints/host_hooks/claude_session_start.py",
+        "app/entrypoints/host_hooks/cursor_statusline.py",
+    }
+    violations: list[str] = []
+    for path in _python_files(APP_ROOT / "entrypoints"):
+        rel_path = path.relative_to(REPO_ROOT).as_posix()
+        if rel_path in allowed_startup_importers:
+            continue
+        for line_no, module_name in _imported_modules(path):
+            if module_name.startswith("app.startup"):
+                violations.append(f"{rel_path}:{line_no} imports {module_name}")
+
+    assert not violations, (
+        "Only bootstrap entrypoint shims should import startup:\n"
+        + "\n".join(violations)
+    )
+
+
 def test_startup_does_not_import_entrypoints() -> None:
     _assert_no_forbidden_imports("startup", ("app.entrypoints",))
 
@@ -598,7 +620,7 @@ def test_core_use_cases_and_policies_use_ports_for_runtime_effects() -> None:
         APP_ROOT / "core" / "use_cases",
         APP_ROOT / "core" / "policies",
     )
-    forbidden_methods = {"exists", "read_text", "write_text"}
+    forbidden_methods = {"exists", "mkdir", "read_text", "rename", "unlink", "write_text"}
     for scan_root in scan_roots:
         for path in _python_files(scan_root):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -631,6 +653,26 @@ def test_core_use_cases_and_policies_use_ports_for_runtime_effects() -> None:
                     )
     assert not violations, (
         "Core use cases and policies should use injected ports for time, IDs, and filesystem checks:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_core_inner_agent_settings_are_provider_neutral() -> None:
+    scanned_paths = (
+        APP_ROOT / "core" / "entities" / "inner_agents.py",
+        APP_ROOT / "core" / "ports" / "host_apps" / "inner_agents.py",
+        APP_ROOT / "core" / "use_cases" / "retrieval" / "build_context" / "execute.py",
+    )
+    forbidden = ('Literal["codex"]', "provider=\"codex\"", 'provider="codex"')
+    violations: list[str] = []
+    for path in scanned_paths:
+        text = path.read_text(encoding="utf-8")
+        for needle in forbidden:
+            if needle in text:
+                violations.append(f"{path.relative_to(REPO_ROOT)} contains {needle!r}")
+
+    assert not violations, (
+        "Core inner-agent settings should be provider-neutral:\n"
         + "\n".join(violations)
     )
 
