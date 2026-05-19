@@ -266,7 +266,7 @@ You may write Shellbrain only through:
 
 - `memory update`: utility_vote, fact_update_link, association_link, archive_state.
   ```bash
-  shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","evidence_refs":["evt-458"]}}'
+  shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","confidence":0.8,"salience":0.6,"evidence_refs":["evt-458"]}}'
   ```
 
 - `concept add`: concept containers.

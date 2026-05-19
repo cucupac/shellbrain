@@ -82,8 +82,8 @@ def build_create_plan(
         raise ValueError("create plan ids missing association observation ids")
 
     for index, association in enumerate(associations):
-        confidence = ConfidenceValue.from_optional(association.get("confidence")).value
-        salience = SalienceValue.from_optional(association.get("salience")).value
+        confidence = ConfidenceValue(association["confidence"]).value
+        salience = SalienceValue(association["salience"]).value
         plan.append(
             make_side_effect(
                 "association.upsert_and_observe",

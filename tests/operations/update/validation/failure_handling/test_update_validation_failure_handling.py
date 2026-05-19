@@ -37,6 +37,8 @@ def test_rejected_update_requests_write_nothing(
             "type": "association_link",
             "to_memory_id": "source-memory",
             "relation_type": "depends_on",
+            "confidence": 0.7,
+            "salience": 0.6,
             "evidence_refs": ["session://1"],
         },
     }

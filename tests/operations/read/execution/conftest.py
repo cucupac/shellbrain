@@ -38,6 +38,12 @@ _TABLES_FOR_MUTATION_CHECK = (
 class _DefaultVectorSearch(IVectorSearch):
     """Deterministic default query-vector provider for live read-path tests."""
 
+    @property
+    def model_name(self) -> str:
+        """Return the model label used by seeded read embeddings."""
+
+        return "stub-v1"
+
     def embed_query(self, text: str) -> list[float]:
         """Return a non-empty stable vector for any read query."""
 
@@ -239,6 +245,12 @@ class _StubVectorSearch(IVectorSearch):
 
         self._vectors_by_query = vectors_by_query
 
+    @property
+    def model_name(self) -> str:
+        """Return the model label used by seeded read embeddings."""
+
+        return "stub-v1"
+
     def embed_query(self, text: str) -> list[float]:
         """Return the preconfigured query vector for the provided text."""
 
@@ -275,6 +287,7 @@ class DeterministicSemanticRetrievalRepo:
         query_vector,
         kinds,
         limit: int,
+        query_model: str | None = None,
     ) -> list[dict[str, object]]:
         """Return direct semantic seeds ranked by deterministic cosine similarity."""
 

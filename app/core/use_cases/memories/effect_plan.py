@@ -59,18 +59,22 @@ class MemoryArchiveStateEffectParams:
 @dataclass(frozen=True)
 class UtilityObservationAppendEffectParams:
     id: str
+    repo_id: str
     memory_id: str
     problem_id: str
     vote: float
     rationale: str | None
+    evidence_refs: tuple[str, ...]
 
 
 @dataclass(frozen=True)
 class FactUpdateCreateEffectParams:
     id: str
+    repo_id: str
     old_fact_id: str
     change_id: str
     new_fact_id: str
+    evidence_refs: tuple[str, ...]
 
 
 @dataclass(frozen=True)

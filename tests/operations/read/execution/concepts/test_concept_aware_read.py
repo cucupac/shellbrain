@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 
+import pytest
 from sqlalchemy import select, update
 from sqlalchemy.engine import Engine
 
@@ -13,6 +14,7 @@ from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.update import update_concepts
 from app.core.use_cases.retrieval.read import execute_read_memory
+from app.core.use_cases.retrieval.read_concepts import append_concepts_to_pack
 from app.infrastructure.db.runtime.models.concepts import concept_memory_links, concepts
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import make_read_request
@@ -232,6 +234,26 @@ def test_read_should_penalize_stale_concept_links_in_auto_mode(
     ]
 
 
+def test_read_should_reject_concept_links_missing_ranking_evidence() -> None:
+    """auto concept ranking should not invent status or confidence for malformed links."""
+
+    pack = {
+        "direct": [{"memory_id": "memory-1"}],
+        "explicit_related": [],
+        "implicit_related": [],
+    }
+
+    with pytest.raises(
+        ValueError, match="concept memory link is missing required status"
+    ):
+        append_concepts_to_pack(
+            pack=pack,
+            request=make_read_request(repo_id="repo-a", query="refund failure"),
+            concepts=_MalformedConceptLinksRepo(),
+            memories=object(),
+        )
+
+
 def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:
     with uow_factory() as uow:
         add_concepts(
@@ -403,3 +425,21 @@ def _stub_pack(monkeypatch, *, direct_memory_ids: list[str]) -> None:
         "app.core.use_cases.retrieval.read.build_context_pack",
         lambda *args, **kwargs: pack,
     )
+
+
+class _MalformedConceptLinksRepo:
+    """Concept repo stub that returns malformed auto-ranking evidence."""
+
+    def find_concepts_for_memory_ids(self, *, repo_id: str, memory_ids):
+        del repo_id, memory_ids
+        return [
+            {
+                "concept_id": "concept-1",
+                "role": "example_of",
+                "confidence": 0.5,
+            }
+        ]
+
+    def list_concept_search_rows(self, *, repo_id: str):
+        del repo_id
+        return []

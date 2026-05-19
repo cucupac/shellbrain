@@ -36,6 +36,13 @@ class StrictBaseModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+def _normalize_required_string(value: str, *, field_name: str) -> str:
+    text = value.strip()
+    if not text:
+        raise ValueError(f"{field_name} must be non-empty")
+    return text
+
+
 class AgentReadExpandRequest(StrictBaseModel):
     """Agent-facing read expansion controls."""
 
@@ -53,6 +60,11 @@ class AgentReadRequest(StrictBaseModel):
     kinds: list[MemoryKindValue] | None = Field(default=None, min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
     expand: AgentReadExpandRequest | None = None
+
+    @field_validator("query")
+    @classmethod
+    def _validate_query(cls, value: str) -> str:
+        return _normalize_required_string(value, field_name="query")
 
     @field_validator("kinds")
     @classmethod
@@ -82,10 +94,9 @@ class AgentRecallCurrentProblem(StrictBaseModel):
     def _validate_non_blank(cls, value: str) -> str:
         """Require every problem context field to be explicit."""
 
-        text = value.strip()
-        if not text:
-            raise ValueError("current_problem fields must be non-empty strings")
-        return text
+        return _normalize_required_string(
+            value, field_name="current_problem fields"
+        )
 
 
 class AgentRecallRequest(StrictBaseModel):
@@ -94,6 +105,11 @@ class AgentRecallRequest(StrictBaseModel):
     query: str = Field(min_length=1)
     limit: int | None = Field(default=None, ge=1, le=100)
     current_problem: AgentRecallCurrentProblem
+
+    @field_validator("query")
+    @classmethod
+    def _validate_query(cls, value: str) -> str:
+        return _normalize_required_string(value, field_name="query")
 
 
 class AgentMemoryAddBody(StrictBaseModel):
@@ -106,14 +122,23 @@ class AgentMemoryAddBody(StrictBaseModel):
     links: MemoryAddLinks = Field(default_factory=MemoryAddLinks)
     evidence_refs: list[str] = Field(min_length=1)
 
+    @field_validator("text")
+    @classmethod
+    def _validate_text(cls, value: str) -> str:
+        return _normalize_required_string(value, field_name="memory.text")
+
     @field_validator("evidence_refs")
     @classmethod
     def _validate_evidence_unique(cls, value: list[str]) -> list[str]:
         """This validator enforces unique evidence references for agent create requests."""
 
-        if len(value) != len(set(value)):
+        normalized = [
+            _normalize_required_string(ref, field_name="memory.evidence_refs")
+            for ref in value
+        ]
+        if len(normalized) != len(set(normalized)):
             raise ValueError("evidence_refs must be unique")
-        return value
+        return normalized
 
 
 class AgentMemoryAddRequest(StrictBaseModel):

@@ -16,7 +16,7 @@ def ensure_episode_sync_started(
 
     resolved_repo_root = repo_root.resolve()
     inspection = inspect_poller_lock(repo_root=resolved_repo_root)
-    if inspection.active:
+    if inspection.blocks_acquisition:
         return False
 
     command = [

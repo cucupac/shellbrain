@@ -25,17 +25,26 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         query_vector: Sequence[float],
         kinds: Sequence[str] | None,
         limit: int,
+        query_model: str | None = None,
     ) -> Sequence[dict[str, Any]]:
         """This method returns semantic candidates and similarity scores."""
 
         if not query_vector:
             return []
 
+        query_values = [float(value) for value in query_vector]
         scored: list[dict[str, Any]] = []
         for row in self._visible_embedding_rows(
             repo_id=repo_id, include_global=include_global, kinds=kinds
         ):
-            score = _cosine_similarity(list(query_vector), row["vector"])
+            _validate_embedding_row(row)
+            _validate_embedding_space(
+                row,
+                expected_dim=len(query_values),
+                expected_model=query_model,
+                reference_label="query embedding",
+            )
+            score = _cosine_similarity(query_values, row["vector"])
             if score <= 0.0:
                 continue
             scored.append({"memory_id": row["memory_id"], "score": score})
@@ -66,11 +75,22 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         )
         if anchor_vector is None:
             return []
+        anchor_row = next(
+            row for row in visible_rows if row["memory_id"] == anchor_memory_id
+        )
+        _validate_embedding_row(anchor_row)
 
         scored: list[dict[str, Any]] = []
         for row in visible_rows:
             if row["memory_id"] == anchor_memory_id:
                 continue
+            _validate_embedding_row(row)
+            _validate_embedding_space(
+                row,
+                expected_dim=int(anchor_row["dim"]),
+                expected_model=str(anchor_row["model"]),
+                reference_label=f"anchor embedding {anchor_memory_id}",
+            )
             score = _cosine_similarity(anchor_vector, row["vector"])
             if score <= 0.0:
                 continue
@@ -89,6 +109,8 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         stmt = (
             select(
                 memories.c.id.label("memory_id"),
+                memory_embeddings.c.model,
+                memory_embeddings.c.dim,
                 memory_embeddings.c.vector,
             )
             .select_from(
@@ -109,17 +131,58 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         return [
             {
                 "memory_id": str(row["memory_id"]),
+                "model": str(row["model"]),
+                "dim": int(row["dim"]),
                 "vector": [float(value) for value in row["vector"]],
             }
             for row in rows
         ]
 
 
+def _validate_embedding_row(row: dict[str, Any]) -> None:
+    """Validate one persisted embedding before it can participate in scoring."""
+
+    vector_length = len(row["vector"])
+    declared_dim = int(row["dim"])
+    if vector_length != declared_dim:
+        raise ValueError(
+            "Stored semantic embedding dimension mismatch for "
+            f"{row['memory_id']}: dim={declared_dim}, vector_length={vector_length}"
+        )
+
+
+def _validate_embedding_space(
+    row: dict[str, Any],
+    *,
+    expected_dim: int,
+    expected_model: str | None,
+    reference_label: str,
+) -> None:
+    """Ensure one candidate embedding is comparable with the reference embedding."""
+
+    row_dim = int(row["dim"])
+    if row_dim != expected_dim:
+        raise ValueError(
+            "Semantic embedding dimension mismatch for "
+            f"{row['memory_id']}: {reference_label} dim={expected_dim}, "
+            f"stored dim={row_dim}"
+        )
+    if expected_model is not None and str(row["model"]) != expected_model:
+        raise ValueError(
+            "Semantic embedding model mismatch for "
+            f"{row['memory_id']}: {reference_label} model={expected_model}, "
+            f"stored model={row['model']}"
+        )
+
+
 def _cosine_similarity(left: list[float], right: list[float]) -> float:
     """Compute cosine similarity for semantic retrieval ranking and gating."""
 
     if len(left) != len(right):
-        return 0.0
+        raise ValueError(
+            "Cosine similarity requires vectors with the same dimension: "
+            f"left={len(left)}, right={len(right)}"
+        )
     left_norm = sqrt(sum(value * value for value in left))
     right_norm = sqrt(sum(value * value for value in right))
     if left_norm == 0 or right_norm == 0:

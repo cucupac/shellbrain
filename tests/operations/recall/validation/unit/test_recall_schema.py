@@ -54,6 +54,21 @@ def test_recall_rejects_blank_current_problem_fields() -> None:
     assert any(error.field == "current_problem.obstacle" for error in errors)
 
 
+def test_recall_rejects_blank_query() -> None:
+    """recall should require a concrete recall query."""
+
+    request, errors = validate_recall_schema(
+        {
+            "query": "   ",
+            "current_problem": _current_problem(),
+        }
+    )
+
+    assert request is None
+    assert errors
+    assert any(error.field == "query" for error in errors)
+
+
 def test_recall_accepts_limit_with_read_bounds() -> None:
     """recall limit should use the same hard bounds as read limits."""
 

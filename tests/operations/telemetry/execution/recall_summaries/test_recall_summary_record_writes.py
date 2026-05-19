@@ -330,7 +330,11 @@ class _FakeInnerAgentRunner:
             cache_read_input_tokens=0,
             cache_creation_input_tokens=0,
             capture_quality="estimated",
-            read_trace={"commands": [], "source_ids": [], "concept_refs": []},
+            read_trace={
+                "commands": [],
+                "source_ids": ["provider-memory-1"],
+                "concept_refs": [],
+            },
         )
 
 

@@ -76,23 +76,21 @@ class AssociationLinkUpdate(_StrictModel):
     type: Literal["association_link"]
     to_memory_id: MemoryId
     relation_type: AssociationRelationValue
-    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
-    salience: float | None = Field(default=None, ge=0.0, le=1.0)
+    confidence: float = Field(ge=0.0, le=1.0)
+    salience: float = Field(ge=0.0, le=1.0)
     rationale: str | None = None
     evidence_refs: list[EvidenceRefText] = Field(min_length=1)
 
     @field_validator("confidence")
     @classmethod
-    def _validate_confidence_value(cls, value: float | None) -> float | None:
-        if value is not None:
-            ConfidenceValue(value)
+    def _validate_confidence_value(cls, value: float) -> float:
+        ConfidenceValue(value)
         return value
 
     @field_validator("salience")
     @classmethod
-    def _validate_salience_value(cls, value: float | None) -> float | None:
-        if value is not None:
-            SalienceValue(value)
+    def _validate_salience_value(cls, value: float) -> float:
+        SalienceValue(value)
         return value
 
     @field_validator("evidence_refs")

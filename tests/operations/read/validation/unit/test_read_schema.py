@@ -47,6 +47,20 @@ def test_read_requires_non_empty_query() -> None:
     assert any(error.field == "query" for error in errors)
 
 
+def test_read_rejects_blank_query() -> None:
+    """read requests should not treat whitespace as a query."""
+
+    payload = {
+        "op": "read",
+        "query": "   ",
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert any(error.field == "query" for error in errors)
+
+
 def test_read_kinds_reject_non_ratified_values() -> None:
     """read requests should always limit kinds filters to ratified shellbrain kinds."""
 
@@ -233,7 +247,27 @@ def test_read_rejects_blank_explicit_concept_refs() -> None:
     payload = {
         "op": "read",
         "query": "find deployment issue memory",
-        "expand": {"concepts": {"mode": "explicit", "refs": [""]}},
+        "expand": {"concepts": {"mode": "explicit", "refs": ["   "]}},
+    }
+
+    request, errors = validate_read_schema(payload)
+
+    assert request is None
+    assert errors
+
+
+def test_read_normalizes_explicit_concept_refs_before_duplicate_check() -> None:
+    """concept ref uniqueness should use the normalized reference text."""
+
+    payload = {
+        "op": "read",
+        "query": "find deployment issue memory",
+        "expand": {
+            "concepts": {
+                "mode": "explicit",
+                "refs": [" deposit-addresses", "deposit-addresses "],
+            }
+        },
     }
 
     request, errors = validate_read_schema(payload)

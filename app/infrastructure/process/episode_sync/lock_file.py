@@ -31,6 +31,12 @@ class PollerLockInspection:
 
         return self.status in {"active", "foreign_active"}
 
+    @property
+    def blocks_acquisition(self) -> bool:
+        """Return whether a new poller must not attempt to take this lock."""
+
+        return self.active or self.status == "corrupt"
+
 
 @dataclass
 class PollerLockHandle:
@@ -63,15 +69,18 @@ def inspect_poller_lock(*, repo_root: Path) -> PollerLockInspection:
         )
     if not lock_root.is_dir():
         return PollerLockInspection(
-            lock_root=lock_root, owner_path=owner_path, status="stale", owner=None
+            lock_root=lock_root, owner_path=owner_path, status="corrupt", owner=None
         )
 
-    owner = _read_owner_payload(owner_path)
-    if owner is None or not _owner_payload_is_well_formed(
-        owner=owner, repo_root=resolved_repo_root
-    ):
+    try:
+        owner = _read_owner_payload(owner_path)
+    except _PollerLockCorruptionError:
         return PollerLockInspection(
-            lock_root=lock_root, owner_path=owner_path, status="stale", owner=owner
+            lock_root=lock_root, owner_path=owner_path, status="corrupt", owner=None
+        )
+    if not _owner_payload_is_well_formed(owner=owner, repo_root=resolved_repo_root):
+        return PollerLockInspection(
+            lock_root=lock_root, owner_path=owner_path, status="corrupt", owner=owner
         )
 
     hostname = str(owner["hostname"])
@@ -108,7 +117,7 @@ def acquire_poller_lock(*, repo_id: str, repo_root: Path) -> PollerLockHandle | 
             lock_root.mkdir()
         except FileExistsError:
             inspection = inspect_poller_lock(repo_root=resolved_repo_root)
-            if inspection.active:
+            if inspection.blocks_acquisition:
                 return None
             if inspection.status == "stale":
                 _remove_stale_lock(lock_root=lock_root, expected_owner=inspection.owner)
@@ -182,26 +191,38 @@ def _build_owner_payload(*, repo_id: str, repo_root: Path) -> dict[str, object]:
     }
 
 
-def _read_owner_payload(owner_path: Path) -> dict[str, object] | None:
-    """Read the owner metadata for one existing lock when present."""
+class _PollerLockCorruptionError(ValueError):
+    """Raised when an existing lock cannot describe a trustworthy owner."""
+
+
+def _read_owner_payload(owner_path: Path) -> dict[str, object]:
+    """Read the owner metadata for one existing lock."""
 
     try:
         payload = json.loads(owner_path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, NotADirectoryError, json.JSONDecodeError):
-        return None
-    return payload if isinstance(payload, dict) else None
+    except (FileNotFoundError, NotADirectoryError, json.JSONDecodeError) as exc:
+        raise _PollerLockCorruptionError from exc
+    if not isinstance(payload, dict):
+        raise _PollerLockCorruptionError
+    return payload
 
 
 def _owner_payload_is_well_formed(*, owner: dict[str, object], repo_root: Path) -> bool:
     """Return whether one owner payload is usable for lock inspection."""
 
+    pid = owner.get("pid")
+    started_at = owner.get("started_at")
     return (
-        isinstance(owner.get("pid"), int)
+        isinstance(pid, int)
+        and not isinstance(pid, bool)
+        and pid > 0
         and isinstance(owner.get("hostname"), str)
         and bool(str(owner.get("hostname")))
         and isinstance(owner.get("repo_id"), str)
+        and bool(str(owner.get("repo_id")))
         and owner.get("repo_root") == str(repo_root)
-        and isinstance(owner.get("started_at"), str)
+        and isinstance(started_at, str)
+        and _is_valid_iso_timestamp(started_at)
     )
 
 
@@ -236,6 +257,16 @@ def _current_hostname() -> str:
     """Return the normalized current hostname for lock ownership checks."""
 
     return socket.gethostname().strip().lower()
+
+
+def _is_valid_iso_timestamp(value: str) -> bool:
+    """Return whether a lock timestamp is a parseable ISO value."""
+
+    try:
+        datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
 
 
 def _is_process_running(pid: int) -> bool:

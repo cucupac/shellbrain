@@ -2,6 +2,8 @@
 
 from collections.abc import Callable
 
+import pytest
+
 from app.core.use_cases.retrieval.expansion import expand_candidates
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -91,6 +93,64 @@ def test_read_applies_real_semantic_lane_visibility_and_kind_filters_before_admi
     assert "repo-a-problem" not in with_global_ids
     assert "repo-a-archived-fact" not in with_global_ids
     assert len(with_global_ids) == 2
+
+
+def test_read_rejects_semantic_rows_with_incompatible_vector_dimensions(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_read_embedding: Callable[..., None],
+) -> None:
+    """semantic retrieval should fail clearly when stored vectors cannot be compared."""
+
+    seed_read_memory(
+        memory_id="wrong-dim",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="Wrong dimension semantic row.",
+    )
+    seed_read_embedding(memory_id="wrong-dim", vector=[1.0, 0.0, 0.0])
+
+    with uow_factory() as uow:
+        with pytest.raises(ValueError, match="dimension mismatch.*wrong-dim"):
+            uow.semantic_retrieval.query_semantic(
+                repo_id="repo-a",
+                include_global=True,
+                query_vector=[1.0, 0.0, 0.0, 0.0],
+                query_model="stub-v1",
+                kinds=None,
+                limit=1,
+            )
+
+
+def test_read_rejects_semantic_rows_from_a_different_embedding_model(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_read_embedding: Callable[..., None],
+) -> None:
+    """semantic retrieval should fail clearly when stored models do not match."""
+
+    seed_read_memory(
+        memory_id="wrong-model",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="Wrong model semantic row.",
+    )
+    seed_read_embedding(
+        memory_id="wrong-model", model="other-model-v1", vector=[1.0, 0.0, 0.0, 0.0]
+    )
+
+    with uow_factory() as uow:
+        with pytest.raises(ValueError, match="model mismatch.*wrong-model"):
+            uow.semantic_retrieval.query_semantic(
+                repo_id="repo-a",
+                include_global=True,
+                query_vector=[1.0, 0.0, 0.0, 0.0],
+                query_model="stub-v1",
+                kinds=None,
+                limit=1,
+            )
 
 
 def test_read_expands_semantic_neighbors_through_the_real_semantic_lane_only_up_to_semantic_hops_depth(

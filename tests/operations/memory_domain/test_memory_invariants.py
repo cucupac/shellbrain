@@ -52,9 +52,9 @@ def test_evidence_refs_require_non_empty_unique_values() -> None:
         EvidenceRefs.required([""])
 
 
-def test_bounded_memory_values_validate_ranges_and_defaults() -> None:
-    assert ConfidenceValue.from_optional(None).value == 0.5
-    assert SalienceValue.from_optional(None).value == 0.5
+def test_bounded_memory_values_validate_ranges() -> None:
+    assert ConfidenceValue(0.5).value == 0.5
+    assert SalienceValue(0.5).value == 0.5
     assert UtilityVoteValue(1.0).value == 1.0
 
     with pytest.raises(ValueError, match="confidence"):

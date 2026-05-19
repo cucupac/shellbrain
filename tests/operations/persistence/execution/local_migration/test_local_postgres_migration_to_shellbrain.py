@@ -43,6 +43,42 @@ APP_USER = "app_user"
 APP_PASSWORD = "app_password"
 ADMIN_USER = "admin_user"
 ADMIN_PASSWORD = "admin_password"
+MIGRATION_CONFIRMATION_ENV = "SHELLBRAIN_CONFIRM_LOCAL_POSTGRES_MIGRATION"
+
+
+def test_local_postgres_migration_requires_identity_bound_confirmation(
+    tmp_path: Path,
+) -> None:
+    """migration should not make the default memory-postgres target destructive by accident."""
+
+    repo_root = Path(__file__).resolve().parents[5]
+    script_path = repo_root / "scripts" / "migrate_local_postgres_to_shellbrain"
+    data_dir = tmp_path / "postgres-data"
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key != MIGRATION_CONFIRMATION_ENV
+    }
+    env["SHELLBRAIN_DB_DATA_DIR"] = str(data_dir)
+
+    completed = subprocess.run(
+        ["bash", str(script_path)],
+        cwd=repo_root,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert completed.returncode != 0
+    assert (
+        "Refusing local Postgres migration without explicit identity-bound confirmation."
+        in completed.stderr
+    )
+    assert (
+        f"{MIGRATION_CONFIRMATION_ENV}='legacy=memory-postgres/memory;new=shellbrain-postgres/shellbrain;port=5432;data={data_dir}'"
+        in completed.stderr
+    )
 
 
 @pytest.mark.docker
@@ -92,6 +128,14 @@ def test_local_postgres_migration_to_shellbrain_preserves_existing_data(
         data_dir.mkdir(parents=True, exist_ok=True)
         port = _compose_up(repo_root, legacy_env)
         migration_env["POSTGRES_PORT"] = str(port)
+        migration_env[MIGRATION_CONFIRMATION_ENV] = _migration_confirmation(
+            legacy_container=legacy_container,
+            legacy_db="memory",
+            shellbrain_container=shellbrain_container,
+            shellbrain_db="shellbrain",
+            port=port,
+            data_dir=data_dir,
+        )
         _wait_for_container_postgres(legacy_container, LEGACY_USER, "memory")
 
         legacy_dsn = f"postgresql+psycopg://{LEGACY_USER}:{LEGACY_PASSWORD}@localhost:{port}/memory"
@@ -198,6 +242,25 @@ def _cleanup_project(
         check=False,
         capture_output=True,
         text=True,
+    )
+
+
+def _migration_confirmation(
+    *,
+    legacy_container: str,
+    legacy_db: str,
+    shellbrain_container: str,
+    shellbrain_db: str,
+    port: int,
+    data_dir: Path,
+) -> str:
+    """Return the identity-bound confirmation token required by the migration script."""
+
+    return (
+        f"legacy={legacy_container}/{legacy_db};"
+        f"new={shellbrain_container}/{shellbrain_db};"
+        f"port={port};"
+        f"data={data_dir}"
     )
 
 

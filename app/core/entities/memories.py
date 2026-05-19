@@ -107,14 +107,6 @@ class ConfidenceValue:
     def __post_init__(self) -> None:
         _validate_range(self.value, name="confidence", minimum=0.0, maximum=1.0)
 
-    @classmethod
-    def from_optional(
-        cls, value: float | None, *, default: float = 0.5
-    ) -> "ConfidenceValue":
-        """Build a confidence value, applying the domain default when absent."""
-
-        return cls(default if value is None else value)
-
 
 @dataclass(frozen=True)
 class SalienceValue:
@@ -124,14 +116,6 @@ class SalienceValue:
 
     def __post_init__(self) -> None:
         _validate_range(self.value, name="salience", minimum=0.0, maximum=1.0)
-
-    @classmethod
-    def from_optional(
-        cls, value: float | None, *, default: float = 0.5
-    ) -> "SalienceValue":
-        """Build a salience value, applying the domain default when absent."""
-
-        return cls(default if value is None else value)
 
 
 @dataclass(frozen=True)
