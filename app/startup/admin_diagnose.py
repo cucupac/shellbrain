@@ -52,7 +52,7 @@ def build_doctor_report(
         ports=DiagnoseRuntimePorts(
             load_machine_config=try_load_machine_config,
             fetch_instance_metadata=fetch_instance_metadata,
-            list_backups=list_backups,
+            list_backups=lambda backup_root: list_backups(backup_root=backup_root),
             inspect_role_safety=inspect_role_safety,
             fetch_schema_revision=fetch_schema_revision,
             get_shellbrain_home=get_shellbrain_home,
