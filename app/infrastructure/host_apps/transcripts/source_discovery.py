@@ -6,16 +6,16 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from app.infrastructure.host_apps.transcripts.claude_code import (
-    find_latest_claude_code_session_for_repo,
+    list_claude_code_sessions_for_repo,
     resolve_claude_code_transcript_path,
 )
 from app.infrastructure.host_apps.transcripts.codex import (
-    find_latest_codex_session_for_repo,
+    list_codex_sessions_for_repo,
     resolve_codex_transcript_path,
 )
 from app.infrastructure.host_apps.transcripts.cursor import (
     default_cursor_user_roots,
-    find_latest_cursor_session_for_repo,
+    list_cursor_sessions_for_repo,
     resolve_cursor_transcript_path,
 )
 
@@ -66,25 +66,25 @@ def default_search_roots(*, repo_root: Path, host_app: str) -> list[Path]:
     return [repo_root]
 
 
-def discover_active_host_session(
+def discover_host_sessions(
     *,
     host_app: str,
     repo_root: Path,
     search_roots: Sequence[Path],
-) -> dict | None:
-    """Discover the latest active session for one host and repo root."""
+) -> list[dict]:
+    """Discover all repo-matching sessions for one supported host."""
 
     search_roots = [Path(root) for root in search_roots]
     if host_app == "codex":
-        return find_latest_codex_session_for_repo(
+        return list_codex_sessions_for_repo(
             repo_root=repo_root, search_roots=search_roots
         )
     if host_app == "claude_code":
-        return find_latest_claude_code_session_for_repo(
+        return list_claude_code_sessions_for_repo(
             repo_root=repo_root, search_roots=search_roots
         )
     if host_app == "cursor":
-        return find_latest_cursor_session_for_repo(
+        return list_cursor_sessions_for_repo(
             repo_root=repo_root, search_roots=search_roots
         )
     raise ValueError(f"Unsupported host app for episode sync: {host_app}")

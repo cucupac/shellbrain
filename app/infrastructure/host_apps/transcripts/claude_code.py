@@ -51,21 +51,6 @@ def resolve_claude_code_transcript_path(
     )
 
 
-def find_latest_claude_code_session_for_repo(
-    *,
-    repo_root: Path,
-    search_roots: Sequence[Path],
-) -> dict[str, Any] | None:
-    """Return the most recently updated Claude Code session for one repo root."""
-
-    candidates = list_claude_code_sessions_for_repo(
-        repo_root=repo_root, search_roots=search_roots
-    )
-    if not candidates:
-        return None
-    return max(candidates, key=lambda candidate: candidate["updated_at"])
-
-
 def list_claude_code_sessions_for_repo(
     *,
     repo_root: Path,

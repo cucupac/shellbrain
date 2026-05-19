@@ -20,22 +20,6 @@ from app.infrastructure.host_apps.inner_agents.prompt import (
 )
 
 
-def test_codex_runner_requires_shellbrain_cli_access() -> None:
-    """Codex adapter should not launch when Shellbrain CLI access is not allowed."""
-
-    runner = CodexCliInnerAgentRunner(
-        command="codex",
-        working_directory="repo_root",
-        allow_shellbrain_cli=False,
-    )
-
-    result = runner.run(_request())
-
-    assert result.status == "provider_unavailable"
-    assert result.fallback_used is True
-    assert result.error_code == "shellbrain_cli_not_allowed"
-
-
 def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None:
     """Codex adapter happy path should work with a stubbed subprocess."""
 
@@ -46,7 +30,13 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
     def _fake_run(args, *, input, text, capture_output, timeout, check, env):
         del input, text, capture_output, timeout, check
         assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context"
+        assert env["SHELLBRAIN_PARENT_HOST_APP"] == "codex"
+        assert env["SHELLBRAIN_PARENT_HOST_SESSION_KEY"] == "outer-thread"
         output_path = args[args.index("--output-last-message") + 1]
+        assert args[args.index("--ask-for-approval") + 1] == "never"
+        assert args.index("--ask-for-approval") < args.index("exec")
+        assert args[args.index("--sandbox") + 1] == "danger-full-access"
+        assert args[args.index("--cd") + 1] != str(tmp_path)
         assert "--model" in args
         assert 'model_reasoning_effort="low"' in args
         tmp_path.joinpath("seen.txt").write_text("ran", encoding="utf-8")
@@ -65,11 +55,8 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         "app.infrastructure.host_apps.inner_agents.codex_cli.subprocess.run",
         _fake_run,
     )
-    runner = CodexCliInnerAgentRunner(
-        command="codex",
-        working_directory="repo_root",
-        allow_shellbrain_cli=True,
-    )
+    monkeypatch.setenv("CODEX_THREAD_ID", "outer-thread")
+    runner = CodexCliInnerAgentRunner(command="codex")
 
     result = runner.run(_request(repo_root=str(tmp_path)))
 
@@ -116,8 +103,14 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
         del input, text, capture_output, timeout, check
         assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_knowledge"
         assert env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] == "run-1"
+        assert env["SHELLBRAIN_PARENT_HOST_APP"] == "codex"
+        assert env["SHELLBRAIN_PARENT_HOST_SESSION_KEY"] == "outer-thread"
         assert "SHELLBRAIN_DB_ADMIN_DSN" not in env
         output_path = args[args.index("--output-last-message") + 1]
+        assert args[args.index("--ask-for-approval") + 1] == "never"
+        assert args.index("--ask-for-approval") < args.index("exec")
+        assert args[args.index("--sandbox") + 1] == "danger-full-access"
+        assert args[args.index("--cd") + 1] != str(tmp_path)
         assert 'model_reasoning_effort="medium"' in args
         with open(output_path, "w", encoding="utf-8") as handle:
             handle.write(
@@ -128,6 +121,7 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
     monkeypatch.setenv("SHELLBRAIN_DB_ADMIN_DSN", "postgresql://admin")
+    monkeypatch.setenv("CODEX_THREAD_ID", "outer-thread")
     monkeypatch.setattr(
         "app.infrastructure.host_apps.inner_agents.codex_cli.shutil.which",
         _fake_which,
@@ -136,11 +130,7 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
         "app.infrastructure.host_apps.inner_agents.codex_cli.subprocess.run",
         _fake_run,
     )
-    runner = CodexCliInnerAgentRunner(
-        command="codex",
-        working_directory="repo_root",
-        allow_shellbrain_cli=True,
-    )
+    runner = CodexCliInnerAgentRunner(command="codex")
 
     result = runner.run_build_knowledge(_build_knowledge_request(repo_root=str(tmp_path)))
 
@@ -232,6 +222,16 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "expansion_" "handles" not in prompt
 
 
+def test_build_context_prompt_targets_repo_root_when_available(tmp_path) -> None:
+    """Inner-agent prompt should make nested Codex target the parent repo explicitly."""
+
+    prompt = render_build_context_prompt(_request(repo_root=str(tmp_path)))
+
+    assert f"shellbrain --repo-root {tmp_path}" in prompt
+    assert f"shellbrain --repo-root {tmp_path} events --json" in prompt
+    assert f"shellbrain --repo-root {tmp_path} read --json" in prompt
+
+
 def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     """Build prompt should define write authority, code limits, help, and readiness."""
 
@@ -242,9 +242,9 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "# AUTHORITY" in prompt
     assert "# PROTOCOL" in prompt
     assert "# JUDGMENT" in prompt
-    assert "shellbrain memory add" in prompt
-    assert "shellbrain concept update" in prompt
-    assert "shellbrain scenario record" in prompt
+    assert "memory add" in prompt
+    assert "concept update" in prompt
+    assert "scenario record" in prompt
     assert "editing files" in prompt
     assert "Run the exact `first_command`" in prompt
     assert "four record classes, not a strict vertical stack" in prompt
@@ -275,14 +275,27 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert '\\"up_to_seq\\":8' in prompt
     assert '\\"limit\\":100' not in prompt
     assert "shellbrain --help" in prompt
-    assert "shellbrain memory add --help" in prompt
-    assert "shellbrain scenario record --help" in prompt
+    assert "memory add --help" in prompt
+    assert "scenario record --help" in prompt
     assert "Write fewer, stronger records" in prompt
     assert "solved" in prompt
     assert "abandoned" in prompt
     assert "scenario.v1" in prompt
     assert "write_count" in prompt
     assert "memory/concept/scenario" in prompt
+
+
+def test_build_knowledge_prompt_targets_repo_root_when_available(tmp_path) -> None:
+    """Build prompt should make every internal command target the parent repo."""
+
+    prompt = render_build_knowledge_prompt(
+        _build_knowledge_request(repo_root=str(tmp_path))
+    )
+
+    assert f"shellbrain --repo-root {tmp_path} events --json" in prompt
+    assert f"shellbrain --repo-root {tmp_path} memory add --json" in prompt
+    assert f"shellbrain --repo-root {tmp_path} concept update --json" in prompt
+    assert f"shellbrain --repo-root {tmp_path} scenario record --json" in prompt
 
 
 def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:
@@ -317,7 +330,7 @@ def _build_knowledge_request(
         repo_id="repo-a",
         repo_root=repo_root,
         episode_id="episode-1",
-        trigger="idle_stable",
+        trigger="watermark_stable",
         event_watermark=8,
         previous_event_watermark=3,
         max_shellbrain_reads=8,

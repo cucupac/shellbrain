@@ -25,7 +25,7 @@ def test_build_knowledge_records_successful_run_for_new_events() -> None:
     runner = _FakeBuildKnowledgeRunner()
 
     result = execute_build_knowledge(
-        _request(trigger=KnowledgeBuildTrigger.SESSION_REPLACED),
+        _request(trigger=KnowledgeBuildTrigger.WATERMARK_STABLE),
         uow_factory=lambda: uow,
         clock=_FakeClock(),
         id_generator=_FakeIdGenerator(),
@@ -45,7 +45,7 @@ def test_build_knowledge_records_successful_run_for_new_events() -> None:
     assert runner.request is not None
     assert runner.request.run_id == "run-1"
     assert runner.request.episode_id == "episode-1"
-    assert runner.request.trigger == "session_replaced"
+    assert runner.request.trigger == "watermark_stable"
     assert uow.knowledge_build_runs.added[0].status is KnowledgeBuildRunStatus.RUNNING
     assert uow.knowledge_build_runs.completed[0]["status"] is KnowledgeBuildRunStatus.OK
     assert uow.knowledge_build_runs.completed[0]["input_tokens"] == 120
@@ -283,7 +283,7 @@ class _FakeUnitOfWork:
 
 
 def _request(
-    *, trigger: KnowledgeBuildTrigger = KnowledgeBuildTrigger.IDLE_STABLE
+    *, trigger: KnowledgeBuildTrigger = KnowledgeBuildTrigger.WATERMARK_STABLE
 ) -> BuildKnowledgeRequest:
     return BuildKnowledgeRequest(
         repo_id="repo-a",
@@ -316,7 +316,7 @@ def _running_run(
         id=run_id,
         repo_id="repo-a",
         episode_id="episode-1",
-        trigger=KnowledgeBuildTrigger.IDLE_STABLE,
+        trigger=KnowledgeBuildTrigger.WATERMARK_STABLE,
         status=KnowledgeBuildRunStatus.RUNNING,
         event_watermark=5,
         previous_event_watermark=None,

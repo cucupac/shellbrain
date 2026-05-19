@@ -9,14 +9,10 @@ from pathlib import Path
 from typing import Any
 
 from app.core.entities.runtime_context import SessionSelectionSummary
-from app.infrastructure.host_apps.transcripts.claude_code import (
-    list_claude_code_sessions_for_repo,
-)
-from app.infrastructure.host_apps.transcripts.codex import list_codex_sessions_for_repo
-from app.infrastructure.host_apps.transcripts.cursor import list_cursor_sessions_for_repo
 from app.infrastructure.host_apps.transcripts.source_discovery import (
     SUPPORTED_HOSTS,
     default_search_roots,
+    discover_host_sessions,
 )
 
 
@@ -45,7 +41,7 @@ def discover_events_candidate(
             host_app=host_app,
             search_roots_by_host=search_roots_by_host,
         )
-        candidates = _list_candidates_for_host(
+        candidates = discover_host_sessions(
             host_app=host_app,
             repo_root=repo_root,
             search_roots=search_roots,
@@ -149,26 +145,6 @@ def _search_roots_for_host(
     if search_roots_by_host is not None:
         return [Path(path) for path in search_roots_by_host.get(host_app, [])]
     return default_search_roots(repo_root=repo_root, host_app=host_app)
-
-
-def _list_candidates_for_host(
-    *, host_app: str, repo_root: Path, search_roots: list[Path]
-) -> list[dict[str, Any]]:
-    """List all repo-matching host sessions for one supported host."""
-
-    if host_app == "codex":
-        return list_codex_sessions_for_repo(
-            repo_root=repo_root, search_roots=search_roots
-        )
-    if host_app == "claude_code":
-        return list_claude_code_sessions_for_repo(
-            repo_root=repo_root, search_roots=search_roots
-        )
-    if host_app == "cursor":
-        return list_cursor_sessions_for_repo(
-            repo_root=repo_root, search_roots=search_roots
-        )
-    raise ValueError(f"Unsupported host app for telemetry discovery: {host_app}")
 
 
 def _parse_status_time(value: object) -> datetime:

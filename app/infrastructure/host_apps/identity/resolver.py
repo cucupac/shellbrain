@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import os
 from pathlib import Path
 
 from app.core.errors import ErrorDetail
@@ -58,6 +59,10 @@ class ResolvedEventsSource:
 def resolve_caller_identity() -> CallerIdentityResolution:
     """Resolve caller identity from trusted runtimes before falling back to none."""
 
+    inner_agent_parent = _resolve_inner_agent_parent_identity()
+    if inner_agent_parent is not None:
+        return inner_agent_parent
+
     codex_identity = resolve_codex_caller_identity()
     if codex_identity is not None:
         return CallerIdentityResolution(caller_identity=codex_identity)
@@ -78,6 +83,32 @@ def resolve_caller_identity() -> CallerIdentityResolution:
             caller_identity=None, error=host_hook_missing_error()
         )
     return CallerIdentityResolution(caller_identity=None)
+
+
+def _resolve_inner_agent_parent_identity() -> CallerIdentityResolution | None:
+    """Resolve the outer caller identity inherited by a Codex inner agent."""
+
+    if not os.getenv("SHELLBRAIN_INNER_AGENT_MODE"):
+        return None
+    host_app = os.getenv("SHELLBRAIN_PARENT_HOST_APP", "").strip()
+    host_session_key = os.getenv("SHELLBRAIN_PARENT_HOST_SESSION_KEY", "").strip()
+    if not host_app or not host_session_key:
+        return None
+    agent_key = os.getenv("SHELLBRAIN_PARENT_AGENT_KEY") or None
+    try:
+        caller_identity = CallerIdentity(
+            host_app=host_app,
+            host_session_key=host_session_key,
+            agent_key=agent_key,
+            trust_level=IdentityTrustLevel.TRUSTED,
+        )
+    except ValueError:
+        return None
+    transcript_path = os.getenv("SHELLBRAIN_PARENT_TRANSCRIPT_PATH", "").strip()
+    return CallerIdentityResolution(
+        caller_identity=caller_identity,
+        transcript_path_hint=Path(transcript_path) if transcript_path else None,
+    )
 
 
 def resolve_trusted_events_source(

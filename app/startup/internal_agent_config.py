@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.entities.inner_agents import (
@@ -21,8 +19,6 @@ class InnerAgentProviderConfig(_StrictModel):
     """Provider-specific runtime settings selected by startup."""
 
     command: str = Field(min_length=1)
-    working_directory: Literal["repo_root"] = "repo_root"
-    allow_shellbrain_cli: bool = True
 
 
 class InternalAgentsConfig(_StrictModel):

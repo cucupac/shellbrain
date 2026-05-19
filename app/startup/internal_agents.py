@@ -52,8 +52,6 @@ def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
     if settings.provider == "codex":
         return CodexCliInnerAgentRunner(
             command=provider.command,
-            working_directory=provider.working_directory,
-            allow_shellbrain_cli=provider.allow_shellbrain_cli,
         )
     return None
 
@@ -69,8 +67,6 @@ def get_build_knowledge_inner_agent_runner() -> IBuildKnowledgeAgentRunner | Non
     if settings.provider == "codex":
         return CodexCliInnerAgentRunner(
             command=provider.command,
-            working_directory=provider.working_directory,
-            allow_shellbrain_cli=provider.allow_shellbrain_cli,
         )
     return None
 

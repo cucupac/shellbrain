@@ -10,9 +10,9 @@ build_context:
 
 build_knowledge:
   provider: codex
-  model: gpt-5.4
+  model: gpt-5.4-mini
   reasoning: medium
-  timeout_seconds: 180
+  timeout_seconds: 600
   max_shellbrain_reads: 8
   max_code_files: 24
   max_write_commands: 20
@@ -22,5 +22,3 @@ build_knowledge:
 providers:
   codex:
     command: codex
-    working_directory: repo_root
-    allow_shellbrain_cli: true

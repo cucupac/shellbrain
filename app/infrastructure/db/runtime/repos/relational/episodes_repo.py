@@ -8,11 +8,14 @@ from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.episodes import (
     Episode,
+    EpisodeBuildSnapshot,
     EpisodeEvent,
     EpisodeEventSource,
     EpisodeStatus,
     SessionTransfer,
 )
+from app.core.entities.knowledge_builder import KnowledgeBuildRunStatus
+from app.infrastructure.db.runtime.models.knowledge_builder import knowledge_build_runs
 from app.core.ports.db.episode_repositories import IEpisodesRepo
 from app.infrastructure.db.runtime.models.episodes import (
     episode_events,
@@ -398,3 +401,79 @@ class EpisodesRepo(IEpisodesRepo):
             )
         ).scalar_one()
         return 0 if value is None else int(value)
+
+    def list_build_snapshots(self, *, repo_id: str) -> list[EpisodeBuildSnapshot]:
+        """Return persisted episode watermarks and latest successful build state."""
+
+        latest_events = (
+            select(
+                episode_events.c.episode_id.label("episode_id"),
+                func.max(episode_events.c.seq).label("latest_event_seq"),
+                func.max(episode_events.c.created_at).label("latest_event_at"),
+            )
+            .group_by(episode_events.c.episode_id)
+            .subquery()
+        )
+        latest_successful_builds = (
+            select(
+                knowledge_build_runs.c.episode_id.label("episode_id"),
+                func.max(knowledge_build_runs.c.event_watermark).label(
+                    "latest_successful_build_watermark"
+                ),
+            )
+            .where(
+                knowledge_build_runs.c.repo_id == repo_id,
+                knowledge_build_runs.c.status.in_(
+                    (
+                        KnowledgeBuildRunStatus.OK.value,
+                        KnowledgeBuildRunStatus.SKIPPED.value,
+                    )
+                ),
+            )
+            .group_by(knowledge_build_runs.c.episode_id)
+            .subquery()
+        )
+        rows = (
+            self._session.execute(
+                select(
+                    episodes.c.id.label("episode_id"),
+                    episodes.c.status,
+                    latest_events.c.latest_event_seq,
+                    latest_events.c.latest_event_at,
+                    latest_successful_builds.c.latest_successful_build_watermark,
+                )
+                .select_from(
+                    episodes.join(
+                        latest_events,
+                        episodes.c.id == latest_events.c.episode_id,
+                    ).outerjoin(
+                        latest_successful_builds,
+                        episodes.c.id
+                        == latest_successful_builds.c.episode_id,
+                    )
+                )
+                .where(
+                    episodes.c.repo_id == repo_id,
+                    episodes.c.status.in_(
+                        (EpisodeStatus.ACTIVE.value, EpisodeStatus.CLOSED.value)
+                    ),
+                )
+                .order_by(latest_events.c.latest_event_at.asc(), episodes.c.id.asc())
+            )
+            .mappings()
+            .all()
+        )
+        return [
+            EpisodeBuildSnapshot(
+                episode_id=row["episode_id"],
+                status=EpisodeStatus(row["status"]),
+                latest_event_seq=int(row["latest_event_seq"]),
+                latest_event_at=row["latest_event_at"],
+                latest_successful_build_watermark=(
+                    None
+                    if row["latest_successful_build_watermark"] is None
+                    else int(row["latest_successful_build_watermark"])
+                ),
+            )
+            for row in rows
+        ]
