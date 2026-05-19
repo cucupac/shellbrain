@@ -92,28 +92,6 @@ Use Shellbrain in your agent of choice. Then, just work normally.
 
 ---
 
-## Development Checks
-
-Static architecture guardrails run without Docker or live infrastructure:
-
-```bash
-make architecture-check
-```
-
-They enforce dependency direction, effect ownership, packaged-source coverage, and the commit-time hook wiring. The full DB-backed suite remains:
-
-```bash
-./scripts/run_tests
-```
-
-To use the versioned pre-commit hook in this checkout:
-
-```bash
-git config core.hooksPath .githooks
-```
-
----
-
 ## Docs
 
 - [shellbrain.ai/humans](https://shellbrain.ai/humans/) — install, upgrade, getting started
