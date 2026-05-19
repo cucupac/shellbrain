@@ -31,16 +31,31 @@ def _imported_modules(path: Path) -> list[tuple[int, str]]:
     return imports
 
 
-def _assert_no_forbidden_imports(
+def _module_matches_forbidden_prefix(
+    module_name: str, forbidden_prefixes: tuple[str, ...]
+) -> bool:
+    return any(
+        module_name == prefix or module_name.startswith(f"{prefix}.")
+        for prefix in forbidden_prefixes
+    )
+
+
+def _forbidden_import_violations(
     package: str, forbidden_prefixes: tuple[str, ...]
-) -> None:
+) -> list[str]:
     violations: list[str] = []
     for path in _python_files(APP_ROOT / package):
         for line_no, module_name in _imported_modules(path):
-            if module_name.startswith(forbidden_prefixes):
+            if _module_matches_forbidden_prefix(module_name, forbidden_prefixes):
                 rel_path = path.relative_to(REPO_ROOT)
                 violations.append(f"{rel_path}:{line_no} imports {module_name}")
+    return violations
 
+
+def _assert_no_forbidden_imports(
+    package: str, forbidden_prefixes: tuple[str, ...]
+) -> None:
+    violations = _forbidden_import_violations(package, forbidden_prefixes)
     assert not violations, "Forbidden architecture imports:\n" + "\n".join(violations)
 
 
@@ -55,8 +70,22 @@ def test_core_does_not_import_edge_packages() -> None:
     )
 
 
-def test_core_does_not_import_subprocess() -> None:
-    _assert_no_forbidden_imports("core", ("subprocess",))
+def test_core_does_not_import_concrete_effect_modules() -> None:
+    _assert_no_forbidden_imports(
+        "core",
+        (
+            "alembic",
+            "dotenv",
+            "httpx",
+            "logging",
+            "pgvector",
+            "psycopg",
+            "requests",
+            "socket",
+            "sqlalchemy",
+            "subprocess",
+        ),
+    )
 
 
 def test_core_does_not_read_environment() -> None:
@@ -113,6 +142,41 @@ def test_non_bootstrap_entrypoints_do_not_import_startup() -> None:
 
 def test_startup_does_not_import_entrypoints() -> None:
     _assert_no_forbidden_imports("startup", ("app.entrypoints",))
+
+
+def test_startup_references_entrypoints_only_as_bootstrap_module_constants() -> None:
+    violations: list[str] = []
+    for path in _python_files(APP_ROOT / "startup"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        parents: dict[ast.AST, ast.AST] = {}
+        for parent in ast.walk(tree):
+            for child in ast.iter_child_nodes(parent):
+                parents[child] = parent
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+                continue
+            if "python -m app" in node.value:
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} references {node.value!r}"
+                )
+            if "app.entrypoints" not in node.value:
+                continue
+            parent = parents.get(node)
+            allowed = (
+                isinstance(parent, ast.Assign)
+                and len(parent.targets) == 1
+                and isinstance(parent.targets[0], ast.Name)
+                and parent.targets[0].id.endswith("_ENTRYPOINT_MODULE")
+            )
+            if not allowed:
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} references {node.value!r}"
+                )
+
+    assert not violations, (
+        "Startup may reference entrypoints only as explicit bootstrap module constants:\n"
+        + "\n".join(violations)
+    )
 
 
 def test_followup_refactor_removed_old_layer_paths() -> None:
@@ -343,20 +407,52 @@ def test_startup_jobs_package_is_gone() -> None:
     assert not (APP_ROOT / "startup" / "jobs").exists()
 
 
-def test_generic_dumping_ground_modules_are_gone_from_main_layers() -> None:
+def test_no_empty_production_package_directories() -> None:
+    violations: list[str] = []
+    for root in (
+        APP_ROOT / "core",
+        APP_ROOT / "entrypoints",
+        APP_ROOT / "infrastructure",
+        APP_ROOT / "startup",
+    ):
+        for path in sorted(root.rglob("*")):
+            if not path.is_dir() or "__pycache__" in path.parts:
+                continue
+            children = [
+                child
+                for child in path.iterdir()
+                if "__pycache__" not in child.parts
+            ]
+            if not children:
+                violations.append(str(path.relative_to(REPO_ROOT)))
+
+    assert not violations, (
+        "Production package directories should not be empty/speculative:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_no_speculative_architecture_bucket_names() -> None:
     forbidden_names = {
+        "application",
+        "common",
         "common.py",
+        "contracts",
+        "effects",
         "flow_common.py",
-        "support.py",
+        "helpers",
         "helpers.py",
-        "utils.py",
         "operations.py",
+        "support.py",
+        "utils",
+        "utils.py",
         "_shared",
     }
     violations = [
         str(path.relative_to(REPO_ROOT))
         for root in (
             APP_ROOT / "core",
+            APP_ROOT / "entrypoints",
             APP_ROOT / "startup",
             APP_ROOT / "infrastructure",
         )
@@ -364,7 +460,7 @@ def test_generic_dumping_ground_modules_are_gone_from_main_layers() -> None:
         if "__pycache__" not in path.parts and path.name in forbidden_names
     ]
     assert not violations, (
-        "Rename dumping-ground modules by the concept they actually represent:\n"
+        "Rename vague/speculative architecture buckets by the concept they actually represent:\n"
         + "\n".join(violations)
     )
 
@@ -414,33 +510,6 @@ def test_core_policy_smell_packages_are_gone() -> None:
     assert not (APP_ROOT / "core" / "policies" / "validation").exists()
 
 
-def test_core_does_not_import_sqlalchemy() -> None:
-    forbidden_modules = ("sqlalchemy",)
-    violations: list[str] = []
-    for path in _python_files(APP_ROOT / "core"):
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name.startswith(forbidden_modules):
-                        violations.append(
-                            f"{path.relative_to(REPO_ROOT)}:{node.lineno} imports {alias.name}"
-                        )
-            elif (
-                isinstance(node, ast.ImportFrom)
-                and node.module
-                and node.module.startswith(forbidden_modules)
-            ):
-                imported = ", ".join(alias.name for alias in node.names)
-                violations.append(
-                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} imports {imported} from {node.module}"
-                )
-    assert not violations, (
-        "Core must not depend on SQLAlchemy types or SQL helpers:\n"
-        + "\n".join(violations)
-    )
-
-
 def test_no_code_imports_removed_architecture_paths() -> None:
     forbidden_prefixes = (
         "app.core.contracts",
@@ -450,7 +519,7 @@ def test_no_code_imports_removed_architecture_paths() -> None:
     for root in (APP_ROOT, REPO_ROOT / "tests"):
         for path in _python_files(root):
             for line_no, module_name in _imported_modules(path):
-                if module_name.startswith(forbidden_prefixes):
+                if _module_matches_forbidden_prefix(module_name, forbidden_prefixes):
                     rel_path = path.relative_to(REPO_ROOT)
                     violations.append(f"{rel_path}:{line_no} imports {module_name}")
     assert not violations, (
@@ -653,6 +722,42 @@ def test_core_use_cases_and_policies_use_ports_for_runtime_effects() -> None:
                     )
     assert not violations, (
         "Core use cases and policies should use injected ports for time, IDs, and filesystem checks:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_core_does_not_perform_filesystem_effects() -> None:
+    violations: list[str] = []
+    forbidden_methods = {
+        "mkdir",
+        "open",
+        "read_text",
+        "rename",
+        "unlink",
+        "write_text",
+    }
+    for path in _python_files(APP_ROOT / "core"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and node.func.id == "open"
+            ):
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} calls open()"
+                )
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in forbidden_methods
+            ):
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} calls .{node.func.attr}()"
+                )
+
+    assert not violations, (
+        "Core may pass Path values around but must not perform filesystem effects:\n"
         + "\n".join(violations)
     )
 
