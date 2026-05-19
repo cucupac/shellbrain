@@ -1,0 +1,128 @@
+#!/usr/bin/env python3
+"""Local Git-index audit attestation gate."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+
+
+FAILURE_MESSAGE = """Audit attestation required.
+
+Agent path:
+  Use Codex skills $clean-architecture and $clean-code on `git diff --cached`.
+  Run relevant tests/checks.
+  Then: scripts/audit-attestation attest --tests "<commands run>"
+
+Human waiver:
+  scripts/audit-attestation waive
+  Agents may waive only when the human explicitly asks.
+
+Changing staged files expires the attestation/waiver.
+"""
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        prog="scripts/audit-attestation",
+        description="Gate commits on a staged-tree audit attestation or waiver.",
+    )
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    subparsers.add_parser("install", help="Install the tracked pre-commit hook.")
+    subparsers.add_parser("check", help="Check the current HEAD + staged tree.")
+
+    attest_parser = subparsers.add_parser(
+        "attest", help="Write an audit attestation for the staged tree."
+    )
+    attest_parser.add_argument("--tests", required=True)
+
+    subparsers.add_parser("waive", help="Write a human waiver for the staged tree.")
+
+    args = parser.parse_args(argv)
+    if args.command == "install":
+        return install_hook()
+    if args.command == "check":
+        return check_receipt()
+    if args.command == "attest":
+        return write_receipt(kind="attestation", tests=args.tests)
+    if args.command == "waive":
+        return write_receipt(kind="waiver", tests=None)
+    raise AssertionError(args.command)
+
+
+def install_hook() -> int:
+    repo_root = git_path("rev-parse", "--show-toplevel")
+    hook_path = repo_root / ".githooks" / "pre-commit"
+    if not hook_path.is_file():
+        print(f"Missing tracked hook: {hook_path}", file=sys.stderr)
+        return 1
+    run_git("config", "core.hooksPath", ".githooks")
+    print("Installed audit attestation hook: core.hooksPath=.githooks")
+    return 0
+
+
+def check_receipt() -> int:
+    receipt_id, _parent, _tree = current_staged_state()
+    receipt_root = audit_attestation_root()
+    attestation = receipt_root / "attestations" / f"{receipt_id}.json"
+    waiver = receipt_root / "waivers" / f"{receipt_id}.json"
+    if attestation.is_file() or waiver.is_file():
+        return 0
+    print(FAILURE_MESSAGE, end="", file=sys.stderr)
+    return 1
+
+
+def write_receipt(*, kind: str, tests: str | None) -> int:
+    if kind == "attestation" and not tests:
+        print("attest requires --tests with the commands run", file=sys.stderr)
+        return 2
+
+    receipt_id, parent, tree = current_staged_state()
+    directory_name = "attestations" if kind == "attestation" else "waivers"
+    receipt_dir = audit_attestation_root() / directory_name
+    receipt_dir.mkdir(parents=True, exist_ok=True)
+    receipt_path = receipt_dir / f"{receipt_id}.json"
+    payload: dict[str, object] = {
+        "id": receipt_id,
+        "kind": kind,
+        "parent": parent,
+        "tree": tree,
+        "created_at": datetime.now(timezone.utc)
+        .isoformat()
+        .replace("+00:00", "Z"),
+    }
+    if tests is not None:
+        payload["tests"] = tests
+        payload["skills"] = ["$clean-architecture", "$clean-code"]
+
+    receipt_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    print(f"Wrote audit {kind}: {receipt_path}")
+    return 0
+
+
+def current_staged_state() -> tuple[str, str, str]:
+    parent = run_git("rev-parse", "HEAD")
+    tree = run_git("write-tree")
+    receipt_id = hashlib.sha256(f"{parent}\n{tree}".encode("utf-8")).hexdigest()
+    return receipt_id, parent, tree
+
+
+def audit_attestation_root() -> Path:
+    return git_path("rev-parse", "--absolute-git-dir") / "solveos" / "audit-attestation"
+
+
+def git_path(*args: str) -> Path:
+    return Path(run_git(*args)).resolve()
+
+
+def run_git(*args: str) -> str:
+    return subprocess.check_output(("git", *args), text=True).strip()
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

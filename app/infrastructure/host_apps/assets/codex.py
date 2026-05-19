@@ -18,7 +18,12 @@ from app.infrastructure.host_apps.assets.packaged_assets import (
 from app.infrastructure.host_apps.assets.paths import default_codex_home
 
 PRIMARY_CODEX_SKILL_NAME = "shellbrain"
-CODEX_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
+CODEX_SKILL_NAMES = (
+    "shellbrain",
+    "shellbrain-usage-review",
+    "clean-architecture",
+    "clean-code",
+)
 LEGACY_CODEX_SKILL_NAMES = ("shellbrain-session-start",)
 CODEX_STARTUP_MARKER = "shellbrain-managed:codex-startup"
 
