@@ -26,6 +26,8 @@ def retrieve_seeds(
     semantic_retrieval: ISemanticRetrievalRepo,
     keyword_retrieval: IKeywordRetrievalRepo,
     vector_search: IVectorSearch | None,
+    query_vector: Sequence[float] | None = None,
+    query_model: str | None = None,
     thresholds: ThresholdSettings | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """This function retrieves initial semantic and keyword candidate seeds."""
@@ -36,21 +38,21 @@ def retrieve_seeds(
     limit = int(request_data["limit"])
     query_text = request_data["query"]
     lexical_query = build_lexical_query(query_text)
-    query_vector = []
-    query_model = None
-    if vector_search is not None:
-        query_vector = list(vector_search.embed_query(query_text))
-        if not query_vector:
+    resolved_query_vector = list(query_vector) if query_vector is not None else []
+    resolved_query_model = query_model
+    if query_vector is None and vector_search is not None:
+        resolved_query_vector = list(vector_search.embed_query(query_text))
+        if not resolved_query_vector:
             raise ValueError("Query embedding provider returned an empty vector")
-        query_model = vector_search.model_name
+        resolved_query_model = vector_search.model_name
     thresholds = thresholds or _coerce_threshold_settings(get_threshold_settings())
     semantic = [
         candidate
         for candidate in semantic_retrieval.query_semantic(
             repo_id=repo_id,
             include_global=include_global,
-            query_vector=query_vector,
-            query_model=query_model,
+            query_vector=resolved_query_vector,
+            query_model=resolved_query_model,
             kinds=kinds,
             limit=limit,
         )
@@ -88,7 +90,7 @@ def _rank_keyword_candidates(
         return []
     documents = [
         BM25Document(
-            memory_id=str(row["memory_id"]),
+            document_id=str(row["memory_id"]),
             terms=normalize_lexical_text(str(row["text"])).terms_for(lexical_query),
         )
         for row in corpus_rows

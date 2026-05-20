@@ -4,6 +4,11 @@ from collections.abc import Callable
 
 import pytest
 
+from app.core.policies.retrieval.bm25 import (
+    BM25Document,
+    admit_scored_documents,
+    score_documents,
+)
 from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.expansion import expand_candidates
 from app.core.policies.retrieval.fusion_rrf import fuse_with_rrf
@@ -81,6 +86,34 @@ def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier(
     )
 
     assert _candidate_ids(scored["direct"]) == ["memory-a", "memory-b"]
+
+
+def test_bm25_should_project_scored_documents_to_memory_or_concept_ids() -> None:
+    """BM25 should stay item-type-neutral until callers choose an output id key."""
+
+    scored = score_documents(
+        ["deposit", "address"],
+        [
+            BM25Document(document_id="concept-a", terms=("deposit", "address")),
+            BM25Document(document_id="concept-b", terms=("refund",)),
+        ],
+    )
+
+    assert admit_scored_documents(
+        scored, mode="targeted", output_id_key="concept_id"
+    ) == [{"concept_id": "concept-a", "score": scored[0].score}]
+
+
+def test_rrf_should_fuse_non_memory_candidate_ids() -> None:
+    """RRF should support concept candidates without memory-shaped fields."""
+
+    fused = fuse_with_rrf(
+        [{"concept_id": "concept-b", "score": 1.0}],
+        [{"concept_id": "concept-a", "score": 1.0}],
+        id_key="concept_id",
+    )
+
+    assert [item["concept_id"] for item in fused] == ["concept-a", "concept-b"]
 
 
 def test_read_scoring_should_reject_direct_candidates_without_rrf_scores() -> None:

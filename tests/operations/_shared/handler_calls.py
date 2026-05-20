@@ -160,11 +160,15 @@ def handle_events(
 
 def handle_concept_add(*args: Any, **kwargs: Any) -> dict[str, Any]:
     dependencies = startup_handlers.build_operation_dependencies()
+    kwargs.setdefault("embedding_provider_factory", _StubConceptEmbeddingProvider)
+    kwargs.setdefault("embedding_model", "stub-v1")
     return run_concept_add_operation(*args, dependencies=dependencies, **kwargs)
 
 
 def handle_concept_update(*args: Any, **kwargs: Any) -> dict[str, Any]:
     dependencies = startup_handlers.build_operation_dependencies()
+    kwargs.setdefault("embedding_provider_factory", _StubConceptEmbeddingProvider)
+    kwargs.setdefault("embedding_model", "stub-v1")
     return run_concept_update_operation(*args, dependencies=dependencies, **kwargs)
 
 
@@ -181,6 +185,12 @@ def _prepare_create(
         inferred_repo_id=inferred_repo_id,
         defaults=defaults or get_create_hydration_defaults(),
     )
+
+
+class _StubConceptEmbeddingProvider:
+    def embed(self, text: str) -> list[float]:
+        del text
+        return [1.0, 0.0, 0.0, 0.0]
 
 
 def _prepare_update(

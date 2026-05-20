@@ -38,6 +38,7 @@ from app.infrastructure.db.runtime.models.concepts import (
     anchors,
     concept_aliases,
     concept_claims,
+    concept_embeddings,
     concept_evidence,
     concept_groundings,
     concept_memory_links,
@@ -558,74 +559,42 @@ class ConceptsRepo(IConceptsRepo):
         )
         return [dict(row) for row in rows]
 
-    def list_concept_search_rows(self, *, repo_id: str) -> Sequence[dict[str, Any]]:
-        """Return active concept text rows for core query matching."""
+    def upsert_embedding(
+        self,
+        *,
+        concept_id: str,
+        repo_id: str,
+        model: str,
+        vector: Sequence[float],
+        source_hash: str,
+    ) -> None:
+        """Insert or update the aggregate concept embedding vector."""
 
-        concept_rows = (
-            self._session.execute(
-                select(concepts).where(
-                    concepts.c.repo_id == repo_id,
-                    concepts.c.status == ConceptStatus.ACTIVE.value,
-                )
+        now = datetime.now(timezone.utc)
+        self._session.execute(
+            insert(concept_embeddings)
+            .values(
+                concept_id=concept_id,
+                repo_id=repo_id,
+                model=model,
+                dim=len(vector),
+                vector=list(vector),
+                source_hash=source_hash,
+                created_at=now,
+                updated_at=now,
             )
-            .mappings()
-            .all()
+            .on_conflict_do_update(
+                index_elements=["concept_id"],
+                set_={
+                    "repo_id": repo_id,
+                    "model": model,
+                    "dim": len(vector),
+                    "vector": list(vector),
+                    "source_hash": source_hash,
+                    "updated_at": now,
+                },
+            )
         )
-        alias_rows = (
-            self._session.execute(
-                select(concept_aliases).where(concept_aliases.c.repo_id == repo_id)
-            )
-            .mappings()
-            .all()
-        )
-        claim_rows = (
-            self._session.execute(
-                select(concept_claims).where(
-                    concept_claims.c.repo_id == repo_id,
-                    concept_claims.c.status == ConceptLifecycleStatus.ACTIVE.value,
-                )
-            )
-            .mappings()
-            .all()
-        )
-        search_rows: list[dict[str, Any]] = []
-        for row in concept_rows:
-            concept_id = str(row["id"])
-            search_rows.append(
-                {
-                    "concept_id": concept_id,
-                    "field": "slug",
-                    "text": str(row["slug"]),
-                    "display": str(row["slug"]),
-                }
-            )
-            search_rows.append(
-                {
-                    "concept_id": concept_id,
-                    "field": "name",
-                    "text": str(row["name"]),
-                    "display": str(row["name"]),
-                }
-            )
-        for row in alias_rows:
-            search_rows.append(
-                {
-                    "concept_id": str(row["concept_id"]),
-                    "field": "alias",
-                    "text": str(row["normalized_alias"]),
-                    "display": str(row["alias"]),
-                }
-            )
-        for row in claim_rows:
-            search_rows.append(
-                {
-                    "concept_id": str(row["concept_id"]),
-                    "field": "claim",
-                    "text": str(row["normalized_text"]),
-                    "display": str(row["text"]),
-                }
-            )
-        return search_rows
 
 
 def _lifecycle_values(lifecycle: ConceptLifecycle, now: datetime) -> dict[str, Any]:

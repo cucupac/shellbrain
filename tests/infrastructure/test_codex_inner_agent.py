@@ -17,6 +17,7 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
+    render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
 )
@@ -37,6 +38,10 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         output_path = args[args.index("--output-last-message") + 1]
         assert args[args.index("--ask-for-approval") + 1] == "never"
         assert args.index("--ask-for-approval") < args.index("exec")
+        assert "--ignore-user-config" in args
+        assert "--json" in args
+        assert _disabled_feature(args, "plugins")
+        assert _disabled_feature(args, "tool_search")
         assert args[args.index("--sandbox") + 1] == "danger-full-access"
         assert args[args.index("--cd") + 1] != str(tmp_path)
         assert "--model" in args
@@ -47,7 +52,12 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
                 '{"brief":{"summary":"Stub synthesis","constraints":["Keep core clean"]},'
                 '"read_trace":{"commands":[{"command":"shellbrain read --json {}","source_ids":["mem-1"]}],"source_ids":["mem-1"]}}'
             )
-        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+        return subprocess.CompletedProcess(
+            args,
+            0,
+            stdout='{"type":"turn.completed","usage":{"input_tokens":11,"cached_input_tokens":3,"output_tokens":7,"reasoning_output_tokens":2}}\n',
+            stderr="",
+        )
 
     monkeypatch.setattr(
         "app.infrastructure.host_apps.inner_agents.codex_cli.shutil.which",
@@ -68,9 +78,52 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         "constraints": ["Keep core clean"],
     }
     assert result.read_trace["source_ids"] == ["mem-1"]
-    assert result.input_tokens is not None
-    assert result.output_tokens is not None
-    assert result.capture_quality == "estimated"
+    assert result.input_tokens == 11
+    assert result.output_tokens == 7
+    assert result.reasoning_output_tokens == 2
+    assert result.cached_input_tokens_total == 3
+    assert result.capture_quality == "exact"
+
+
+def test_codex_runner_synthesis_only_uses_synthesis_mode(monkeypatch, tmp_path) -> None:
+    """Codex synthesis-only runs should not grant Shellbrain command access."""
+
+    def _fake_which(command: str) -> str:
+        assert command == "codex"
+        return "/usr/bin/codex"
+
+    def _fake_run(args, *, input, text, capture_output, timeout, check, env):
+        del text, capture_output, timeout, check
+        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context_synthesis"
+        assert "Do not run commands" in input
+        assert "mem-1" in input
+        assert "shellbrain read --json" not in input
+        output_path = args[args.index("--output-last-message") + 1]
+        with open(output_path, "w", encoding="utf-8") as handle:
+            handle.write('{"brief":{"summary":"Synthesized from pack"}}')
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(
+        "app.infrastructure.host_apps.inner_agents.codex_cli.shutil.which",
+        _fake_which,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.host_apps.inner_agents.codex_cli.subprocess.run",
+        _fake_run,
+    )
+    runner = CodexCliInnerAgentRunner(command="codex")
+
+    result = runner.run(
+        _request(
+            repo_root=str(tmp_path),
+            synthesis_only=True,
+            deterministic_pack={"memories": [{"id": "mem-1", "text": "Fact"}]},
+        )
+    )
+
+    assert result.status == "ok"
+    assert result.brief == {"summary": "Synthesized from pack"}
+    assert result.read_trace == {}
 
 
 def test_inner_agent_output_parser_accepts_json_fenced_brief() -> None:
@@ -280,6 +333,30 @@ def test_build_context_prompt_targets_repo_root_when_available(tmp_path) -> None
     assert f"shellbrain --no-sync --repo-root {tmp_path} read --json" in prompt
 
 
+def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
+    """synthesis prompt should explain graph semantics without Shellbrain commands."""
+
+    prompt = render_build_context_synthesis_prompt(
+        _request(
+            synthesis_only=True,
+            deterministic_pack={"memories": [{"id": "mem-1", "text": "Fact"}]},
+        )
+    )
+
+    assert "build_context_synthesizer" in prompt
+    assert "Do not run commands" in prompt
+    assert "Memory links explain why" in prompt
+    assert "# TEMPORAL AND LIFECYCLE JUDGMENT" in prompt
+    assert "# PREFERENCES" in prompt
+    assert "# CHANGE AND CONTRADICTION JUDGMENT" in prompt
+    assert "# SECTION RULES" in prompt
+    assert "Use only the text and metadata present in the pack" in prompt
+    assert "Every non-empty section" in prompt
+    assert "mem-1" in prompt
+    assert "shellbrain read --json" not in prompt
+    assert "do not include read_trace" in prompt
+
+
 def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     """Build prompt should define write authority, code limits, help, and readiness."""
 
@@ -400,7 +477,12 @@ def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
     assert '"type":"link_memory"' in prompt
 
 
-def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:
+def _request(
+    *,
+    repo_root: str | None = None,
+    synthesis_only: bool = False,
+    deterministic_pack: dict | None = None,
+) -> InnerAgentRunRequest:
     return InnerAgentRunRequest(
         agent_name="build_context",
         provider="codex",
@@ -417,6 +499,8 @@ def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:
             "hypothesis": "none yet",
         },
         repo_root=repo_root,
+        synthesis_only=synthesis_only,
+        deterministic_pack=deterministic_pack,
     )
 
 
@@ -463,4 +547,11 @@ def _teach_knowledge_request(*, repo_root: str = "/tmp/repo") -> TeachKnowledgeA
         max_shellbrain_reads=6,
         max_code_files=5,
         max_write_commands=12,
+    )
+
+
+def _disabled_feature(args: list[str], feature: str) -> bool:
+    return any(
+        left == "--disable" and right == feature
+        for left, right in zip(args, args[1:], strict=False)
     )

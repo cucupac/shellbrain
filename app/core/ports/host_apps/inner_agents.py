@@ -24,7 +24,7 @@ class _StrictModel(BaseModel):
 
 
 class InnerAgentRunRequest(_StrictModel):
-    """One autonomous read-only inner-agent synthesis request."""
+    """One build_context inner-agent request."""
 
     agent_name: InnerAgentName
     provider: InnerAgentProviderName = Field(min_length=1)
@@ -37,6 +37,8 @@ class InnerAgentRunRequest(_StrictModel):
     query: str = Field(min_length=1)
     current_problem: dict[str, str]
     repo_root: str | None = None
+    synthesis_only: bool = False
+    deterministic_pack: dict[str, Any] | None = None
 
 
 class InnerAgentRunResult(_StrictModel):

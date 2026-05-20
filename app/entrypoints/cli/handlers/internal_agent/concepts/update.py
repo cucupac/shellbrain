@@ -26,6 +26,8 @@ def run_concept_update_operation(
     *,
     dependencies: OperationDependencies,
     uow_factory,
+    embedding_provider_factory,
+    embedding_model: str,
     inferred_repo_id: str,
     validation_errors: tuple[ErrorDetail, ...] | list[ErrorDetail] = (),
     validation_error_stage: str = "schema_validation",
@@ -61,9 +63,14 @@ def run_concept_update_operation(
             )
         else:
             with uow_factory() as uow:
+                embedding_provider = embedding_provider_factory()
                 result = ok_envelope(
                     update_concepts(
-                        request, uow, id_generator=dependencies.id_generator
+                        request,
+                        uow,
+                        id_generator=dependencies.id_generator,
+                        embedding_provider=embedding_provider,
+                        embedding_model=embedding_model,
                     )
                 )
     except DomainValidationError as exc:

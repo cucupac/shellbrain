@@ -19,6 +19,7 @@ _INNER_AGENT_MODE_ENV = "SHELLBRAIN_INNER_AGENT_MODE"
 _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS = {"read", "events", "concept:show"}
 _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
     "build_context": _INNER_AGENT_READ_ONLY_ALLOWED_COMMANDS,
+    "build_context_synthesis": set(),
     "build_knowledge": {
         "read",
         "events",
@@ -345,6 +346,8 @@ def _dispatch_operation_command(
             prepared.request,
             dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
+            embedding_provider_factory=runtime.get_embedding_provider_factory(),
+            embedding_model=runtime.get_embedding_model(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
             validation_error_stage=prepared.error_stage,
@@ -383,6 +386,8 @@ def _dispatch_operation_command(
             prepared.request,
             dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),
+            embedding_provider_factory=runtime.get_embedding_provider_factory(),
+            embedding_model=runtime.get_embedding_model(),
             inferred_repo_id=repo_id,
             validation_errors=prepared.errors,
             validation_error_stage=prepared.error_stage,

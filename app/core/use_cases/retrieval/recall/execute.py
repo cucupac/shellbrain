@@ -6,7 +6,6 @@ from collections.abc import Callable
 
 from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.entities.settings import (
-    ReadPolicySettings,
     ThresholdSettings,
 )
 from app.core.ports.db.unit_of_work import IUnitOfWork
@@ -21,7 +20,6 @@ def execute_recall_memory(
     uow: IUnitOfWork | None = None,
     *,
     uow_factory: Callable[[], IUnitOfWork] | None = None,
-    read_settings: ReadPolicySettings | None = None,
     threshold_settings: ThresholdSettings | None = None,
     inner_agent_runner: IInnerAgentRunner | None = None,
     build_context_settings: InnerAgentSettings | None = None,
@@ -33,7 +31,6 @@ def execute_recall_memory(
         request,
         uow,
         uow_factory=uow_factory,
-        read_settings=read_settings,
         threshold_settings=threshold_settings,
         inner_agent_runner=inner_agent_runner,
         build_context_settings=build_context_settings,

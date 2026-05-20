@@ -35,6 +35,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     provider = YamlConfigProvider(Path("app/settings/defaults"))
     settings = provider.get_internal_agents()
 
+    assert settings["build_context"]["strategy"] == "deterministic_synthesis"
     assert settings["build_context"]["provider"] == "codex"
     assert settings["build_context"]["model"] == "gpt-5.4-mini"
     assert settings["build_context"]["reasoning"] == "low"

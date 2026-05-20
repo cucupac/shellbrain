@@ -11,20 +11,22 @@ from app.core.ports.host_apps.inner_agents import (
     InnerAgentRunResult,
 )
 from app.core.entities.settings import (
-    ReadPolicySettings,
     ThresholdSettings,
-    default_read_policy_settings,
     default_threshold_settings,
 )
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
-from app.core.use_cases.retrieval.read import execute_read_memory
-from app.core.use_cases.retrieval.read.request import MemoryReadRequest
+from app.core.use_cases.retrieval.deterministic_graph_recall import (
+    build_deterministic_graph_pack,
+    deterministic_brief_from_graph_pack,
+    source_items_from_graph_pack,
+)
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.use_cases.retrieval.recall.result import RecallMemoryResult
 
 
 _DEFAULT_SETTINGS = InnerAgentSettings(
+    strategy="deterministic_synthesis",
     provider="configured",
     model="configured",
     reasoning="low",
@@ -40,7 +42,6 @@ def execute_build_context(
     uow: IUnitOfWork | None = None,
     *,
     uow_factory: Callable[[], IUnitOfWork] | None = None,
-    read_settings: ReadPolicySettings | None = None,
     threshold_settings: ThresholdSettings | None = None,
     inner_agent_runner: IInnerAgentRunner | None = None,
     build_context_settings: InnerAgentSettings | None = None,
@@ -48,9 +49,19 @@ def execute_build_context(
 ) -> RecallMemoryResult:
     """Build a compact worker brief."""
 
-    read_settings = read_settings or default_read_policy_settings()
     threshold_settings = threshold_settings or default_threshold_settings()
     settings = build_context_settings or _DEFAULT_SETTINGS
+
+    if settings.strategy != "autonomous":
+        return _deterministic_graph_result_with_uow(
+            request=request,
+            uow=uow,
+            uow_factory=uow_factory,
+            threshold_settings=threshold_settings,
+            settings=settings,
+            inner_agent_runner=inner_agent_runner,
+            repo_root=repo_root,
+        )
 
     inner_agent_result = _run_inner_agent(
         request=request,
@@ -75,24 +86,15 @@ def execute_build_context(
             }
         )
 
-    return _deterministic_result_with_uow(
+    return _autonomous_fallback_graph_result_with_uow(
         request=request,
         uow=uow,
         uow_factory=uow_factory,
-        read_settings=read_settings,
         threshold_settings=threshold_settings,
         inner_agent_result=inner_agent_result.model_copy(update={"fallback_used": True}),
-    )
-
-
-def _read_request_from_recall(request: MemoryRecallRequest) -> MemoryReadRequest:
-    """Build the targeted read request used as private candidate context."""
-
-    return MemoryReadRequest(
-        repo_id=request.repo_id,
-        mode="targeted",
-        query=request.query,
-        limit=request.limit,
+        settings=settings,
+        inner_agent_runner=inner_agent_runner,
+        repo_root=repo_root,
     )
 
 
@@ -102,6 +104,8 @@ def _run_inner_agent(
     settings: InnerAgentSettings,
     inner_agent_runner: IInnerAgentRunner | None,
     repo_root: str | None,
+    synthesis_only: bool = False,
+    deterministic_pack: dict[str, Any] | None = None,
 ) -> InnerAgentRunResult:
     """Run the configured provider when available and safe to call."""
 
@@ -119,8 +123,12 @@ def _run_inner_agent(
                 request=request,
                 settings=settings,
                 repo_root=repo_root,
+                synthesis_only=synthesis_only,
+                deterministic_pack=deterministic_pack,
             )
         )
+        if synthesis_only:
+            return result
         return _with_read_trace_counts(result)
     except Exception as exc:  # pragma: no cover - defensive core boundary
         return _inner_agent_result(
@@ -137,8 +145,10 @@ def _inner_agent_request(
     request: MemoryRecallRequest,
     settings: InnerAgentSettings,
     repo_root: str | None,
+    synthesis_only: bool = False,
+    deterministic_pack: dict[str, Any] | None = None,
 ) -> InnerAgentRunRequest:
-    """Build one provider request for autonomous read-only recall."""
+    """Build one provider request for autonomous or synthesis-only recall."""
 
     return InnerAgentRunRequest(
         agent_name="build_context",
@@ -152,6 +162,8 @@ def _inner_agent_request(
         query=request.query,
         current_problem=request.current_problem.model_dump(mode="python"),
         repo_root=repo_root,
+        synthesis_only=synthesis_only,
+        deterministic_pack=deterministic_pack,
     )
 
 
@@ -208,74 +220,143 @@ def _provider_no_context_result(
     )
 
 
-def _deterministic_result(
+def _deterministic_graph_result(
     *,
     request: MemoryRecallRequest,
     uow: IUnitOfWork,
-    read_settings: ReadPolicySettings,
     threshold_settings: ThresholdSettings,
-    inner_agent_result: InnerAgentRunResult,
+    settings: InnerAgentSettings,
+    inner_agent_runner: IInnerAgentRunner | None,
+    repo_root: str | None,
+    prior_inner_agent_result: InnerAgentRunResult | None = None,
 ) -> RecallMemoryResult:
-    """Build the deterministic fallback brief from internal read candidates."""
+    """Build graph-first recall and optionally synthesize it once."""
 
-    read_result = execute_read_memory(
-        _read_request_from_recall(request),
-        uow,
-        read_settings=read_settings,
+    graph_pack = build_deterministic_graph_pack(
+        request=request,
+        uow=uow,
         threshold_settings=threshold_settings,
     )
-    pack = read_result.data.get("pack", {})
-    if not isinstance(pack, dict):
-        pack = {}
-    source_items = _source_items_from_pack(pack)
+    source_items = source_items_from_graph_pack(graph_pack)
     fallback_reason = None if source_items else "no_candidates"
-    return RecallMemoryResult(
-        brief=_deterministic_brief(
-            request=request,
-            pack=pack,
-            source_items=source_items,
+    if fallback_reason == "no_candidates" or settings.strategy == "deterministic_only":
+        inner_agent_result = prior_inner_agent_result or _deterministic_strategy_result(
+            settings=settings,
+            graph_pack=graph_pack,
+            fallback_used=False,
+        )
+        return RecallMemoryResult(
+            brief=deterministic_brief_from_graph_pack(graph_pack),
             fallback_reason=fallback_reason,
-        ),
+            telemetry={
+                "candidate_pack": graph_pack,
+                "source_items": source_items,
+                "inner_agent": _with_graph_counts(
+                    inner_agent_result, graph_pack=graph_pack
+                ).model_dump(mode="python"),
+            },
+        )
+
+    synthesis_result = _run_inner_agent(
+        request=request,
+        settings=settings,
+        inner_agent_runner=inner_agent_runner,
+        repo_root=repo_root,
+        synthesis_only=True,
+        deterministic_pack=graph_pack,
+    )
+    if synthesis_result.status == "ok" and synthesis_result.brief is not None:
+        return RecallMemoryResult(
+            brief=_normalize_provider_brief(
+                synthesis_result.brief,
+                deterministic_sources=_sources_from_source_items(source_items),
+            ),
+            fallback_reason=None,
+            telemetry={
+                "candidate_pack": graph_pack,
+                "source_items": source_items,
+                "inner_agent": _with_graph_counts(
+                    synthesis_result, graph_pack=graph_pack
+                ).model_dump(mode="python"),
+            },
+        )
+
+    fallback_result = synthesis_result.model_copy(
+        update={"fallback_used": True}
+    )
+    return RecallMemoryResult(
+        brief=deterministic_brief_from_graph_pack(graph_pack),
         fallback_reason=fallback_reason,
         telemetry={
-            "candidate_pack": pack,
+            "candidate_pack": graph_pack,
             "source_items": source_items,
-            "inner_agent": inner_agent_result.model_dump(mode="python"),
+            "inner_agent": _with_graph_counts(
+                fallback_result, graph_pack=graph_pack
+            ).model_dump(mode="python"),
         },
     )
 
 
-def _deterministic_result_with_uow(
+def _deterministic_graph_result_with_uow(
     *,
     request: MemoryRecallRequest,
     uow: IUnitOfWork | None,
     uow_factory: Callable[[], IUnitOfWork] | None,
-    read_settings: ReadPolicySettings,
     threshold_settings: ThresholdSettings,
-    inner_agent_result: InnerAgentRunResult,
+    settings: InnerAgentSettings,
+    inner_agent_runner: IInnerAgentRunner | None,
+    repo_root: str | None,
+    prior_inner_agent_result: InnerAgentRunResult | None = None,
 ) -> RecallMemoryResult:
-    """Open a DB transaction only when deterministic fallback actually needs it."""
+    """Open a DB transaction for graph-first recall when needed."""
 
     if uow is not None:
-        return _deterministic_result(
+        return _deterministic_graph_result(
             request=request,
             uow=uow,
-            read_settings=read_settings,
             threshold_settings=threshold_settings,
-            inner_agent_result=inner_agent_result,
+            settings=settings,
+            inner_agent_runner=inner_agent_runner,
+            repo_root=repo_root,
+            prior_inner_agent_result=prior_inner_agent_result,
         )
     if uow_factory is None:
-        raise ValueError(
-            "uow or uow_factory is required for deterministic recall fallback"
-        )
-    with uow_factory() as fallback_uow:
-        return _deterministic_result(
+        raise ValueError("uow or uow_factory is required for deterministic recall")
+    with uow_factory() as graph_uow:
+        return _deterministic_graph_result(
             request=request,
-            uow=fallback_uow,
-            read_settings=read_settings,
+            uow=graph_uow,
             threshold_settings=threshold_settings,
-            inner_agent_result=inner_agent_result,
+            settings=settings,
+            inner_agent_runner=inner_agent_runner,
+            repo_root=repo_root,
+            prior_inner_agent_result=prior_inner_agent_result,
         )
+
+
+def _autonomous_fallback_graph_result_with_uow(
+    *,
+    request: MemoryRecallRequest,
+    uow: IUnitOfWork | None,
+    uow_factory: Callable[[], IUnitOfWork] | None,
+    threshold_settings: ThresholdSettings,
+    inner_agent_result: InnerAgentRunResult,
+    settings: InnerAgentSettings,
+    inner_agent_runner: IInnerAgentRunner | None,
+    repo_root: str | None,
+) -> RecallMemoryResult:
+    """Build graph-first fallback after an autonomous provider fails validation."""
+
+    return _deterministic_graph_result_with_uow(
+        request=request,
+        uow=uow,
+        uow_factory=uow_factory,
+        threshold_settings=threshold_settings,
+        settings=settings,
+        inner_agent_runner=inner_agent_runner,
+        repo_root=repo_root,
+        prior_inner_agent_result=inner_agent_result,
+    )
 
 
 def _inner_agent_result(
@@ -300,53 +381,38 @@ def _inner_agent_result(
     )
 
 
-def _deterministic_brief(
-    *,
-    request: MemoryRecallRequest,
-    pack: dict[str, Any],
-    source_items: list[dict[str, Any]],
-    fallback_reason: str | None,
-) -> dict[str, Any]:
-    """Create a compact deterministic brief from read-pack candidates."""
+def _deterministic_strategy_result(
+    *, settings: InnerAgentSettings, graph_pack: dict[str, Any], fallback_used: bool
+) -> InnerAgentRunResult:
+    """Return telemetry for deterministic-only recall paths."""
 
-    if fallback_reason == "no_candidates":
-        return _no_context_brief()
+    return InnerAgentRunResult(
+        status="ok",
+        provider="deterministic",
+        model="none",
+        reasoning="none",
+        fallback_used=fallback_used,
+        timeout_seconds=settings.timeout_seconds,
+        duration_ms=int(
+            graph_pack.get("pack_trace", {}).get("duration_ms", 0)
+        ),
+    )
 
-    memory_sections = _memory_sections(pack)
-    concept_items = _concept_items(pack)
-    return {
-        "summary": _summary_text(
-            source_count=len(source_items), fallback_reason=fallback_reason
-        ),
-        "constraints": _memory_texts_by_kind(
-            memory_sections, {"fact", "preference", "change"}
-        ),
-        "known_traps": _memory_texts_by_kind(
-            memory_sections, {"problem", "failed_tactic"}
-        ),
-        "prior_cases": _memory_texts_by_kind(memory_sections, {"solution"}),
-        "concept_orientation": [
-            _truncate(
-                f"{item.get('name') or item.get('ref')}: {item.get('orientation') or ''}",
-                280,
-            )
-            for item in concept_items
-            if item.get("orientation") or item.get("name") or item.get("ref")
-        ],
-        "anchors": _anchors(memory_sections=memory_sections, concept_items=concept_items),
-        "conflicts": [],
-        "gaps": [],
-        "next_checks": [],
-        "sources": [
-            {
-                "kind": item["source_kind"],
-                "id": item["source_id"],
-                "section": item["input_section"],
-            }
-            for item in source_items
-            if item["output_section"] is not None
-        ],
-    }
+
+def _with_graph_counts(
+    result: InnerAgentRunResult, *, graph_pack: dict[str, Any]
+) -> InnerAgentRunResult:
+    """Attach deterministic graph traversal counters to recall telemetry."""
+
+    concept_count = len(graph_pack.get("concepts", [])) + len(
+        graph_pack.get("relation_neighbors", [])
+    )
+    return result.model_copy(
+        update={
+            "private_read_count": 0,
+            "concept_expansion_count": concept_count,
+        }
+    )
 
 
 def _no_context_brief() -> dict[str, Any]:
@@ -615,169 +681,3 @@ def _source_kind_from_trace_id(source_id: str) -> str:
     if source_id.startswith("concept:"):
         return "concept"
     return "memory"
-
-
-def _source_items_from_pack(pack: dict[str, Any]) -> list[dict[str, Any]]:
-    """Build stable candidate provenance rows from one read pack."""
-
-    items: list[dict[str, Any]] = []
-    seen: set[tuple[str, str, str]] = set()
-    _append_source_items_from_single_pack(
-        pack,
-        input_prefix="",
-        items=items,
-        seen=seen,
-        next_ordinal=1,
-    )
-    return items
-
-
-def _append_source_items_from_single_pack(
-    pack: dict[str, Any],
-    *,
-    input_prefix: str,
-    items: list[dict[str, Any]],
-    seen: set[tuple[str, str, str]],
-    next_ordinal: int,
-) -> int:
-    """Append provenance rows for one context pack."""
-
-    ordinal = next_ordinal
-    for input_section, bucket_name in (
-        ("direct", "direct"),
-        ("explicit_related", "explicit_related"),
-        ("implicit_related", "implicit_related"),
-    ):
-        bucket = pack.get(bucket_name)
-        if not isinstance(bucket, list):
-            continue
-        for item in bucket:
-            if not isinstance(item, dict) or "memory_id" not in item:
-                continue
-            source_id = str(item["memory_id"])
-            section = _prefixed_section(input_prefix, input_section)
-            key = ("memory", source_id, section)
-            if key in seen:
-                continue
-            seen.add(key)
-            items.append(
-                {
-                    "ordinal": ordinal,
-                    "source_kind": "memory",
-                    "source_id": source_id,
-                    "input_section": section,
-                    "output_section": "sources",
-                }
-            )
-            ordinal += 1
-
-    concepts = pack.get("concepts")
-    if isinstance(concepts, dict) and isinstance(concepts.get("items"), list):
-        for item in concepts["items"]:
-            if not isinstance(item, dict):
-                continue
-            source_id = item.get("id") or item.get("ref")
-            if source_id is None:
-                continue
-            section = _prefixed_section(input_prefix, "concept_orientation")
-            key = ("concept", str(source_id), section)
-            if key in seen:
-                continue
-            seen.add(key)
-            items.append(
-                {
-                    "ordinal": ordinal,
-                    "source_kind": "concept",
-                    "source_id": str(source_id),
-                    "input_section": section,
-                    "output_section": "sources",
-                }
-            )
-            ordinal += 1
-    return ordinal
-
-
-def _prefixed_section(prefix: str, section: str) -> str:
-    """Render a source section name with optional provenance prefix."""
-
-    if not prefix:
-        return section
-    return f"{prefix}.{section}"
-
-
-def _memory_sections(pack: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return memory candidates in display order."""
-
-    items: list[dict[str, Any]] = []
-    for section in ("direct", "explicit_related", "implicit_related"):
-        bucket = pack.get(section)
-        if not isinstance(bucket, list):
-            continue
-        for item in bucket:
-            if isinstance(item, dict):
-                items.append({**item, "_section": _prefixed_section("", section)})
-    return items
-
-
-def _concept_items(pack: dict[str, Any]) -> list[dict[str, Any]]:
-    """Return concept candidates in display order."""
-
-    concepts = pack.get("concepts")
-    if not isinstance(concepts, dict) or not isinstance(concepts.get("items"), list):
-        return []
-    return [
-        {**item, "_section": _prefixed_section("", "concept_orientation")}
-        for item in concepts["items"]
-        if isinstance(item, dict)
-    ]
-
-
-def _memory_texts_by_kind(
-    memory_sections: list[dict[str, Any]], kinds: set[str]
-) -> list[str]:
-    """Render candidate memories by kind for deterministic synthesis sections."""
-
-    rendered: list[str] = []
-    for item in memory_sections:
-        kind = str(item.get("kind") or "")
-        text = str(item.get("text") or "").strip()
-        if kind not in kinds or not text:
-            continue
-        rendered.append(_truncate(f"{kind}: {text}", 280))
-    return rendered[:5]
-
-
-def _anchors(
-    *, memory_sections: list[dict[str, Any]], concept_items: list[dict[str, Any]]
-) -> list[str]:
-    """Build compact actionable anchors from memory and concept provenance."""
-
-    anchors: list[str] = []
-    for item in memory_sections:
-        memory_id = item.get("memory_id")
-        if memory_id is None:
-            continue
-        section = item.get("_section") or "memory"
-        anchors.append(f"memory:{memory_id} ({section})")
-    for item in concept_items:
-        concept_ref = item.get("ref") or item.get("id")
-        if concept_ref is not None:
-            anchors.append(f"concept:{concept_ref}")
-    return anchors[:12]
-
-
-def _summary_text(*, source_count: int, fallback_reason: str | None) -> str:
-    """Return deterministic recall summary text."""
-
-    if fallback_reason == "no_candidates":
-        return "No stored Shellbrain context matched this recall query."
-    return f"Shellbrain synthesized {source_count} recall source(s) for this query."
-
-
-def _truncate(value: str, max_chars: int) -> str:
-    """Return a compact single-line representation."""
-
-    collapsed = " ".join(value.split())
-    if len(collapsed) <= max_chars:
-        return collapsed
-    return f"{collapsed[: max_chars - 3].rstrip()}..."

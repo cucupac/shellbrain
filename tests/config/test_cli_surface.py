@@ -684,6 +684,20 @@ def test_admin_backfill_token_usage_should_print_the_summary(
     assert '"records_attempted": 5' in output
 
 
+def test_admin_should_not_expose_concept_embedding_backfill_commands() -> None:
+    """concept embedding backfill should not be a user-facing CLI route."""
+
+    parser = cli_parser.build_parser()
+
+    with pytest.raises(SystemExit) as nested_exc:
+        parser.parse_args(["admin", "embeddings", "backfill-concepts"])
+    assert nested_exc.value.code == 2
+
+    with pytest.raises(SystemExit) as alias_exc:
+        parser.parse_args(["admin", "backfill-concept-embeddings"])
+    assert alias_exc.value.code == 2
+
+
 def test_admin_analytics_should_print_the_report(
     monkeypatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -915,6 +929,26 @@ def test_inner_agent_read_only_mode_allows_only_read_routes(
         cli_runner._enforce_inner_agent_mode("concept:update")
     with pytest.raises(ValueError):
         cli_runner._enforce_inner_agent_mode("scenario:record")
+
+
+def test_inner_agent_synthesis_mode_rejects_all_shellbrain_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """synthesis-only recall should not be able to issue nested Shellbrain reads."""
+
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_context_synthesis")
+
+    for command in (
+        "events",
+        "read",
+        "concept:show",
+        "recall",
+        "memory:add",
+        "concept:update",
+        "scenario:record",
+    ):
+        with pytest.raises(ValueError):
+            cli_runner._enforce_inner_agent_mode(command)
 
 
 def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(

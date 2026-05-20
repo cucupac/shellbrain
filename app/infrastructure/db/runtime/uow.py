@@ -22,6 +22,10 @@ from app.infrastructure.db.runtime.repos.relational.utility_repo import UtilityR
 from app.infrastructure.db.runtime.repos.semantic.keyword_retrieval_repo import (
     KeywordRetrievalRepo,
 )
+from app.infrastructure.db.runtime.repos.semantic.concept_retrieval_repo import (
+    ConceptKeywordRetrievalRepo,
+    ConceptSemanticRetrievalRepo,
+)
 from app.infrastructure.db.runtime.repos.semantic.semantic_retrieval_repo import (
     SemanticRetrievalRepo,
 )
@@ -61,6 +65,8 @@ class PostgresUnitOfWork(IUnitOfWork):
         self.evidence = EvidenceRepo(self._session)
         self.semantic_retrieval = SemanticRetrievalRepo(self._session)
         self.keyword_retrieval = KeywordRetrievalRepo(self._session)
+        self.concept_semantic_retrieval = ConceptSemanticRetrievalRepo(self._session)
+        self.concept_keyword_retrieval = ConceptKeywordRetrievalRepo(self._session)
         self.read_policy = ReadPolicyRepo(self._session)
         self.telemetry = TelemetryRepo(self._session)
         self.guidance = self.telemetry

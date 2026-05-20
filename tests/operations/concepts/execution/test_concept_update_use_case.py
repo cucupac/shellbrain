@@ -5,6 +5,7 @@ from collections.abc import Callable
 from app.core.use_cases.concepts.add.request import ConceptAddRequest
 from app.core.use_cases.concepts.update.request import ConceptUpdateRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.update import update_concepts
@@ -12,6 +13,7 @@ from app.infrastructure.db.runtime.models.concepts import (
     anchors,
     concept_claims,
     concept_evidence,
+    concept_embeddings,
     concept_groundings,
     concept_memory_links,
     concept_relations,
@@ -57,6 +59,42 @@ def test_concept_update_should_attach_deposit_addresses_graph_records(
     assert len(fetch_rows(concept_groundings)) == 1
     assert len(fetch_rows(concept_memory_links)) == 1
     assert len(fetch_rows(concept_evidence)) == 5
+
+
+def test_concept_update_should_recompute_embeddings_for_touched_concepts(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+    stub_embedding_provider: IEmbeddingProvider,
+    fetch_rows: Callable[..., list[dict[str, object]]],
+) -> None:
+    """concept update should embed concepts touched by graph mutations."""
+
+    _seed_deposit_concepts(uow_factory)
+    seed_memory(
+        memory_id="refund-problem-1",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.PROBLEM,
+        text_value="Refund problem.",
+    )
+
+    with uow_factory() as uow:
+        update_concepts(
+            _deposit_graph_request(),
+            uow,
+            id_generator=_SequenceIdGenerator(),
+            embedding_provider=stub_embedding_provider,
+            embedding_model="stub-v1",
+        )
+
+    rows = fetch_rows(concept_embeddings)
+    assert {row["concept_id"] for row in rows} == {
+        "concept-id-1",
+        "concept-id-2",
+        "concept-id-3",
+    }
+    assert {row["model"] for row in rows} == {"stub-v1"}
+    assert {row["dim"] for row in rows} == {4}
 
 
 def test_concept_update_should_be_idempotent_for_natural_keys(

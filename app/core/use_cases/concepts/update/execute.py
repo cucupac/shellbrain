@@ -38,8 +38,10 @@ from app.core.entities.concepts import (
     ConceptSourceKind,
     ConceptStatus,
 )
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
+from app.core.use_cases.concepts.embeddings import upsert_concept_embeddings
 from app.core.policies.concepts.relation_rules import validate_relation_shape
 from app.core.use_cases.concepts.containment_checks import validate_contains_relation
 from app.core.use_cases.concepts.reference_checks import (
@@ -57,23 +59,43 @@ def update_concepts(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    embedding_provider: IEmbeddingProvider | None = None,
+    embedding_model: str | None = None,
 ) -> ConceptUpdateResult:
     """Update existing concepts and truth-bearing graph records."""
 
     results: list[dict[str, Any]] = []
+    touched_concept_ids: set[str] = set()
     for action in request.actions:
         try:
             if isinstance(action, UpdateConceptAction):
-                results.append(_update_concept(request.repo_id, action, uow))
+                results.append(
+                    _update_concept(
+                        request.repo_id,
+                        action,
+                        uow,
+                        touched_concept_ids=touched_concept_ids,
+                    )
+                )
             elif isinstance(action, AddRelationAction):
                 results.append(
                     _add_relation(
-                        request.repo_id, action, uow, id_generator=id_generator
+                        request.repo_id,
+                        action,
+                        uow,
+                        id_generator=id_generator,
+                        touched_concept_ids=touched_concept_ids,
                     )
                 )
             elif isinstance(action, AddClaimAction):
                 results.append(
-                    _add_claim(request.repo_id, action, uow, id_generator=id_generator)
+                    _add_claim(
+                        request.repo_id,
+                        action,
+                        uow,
+                        id_generator=id_generator,
+                        touched_concept_ids=touched_concept_ids,
+                    )
                 )
             elif isinstance(action, EnsureAnchorAction):
                 results.append(
@@ -84,13 +106,21 @@ def update_concepts(
             elif isinstance(action, AddGroundingAction):
                 results.append(
                     _add_grounding(
-                        request.repo_id, action, uow, id_generator=id_generator
+                        request.repo_id,
+                        action,
+                        uow,
+                        id_generator=id_generator,
+                        touched_concept_ids=touched_concept_ids,
                     )
                 )
             elif isinstance(action, LinkMemoryAction):
                 results.append(
                     _link_memory(
-                        request.repo_id, action, uow, id_generator=id_generator
+                        request.repo_id,
+                        action,
+                        uow,
+                        id_generator=id_generator,
+                        touched_concept_ids=touched_concept_ids,
                     )
                 )
             else:  # pragma: no cover - discriminated contract should make this impossible.
@@ -109,13 +139,25 @@ def update_concepts(
             raise DomainValidationError(
                 [ErrorDetail(code=ErrorCode.SEMANTIC_ERROR, message=str(exc))]
             ) from exc
+    upsert_concept_embeddings(
+        repo_id=request.repo_id,
+        concept_ids=tuple(sorted(touched_concept_ids)),
+        uow=uow,
+        embedding_provider=embedding_provider,
+        embedding_model=embedding_model,
+    )
     return ConceptUpdateResult(updated_count=len(results), results=results)
 
 
 def _update_concept(
-    repo_id: str, action: UpdateConceptAction, uow: IUnitOfWork
+    repo_id: str,
+    action: UpdateConceptAction,
+    uow: IUnitOfWork,
+    *,
+    touched_concept_ids: set[str],
 ) -> dict[str, Any]:
     existing = require_concept(repo_id, action.concept, uow)
+    touched_concept_ids.add(existing.id)
     concept = Concept(
         id=existing.id,
         repo_id=existing.repo_id,
@@ -141,9 +183,11 @@ def _add_relation(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    touched_concept_ids: set[str],
 ) -> dict[str, Any]:
     subject = require_concept(repo_id, action.subject, uow)
     object_concept = require_concept(repo_id, action.object, uow)
+    touched_concept_ids.update((subject.id, object_concept.id))
     predicate = ConceptRelationPredicate(action.predicate)
     validate_relation_shape(
         subject=subject, predicate=predicate, object_concept=object_concept
@@ -182,8 +226,10 @@ def _add_claim(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    touched_concept_ids: set[str],
 ) -> dict[str, Any]:
     concept = require_concept(repo_id, action.concept, uow)
+    touched_concept_ids.add(concept.id)
     claim = uow.concepts.add_claim(
         ConceptClaim(
             id=id_generator.new_id(),
@@ -229,8 +275,10 @@ def _add_grounding(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    touched_concept_ids: set[str],
 ) -> dict[str, Any]:
     concept = require_concept(repo_id, action.concept, uow)
+    touched_concept_ids.add(concept.id)
     if action.anchor.id:
         anchor = require_anchor(repo_id, action.anchor.id, uow)
     else:
@@ -265,9 +313,11 @@ def _link_memory(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    touched_concept_ids: set[str],
 ) -> dict[str, Any]:
     concept = require_concept(repo_id, action.concept, uow)
     memory = require_visible_memory(repo_id, action.memory_id, uow)
+    touched_concept_ids.add(concept.id)
     memory_link = uow.concepts.add_memory_link(
         ConceptMemoryLink(
             id=id_generator.new_id(),

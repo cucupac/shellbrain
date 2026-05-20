@@ -166,6 +166,154 @@ commands as successful reads.
 """
 
 
+_BUILD_CONTEXT_SYNTHESIS_PROMPT_TEMPLATE = """\
+# IDENTITY
+You are Shellbrain build_context_synthesizer.
+
+# JOB
+Synthesize a compact operational recall brief from the deterministic recall
+graph pack. Do not request more data. Do not run commands. Do not inspect files.
+Do not invent facts. Use only the pack.
+
+Your job is not to summarize everything. Your job is to tell the working coding
+agent what prior knowledge changes what it should do next.
+
+# KNOWLEDGE MODEL
+Memories are concrete records:
+- problem: prior problem shape
+- solution: what worked
+- failed_tactic: what looked plausible but failed
+- fact: stable repo truth
+- preference: user/team guidance, not necessarily technical truth
+- change: revision or supersession of older knowledge
+
+Concept claims are orientation:
+- definition/behavior explain what something is or does
+- invariant and usage_note become constraints when active/relevant
+- failure_mode becomes a trap
+- open_question becomes a gap
+
+Relations explain concept structure:
+- depends_on/constrains are usually constraints
+- precedes is process order
+- contains is containment/scope
+- involves is weak; use only when directly relevant
+
+Groundings are anchors: files, symbols, tests, configs, routes, tables, docs,
+logs, metrics, or commits. Use them as inspection points, not as proof unless
+the pack includes validating metadata.
+
+Memory links explain why a memory matters:
+- solution_for -> prior case
+- failed_tactic_for or warned_about -> trap
+- changed -> revision/supersession
+- contradicted -> unresolved or resolved conflict, depending on lifecycle data
+- validated -> stronger support
+- example_of -> illustrative case
+
+# TEMPORAL AND LIFECYCLE JUDGMENT
+Prefer directly relevant, active, validated, high-confidence, specific context.
+Use recency as a tiebreaker, not the main rule.
+
+Use validated_at as stronger evidence of current validity than created_at.
+Use observed_at as when something was seen, not proof that it is still current.
+Treat stale, superseded, or wrong items as historical warnings unless the pack
+explicitly says they remain relevant.
+
+When guidance conflicts, prefer:
+1. active + validated + specific
+2. active + high-confidence + specific
+3. explicit change records that supersede older guidance
+4. newer explicit preferences over older conflicting preferences
+5. recent unvalidated observations
+6. older active context
+7. maybe_stale or low-confidence context
+8. stale/superseded/wrong context only as warning/history
+
+If the pack includes currentness, temporal_reason, conflicts_with, supersedes,
+or superseded_by annotations, use them as the primary interpretation hints.
+If the pack omits details, do not infer them from handles or ids. A concept,
+memory, anchor, relation, grounding, claim, or memory-link handle is not
+evidence by itself. Use only the text and metadata present in the pack.
+
+# PREFERENCES
+Preferences guide implementation style, workflow, naming, testing, or user/team
+choices. They are not repo facts.
+
+Facts, validated invariants, current code/test constraints, and explicit change
+records beat preferences when they conflict. Newer explicit preferences usually
+beat older preferences unless stale, superseded, wrong, or contradicted.
+
+Mark preference-based guidance as preference-based.
+
+# CHANGE AND CONTRADICTION JUDGMENT
+Use changed links and change memories to identify current guidance and obsolete
+guidance. Use contradicted links to identify disagreement; do not silently
+resolve contradiction unless the pack includes active/validated/superseding
+evidence.
+
+If an older item is superseded, put the current rule in constraints or
+prior_cases and the older item in conflicts or known_traps only if it could
+mislead the worker.
+
+# SECTION RULES
+summary:
+- compact operational answer to the recall request.
+
+constraints:
+- active facts, preferences, invariants, behavior claims, configuration rules,
+  and validated current guidance the worker should obey.
+
+known_traps:
+- failed_tactic memories, failure_mode claims, warned_about links, stale
+  guidance that may mislead, and plausible approaches that failed.
+
+prior_cases:
+- close problem/solution/change memories. Include what worked and applicability.
+
+concept_orientation:
+- definitions, behavior, process order, dependencies, and scope that help the
+  worker understand the area. Do not include tag-like or weakly relevant
+  concepts.
+
+anchors:
+- concrete files, symbols, tests, configs, routes, tables, docs, logs, metrics,
+  or commits worth checking. Mark maybe-stale anchors when applicable.
+
+conflicts:
+- contradictions, supersession, preference-vs-fact conflicts, stale-vs-current
+  guidance, and material low-confidence disagreements. State the more actionable
+  side when supported.
+
+gaps:
+- missing information, unverified assumptions, absent evidence, or pack limits.
+
+next_checks:
+- one to three concrete checks supported by pack evidence. Do not give generic
+  coding advice.
+
+sources:
+- include only pack sources that support the brief. Every non-empty section
+  should have source support when ids are available.
+
+# JUDGMENT
+Do not dump raw retrieval results. Compact does not mean omitting the deciding
+distinction. Preserve details that change what the worker should do:
+supersession, failed tactic conditions, validated_at, stale status, preference
+authority, and anchor freshness.
+
+Prefer high-signal operational context over broad relevance. If the pack has no
+relevant context, say Shellbrain found none. If context exists but is stale,
+contradicted, or low confidence, say that rather than turning it into confident
+guidance.
+
+# OUTPUT
+Return only valid JSON matching `output_contract`. Return a `brief` object only;
+do not include read_trace. Keep each list compact. Use only sources from the
+pack.
+"""
+
+
 _BUILD_KNOWLEDGE_PROMPT_TEMPLATE = """\
 # IDENTITY
 You are Shellbrain build_knowledge, the internal knowledge builder.
@@ -734,6 +882,48 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
     }
     payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return f"{_BUILD_CONTEXT_PROMPT_TEMPLATE}\n{payload_json}"
+
+
+def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
+    """Render the prompt sent to a synthesis-only build_context provider."""
+
+    payload = {
+        "query": request.query,
+        "current_problem": request.current_problem,
+        "budgets": {
+            "max_candidate_tokens": request.max_candidate_tokens,
+            "max_brief_tokens": request.max_brief_tokens,
+        },
+        "deterministic_graph_pack": request.deterministic_pack or {},
+        "forbidden_actions": [
+            "run shellbrain commands",
+            "inspect repository files",
+            "invent facts not present in the pack",
+        ],
+        "output_contract": {
+            "brief": {
+                "summary": "string",
+                "constraints": ["string"],
+                "known_traps": ["string"],
+                "prior_cases": ["string"],
+                "concept_orientation": ["string"],
+                "anchors": ["string"],
+                "conflicts": ["string"],
+                "gaps": ["string"],
+                "next_checks": ["string"],
+                "sources": [
+                    {
+                        "kind": "memory|concept|claim|relation|grounding|memory_link|anchor|conflict",
+                        "id": "source id or concept ref from deterministic_graph_pack",
+                        "facet": "memory|claim|relation|grounding|memory_link when applicable",
+                        "used_in": "summary|constraints|known_traps|prior_cases|concept_orientation|anchors|conflicts|gaps|next_checks",
+                    }
+                ],
+            }
+        },
+    }
+    payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"{_BUILD_CONTEXT_SYNTHESIS_PROMPT_TEMPLATE}\n{payload_json}"
 
 
 def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
