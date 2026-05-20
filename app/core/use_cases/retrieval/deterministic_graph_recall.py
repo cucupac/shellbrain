@@ -158,6 +158,36 @@ def build_deterministic_graph_pack(
     return pack
 
 
+def synthesis_pack_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
+    """Project a full graph pack into the evidence pack sent to synthesis.
+
+    The deterministic traversal/ranking step decides what evidence the synthesizer
+    needs. This projection keeps that evidence intact and removes diagnostic-only
+    traversal details that are useful for telemetry, not synthesis.
+    """
+
+    return _project_synthesis_pack(pack=pack)
+
+
+def record_synthesis_pack_size(
+    *,
+    graph_pack: dict[str, Any],
+    synthesis_pack: dict[str, Any],
+) -> None:
+    """Attach synthesis prompt size metadata to the full telemetry pack."""
+
+    pack_trace = graph_pack.get("pack_trace")
+    if not isinstance(pack_trace, dict):
+        raise ValueError("deterministic graph pack is missing pack_trace")
+    pack_budget = pack_trace.get("pack_budget")
+    if not isinstance(pack_budget, dict):
+        raise ValueError("deterministic graph pack is missing pack_trace.pack_budget")
+    pack_budget["source_candidate_tokens_estimated"] = _estimate_pack_tokens(graph_pack)
+    pack_budget["synthesis_candidate_tokens_estimated"] = int(
+        _estimate_pack_tokens(synthesis_pack)
+    )
+
+
 def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
     """Render a compact worker brief from a deterministic graph pack."""
 
@@ -1066,6 +1096,31 @@ def _pack_budget(
         "truncated_items": int(ranking_trace.get("rejected_memory_count", 0)),
         "truncation_reason": "role_budget" if ranking_trace.get("rejected") else None,
     }
+
+
+def _project_synthesis_pack(
+    *,
+    pack: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "strategy": pack.get("strategy"),
+        "request": pack.get("request") if isinstance(pack.get("request"), dict) else {},
+        "memories": _dict_items(pack.get("memories")),
+        "concepts": _dict_items(pack.get("concepts")),
+        "relation_neighbors": _dict_items(pack.get("relation_neighbors")),
+        "anchors": _dict_items(pack.get("anchors")),
+        "conflicts": _dict_items(pack.get("conflicts")),
+    }
+
+
+def _dict_items(value: object) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
+def _estimate_pack_tokens(pack: dict[str, Any]) -> int:
+    return max(1, len(json.dumps(pack, sort_keys=True, default=str)) // 4)
 
 
 def _brief_memory_texts(

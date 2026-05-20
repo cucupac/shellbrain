@@ -399,7 +399,10 @@ def _candidate_pack() -> dict:
         "relation_neighbors": [],
         "anchors": [],
         "conflicts": [],
-        "pack_trace": {"duration_ms": 5},
+        "pack_trace": {
+            "duration_ms": 5,
+            "pack_budget": {},
+        },
     }
 
 

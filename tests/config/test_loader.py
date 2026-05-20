@@ -76,6 +76,17 @@ def test_internal_agent_config_rejects_removed_toggle_fields() -> None:
         InternalAgentsConfig.model_validate(settings)
 
 
+def test_internal_agent_config_rejects_removed_candidate_token_budget() -> None:
+    """typed build_context config should reject stale synthesis-token ceilings."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+    settings["build_context"]["max_candidate_tokens"] = 10_000
+
+    with pytest.raises(ValueError):
+        InternalAgentsConfig.model_validate(settings)
+
+
 def test_internal_agent_config_rejects_removed_provider_fields() -> None:
     """typed provider config should reject stale runtime knobs."""
 

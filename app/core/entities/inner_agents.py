@@ -37,7 +37,6 @@ class BuildContextSettings(_StrictModel):
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=600)
     max_private_reads: int = Field(default=0, ge=0, le=10)
-    max_candidate_tokens: int = Field(ge=1, le=200_000)
     max_brief_tokens: int | None = Field(default=None, ge=1, le=100_000)
 
 

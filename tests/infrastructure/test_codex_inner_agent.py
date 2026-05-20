@@ -489,7 +489,6 @@ def _request(
         model="gpt-5.4-mini",
         reasoning="low",
         timeout_seconds=90,
-        max_candidate_tokens=10_000,
         max_brief_tokens=1_800,
         query="what matters?",
         current_problem={

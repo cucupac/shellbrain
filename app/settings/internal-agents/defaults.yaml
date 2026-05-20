@@ -6,7 +6,6 @@ build_context:
   reasoning: low
   timeout_seconds: 90
   max_private_reads: 3
-  max_candidate_tokens: 10000
   max_brief_tokens: 1800
 
 build_knowledge:

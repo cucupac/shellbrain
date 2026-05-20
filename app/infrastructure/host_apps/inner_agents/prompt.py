@@ -821,7 +821,6 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
         "repo_root": request.repo_root,
         "budgets": {
             "max_private_reads": request.max_private_reads,
-            "max_candidate_tokens": request.max_candidate_tokens,
             "max_brief_tokens": request.max_brief_tokens,
         },
         "help_commands": [
@@ -891,7 +890,6 @@ def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
         "query": request.query,
         "current_problem": request.current_problem,
         "budgets": {
-            "max_candidate_tokens": request.max_candidate_tokens,
             "max_brief_tokens": request.max_brief_tokens,
         },
         "deterministic_graph_pack": request.deterministic_pack or {},
