@@ -18,6 +18,8 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
+CURRENT_ALEMBIC_HEAD = "20260519_0026"
+
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
     tmp_path: Path,
@@ -276,11 +278,68 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
                 concepts_table = cur.fetchone()[0]
                 cur.execute("SELECT version_num FROM alembic_version;")
                 alembic_version = cur.fetchone()[0]
+                cur.execute(
+                    """
+                    SELECT conname
+                      FROM pg_constraint
+                     WHERE conrelid = 'knowledge_build_runs'::regclass
+                       AND conname IN (
+                         'ck_knowledge_build_runs_trigger',
+                         'knowledge_build_runs_trigger_check'
+                       );
+                    """
+                )
+                knowledge_build_trigger_constraints = {row[0] for row in cur}
+                cur.execute(
+                    """
+                    INSERT INTO episodes (
+                      id, repo_id, thread_id, status, host_app
+                    )
+                    VALUES (
+                      'packaging-trigger-episode',
+                      'example/repo',
+                      'packaging-trigger-thread',
+                      'active',
+                      'codex'
+                    );
+                    """
+                )
+                for trigger in ("watermark_stable", "explicit_teach"):
+                    cur.execute(
+                        """
+                        INSERT INTO knowledge_build_runs (
+                          id,
+                          repo_id,
+                          episode_id,
+                          trigger,
+                          status,
+                          event_watermark,
+                          provider,
+                          model,
+                          reasoning,
+                          started_at
+                        )
+                        VALUES (
+                          %s,
+                          'example/repo',
+                          'packaging-trigger-episode',
+                          %s,
+                          'ok',
+                          1,
+                          'codex',
+                          'gpt-5.4-mini',
+                          'medium',
+                          NOW()
+                        );
+                        """,
+                        (f"packaging-trigger-{trigger}", trigger),
+                    )
 
         assert memories_table is not None
         assert episode_events_table is not None
         assert concepts_table is not None
-        assert alembic_version == "20260519_0024"
+        assert alembic_version == CURRENT_ALEMBIC_HEAD
+        assert knowledge_build_trigger_constraints == {"ck_knowledge_build_runs_trigger"}
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
         drop_temp_database(admin_dsn, db_name)
@@ -376,7 +435,7 @@ def test_admin_migrate_should_preserve_pre_frontier_data_and_enable_frontier_sup
         with psycopg.connect(raw_package_dsn, autocommit=True) as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT version_num FROM alembic_version;")
-                assert cur.fetchone()[0] == "20260519_0024"
+                assert cur.fetchone()[0] == CURRENT_ALEMBIC_HEAD
 
                 cur.execute(
                     "SELECT kind, text FROM memories WHERE id = 'pre0009-problem';"
