@@ -85,5 +85,13 @@ class IConceptsRepo(ABC):
         """This method returns concept-link matches for displayed memory ids."""
 
     @abstractmethod
-    def list_concept_search_rows(self, *, repo_id: str) -> Sequence[dict[str, Any]]:
-        """This method returns active concept text rows for query matching."""
+    def upsert_embedding(
+        self,
+        *,
+        concept_id: str,
+        repo_id: str,
+        model: str,
+        vector: Sequence[float],
+        source_hash: str,
+    ) -> None:
+        """This method inserts or updates one aggregate concept embedding."""

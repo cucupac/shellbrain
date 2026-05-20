@@ -3,7 +3,7 @@
 from collections.abc import Callable
 
 import pytest
-from sqlalchemy import select, update
+from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Engine
 
 from app.core.use_cases.concepts.add.request import ConceptAddRequest
@@ -15,7 +15,11 @@ from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.update import update_concepts
 from app.core.use_cases.retrieval.read import execute_read_memory
 from app.core.use_cases.retrieval.read_concepts import append_concepts_to_pack
-from app.infrastructure.db.runtime.models.concepts import concept_memory_links, concepts
+from app.infrastructure.db.runtime.models.concepts import (
+    concept_embeddings,
+    concept_memory_links,
+    concepts,
+)
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import make_read_request
 
@@ -98,9 +102,103 @@ def test_read_should_include_concepts_matching_query_aliases(
 
     concept_item = result.data["pack"]["concepts"]["items"][0]
     assert concept_item["ref"] == "deposit-addresses"
-    assert {"reason": "query_alias", "matched": "deposit address"} in concept_item[
-        "why_matched"
-    ]
+    assert {"reason": "concept_keyword", "rank": 1} in concept_item["why_matched"]
+
+
+def test_read_should_include_concepts_matching_semantic_concept_embeddings(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    integration_engine: Engine,
+    monkeypatch,
+) -> None:
+    """auto concept selection should use concept embeddings independent of memory hits."""
+
+    with uow_factory() as uow:
+        add_concepts(
+            ConceptAddRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
+                        {
+                            "type": "add_concept",
+                            "slug": "semantic-only",
+                            "name": "Unrelated Surface",
+                            "kind": "domain",
+                        }
+                    ],
+                }
+            ),
+            uow,
+            id_generator=_SequenceIdGenerator(prefix="semantic-concept-id"),
+        )
+    with integration_engine.begin() as conn:
+        conn.execute(
+            insert(concept_embeddings).values(
+                concept_id="semantic-concept-id-1",
+                repo_id="repo-a",
+                model="stub-v1",
+                dim=4,
+                vector=[1.0, 0.0, 0.0, 0.0],
+                source_hash="semantic-source",
+            )
+        )
+    _stub_pack(monkeypatch, direct_memory_ids=[])
+
+    with uow_factory() as uow:
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="opaque query terms"), uow
+        )
+
+    concept_item = result.data["pack"]["concepts"]["items"][0]
+    assert concept_item["ref"] == "semantic-only"
+    assert {"reason": "concept_semantic", "rank": 1} in concept_item["why_matched"]
+
+
+def test_concept_keyword_corpus_should_include_anchors_and_exclude_inactive_concepts(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+) -> None:
+    """concept keyword adapter should expose active aggregate concept text only."""
+
+    seed_read_memory(
+        memory_id="refund-problem-1",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.PROBLEM,
+        text_value="Refund problem.",
+    )
+    _seed_deposit_addresses(uow_factory)
+    with uow_factory() as uow:
+        add_concepts(
+            ConceptAddRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
+                        {
+                            "type": "add_concept",
+                            "slug": "archived-concept",
+                            "name": "Archived Concept",
+                            "kind": "domain",
+                            "status": "archived",
+                            "aliases": ["archived alias"],
+                        }
+                    ],
+                }
+            ),
+            uow,
+            id_generator=_SequenceIdGenerator(prefix="archived-concept-id"),
+        )
+
+    with uow_factory() as uow:
+        rows = uow.concept_keyword_retrieval.list_concept_keyword_corpus(
+            repo_id="repo-a", query_terms=["deposit"], candidate_limit=10
+        )
+
+    rows_by_id = {row["concept_id"]: row for row in rows}
+    assert "deposit-concept-id-1" in rows_by_id
+    assert "app/deposit_addresses.py" in rows_by_id["deposit-concept-id-1"]["text"]
+    assert "archived-concept-id-1" not in rows_by_id
 
 
 def test_read_should_suppress_concepts_when_requested(
@@ -439,7 +537,3 @@ class _MalformedConceptLinksRepo:
                 "confidence": 0.5,
             }
         ]
-
-    def list_concept_search_rows(self, *, repo_id: str):
-        del repo_id
-        return []

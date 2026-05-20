@@ -49,6 +49,35 @@ class IKeywordRetrievalRepo(ABC):
         """This method returns visible text rows for lexical ranking."""
 
 
+class IConceptSemanticRetrievalRepo(ABC):
+    """This interface defines semantic-lane retrieval against concept embeddings."""
+
+    @abstractmethod
+    def query_concepts_semantic(
+        self,
+        *,
+        repo_id: str,
+        query_vector: Sequence[float],
+        limit: int,
+        query_model: str | None = None,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns concept semantic retrieval candidates with scores."""
+
+
+class IConceptKeywordRetrievalRepo(ABC):
+    """This interface defines concept keyword-lane corpus access."""
+
+    @abstractmethod
+    def list_concept_keyword_corpus(
+        self,
+        *,
+        repo_id: str,
+        query_terms: Sequence[str] | None = None,
+        candidate_limit: int | None = None,
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns active concept text rows for lexical ranking."""
+
+
 class IReadPolicyRepo(ABC):
     """This interface defines read-path visibility and explicit expansion queries."""
 

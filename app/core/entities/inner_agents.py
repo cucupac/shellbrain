@@ -14,6 +14,9 @@ class _StrictModel(BaseModel):
 InnerAgentName = Literal["build_context", "build_knowledge", "teach"]
 InnerAgentProviderName = str
 InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
+BuildContextStrategy = Literal[
+    "deterministic_synthesis", "deterministic_only", "autonomous"
+]
 TokenCaptureQuality = Literal["exact", "estimated"]
 InnerAgentRunStatus = Literal[
     "ok",
@@ -28,6 +31,7 @@ InnerAgentRunStatus = Literal[
 class BuildContextSettings(_StrictModel):
     """Typed model/runtime settings for the build_context recall agent."""
 
+    strategy: BuildContextStrategy = "deterministic_synthesis"
     provider: InnerAgentProviderName = Field(min_length=1)
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel

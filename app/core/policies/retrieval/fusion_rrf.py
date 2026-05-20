@@ -10,6 +10,7 @@ def fuse_with_rrf(
     keyword: list[dict[str, Any]],
     *,
     retrieval_defaults: Mapping[str, float] | None = None,
+    id_key: str = "memory_id",
 ) -> list[dict[str, Any]]:
     """This function merges lane candidates using reciprocal-rank fusion."""
 
@@ -25,11 +26,11 @@ def fuse_with_rrf(
 
     for lane_name, candidates in (("semantic", semantic), ("keyword", keyword)):
         for rank, candidate in enumerate(candidates, start=1):
-            memory_id = candidate["memory_id"]
+            item_id = candidate[id_key]
             entry = fused.setdefault(
-                memory_id,
+                item_id,
                 {
-                    "memory_id": memory_id,
+                    id_key: item_id,
                     "rrf_score": 0.0,
                     "rank_semantic": None,
                     "rank_keyword": None,
@@ -40,5 +41,5 @@ def fuse_with_rrf(
 
     return sorted(
         fused.values(),
-        key=lambda item: (-float(item["rrf_score"]), str(item["memory_id"])),
+        key=lambda item: (-float(item["rrf_score"]), str(item[id_key])),
     )

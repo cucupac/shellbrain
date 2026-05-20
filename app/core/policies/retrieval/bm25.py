@@ -20,7 +20,7 @@ _COVERAGE_THRESHOLD_BY_MODE = {
 class BM25Document:
     """Normalized document representation used for BM25 scoring."""
 
-    memory_id: str
+    document_id: str
     terms: tuple[str, ...]
 
 
@@ -28,7 +28,7 @@ class BM25Document:
 class BM25ScoredDocument:
     """Scored lexical candidate with query-coverage metadata."""
 
-    memory_id: str
+    document_id: str
     score: float
     coverage: float
 
@@ -47,7 +47,7 @@ def score_documents(
         return []
 
     term_frequencies = {
-        document.memory_id: Counter(document.terms) for document in documents
+        document.document_id: Counter(document.terms) for document in documents
     }
     corpus_size = len(documents)
     average_length = sum(len(document.terms) for document in documents) / corpus_size
@@ -59,7 +59,7 @@ def score_documents(
             sum(
                 1
                 for document in documents
-                if term in term_frequencies[document.memory_id]
+                if term in term_frequencies[document.document_id]
             ),
             corpus_size,
         )
@@ -71,7 +71,7 @@ def score_documents(
 
     scored: list[BM25ScoredDocument] = []
     for document in documents:
-        frequencies = term_frequencies[document.memory_id]
+        frequencies = term_frequencies[document.document_id]
         matched_terms = tuple(
             term for term in normalized_query_terms if term in frequencies
         )
@@ -93,30 +93,36 @@ def score_documents(
         if score > 0.0:
             scored.append(
                 BM25ScoredDocument(
-                    memory_id=document.memory_id,
+                    document_id=document.document_id,
                     score=score,
                     coverage=matched_query_weight / total_query_weight,
                 )
             )
 
-    return sorted(scored, key=lambda item: (-item.score, item.memory_id))
+    return sorted(scored, key=lambda item: (-item.score, item.document_id))
 
 
 def admit_scored_documents(
     scored_documents: Sequence[BM25ScoredDocument],
     *,
     mode: Literal["ambient", "targeted"],
+    output_id_key: Literal["memory_id", "concept_id"] = "memory_id",
+    coverage_threshold: float | None = None,
 ) -> list[dict[str, object]]:
     """Apply the mode-aware weighted query-coverage gate to scored lexical candidates."""
 
-    threshold = _COVERAGE_THRESHOLD_BY_MODE[mode]
+    threshold = (
+        float(coverage_threshold)
+        if coverage_threshold is not None
+        else _COVERAGE_THRESHOLD_BY_MODE[mode]
+    )
     admitted = [
-        {"memory_id": document.memory_id, "score": document.score}
+        {output_id_key: document.document_id, "score": document.score}
         for document in scored_documents
         if document.coverage >= threshold
     ]
     return sorted(
-        admitted, key=lambda item: (-float(item["score"]), str(item["memory_id"]))
+        admitted, key=lambda item: (-float(item["score"]), str(item[output_id_key]))
     )
 
 

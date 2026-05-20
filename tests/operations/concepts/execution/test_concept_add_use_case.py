@@ -3,9 +3,10 @@
 from collections.abc import Callable
 
 from app.core.use_cases.concepts.add.request import ConceptAddRequest
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
-from app.infrastructure.db.runtime.models.concepts import concepts
+from app.infrastructure.db.runtime.models.concepts import concept_embeddings, concepts
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
@@ -30,6 +31,30 @@ def test_concept_add_should_create_new_concept_containers(
         )
     assert result.data["added_count"] == 4
     assert len(fetch_rows(concepts)) == 4
+
+
+def test_concept_add_should_persist_embeddings_for_new_concepts(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    stub_embedding_provider: IEmbeddingProvider,
+    fetch_rows: Callable[..., list[dict[str, object]]],
+) -> None:
+    """concept add should maintain concept_embeddings when embedding support is wired."""
+
+    with uow_factory() as uow:
+        result = add_concepts(
+            _deposit_concepts_request(),
+            uow,
+            id_generator=_SequenceIdGenerator(),
+            embedding_provider=stub_embedding_provider,
+            embedding_model="stub-v1",
+        )
+
+    assert result.data["added_count"] == 4
+    rows = fetch_rows(concept_embeddings)
+    assert len(rows) == 4
+    assert {row["model"] for row in rows} == {"stub-v1"}
+    assert {row["dim"] for row in rows} == {4}
+    assert all(row["source_hash"] for row in rows)
 
 
 def test_concept_add_should_fail_if_concept_exists(

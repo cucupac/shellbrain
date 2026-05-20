@@ -36,7 +36,6 @@ def execute_recall_memory_with_dependencies(
         request,
         uow,
         uow_factory=uow_factory,
-        read_settings=dependencies.read_settings,
         threshold_settings=dependencies.threshold_settings,
         inner_agent_runner=dependencies.build_context_inner_agent_runner,
         build_context_settings=dependencies.build_context_settings,

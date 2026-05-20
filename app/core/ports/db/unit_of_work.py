@@ -17,6 +17,8 @@ from app.core.ports.db.memory_repositories import (
 from app.core.ports.db.problem_runs import IProblemRunsRepo
 from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.core.ports.db.retrieval_repositories import (
+    IConceptKeywordRetrievalRepo,
+    IConceptSemanticRetrievalRepo,
     IKeywordRetrievalRepo,
     IReadPolicyRepo,
     ISemanticRetrievalRepo,
@@ -35,6 +37,8 @@ class IUnitOfWork(ABC):
     evidence: IEvidenceRepo
     semantic_retrieval: ISemanticRetrievalRepo
     keyword_retrieval: IKeywordRetrievalRepo
+    concept_semantic_retrieval: IConceptSemanticRetrievalRepo
+    concept_keyword_retrieval: IConceptKeywordRetrievalRepo
     read_policy: IReadPolicyRepo
     guidance: IPendingUtilityCandidatesRepo
     knowledge_build_runs: IKnowledgeBuildRunsRepo

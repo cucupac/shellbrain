@@ -17,7 +17,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260519_0026"
+CURRENT_ALEMBIC_HEAD = "20260519_0027"
 
 
 def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_tables_and_views_from_packaged_artifacts(

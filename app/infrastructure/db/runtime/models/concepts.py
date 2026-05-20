@@ -1,11 +1,13 @@
 """SQLAlchemy Core tables for the typed concept-context graph substrate."""
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     CheckConstraint,
     Column,
     Float,
     ForeignKey,
     Index,
+    Integer,
     String,
     Table,
     Text,
@@ -67,6 +69,35 @@ concepts = Table(
     CheckConstraint(f"kind IN ({_CONCEPT_KINDS})", name="ck_concepts_kind"),
     CheckConstraint(f"status IN ({_CONCEPT_STATUSES})", name="ck_concepts_status"),
     UniqueConstraint("repo_id", "slug", name="uq_concepts_repo_slug"),
+)
+
+concept_embeddings = Table(
+    "concept_embeddings",
+    metadata,
+    Column(
+        "concept_id",
+        String,
+        ForeignKey("concepts.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("repo_id", String, nullable=False),
+    Column("model", String, nullable=False),
+    Column("dim", Integer, nullable=False),
+    Column("vector", Vector(), nullable=False),
+    Column("source_hash", String, nullable=False),
+    Column(
+        "created_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+    Column(
+        "updated_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+    CheckConstraint("dim > 0", name="ck_concept_embeddings_dim_positive"),
 )
 
 concept_aliases = Table(
@@ -502,4 +533,11 @@ Index(
     concept_evidence.c.repo_id,
     concept_evidence.c.target_type,
     concept_evidence.c.target_id,
+)
+Index(
+    "idx_concept_embeddings_repo_model_dim_concept",
+    concept_embeddings.c.repo_id,
+    concept_embeddings.c.model,
+    concept_embeddings.c.dim,
+    concept_embeddings.c.concept_id,
 )

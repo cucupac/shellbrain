@@ -7,7 +7,6 @@ from collections.abc import Callable
 import pytest
 from sqlalchemy import text
 
-from app.core.use_cases.retrieval.read.result import ReadMemoryResult
 from app.core.ports.host_apps.inner_agents import InnerAgentRunResult
 from tests.operations._shared.handler_calls import handle_recall
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
@@ -120,7 +119,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
 ) -> None:
     """successful recall should persist recall-specific telemetry without normal read rows."""
 
-    captured = _stub_internal_read(monkeypatch, pack=_candidate_pack())
+    captured = _stub_graph_pack(monkeypatch, pack=_candidate_pack())
 
     result = handle_recall(
         {
@@ -136,11 +135,10 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert "_telemetry" not in result["data"]
     assert result["data"]["fallback_reason"] is None
     assert len(result["data"]["brief"]["sources"]) == 3
-    read_request = captured["request"]
-    assert read_request.op == "read"
-    assert read_request.mode == "targeted"
-    assert read_request.query == "recall telemetry"
-    assert read_request.limit == 2
+    recall_request = captured["request"]
+    assert recall_request.op == "recall"
+    assert recall_request.query == "recall telemetry"
+    assert recall_request.limit == 2
 
     operation_rows = fetch_relation_rows(
         "operation_invocations", order_by="created_at DESC, id DESC"
@@ -159,7 +157,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert summary_rows[0]["model"] == "gpt-5.4-mini"
     assert summary_rows[0]["reasoning"] == "low"
     assert summary_rows[0]["private_read_count"] == 0
-    assert summary_rows[0]["concept_expansion_count"] == 0
+    assert summary_rows[0]["concept_expansion_count"] == 1
 
     source_rows = fetch_relation_rows("recall_source_items", order_by="ordinal ASC")
     assert [row["ordinal"] for row in source_rows] == [1, 2, 3]
@@ -198,10 +196,7 @@ def test_provider_recall_should_write_inner_agent_token_profile(
 ) -> None:
     """provider-backed recall should persist canonical inner-agent token buckets."""
 
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.build_context.execute.execute_read_memory",
-        lambda *args, **kwargs: pytest.fail("provider path should not use fallback read"),
-    )
+    _stub_graph_pack(monkeypatch, pack=_candidate_pack())
     monkeypatch.setattr(
         "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
         lambda: _FakeInnerAgentRunner(),
@@ -232,7 +227,7 @@ def test_no_candidate_recall_should_write_no_candidates_fallback(
 ) -> None:
     """recall should write one fallback summary when no memory or concept candidates exist."""
 
-    _stub_internal_read(monkeypatch, pack=_empty_pack())
+    _stub_graph_pack(monkeypatch, pack=_empty_pack())
 
     result = handle_recall(
         {"query": "nothing matches", "current_problem": _current_problem()},
@@ -261,7 +256,7 @@ def test_recall_should_not_mutate_knowledge_state(
 ) -> None:
     """recall should not write memories, concepts, utility observations, or problem runs."""
 
-    _stub_internal_read(monkeypatch, pack=_candidate_pack())
+    _stub_graph_pack(monkeypatch, pack=_candidate_pack())
     before = _knowledge_counts(fetch_relation_rows)
 
     result = handle_recall(
@@ -281,7 +276,7 @@ def test_recall_token_estimates_should_be_deterministic(
 ) -> None:
     """candidate and brief token estimates should be stable for identical recall output."""
 
-    _stub_internal_read(monkeypatch, pack=_candidate_pack())
+    _stub_graph_pack(monkeypatch, pack=_candidate_pack())
 
     for _ in range(2):
         result = handle_recall(
@@ -338,10 +333,10 @@ class _FakeInnerAgentRunner:
         )
 
 
-def _stub_internal_read(
+def _stub_graph_pack(
     monkeypatch: pytest.MonkeyPatch, *, pack: dict
 ) -> dict[str, object]:
-    """Patch recall's internal read dependency and capture the forwarded request."""
+    """Patch recall's deterministic graph pack dependency and capture the request."""
 
     captured: dict[str, object] = {}
     monkeypatch.setattr(
@@ -349,58 +344,62 @@ def _stub_internal_read(
         lambda: None,
     )
 
-    def _fake_execute_read_memory(request, uow, **kwargs) -> ReadMemoryResult:
-        del kwargs
+    def _fake_build_graph_pack(request, uow, **kwargs) -> dict:
+        del uow, kwargs
         captured["request"] = request
-        return ReadMemoryResult(pack=pack)
+        return pack
 
     monkeypatch.setattr(
-        "app.core.use_cases.retrieval.build_context.execute.execute_read_memory",
-        _fake_execute_read_memory,
+        "app.core.use_cases.retrieval.build_context.execute.build_deterministic_graph_pack",
+        _fake_build_graph_pack,
     )
     return captured
 
 
 def _candidate_pack() -> dict:
-    """Return one deterministic read pack with memory and concept candidates."""
+    """Return one deterministic graph pack with memory and concept candidates."""
 
     return {
-        "meta": {
-            "mode": "targeted",
-            "limit": 2,
-            "counts": {"direct": 1, "explicit_related": 1, "implicit_related": 0},
-        },
-        "direct": [
+        "strategy": "deterministic_graph",
+        "request": {"query": "recall telemetry", "current_problem": _current_problem()},
+        "query_lanes": [{"lane": "original", "query": "recall telemetry"}],
+        "memories": [
             {
-                "memory_id": "direct-1",
+                "id": "direct-1",
                 "kind": "problem",
                 "text": "Primary recall memory with enough private context to exceed the brief size.",
-                "why_included": "direct_match",
-            }
-        ],
-        "explicit_related": [
+                "matched_lanes": ["original"],
+                "concept_refs": [],
+                "link_roles": [],
+                "why": ["memory_fanout"],
+            },
             {
-                "memory_id": "explicit-1",
+                "id": "explicit-1",
                 "kind": "solution",
                 "text": "Related solution memory with detailed private context.",
-                "why_included": "association_link",
+                "matched_lanes": [],
+                "concept_refs": ["recall-telemetry"],
+                "link_roles": ["solution_for"],
+                "why": ["graph_linked_memory"],
+            },
+        ],
+        "concepts": [
+            {
+                "id": "concept-1",
+                "ref": "recall-telemetry",
+                "name": "Recall Telemetry",
+                "kind": "workflow",
+                "orientation": "Recall transforms private candidate context into a compact worker brief.",
+                "claims": [],
+                "relations": [],
+                "groundings": [],
+                "memory_links": [],
             }
         ],
-        "implicit_related": [],
-        "concepts": {
-            "mode": "auto",
-            "items": [
-                {
-                    "id": "concept-1",
-                    "ref": "recall-telemetry",
-                    "name": "Recall Telemetry",
-                    "kind": "workflow",
-                    "orientation": "Recall transforms private candidate context into a compact worker brief.",
-                }
-            ],
-            "missing_refs": [],
-            "guidance": "Use the compact brief.",
-        },
+        "relation_neighbors": [],
+        "anchors": [],
+        "conflicts": [],
+        "pack_trace": {"duration_ms": 5},
     }
 
 
@@ -416,23 +415,18 @@ def _current_problem() -> dict[str, str]:
 
 
 def _empty_pack() -> dict:
-    """Return one deterministic read pack with no memory or concept candidates."""
+    """Return one deterministic graph pack with no memory or concept candidates."""
 
     return {
-        "meta": {
-            "mode": "targeted",
-            "limit": 8,
-            "counts": {"direct": 0, "explicit_related": 0, "implicit_related": 0},
-        },
-        "direct": [],
-        "explicit_related": [],
-        "implicit_related": [],
-        "concepts": {
-            "mode": "auto",
-            "items": [],
-            "missing_refs": [],
-            "guidance": "No concepts matched.",
-        },
+        "strategy": "deterministic_graph",
+        "request": {"query": "nothing matches", "current_problem": _current_problem()},
+        "query_lanes": [],
+        "memories": [],
+        "concepts": [],
+        "relation_neighbors": [],
+        "anchors": [],
+        "conflicts": [],
+        "pack_trace": {"duration_ms": 1},
     }
 
 

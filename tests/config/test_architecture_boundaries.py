@@ -627,7 +627,6 @@ def test_db_adapters_do_not_import_read_or_concept_scoring_policy() -> None:
         "app.core.policies.retrieval.bm25",
         "app.core.policies.retrieval.lexical_query",
         "app.core.policies.retrieval.scoring",
-        "app.core.policies.concepts.search",
     )
     violations: list[str] = []
     for path in _python_files(APP_ROOT / "infrastructure" / "db"):

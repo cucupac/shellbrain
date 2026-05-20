@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import shutil
 import subprocess
@@ -22,6 +23,7 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
+    render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
 )
@@ -30,6 +32,15 @@ from app.infrastructure.host_apps.inner_agents.prompt import (
 # Codex read-only/workspace-write sandboxes block Shellbrain's local Postgres TCP
 # connection. Route allowlists are enforced by SHELLBRAIN_INNER_AGENT_MODE.
 _CODEX_SANDBOX_MODE = "danger-full-access"
+_CODEX_DISABLED_FEATURES = (
+    "apps",
+    "browser_use",
+    "browser_use_external",
+    "multi_agent",
+    "plugins",
+    "skill_mcp_dependency_install",
+    "tool_search",
+)
 
 
 class CodexCliInnerAgentRunner:
@@ -57,7 +68,11 @@ class CodexCliInnerAgentRunner:
                 error_message=f"Codex command not found: {self._command}",
             )
 
-        prompt = render_build_context_prompt(request)
+        prompt = (
+            render_build_context_synthesis_prompt(request)
+            if request.synthesis_only
+            else render_build_context_prompt(request)
+        )
         started = perf_counter()
         try:
             with (
@@ -67,32 +82,23 @@ class CodexCliInnerAgentRunner:
                 tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
             ):
                 completed = subprocess.run(
-                    [
-                        command_path,
-                        "--ask-for-approval",
-                        "never",
-                        "exec",
-                        "--ephemeral",
-                        "--ignore-rules",
-                        "--skip-git-repo-check",
-                        "--sandbox",
-                        _CODEX_SANDBOX_MODE,
-                        "--model",
-                        request.model,
-                        "-c",
-                        f'model_reasoning_effort="{request.reasoning}"',
-                        "--cd",
-                        workspace,
-                        "--output-last-message",
-                        output_file.name,
-                        "-",
-                    ],
+                    _codex_exec_args(
+                        command_path=command_path,
+                        model=request.model,
+                        reasoning=request.reasoning,
+                        workspace=workspace,
+                        output_path=output_file.name,
+                    ),
                     input=prompt,
                     text=True,
                     capture_output=True,
                     timeout=request.timeout_seconds,
                     check=False,
-                    env=_inner_agent_env(mode="build_context"),
+                    env=_inner_agent_env(
+                        mode="build_context_synthesis"
+                        if request.synthesis_only
+                        else "build_context"
+                    ),
                 )
                 output_file.seek(0)
                 final_message = output_file.read()
@@ -109,14 +115,14 @@ class CodexCliInnerAgentRunner:
             )
 
         duration_ms = _duration_ms(started)
+        usage = _usage_from_jsonl(completed.stdout)
         if completed.returncode != 0:
             return _result(
                 request,
                 status="error",
                 fallback_used=True,
                 duration_ms=duration_ms,
-                input_tokens=_estimate_tokens(prompt),
-                capture_quality="estimated",
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="codex_nonzero_exit",
                 error_message=_truncate(completed.stderr or completed.stdout, 500),
             )
@@ -128,9 +134,7 @@ class CodexCliInnerAgentRunner:
                 status="invalid_output",
                 fallback_used=True,
                 duration_ms=duration_ms,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(final_message),
-                capture_quality="estimated",
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="invalid_output",
                 error_message=str(exc),
             )
@@ -139,9 +143,7 @@ class CodexCliInnerAgentRunner:
             status="ok",
             brief=brief,
             duration_ms=duration_ms,
-            input_tokens=_estimate_tokens(prompt),
-            output_tokens=_estimate_tokens(final_message),
-            capture_quality="estimated",
+            **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
             read_trace=read_trace,
         )
 
@@ -169,26 +171,13 @@ class CodexCliInnerAgentRunner:
                 tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
             ):
                 completed = subprocess.run(
-                    [
-                        command_path,
-                        "--ask-for-approval",
-                        "never",
-                        "exec",
-                        "--ephemeral",
-                        "--ignore-rules",
-                        "--skip-git-repo-check",
-                        "--sandbox",
-                        _CODEX_SANDBOX_MODE,
-                        "--model",
-                        request.model,
-                        "-c",
-                        f'model_reasoning_effort="{request.reasoning}"',
-                        "--cd",
-                        workspace,
-                        "--output-last-message",
-                        output_file.name,
-                        "-",
-                    ],
+                    _codex_exec_args(
+                        command_path=command_path,
+                        model=request.model,
+                        reasoning=request.reasoning,
+                        workspace=workspace,
+                        output_path=output_file.name,
+                    ),
                     input=prompt,
                     text=True,
                     capture_output=True,
@@ -213,13 +202,13 @@ class CodexCliInnerAgentRunner:
             )
 
         duration_ms = _duration_ms(started)
+        usage = _usage_from_jsonl(completed.stdout)
         if completed.returncode != 0:
             return _build_knowledge_result(
                 request,
                 status="error",
                 duration_ms=duration_ms,
-                input_tokens=_estimate_tokens(prompt),
-                capture_quality="estimated",
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="codex_nonzero_exit",
                 error_message=_truncate(completed.stderr or completed.stdout, 500),
             )
@@ -230,9 +219,7 @@ class CodexCliInnerAgentRunner:
                 request,
                 status="invalid_output",
                 duration_ms=duration_ms,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(final_message),
-                capture_quality="estimated",
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="invalid_output",
                 error_message=str(exc),
             )
@@ -240,9 +227,7 @@ class CodexCliInnerAgentRunner:
             request,
             status=parsed["status"],
             duration_ms=duration_ms,
-            input_tokens=_estimate_tokens(prompt),
-            output_tokens=_estimate_tokens(final_message),
-            capture_quality="estimated",
+            **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
             write_count=int(parsed["write_count"]),
             skipped_item_count=int(parsed["skipped_item_count"]),
             run_summary=parsed["run_summary"],
@@ -274,26 +259,13 @@ class CodexCliInnerAgentRunner:
                 tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
             ):
                 completed = subprocess.run(
-                    [
-                        command_path,
-                        "--ask-for-approval",
-                        "never",
-                        "exec",
-                        "--ephemeral",
-                        "--ignore-rules",
-                        "--skip-git-repo-check",
-                        "--sandbox",
-                        _CODEX_SANDBOX_MODE,
-                        "--model",
-                        request.model,
-                        "-c",
-                        f'model_reasoning_effort="{request.reasoning}"',
-                        "--cd",
-                        workspace,
-                        "--output-last-message",
-                        output_file.name,
-                        "-",
-                    ],
+                    _codex_exec_args(
+                        command_path=command_path,
+                        model=request.model,
+                        reasoning=request.reasoning,
+                        workspace=workspace,
+                        output_path=output_file.name,
+                    ),
                     input=prompt,
                     text=True,
                     capture_output=True,
@@ -318,13 +290,13 @@ class CodexCliInnerAgentRunner:
             )
 
         duration_ms = _duration_ms(started)
+        usage = _usage_from_jsonl(completed.stdout)
         if completed.returncode != 0:
             return _build_knowledge_result(
                 request,
                 status="error",
                 duration_ms=duration_ms,
-                input_tokens=_estimate_tokens(prompt),
-                capture_quality="estimated",
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="codex_nonzero_exit",
                 error_message=_truncate(completed.stderr or completed.stdout, 500),
             )
@@ -335,9 +307,7 @@ class CodexCliInnerAgentRunner:
                 request,
                 status="invalid_output",
                 duration_ms=duration_ms,
-                input_tokens=_estimate_tokens(prompt),
-                output_tokens=_estimate_tokens(final_message),
-                capture_quality="estimated",
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="invalid_output",
                 error_message=str(exc),
             )
@@ -345,15 +315,54 @@ class CodexCliInnerAgentRunner:
             request,
             status=parsed["status"],
             duration_ms=duration_ms,
-            input_tokens=_estimate_tokens(prompt),
-            output_tokens=_estimate_tokens(final_message),
-            capture_quality="estimated",
+            **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
             write_count=int(parsed["write_count"]),
             skipped_item_count=int(parsed["skipped_item_count"]),
             run_summary=parsed["run_summary"],
             read_trace=parsed["read_trace"],
             code_trace=parsed["code_trace"],
         )
+
+
+def _codex_exec_args(
+    *,
+    command_path: str,
+    model: str,
+    reasoning: str,
+    workspace: str,
+    output_path: str,
+) -> list[str]:
+    """Return the Codex exec command for a Shellbrain-controlled inner agent."""
+
+    args = [
+        command_path,
+        "--ask-for-approval",
+        "never",
+        "exec",
+        "--ephemeral",
+        "--ignore-user-config",
+        "--ignore-rules",
+        "--skip-git-repo-check",
+    ]
+    for feature in _CODEX_DISABLED_FEATURES:
+        args.extend(["--disable", feature])
+    args.extend(
+        [
+            "--sandbox",
+            _CODEX_SANDBOX_MODE,
+            "--model",
+            model,
+            "-c",
+            f'model_reasoning_effort="{reasoning}"',
+            "--cd",
+            workspace,
+            "--json",
+            "--output-last-message",
+            output_path,
+            "-",
+        ]
+    )
+    return args
 
 
 def _result(
@@ -365,6 +374,8 @@ def _result(
     duration_ms: int = 0,
     input_tokens: int | None = None,
     output_tokens: int | None = None,
+    reasoning_output_tokens: int | None = None,
+    cached_input_tokens_total: int | None = None,
     capture_quality: str | None = None,
     error_code: str | None = None,
     error_message: str | None = None,
@@ -383,6 +394,8 @@ def _result(
         duration_ms=duration_ms,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
+        reasoning_output_tokens=reasoning_output_tokens,
+        cached_input_tokens_total=cached_input_tokens_total,
         capture_quality=capture_quality,
         error_code=error_code,
         error_message=error_message,
@@ -397,6 +410,8 @@ def _build_knowledge_result(
     duration_ms: int = 0,
     input_tokens: int | None = None,
     output_tokens: int | None = None,
+    reasoning_output_tokens: int | None = None,
+    cached_input_tokens_total: int | None = None,
     capture_quality: str | None = None,
     write_count: int = 0,
     skipped_item_count: int = 0,
@@ -417,6 +432,8 @@ def _build_knowledge_result(
         duration_ms=duration_ms,
         input_tokens=input_tokens,
         output_tokens=output_tokens,
+        reasoning_output_tokens=reasoning_output_tokens,
+        cached_input_tokens_total=cached_input_tokens_total,
         capture_quality=capture_quality,
         write_count=write_count,
         skipped_item_count=skipped_item_count,
@@ -432,6 +449,53 @@ def _duration_ms(started: float) -> int:
     """Return elapsed milliseconds from one perf-counter timestamp."""
 
     return int((perf_counter() - started) * 1000)
+
+
+def _usage_from_jsonl(output: str) -> dict[str, int] | None:
+    """Parse the final Codex JSON event usage payload when available."""
+
+    usage: dict[str, int] | None = None
+    for line in output.splitlines():
+        text = line.strip()
+        if not text.startswith("{"):
+            continue
+        try:
+            event = json.loads(text)
+        except json.JSONDecodeError:
+            continue
+        if not isinstance(event, dict) or event.get("type") != "turn.completed":
+            continue
+        payload = event.get("usage")
+        if not isinstance(payload, dict):
+            continue
+        usage = {
+            key: int(value)
+            for key, value in payload.items()
+            if isinstance(value, int) and value >= 0
+        }
+    return usage
+
+
+def _usage_or_estimate(
+    *, prompt: str, output: str, usage: dict[str, int] | None
+) -> dict[str, int | str | None]:
+    """Return exact Codex usage fields, falling back to local estimates."""
+
+    if usage is not None:
+        return {
+            "input_tokens": usage.get("input_tokens"),
+            "output_tokens": usage.get("output_tokens"),
+            "reasoning_output_tokens": usage.get("reasoning_output_tokens"),
+            "cached_input_tokens_total": usage.get("cached_input_tokens"),
+            "capture_quality": "exact",
+        }
+    return {
+        "input_tokens": _estimate_tokens(prompt),
+        "output_tokens": _estimate_tokens(output),
+        "reasoning_output_tokens": None,
+        "cached_input_tokens_total": None,
+        "capture_quality": "estimated",
+    }
 
 
 def _inner_agent_env(

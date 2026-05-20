@@ -1,5 +1,6 @@
 # Default model/runtime settings for Shellbrain inner agents.
 build_context:
+  strategy: deterministic_synthesis
   provider: codex
   model: gpt-5.4-mini
   reasoning: low

@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Sequence
 
-from app.core.use_cases.retrieval.read.request import MemoryReadRequest, ReadConceptsExpandRequest
+from app.core.entities.settings import ThresholdSettings, default_threshold_settings
+from app.core.use_cases.retrieval.read.request import (
+    MemoryReadRequest,
+    ReadConceptsExpandRequest,
+)
 from app.core.entities.concepts import (
     Concept,
     ConceptClaim,
@@ -15,7 +19,11 @@ from app.core.entities.concepts import (
 from app.core.entities.memories import Memory
 from app.core.ports.db.concept_repositories import IConceptsRepo
 from app.core.ports.db.memory_repositories import IMemoriesRepo
-from app.core.policies.concepts.search import rank_concept_search_rows
+from app.core.ports.db.retrieval_repositories import (
+    IConceptKeywordRetrievalRepo,
+    IConceptSemanticRetrievalRepo,
+)
+from app.core.use_cases.retrieval.concept_seed_retrieval import retrieve_concept_seeds
 
 
 AVAILABLE_FACETS = ("claims", "relations", "groundings", "memory_links", "evidence")
@@ -30,6 +38,11 @@ def append_concepts_to_pack(
     request: MemoryReadRequest,
     concepts: IConceptsRepo,
     memories: IMemoriesRepo,
+    concept_keyword_retrieval: IConceptKeywordRetrievalRepo | None = None,
+    concept_semantic_retrieval: IConceptSemanticRetrievalRepo | None = None,
+    query_vector: Sequence[float] = (),
+    query_model: str | None = None,
+    threshold_settings: ThresholdSettings | None = None,
 ) -> dict[str, Any]:
     """Append the stable concept-context section to one read pack."""
 
@@ -64,6 +77,11 @@ def append_concepts_to_pack(
         concept_expand=concept_expand,
         concepts=concepts,
         memories=memories,
+        concept_keyword_retrieval=concept_keyword_retrieval,
+        concept_semantic_retrieval=concept_semantic_retrieval,
+        query_vector=query_vector,
+        query_model=query_model,
+        threshold_settings=threshold_settings or default_threshold_settings(),
     )
     pack["concepts"] = {
         "mode": "auto",
@@ -89,6 +107,11 @@ def _auto_concept_items(
     concept_expand: ReadConceptsExpandRequest,
     concepts: IConceptsRepo,
     memories: IMemoriesRepo,
+    concept_keyword_retrieval: IConceptKeywordRetrievalRepo | None,
+    concept_semantic_retrieval: IConceptSemanticRetrievalRepo | None,
+    query_vector: Sequence[float],
+    query_model: str | None,
+    threshold_settings: ThresholdSettings,
 ) -> list[dict[str, Any]]:
     memory_ids = _pack_memory_ids(pack)
     candidates: dict[str, dict[str, Any]] = {}
@@ -105,15 +128,15 @@ def _auto_concept_items(
         candidate["score"] += 10.0 * _status_multiplier(status) * max(confidence, 0.1)
         _append_linked_memory_reason(candidate["why"], link_match)
 
-    for query_match in rank_concept_search_rows(
-        concepts.list_concept_search_rows(repo_id=request.repo_id),
-        query=request.query,
-        limit=20,
-    ):
-        concept_id = str(query_match["concept_id"])
-        candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
-        candidate["score"] += _required_float(query_match, "score", "concept query match")
-        _append_query_reason(candidate["why"], query_match)
+    _add_retrieved_concept_candidates(
+        candidates,
+        request=request,
+        concept_keyword_retrieval=concept_keyword_retrieval,
+        concept_semantic_retrieval=concept_semantic_retrieval,
+        query_vector=query_vector,
+        query_model=query_model,
+        threshold_settings=threshold_settings,
+    )
 
     ranked: list[tuple[float, str, dict[str, Any]]] = []
     for concept_id, candidate in candidates.items():
@@ -141,6 +164,34 @@ def _auto_concept_items(
             )
         )
     return items
+
+
+def _add_retrieved_concept_candidates(
+    candidates: dict[str, dict[str, Any]],
+    *,
+    request: MemoryReadRequest,
+    concept_keyword_retrieval: IConceptKeywordRetrievalRepo | None,
+    concept_semantic_retrieval: IConceptSemanticRetrievalRepo | None,
+    query_vector: Sequence[float],
+    query_model: str | None,
+    threshold_settings: ThresholdSettings,
+) -> None:
+    seeds = retrieve_concept_seeds(
+        request.model_dump(mode="python"),
+        concept_keyword_retrieval=concept_keyword_retrieval,
+        concept_semantic_retrieval=concept_semantic_retrieval,
+        query_vector=query_vector,
+        query_model=query_model,
+        thresholds=threshold_settings,
+        limit=20,
+    )
+    for retrieved in seeds["fused"]:
+        concept_id = str(retrieved["concept_id"])
+        candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
+        candidate["score"] += 20.0 * _required_float(
+            retrieved, "rrf_score", "concept retrieval match"
+        )
+        _append_retrieval_reasons(candidate["why"], retrieved)
 
 
 def _explicit_concept_items(
@@ -243,17 +294,29 @@ def _append_linked_memory_reason(
         existing["count"] = int(existing["count"]) + 1
 
 
-def _append_query_reason(
-    reasons: list[dict[str, Any]], query_match: dict[str, Any]
+def _append_retrieval_reasons(
+    reasons: list[dict[str, Any]], retrieved: dict[str, Any]
 ) -> None:
-    reason = _required_string(query_match, "reason", "concept query match")
-    matched = _required_string(query_match, "matched", "concept query match")
-    if any(
-        item.get("reason") == reason and item.get("matched") == matched
-        for item in reasons
-    ):
+    if retrieved.get("rank_keyword") is not None:
+        _append_rank_reason(
+            reasons,
+            reason="concept_keyword",
+            rank=int(retrieved["rank_keyword"]),
+        )
+    if retrieved.get("rank_semantic") is not None:
+        _append_rank_reason(
+            reasons,
+            reason="concept_semantic",
+            rank=int(retrieved["rank_semantic"]),
+        )
+
+
+def _append_rank_reason(
+    reasons: list[dict[str, Any]], *, reason: str, rank: int
+) -> None:
+    if any(item.get("reason") == reason and item.get("rank") == rank for item in reasons):
         return
-    reasons.append({"reason": reason, "matched": matched})
+    reasons.append({"reason": reason, "rank": rank})
 
 
 def _status_multiplier(status: str) -> float:

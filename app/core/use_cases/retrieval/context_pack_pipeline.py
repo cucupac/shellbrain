@@ -33,6 +33,8 @@ def build_context_pack(
     vector_search: IVectorSearch | None,
     read_settings: ReadPolicySettings | None = None,
     threshold_settings: ThresholdSettings | None = None,
+    query_vector: list[float] | None = None,
+    query_model: str | None = None,
 ) -> dict[str, Any]:
     """This function orchestrates ratified read-policy stages into a final pack."""
 
@@ -44,6 +46,8 @@ def build_context_pack(
         semantic_retrieval=semantic_retrieval,
         keyword_retrieval=keyword_retrieval,
         vector_search=vector_search,
+        query_vector=query_vector,
+        query_model=query_model,
         thresholds=threshold_settings,
     )
     direct_candidates = fuse_with_rrf(

@@ -26,6 +26,9 @@ def execute_read_memory(
     read_settings = read_settings or default_read_policy_settings()
     threshold_settings = threshold_settings or default_threshold_settings()
     payload = request.model_dump(mode="python")
+    query_vector, query_model = _resolve_query_embedding(
+        query=payload["query"], vector_search=uow.vector_search
+    )
     context_pack = _build_context_pack(
         payload,
         keyword_retrieval=uow.keyword_retrieval,
@@ -35,12 +38,19 @@ def execute_read_memory(
         vector_search=uow.vector_search,
         read_settings=read_settings,
         threshold_settings=threshold_settings,
+        query_vector=query_vector,
+        query_model=query_model,
     )
     context_pack = append_concepts_to_pack(
         pack=context_pack,
         request=request,
         concepts=uow.concepts,
         memories=uow.memories,
+        concept_keyword_retrieval=uow.concept_keyword_retrieval,
+        concept_semantic_retrieval=uow.concept_semantic_retrieval,
+        query_vector=query_vector,
+        query_model=query_model,
+        threshold_settings=threshold_settings,
     )
     return ReadMemoryResult(pack=context_pack)
 
@@ -51,3 +61,14 @@ def _build_context_pack(*args: Any, **kwargs: Any) -> dict[str, Any]:
     from app.core.use_cases.retrieval import read as read_package
 
     return read_package.build_context_pack(*args, **kwargs)
+
+
+def _resolve_query_embedding(*, query: str, vector_search) -> tuple[list[float], str | None]:
+    """Return one read-path query vector so memory and concept retrieval share it."""
+
+    if vector_search is None:
+        return [], None
+    query_vector = list(vector_search.embed_query(query))
+    if not query_vector:
+        raise ValueError("Query embedding provider returned an empty vector")
+    return query_vector, vector_search.model_name
