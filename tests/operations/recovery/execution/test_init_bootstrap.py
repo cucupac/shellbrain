@@ -368,10 +368,10 @@ def test_run_init_should_apply_schema_migrations_after_database_reconcile(
     assert call_order == ["reconcile", "migrate", "embeddings"]
 
 
-def test_run_init_should_noop_when_machine_already_ready(
+def test_run_init_should_run_maintenance_when_machine_already_ready(
     tmp_path: Path, monkeypatch
 ) -> None:
-    """init should short-circuit to noop when machine config is already in ready state."""
+    """ready init should refresh runtime maintenance without re-bootstrap side effects."""
 
     repo_root = tmp_path / "repo"
     repo_root.mkdir()
@@ -379,7 +379,7 @@ def test_run_init_should_noop_when_machine_already_ready(
     ready_config = _machine_config(
         bootstrap_state="ready", readiness_state="ready", last_error=None
     )
-    host_asset_calls: list[str] = []
+    call_order: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
     monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
@@ -392,16 +392,61 @@ def test_run_init_should_noop_when_machine_already_ready(
     )
     monkeypatch.setattr(
         init_module,
+        "resolve_storage_selection",
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("ready maintenance should not ask storage questions")
+        ),
+    )
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(
+        init_module,
+        "_migrate_machine_config",
+        lambda config: call_order.append("config") or config,
+    )
+    monkeypatch.setattr(
+        init_module,
         "_ensure_managed_dependencies",
-        lambda: (_ for _ in ()).throw(
-            AssertionError("should not check Docker when already ready")
+        lambda: call_order.append("managed_deps"),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_container",
+        lambda config: call_order.append("container") or False,
+    )
+    monkeypatch.setattr(
+        init_module,
+        "wait_for_postgres",
+        lambda admin_dsn: call_order.append("wait"),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_reconcile_database",
+        lambda config: (call_order.append("reconcile") or False, config),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_apply_schema_migrations",
+        lambda config: call_order.append("migrate") or True,
+    )
+    monkeypatch.setattr(
+        init_module,
+        "prewarm_embeddings",
+        lambda config, skip_model_download: (_ for _ in ()).throw(
+            AssertionError("ready maintenance should not prewarm embeddings")
+        ),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_register_repo",
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("ready maintenance should not register repos")
         ),
     )
     monkeypatch.setattr(
         init_module,
         "install_host_assets",
         lambda host_mode, force: (
-            host_asset_calls.append("installed") or _FakeHostAssetsResult()
+            call_order.append("assets") or _FakeHostAssetsResult()
         ),
     )
 
@@ -414,9 +459,163 @@ def test_run_init_should_noop_when_machine_already_ready(
         render_success_lines=_render_success_lines,
     )
 
-    assert result.outcome == init_module.INIT_OUTCOME_NOOP
+    assert result.outcome == init_module.INIT_OUTCOME_INITIALIZED
     assert result.exit_code == 0
-    assert host_asset_calls == ["installed"]
+    assert call_order == [
+        "config",
+        "managed_deps",
+        "container",
+        "wait",
+        "reconcile",
+        "migrate",
+        "assets",
+    ]
+
+
+def test_ready_external_init_should_run_maintenance_without_docker(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """ready external-postgres init should migrate the DB without managed Docker setup."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    ready_config = _external_machine_config(
+        bootstrap_state="ready", readiness_state="ready", last_error=None
+    )
+    call_order: list[str] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (ready_config, None)
+    )
+    monkeypatch.setattr(
+        init_module, "load_repo_registration_for_target", lambda repo_root: None
+    )
+    monkeypatch.setattr(
+        init_module,
+        "resolve_storage_selection",
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("ready maintenance should not ask storage questions")
+        ),
+    )
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(
+        init_module,
+        "_migrate_machine_config",
+        lambda config: call_order.append("config") or config,
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_dependencies",
+        lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_ensure_managed_container",
+        lambda config: (_ for _ in ()).throw(
+            AssertionError("unexpected managed container step")
+        ),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "wait_for_postgres",
+        lambda admin_dsn: call_order.append("wait"),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_reconcile_database",
+        lambda config: (call_order.append("reconcile") or False, config),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_apply_schema_migrations",
+        lambda config: call_order.append("migrate") or False,
+    )
+    monkeypatch.setattr(
+        init_module,
+        "prewarm_embeddings",
+        lambda config, skip_model_download: (_ for _ in ()).throw(
+            AssertionError("ready maintenance should not prewarm embeddings")
+        ),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_register_repo",
+        lambda **kwargs: (_ for _ in ()).throw(
+            AssertionError("ready maintenance should not register repos")
+        ),
+    )
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=True,
+        skip_model_download=False,
+        skip_host_assets=True,
+        render_success_lines=_render_success_lines,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_NOOP
+    assert call_order == ["config", "wait", "reconcile", "migrate"]
+
+
+def test_ready_init_should_propagate_schema_migration_failure(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """ready maintenance should fail closed when packaged DB migrations fail."""
+
+    repo_root = tmp_path / "repo"
+    repo_root.mkdir()
+    home_root = tmp_path / "home"
+    ready_config = _machine_config(
+        bootstrap_state="ready", readiness_state="ready", last_error=None
+    )
+    marked: list[str] = []
+
+    monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
+    monkeypatch.setattr(init_module, "acquire_init_lock", lambda: nullcontext())
+    monkeypatch.setattr(init_module, "_ensure_dependencies", lambda: None)
+    monkeypatch.setattr(
+        init_module, "try_load_machine_config", lambda: (ready_config, None)
+    )
+    monkeypatch.setattr(
+        init_module, "load_repo_registration_for_target", lambda repo_root: None
+    )
+    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(init_module, "_migrate_machine_config", lambda config: config)
+    monkeypatch.setattr(init_module, "_ensure_managed_dependencies", lambda: None)
+    monkeypatch.setattr(init_module, "_ensure_managed_container", lambda config: False)
+    monkeypatch.setattr(init_module, "wait_for_postgres", lambda admin_dsn: None)
+    monkeypatch.setattr(
+        init_module, "_reconcile_database", lambda config: (False, config)
+    )
+    monkeypatch.setattr(
+        init_module,
+        "_apply_schema_migrations",
+        lambda config: (_ for _ in ()).throw(
+            init_module.InitConflictError("schema migration failed")
+        ),
+    )
+    monkeypatch.setattr(
+        init_module, "_mark_repair_needed", lambda message: marked.append(message)
+    )
+
+    result = init_module.run_init(
+        repo_root=repo_root,
+        repo_id_override=None,
+        register_repo_now=True,
+        skip_model_download=False,
+        skip_host_assets=False,
+        render_success_lines=_render_success_lines,
+    )
+
+    assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_CONFLICT
+    assert result.exit_code == 10
+    assert result.lines == ["schema migration failed"]
+    assert marked == ["schema migration failed"]
 
 
 def test_external_init_should_skip_managed_container_setup(

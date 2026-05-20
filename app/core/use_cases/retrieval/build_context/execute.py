@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import Any
 
 from app.core.entities.inner_agents import InnerAgentSettings
@@ -36,8 +37,9 @@ _DEFAULT_SETTINGS = InnerAgentSettings(
 
 def execute_build_context(
     request: MemoryRecallRequest,
-    uow: IUnitOfWork,
+    uow: IUnitOfWork | None = None,
     *,
+    uow_factory: Callable[[], IUnitOfWork] | None = None,
     read_settings: ReadPolicySettings | None = None,
     threshold_settings: ThresholdSettings | None = None,
     inner_agent_runner: IInnerAgentRunner | None = None,
@@ -73,9 +75,10 @@ def execute_build_context(
             }
         )
 
-    return _deterministic_result(
+    return _deterministic_result_with_uow(
         request=request,
         uow=uow,
+        uow_factory=uow_factory,
         read_settings=read_settings,
         threshold_settings=threshold_settings,
         inner_agent_result=inner_agent_result.model_copy(update={"fallback_used": True}),
@@ -240,6 +243,39 @@ def _deterministic_result(
             "inner_agent": inner_agent_result.model_dump(mode="python"),
         },
     )
+
+
+def _deterministic_result_with_uow(
+    *,
+    request: MemoryRecallRequest,
+    uow: IUnitOfWork | None,
+    uow_factory: Callable[[], IUnitOfWork] | None,
+    read_settings: ReadPolicySettings,
+    threshold_settings: ThresholdSettings,
+    inner_agent_result: InnerAgentRunResult,
+) -> RecallMemoryResult:
+    """Open a DB transaction only when deterministic fallback actually needs it."""
+
+    if uow is not None:
+        return _deterministic_result(
+            request=request,
+            uow=uow,
+            read_settings=read_settings,
+            threshold_settings=threshold_settings,
+            inner_agent_result=inner_agent_result,
+        )
+    if uow_factory is None:
+        raise ValueError(
+            "uow or uow_factory is required for deterministic recall fallback"
+        )
+    with uow_factory() as fallback_uow:
+        return _deterministic_result(
+            request=request,
+            uow=fallback_uow,
+            read_settings=read_settings,
+            threshold_settings=threshold_settings,
+            inner_agent_result=inner_agent_result,
+        )
 
 
 def _inner_agent_result(

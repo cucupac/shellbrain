@@ -43,6 +43,8 @@ class IKeywordRetrievalRepo(ABC):
         repo_id: str,
         include_global: bool,
         kinds: Sequence[str] | None,
+        query_terms: Sequence[str] | None = None,
+        candidate_limit: int | None = None,
     ) -> Sequence[dict[str, Any]]:
         """This method returns visible text rows for lexical ranking."""
 

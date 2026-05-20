@@ -150,7 +150,15 @@ Use current repo state to verify anything operational before editing.
 
 ## Worker Boundary
 
-As the working agent, use `shellbrain recall` only.
+As the working agent, use `shellbrain recall` for normal task context.
+
+Use `shellbrain teach` only when the user explicitly asks you to store, remember, or teach Shellbrain a specific point:
+
+```bash
+shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+```
+
+Teach stores the user statement as evidence and immediately runs a separate teach agent. Do not use it as a generic closeout summary.
 
 Do not call:
 

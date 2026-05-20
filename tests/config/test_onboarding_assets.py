@@ -56,11 +56,13 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
         "shellbrain init",
         "shellbrain admin doctor",
         "shellbrain recall --json",
+        "shellbrain teach --json",
         "current_problem",
         "--repo-root",
         "goal | surface | obstacle | hypothesis",
         "SB: recall |",
         "As the working agent",
+        "explicitly asks",
         "Do not call",
         "shellbrain read",
         "what should I know about this repo?",
@@ -130,11 +132,12 @@ def test_cli_help_should_share_the_short_protocol() -> None:
         "evidence_refs",
         "utility_vote",
         "shellbrain upgrade",
+        "shellbrain teach",
         "pipx upgrade shellbrain && shellbrain init",
         "shellbrain admin migrate",
         "shellbrain init",
         "--repo-root",
-        "At session end",
+        "closed or idle-stable",
     ]
 
     for phrase in required_phrases:

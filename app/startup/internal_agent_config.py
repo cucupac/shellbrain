@@ -8,6 +8,7 @@ from app.core.entities.inner_agents import (
     BuildContextSettings,
     BuildKnowledgeSettings,
     InnerAgentProviderName,
+    TeachKnowledgeSettings,
 )
 
 
@@ -26,6 +27,7 @@ class InternalAgentsConfig(_StrictModel):
 
     build_context: BuildContextSettings
     build_knowledge: BuildKnowledgeSettings
+    teach: TeachKnowledgeSettings
     providers: dict[InnerAgentProviderName, InnerAgentProviderConfig]
 
     @field_validator("providers")
@@ -44,7 +46,7 @@ class InternalAgentsConfig(_StrictModel):
     def _validate_referenced_providers(self) -> "InternalAgentsConfig":
         """Require every configured agent to reference a known provider."""
 
-        for agent_name in ("build_context", "build_knowledge"):
+        for agent_name in ("build_context", "build_knowledge", "teach"):
             agent = getattr(self, agent_name)
             if agent.provider not in self.providers:
                 raise ValueError(

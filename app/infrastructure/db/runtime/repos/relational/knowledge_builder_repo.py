@@ -42,7 +42,7 @@ class KnowledgeBuildRunsRepo(IKnowledgeBuildRunsRepo):
     def latest_successful_watermark(
         self, *, repo_id: str, episode_id: str
     ) -> int | None:
-        """Return the latest successful processed event watermark."""
+        """Return the latest successful session-consolidation event watermark."""
 
         row = (
             self._session.execute(
@@ -56,6 +56,8 @@ class KnowledgeBuildRunsRepo(IKnowledgeBuildRunsRepo):
                             KnowledgeBuildRunStatus.SKIPPED.value,
                         )
                     ),
+                    knowledge_build_runs.c.trigger
+                    != KnowledgeBuildTrigger.EXPLICIT_TEACH.value,
                 )
                 .order_by(desc(knowledge_build_runs.c.event_watermark))
                 .limit(1)

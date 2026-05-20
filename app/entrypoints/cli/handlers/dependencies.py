@@ -8,6 +8,7 @@ from typing import Any, Protocol
 
 from app.core.errors import ErrorDetail
 from app.core.entities.inner_agents import InnerAgentSettings
+from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
@@ -18,7 +19,7 @@ from app.core.entities.settings import (
     ThresholdSettings,
     UpdatePolicySettings,
 )
-from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
+from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
@@ -53,6 +54,8 @@ class OperationDependencies(Protocol):
     id_generator: IIdGenerator
     build_context_inner_agent_runner: IInnerAgentRunner | None
     build_context_settings: InnerAgentSettings
+    teach_knowledge_inner_agent_runner: ITeachKnowledgeAgentRunner | None
+    teach_knowledge_settings: TeachKnowledgeSettings
     get_operation_telemetry_context: Callable[
         [], OperationDispatchTelemetryContext | None
     ]

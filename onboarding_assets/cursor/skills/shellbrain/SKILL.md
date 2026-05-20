@@ -17,6 +17,14 @@ shellbrain recall
 
 Recall returns a compact brief synthesized from prior memories, concepts, scenarios, and recent episode context. It is meant to reduce wasted exploration and help you decide where to look next.
 
+When the user explicitly asks you to store or teach Shellbrain something, use:
+
+```bash
+shellbrain teach
+```
+
+Teach stores the user-provided statement as evidence and immediately asks Shellbrain's teach agent to turn it into durable memories or concept graph updates.
+
 Do not call Shellbrain internal commands directly. `read`, `events`, `memory`, `concept`, and `scenario` are for Shellbrain's internal agents.
 
 ## Quick Start
@@ -99,6 +107,14 @@ If you do not have a hypothesis yet, use `"none yet"`.
 shellbrain recall --json '{"query":"Have we seen this failure mode or subsystem before?","current_problem":{"goal":"fix failing architecture guardrail test","surface":"tests/config/test_architecture_boundaries.py and app layer imports","obstacle":"entrypoint handler appears to import startup wiring","hypothesis":"dependency shape should move out of startup"}}'
 ```
 
+## Teach Payload
+
+Use `teach` only for explicit user teaching, not for ordinary closeout.
+
+```bash
+shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+```
+
 ## Query Guidance
 
 Good recall queries are concrete. Name the failure mode, subsystem, decision, file area, or constraint.
@@ -139,6 +155,8 @@ Use the brief to identify:
 Current repo state remains the source of truth.
 
 ## What Not To Do
+
+Do not use `teach` as a substitute for recall or as a generic session summary. Use it when the user explicitly says to store, remember, or teach Shellbrain a specific point.
 
 Do not call:
 

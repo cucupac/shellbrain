@@ -29,6 +29,14 @@ _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
         "concept:update",
         "scenario:record",
     },
+    "teach": {
+        "read",
+        "concept:show",
+        "memory:add",
+        "memory:update",
+        "concept:add",
+        "concept:update",
+    },
 }
 
 
@@ -217,6 +225,27 @@ def _dispatch_operation_command(
 
         prepared = prepare_recall_request(payload, inferred_repo_id=repo_id)
         return run_recall_memory_operation(
+            prepared.request,
+            dependencies=dependencies,
+            uow_factory=runtime.get_uow_factory(),
+            inferred_repo_id=repo_id,
+            validation_errors=prepared.errors,
+            validation_error_stage=prepared.error_stage,
+            telemetry_context=runtime.get_operation_telemetry_context(),
+            repo_root=repo_root,
+        )
+    if command == "teach":
+        from app.entrypoints.cli.handlers.working_agent.teach import (
+            run_teach_operation,
+        )
+        from app.entrypoints.cli.request_parsing.teach import prepare_teach_request
+
+        prepared = prepare_teach_request(
+            payload,
+            inferred_repo_id=repo_id,
+            repo_root=str(repo_root),
+        )
+        return run_teach_operation(
             prepared.request,
             dependencies=dependencies,
             uow_factory=runtime.get_uow_factory(),

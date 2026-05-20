@@ -429,6 +429,8 @@ class EpisodesRepo(IEpisodesRepo):
                         KnowledgeBuildRunStatus.SKIPPED.value,
                     )
                 ),
+                knowledge_build_runs.c.trigger
+                != "explicit_teach",
             )
             .group_by(knowledge_build_runs.c.episode_id)
             .subquery()

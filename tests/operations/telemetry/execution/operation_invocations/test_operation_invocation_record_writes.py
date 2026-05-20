@@ -267,6 +267,47 @@ def test_build_knowledge_inner_agent_invocations_should_record_parent_build_run_
     assert rows[0]["knowledge_build_run_id"] == "run-1"
 
 
+def test_teach_inner_agent_invocations_should_record_parent_build_run_id(
+    tmp_path: Path,
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    integration_engine,
+    monkeypatch: pytest.MonkeyPatch,
+    fetch_relation_rows,
+) -> None:
+    """teach-scoped CLI commands should link operation telemetry to the build run."""
+
+    repo_root = tmp_path / "teach-provenance-repo"
+    repo_root.mkdir()
+    _seed_knowledge_build_run(integration_engine)
+    _stub_read_pipeline(monkeypatch, zero_results=False)
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "teach")
+    monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
+    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+
+    exit_code = cli_main.main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "--repo-id",
+            "repo-a",
+            "read",
+            "--no-sync",
+            "--json",
+            '{"query":"teach provenance","mode":"targeted"}',
+        ]
+    )
+
+    assert exit_code == 0
+    rows = fetch_relation_rows(
+        "operation_invocations",
+        where_sql="command = :command",
+        params={"command": "read"},
+        order_by="created_at DESC, id DESC",
+    )
+    assert len(rows) == 1
+    assert rows[0]["knowledge_build_run_id"] == "run-1"
+
+
 def test_non_builder_inner_agent_invocations_should_not_record_build_run_id(
     tmp_path: Path,
     uow_factory: Callable[[], PostgresUnitOfWork],

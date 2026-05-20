@@ -10,6 +10,7 @@ from app.startup.internal_agent_config import InternalAgentsConfig
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_knowledge_inner_agent_runner,
+    get_teach_knowledge_inner_agent_runner,
 )
 from app.startup.settings import YamlConfigProvider
 
@@ -50,6 +51,13 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["build_knowledge"]["idle_stable_seconds"] == 900
     assert settings["build_knowledge"]["running_run_stale_seconds"] == 3600
     assert "max_private_reads" not in settings["build_knowledge"]
+    assert settings["teach"]["model"] == "gpt-5.4-mini"
+    assert settings["teach"]["reasoning"] == "medium"
+    assert settings["teach"]["timeout_seconds"] == 600
+    assert settings["teach"]["max_shellbrain_reads"] == 6
+    assert settings["teach"]["max_code_files"] == 5
+    assert settings["teach"]["max_write_commands"] == 12
+    assert "idle_stable_seconds" not in settings["teach"]
     assert settings["providers"]["codex"]["command"] == "codex"
     assert "working_directory" not in settings["providers"]["codex"]
     assert "allow_shellbrain_cli" not in settings["providers"]["codex"]
@@ -98,5 +106,13 @@ def test_startup_wires_codex_build_knowledge_runner() -> None:
     """startup should compose the configured Codex build_knowledge runner."""
 
     runner = get_build_knowledge_inner_agent_runner()
+
+    assert isinstance(runner, CodexCliInnerAgentRunner)
+
+
+def test_startup_wires_codex_teach_runner() -> None:
+    """startup should compose the configured Codex explicit teaching runner."""
+
+    runner = get_teach_knowledge_inner_agent_runner()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)

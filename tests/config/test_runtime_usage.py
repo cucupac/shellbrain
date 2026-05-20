@@ -8,6 +8,7 @@ from app.startup.admin_db import (
     get_optional_admin_db_dsn,
     should_fail_on_unsafe_app_role,
 )
+from app.startup import db as startup_db
 from app.startup.db import get_db_dsn
 from app.startup.settings import YamlConfigProvider
 from app.core.entities.machine_config import (
@@ -189,6 +190,47 @@ def test_db_boot_should_prefer_machine_config_over_legacy_env(monkeypatch) -> No
     monkeypatch.setenv("SHELLBRAIN_DB_DSN", "postgresql://legacy-env")
 
     assert get_db_dsn() == "postgresql+psycopg://machine-app@localhost:55432/shellbrain"
+
+
+def test_db_boot_should_reuse_runtime_engine_for_same_dsn(monkeypatch) -> None:
+    """Long-lived processes should not create one SQLAlchemy pool per UoW."""
+
+    engine_calls: list[str] = []
+    session_factory_calls: list[object] = []
+
+    class _FakeProvider:
+        def get_runtime(self) -> dict[str, object]:
+            return {
+                "database": {
+                    "dsn_env": "CUSTOM_MEMORY_DSN",
+                    "admin_dsn_env": "CUSTOM_ADMIN_DSN",
+                }
+            }
+
+    def _fake_engine(dsn: str) -> object:
+        engine_calls.append(dsn)
+        return object()
+
+    def _fake_session_factory(engine: object) -> object:
+        session_factory_calls.append(engine)
+        return object()
+
+    startup_db.clear_db_runtime_caches()
+    monkeypatch.setattr("app.startup.db.get_config_provider", lambda: _FakeProvider())
+    monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (None, None))
+    monkeypatch.setattr("app.startup.db.get_engine", _fake_engine)
+    monkeypatch.setattr("app.startup.db.get_session_factory", _fake_session_factory)
+    monkeypatch.setenv("CUSTOM_MEMORY_DSN", "postgresql://configured-dsn")
+
+    try:
+        first = startup_db.get_session_factory_instance()
+        second = startup_db.get_session_factory_instance()
+    finally:
+        startup_db.clear_db_runtime_caches()
+
+    assert first is second
+    assert engine_calls == ["postgresql://configured-dsn"]
+    assert len(session_factory_calls) == 1
 
 
 def test_db_boot_should_fail_cleanly_when_machine_config_is_corrupt(

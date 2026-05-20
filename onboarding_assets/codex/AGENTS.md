@@ -39,9 +39,11 @@ Then continue. Do not call recall reflexively.
 
 ### Worker Boundary
 
-As the working agent, use `shellbrain recall` only. Do not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`.
+As the working agent, use `shellbrain recall` for normal task context. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something.
 
-Shellbrain's internal agents handle raw retrieval, synthesis, memory writing, concept updates, and scenario recording.
+Do not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`.
+
+Shellbrain's internal agents handle raw retrieval, synthesis, memory writing, concept updates, scenario recording, and teach consolidation.
 
 ### Reference
 

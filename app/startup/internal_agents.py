@@ -9,10 +9,12 @@ from pydantic import ValidationError
 from app.core.entities.inner_agents import (
     BuildKnowledgeSettings,
     InnerAgentSettings,
+    TeachKnowledgeSettings,
 )
 from app.core.ports.host_apps.inner_agents import (
     IBuildKnowledgeAgentRunner,
     IInnerAgentRunner,
+    ITeachKnowledgeAgentRunner,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.startup.config import get_config_provider
@@ -41,6 +43,12 @@ def get_build_knowledge_settings() -> BuildKnowledgeSettings:
     return get_internal_agents_config().build_knowledge
 
 
+def get_teach_knowledge_settings() -> TeachKnowledgeSettings:
+    """Return typed settings for the explicit teaching agent."""
+
+    return get_internal_agents_config().teach
+
+
 def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
     """Return the configured build_context provider adapter."""
 
@@ -61,6 +69,21 @@ def get_build_knowledge_inner_agent_runner() -> IBuildKnowledgeAgentRunner | Non
 
     config = get_internal_agents_config()
     settings = config.build_knowledge
+    provider = config.providers.get(settings.provider)
+    if provider is None:
+        return None
+    if settings.provider == "codex":
+        return CodexCliInnerAgentRunner(
+            command=provider.command,
+        )
+    return None
+
+
+def get_teach_knowledge_inner_agent_runner() -> ITeachKnowledgeAgentRunner | None:
+    """Return the configured explicit teaching provider adapter."""
+
+    config = get_internal_agents_config()
+    settings = config.teach
     provider = config.providers.get(settings.provider)
     if provider is None:
         return None
