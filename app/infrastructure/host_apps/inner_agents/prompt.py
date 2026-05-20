@@ -292,10 +292,6 @@ next_checks:
 - one to three concrete checks supported by pack evidence. Do not give generic
   coding advice.
 
-sources:
-- include only pack sources that support the brief. Every non-empty section
-  should have source support when ids are available.
-
 # JUDGMENT
 Do not dump raw retrieval results. Compact does not mean omitting the deciding
 distinction. Preserve details that change what the worker should do:
@@ -309,8 +305,8 @@ guidance.
 
 # OUTPUT
 Return only valid JSON matching `output_contract`. Return a `brief` object only;
-do not include read_trace. Keep each list compact. Use only sources from the
-pack.
+do not include read_trace or sources. Keep each list compact. Shellbrain attaches
+deterministic source provenance after synthesis.
 """
 
 
@@ -909,14 +905,6 @@ def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
                 "conflicts": ["string"],
                 "gaps": ["string"],
                 "next_checks": ["string"],
-                "sources": [
-                    {
-                        "kind": "memory|concept|claim|relation|grounding|memory_link|anchor|conflict",
-                        "id": "source id or concept ref from deterministic_graph_pack",
-                        "facet": "memory|claim|relation|grounding|memory_link when applicable",
-                        "used_in": "summary|constraints|known_traps|prior_cases|concept_orientation|anchors|conflicts|gaps|next_checks",
-                    }
-                ],
             }
         },
     }
