@@ -1,8 +1,8 @@
 # Shellbrain Recall Request Shape
 
-The working-agent CLI interface is `shellbrain recall`.
+The normal working-agent CLI interface is `shellbrain recall`.
 
-Use it when prior context may help the current problem. Do not call internal Shellbrain commands directly.
+Use it when prior context may help the current problem. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something. Do not call internal Shellbrain commands directly.
 
 ## Recall
 
@@ -26,6 +26,16 @@ Concrete example:
 ```bash
 shellbrain recall --json '{"query":"Have we seen this failure mode or subsystem before?","current_problem":{"goal":"fix failing architecture guardrail test","surface":"tests/config/test_architecture_boundaries.py and app layer imports","obstacle":"entrypoint handler appears to import startup wiring","hypothesis":"dependency shape should move out of startup"}}'
 ```
+
+## Teach
+
+Teach is for explicit user-provided knowledge, not normal task context or closeout.
+
+```bash
+shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+```
+
+Shellbrain stores the teaching as evidence and immediately runs a separate teach agent that may write memories or concept graph updates.
 
 ## Query Examples
 
@@ -80,6 +90,8 @@ Use it to find:
 Current repo state remains ground truth.
 
 ## Worker Boundary
+
+Working agents should normally call `shellbrain recall`. They may call `shellbrain teach` only for explicit user teaching.
 
 Working agents should not call:
 

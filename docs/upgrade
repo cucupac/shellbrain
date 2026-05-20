@@ -379,8 +379,8 @@ MACHINE_CONFIG="$SHELLBRAIN_HOME/config.toml"
 
 if [ -f "$MACHINE_CONFIG" ] && grep -q 'bootstrap_state = "ready"' "$MACHINE_CONFIG" 2>/dev/null; then
   echo ""
-  echo "machine already initialized — refreshing host assets."
-  "$SHELLBRAIN" init 2>/dev/null || true
+  echo "machine already initialized — running maintenance."
+  run_shellbrain_init_with_recovery
 else
   echo ""
   echo "re-initializing..."

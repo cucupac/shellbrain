@@ -97,10 +97,12 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "Working agents:" in output
     assert "Internal recall agents:" in output
     assert "Knowledge-builder agents:" in output
-    assert "Use only `shellbrain recall`" in output
+    assert "Use `shellbrain recall` for normal task context" in output
+    assert "Use `shellbrain teach` only when the user explicitly asks" in output
     assert "Use `shellbrain concept show` for progressive concept disclosure" in output
     assert "Avoid generic prompts like" in output
-    assert "Run from Shellbrain episode lifecycle triggers" in output
+    assert "Session builders run from Shellbrain episode lifecycle triggers" in output
+    assert "Explicit teach agents run immediately from `teach` evidence" in output
     assert "scenario record" in output
     assert "Examples by audience" in output
     assert "Internal knowledge-builder agents:" in output
@@ -117,6 +119,7 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "--no-sync" not in output
     assert "read" in output
     assert "recall" in output
+    assert "teach" in output
     assert "memory" in output
     assert "scenario" in output
     assert "events" in output
@@ -293,6 +296,26 @@ def test_recall_help_should_describe_read_only_synthesis_contract(
     assert "does not mutate" in output
 
 
+def test_teach_help_should_describe_immediate_teaching_contract(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """teach help should describe explicit user teaching and immediate build."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["teach", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "shellbrain teach --json" in output
+    assert "explicit teaching only" in output
+    assert "Requires `text` and `current_problem`" in output
+    assert "stores the teaching as episode evidence" in output
+    assert "immediately runs" in output
+    assert "working agent should not call" in output
+    assert "goal" in output
+    assert "hypothesis" in output
+
+
 def test_concept_help_should_describe_internal_json_endpoint(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -437,7 +460,8 @@ def test_events_help_should_include_one_example(
     output = capsys.readouterr().out
     assert "Internal-agent endpoint" in output
     assert "Recall agents should run this before private reads" in output
-    assert "Knowledge-builder agents should" in output
+    assert "Session knowledge-builder agents" in output
+    assert "Explicit teach agents do not call `events`" in output
     assert "shellbrain events --json" in output
     assert "inline transcript sync" in output
     assert "after_seq" in output
@@ -912,6 +936,36 @@ def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
     ):
         cli_runner._enforce_inner_agent_mode(command)
     for command in ("recall", "admin", "init", "upgrade", "metrics"):
+        with pytest.raises(ValueError):
+            cli_runner._enforce_inner_agent_mode(command)
+
+
+def test_inner_agent_teach_mode_allows_only_teach_writer_routes(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """teach mode should allow memory/concept writes but reject events and scenarios."""
+
+    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "teach")
+
+    for command in (
+        "read",
+        "concept:show",
+        "memory:add",
+        "memory:update",
+        "concept:add",
+        "concept:update",
+    ):
+        cli_runner._enforce_inner_agent_mode(command)
+    for command in (
+        "events",
+        "scenario:record",
+        "recall",
+        "teach",
+        "admin",
+        "init",
+        "upgrade",
+        "metrics",
+    ):
         with pytest.raises(ValueError):
             cli_runner._enforce_inner_agent_mode(command)
 

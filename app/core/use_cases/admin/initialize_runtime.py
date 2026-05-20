@@ -145,19 +145,23 @@ def run_initialize_runtime(
                 and machine_config.bootstrap_state == ports.bootstrap_state_ready
                 and not config_corruption_recovered
             ):
-                if not skip_host_assets:
-                    notes.extend(
-                        ports.install_host_assets(host_mode="auto", force=False).lines
-                    )
-                return InitResult(outcome=INIT_OUTCOME_NOOP, lines=notes)
+                maintenance_only = True
+            else:
+                maintenance_only = False
 
-            selection = ports.resolve_storage_selection(
-                existing_config=machine_config,
-                storage_flag=storage,
-                admin_dsn_flag=admin_dsn,
-            )
+            selection = None
+            if not maintenance_only:
+                selection = ports.resolve_storage_selection(
+                    existing_config=machine_config,
+                    storage_flag=storage,
+                    admin_dsn_flag=admin_dsn,
+                )
 
             if machine_config is None:
+                if selection is None:
+                    raise InitDependencyError(
+                        "Shellbrain init could not resolve storage selection."
+                    )
                 if selection.runtime_mode == ports.runtime_mode_managed_local:
                     ports.ensure_managed_dependencies()
                     machine_config = ports.build_fresh_machine_config()
@@ -172,7 +176,13 @@ def run_initialize_runtime(
                 ports.save_machine_config(machine_config)
                 mutated_machine = True
 
-            machine_config = ports.migrate_machine_config(machine_config)
+            migrated_config = ports.migrate_machine_config(machine_config)
+            if migrated_config != machine_config:
+                machine_config = migrated_config
+                ports.save_machine_config(machine_config)
+                mutated_machine = True
+            else:
+                machine_config = migrated_config
             should_repair = (
                 machine_config.bootstrap_state == ports.bootstrap_state_repair_needed
                 or config_corruption_recovered
@@ -220,19 +230,20 @@ def run_initialize_runtime(
             schema_changed = ports.apply_schema_migrations(machine_config)
             mutated_machine = mutated_machine or schema_changed
 
-            machine_config = ports.update_bootstrap_state(
-                machine_config,
-                bootstrap_state=ports.bootstrap_state_provisioning,
-                current_step="embeddings",
-                last_error=None,
-            )
-            ports.save_machine_config(machine_config)
-            embedding_changed, machine_config = ports.prewarm_embeddings(
-                machine_config,
-                skip_model_download=skip_model_download,
-            )
-            ports.save_machine_config(machine_config)
-            mutated_machine = mutated_machine or embedding_changed
+            if not maintenance_only:
+                machine_config = ports.update_bootstrap_state(
+                    machine_config,
+                    bootstrap_state=ports.bootstrap_state_provisioning,
+                    current_step="embeddings",
+                    last_error=None,
+                )
+                ports.save_machine_config(machine_config)
+                embedding_changed, machine_config = ports.prewarm_embeddings(
+                    machine_config,
+                    skip_model_download=skip_model_download,
+                )
+                ports.save_machine_config(machine_config)
+                mutated_machine = mutated_machine or embedding_changed
 
             machine_config = ports.update_bootstrap_state(
                 machine_config,
@@ -241,8 +252,8 @@ def run_initialize_runtime(
                 last_error=None,
             )
             ports.save_machine_config(machine_config)
-            registration = None
-            if register_repo_now:
+            registration = existing_registration
+            if register_repo_now and not maintenance_only:
                 registration, repo_changed = ports.register_repo(
                     repo_root=repo_root,
                     repo_id_override=repo_id_override,

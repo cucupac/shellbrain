@@ -497,3 +497,60 @@ def test_upgrade_script_should_print_absolute_recovery_guidance_when_init_fails(
     assert f"shellbrain is installed at: {expected_cli}" in completed.stdout
     assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
     assert "restart your terminal, then run: shellbrain init" not in completed.stdout
+
+
+def test_upgrade_script_should_run_ready_machine_maintenance(
+    tmp_path: Path,
+) -> None:
+    """Ready machines should still run init maintenance after package upgrade."""
+
+    home_dir = tmp_path / "home"
+    machine_config = home_dir / ".shellbrain" / "config.toml"
+    machine_config.parent.mkdir(parents=True)
+    machine_config.write_text('bootstrap_state = "ready"\n', encoding="utf-8")
+
+    user_bin = home_dir / ".local" / "bin"
+    completed, _, marker_path, _ = _run_hosted_script(
+        tmp_path=tmp_path,
+        script_name="upgrade",
+        shell_path="/bin/bash",
+        user_bin=user_bin,
+        docker_mode="ok",
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert marker_path.exists()
+    assert "machine already initialized — running maintenance." in completed.stdout
+    assert "STUB_INIT" in completed.stdout
+    assert "re-initializing..." not in completed.stdout
+
+
+def test_upgrade_script_should_fail_when_ready_machine_maintenance_fails(
+    tmp_path: Path,
+) -> None:
+    """Ready-machine maintenance failures should not be swallowed by upgrade."""
+
+    home_dir = tmp_path / "home"
+    machine_config = home_dir / ".shellbrain" / "config.toml"
+    machine_config.parent.mkdir(parents=True)
+    machine_config.write_text('bootstrap_state = "ready"\n', encoding="utf-8")
+
+    user_bin = home_dir / ".local" / "bin"
+    completed, _, marker_path, _ = _run_hosted_script(
+        tmp_path=tmp_path,
+        script_name="upgrade",
+        shell_path="/bin/bash",
+        user_bin=user_bin,
+        docker_mode="ok",
+        init_stdout="Outcome: blocked_conflict",
+        init_exit_code=10,
+    )
+
+    expected_cli = user_bin / "shellbrain"
+
+    assert completed.returncode == 10
+    assert marker_path.exists()
+    assert "machine already initialized — running maintenance." in completed.stdout
+    assert "Outcome: blocked_conflict" in completed.stdout
+    assert "shellbrain init did not complete." in completed.stdout
+    assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout

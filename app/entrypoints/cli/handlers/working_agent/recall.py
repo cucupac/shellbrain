@@ -69,15 +69,14 @@ def run_recall_memory_operation(
                 ]
             )
         else:
-            with uow_factory() as uow:
-                core_result = execute_recall_memory_with_dependencies(
-                    request=request,
-                    uow=uow,
-                    dependencies=dependencies,
-                    repo_root=str(resolved_repo_root),
-                )
-                recall_telemetry = core_result.telemetry
-                result = ok_envelope(core_result)
+            core_result = execute_recall_memory_with_dependencies(
+                request=request,
+                uow_factory=uow_factory,
+                dependencies=dependencies,
+                repo_root=str(resolved_repo_root),
+            )
+            recall_telemetry = core_result.telemetry
+            result = ok_envelope(core_result)
     except DomainValidationError as exc:
         error_stage = "semantic_validation"
         result = error_response(exc.errors)

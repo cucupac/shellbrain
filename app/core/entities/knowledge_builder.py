@@ -13,6 +13,7 @@ class KnowledgeBuildTrigger(str, Enum):
     SESSION_REPLACED = "session_replaced"
     IDLE_STABLE = "idle_stable"
     WATERMARK_STABLE = "watermark_stable"
+    EXPLICIT_TEACH = "explicit_teach"
 
 
 class KnowledgeBuildRunStatus(str, Enum):

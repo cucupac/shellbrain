@@ -41,7 +41,8 @@ _TOP_LEVEL_HELP = dedent(
         - Review usage with `shellbrain metrics`.
 
       Working agents:
-        - Use only `shellbrain recall`.
+        - Use `shellbrain recall` for normal task context.
+        - Use `shellbrain teach` only when the user explicitly asks to store or teach Shellbrain something.
         - Send a concrete `query` plus required `current_problem`.
         - Avoid generic prompts like "what should I know about this repo?"
 
@@ -52,14 +53,14 @@ _TOP_LEVEL_HELP = dedent(
         - These commands are read-only.
 
       Knowledge-builder agents:
-        - Run from Shellbrain episode lifecycle triggers, not from working agents.
-        - At session end or idle stability, consolidate episode evidence.
+        - Session builders run from Shellbrain episode lifecycle triggers, not from working agents.
+        - When episode evidence is closed or idle-stable, consolidate through an event watermark.
         - Inspect exact episode evidence with `shellbrain events`.
-        - Run `shellbrain events` before every write.
         - Use returned `episode_event` ids as `evidence_refs`.
         - Write `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories through Shellbrain CLI commands.
         - Use `memory update` for `utility_vote`, truth evolution, and associations.
         - Use `scenario record` to store solved or abandoned problem-solving windows after memory boundaries exist.
+        - Explicit teach agents run immediately from `teach` evidence and do not call `events` or `scenario record`.
 
     Examples by audience:
       Humans:
@@ -71,6 +72,7 @@ _TOP_LEVEL_HELP = dedent(
 
       Working agents:
       shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"lock timeout","hypothesis":"missing timeout guard"}}'
+      shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
 
       Internal recall agents:
       shellbrain events --json '{"limit":10}'
@@ -162,6 +164,28 @@ _RECALL_HELP = dedent(
     """
 )
 
+_TEACH_HELP = dedent(
+    """\
+    Immediately teach Shellbrain an explicit user-provided fact, preference, or change.
+
+    This is a worker-facing command for explicit teaching only. Working agents should
+    use `recall` for normal task context and `teach` only when the user asks to store
+    or teach Shellbrain something.
+
+    Requires `text` and `current_problem`.
+    `current_problem` must include non-empty `goal`, `surface`, `obstacle`, and
+    `hypothesis`; use an explicit value like "none yet" when there is no hypothesis.
+
+    Shellbrain first stores the teaching as episode evidence, then immediately runs
+    a separate teach knowledge agent. The teach agent may write memories and concept
+    graph updates through internal CLI commands. The working agent should not call
+    those internal commands directly.
+
+    Example:
+      shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+    """
+)
+
 _CONCEPT_HELP = dedent(
     """\
     Internal JSON-first endpoint for Shellbrain concept graph substrate operations.
@@ -204,8 +228,9 @@ _EVENTS_HELP = dedent(
     Internal-agent endpoint for inspecting the newest repo-matching host session.
 
     `events` performs an inline transcript sync before returning normalized episodic evidence.
-    Recall agents should run this before private reads. Knowledge-builder agents should
-    run this before durable writes and use returned ids as `evidence_refs`.
+    Recall agents should run this before private reads. Session knowledge-builder agents
+    should use this to inspect exact episode evidence and use returned ids as
+    `evidence_refs`. Explicit teach agents do not call `events`.
 
     Examples:
       shellbrain events --json '{"limit":10}'
@@ -486,6 +511,16 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(recall_parser, suppress_default=True)
     _add_payload_arguments(recall_parser)
+
+    teach_parser = subparsers.add_parser(
+        "teach",
+        help="Immediately teach Shellbrain explicit user-provided knowledge.",
+        description="Store explicit teaching as evidence and run the teach knowledge agent immediately.",
+        epilog=_TEACH_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(teach_parser, suppress_default=True)
+    _add_payload_arguments(teach_parser)
 
     concept_parser = subparsers.add_parser(
         "concept",

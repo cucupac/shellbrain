@@ -8,6 +8,7 @@ from typing import Any
 
 from app.core.errors import ErrorDetail
 from app.core.entities.inner_agents import InnerAgentSettings
+from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
@@ -18,7 +19,7 @@ from app.core.entities.settings import (
     ThresholdSettings,
     UpdatePolicySettings,
 )
-from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
+from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
@@ -46,6 +47,8 @@ from app.startup.create_policy import (
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_context_settings,
+    get_teach_knowledge_inner_agent_runner,
+    get_teach_knowledge_settings,
 )
 from app.startup.read_policy import get_read_policy_settings
 from app.startup.runtime_context import get_operation_telemetry_context
@@ -68,6 +71,8 @@ class OperationDependencies:
     id_generator: IIdGenerator
     build_context_inner_agent_runner: IInnerAgentRunner | None
     build_context_settings: InnerAgentSettings
+    teach_knowledge_inner_agent_runner: ITeachKnowledgeAgentRunner | None
+    teach_knowledge_settings: TeachKnowledgeSettings
     get_operation_telemetry_context: Callable[
         [], OperationDispatchTelemetryContext | None
     ]
@@ -98,6 +103,8 @@ def build_operation_dependencies() -> OperationDependencies:
         id_generator=UuidGenerator(),
         build_context_inner_agent_runner=get_build_context_inner_agent_runner(),
         build_context_settings=get_build_context_settings(),
+        teach_knowledge_inner_agent_runner=get_teach_knowledge_inner_agent_runner(),
+        teach_knowledge_settings=get_teach_knowledge_settings(),
         get_operation_telemetry_context=get_operation_telemetry_context,
         resolve_caller_identity=resolve_caller_identity,
         resolve_trusted_events_source=resolve_trusted_events_source,

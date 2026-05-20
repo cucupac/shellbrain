@@ -13,6 +13,7 @@ from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentResult,
     InnerAgentRunRequest,
     InnerAgentRunResult,
+    TeachKnowledgeAgentRequest,
 )
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
@@ -22,6 +23,7 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
     render_build_knowledge_prompt,
+    render_teach_knowledge_prompt,
 )
 
 
@@ -248,6 +250,111 @@ class CodexCliInnerAgentRunner:
             code_trace=parsed["code_trace"],
         )
 
+    def run_teach_knowledge(
+        self, request: TeachKnowledgeAgentRequest
+    ) -> BuildKnowledgeAgentResult:
+        """Run one Codex CLI teach_knowledge request."""
+
+        command_path = shutil.which(self._command)
+        if command_path is None:
+            return _build_knowledge_result(
+                request,
+                status="provider_unavailable",
+                error_code="command_not_found",
+                error_message=f"Codex command not found: {self._command}",
+            )
+
+        prompt = render_teach_knowledge_prompt(request)
+        started = perf_counter()
+        try:
+            with (
+                tempfile.TemporaryDirectory(
+                    prefix="shellbrain-inner-agent-"
+                ) as workspace,
+                tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
+            ):
+                completed = subprocess.run(
+                    [
+                        command_path,
+                        "--ask-for-approval",
+                        "never",
+                        "exec",
+                        "--ephemeral",
+                        "--ignore-rules",
+                        "--skip-git-repo-check",
+                        "--sandbox",
+                        _CODEX_SANDBOX_MODE,
+                        "--model",
+                        request.model,
+                        "-c",
+                        f'model_reasoning_effort="{request.reasoning}"',
+                        "--cd",
+                        workspace,
+                        "--output-last-message",
+                        output_file.name,
+                        "-",
+                    ],
+                    input=prompt,
+                    text=True,
+                    capture_output=True,
+                    timeout=request.timeout_seconds,
+                    check=False,
+                    env=_inner_agent_env(
+                        mode="teach",
+                        knowledge_build_run_id=request.run_id,
+                    ),
+                )
+                output_file.seek(0)
+                final_message = output_file.read()
+        except subprocess.TimeoutExpired:
+            return _build_knowledge_result(
+                request,
+                status="timeout",
+                duration_ms=_duration_ms(started),
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
+                error_code="timeout",
+                error_message="Codex CLI timed out",
+            )
+
+        duration_ms = _duration_ms(started)
+        if completed.returncode != 0:
+            return _build_knowledge_result(
+                request,
+                status="error",
+                duration_ms=duration_ms,
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
+                error_code="codex_nonzero_exit",
+                error_message=_truncate(completed.stderr or completed.stdout, 500),
+            )
+        try:
+            parsed = parse_build_knowledge_output(final_message)
+        except InnerAgentOutputParseError as exc:
+            return _build_knowledge_result(
+                request,
+                status="invalid_output",
+                duration_ms=duration_ms,
+                input_tokens=_estimate_tokens(prompt),
+                output_tokens=_estimate_tokens(final_message),
+                capture_quality="estimated",
+                error_code="invalid_output",
+                error_message=str(exc),
+            )
+        return _build_knowledge_result(
+            request,
+            status=parsed["status"],
+            duration_ms=duration_ms,
+            input_tokens=_estimate_tokens(prompt),
+            output_tokens=_estimate_tokens(final_message),
+            capture_quality="estimated",
+            write_count=int(parsed["write_count"]),
+            skipped_item_count=int(parsed["skipped_item_count"]),
+            run_summary=parsed["run_summary"],
+            read_trace=parsed["read_trace"],
+            code_trace=parsed["code_trace"],
+        )
+
 
 def _result(
     request: InnerAgentRunRequest,
@@ -284,7 +391,7 @@ def _result(
 
 
 def _build_knowledge_result(
-    request: BuildKnowledgeAgentRequest,
+    request: BuildKnowledgeAgentRequest | TeachKnowledgeAgentRequest,
     *,
     status,
     duration_ms: int = 0,
@@ -335,7 +442,7 @@ def _inner_agent_env(
     env = dict(os.environ)
     env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
     _inherit_parent_caller_identity(env)
-    if mode == "build_knowledge":
+    if mode in {"build_knowledge", "teach"}:
         if knowledge_build_run_id:
             env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] = knowledge_build_run_id
         _scrub_admin_env(env)

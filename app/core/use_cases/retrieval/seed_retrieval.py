@@ -14,6 +14,7 @@ from app.core.policies.retrieval.bm25 import (
     score_documents,
 )
 from app.core.policies.retrieval.lexical_query import (
+    LexicalQuery,
     build_lexical_query,
     normalize_lexical_text,
 )
@@ -34,6 +35,7 @@ def retrieve_seeds(
     kinds = request_data.get("kinds")
     limit = int(request_data["limit"])
     query_text = request_data["query"]
+    lexical_query = build_lexical_query(query_text)
     query_vector = []
     query_model = None
     if vector_search is not None:
@@ -61,8 +63,10 @@ def retrieve_seeds(
                 repo_id=repo_id,
                 include_global=include_global,
                 kinds=kinds,
+                query_terms=lexical_query.terms,
+                candidate_limit=_keyword_candidate_limit(limit),
             ),
-            query_text=query_text,
+            lexical_query=lexical_query,
             mode=request_data["mode"],
             limit=limit,
         )
@@ -74,13 +78,12 @@ def retrieve_seeds(
 def _rank_keyword_candidates(
     corpus_rows: Sequence[dict[str, Any]],
     *,
-    query_text: str,
+    lexical_query: LexicalQuery,
     mode: str,
     limit: int,
 ) -> list[dict[str, object]]:
     """Rank visible lexical rows through pure read policy helpers."""
 
-    lexical_query = build_lexical_query(query_text)
     if not lexical_query.terms:
         return []
     documents = [
@@ -92,6 +95,12 @@ def _rank_keyword_candidates(
     ]
     scored_documents = score_documents(lexical_query.terms, documents)
     return admit_scored_documents(scored_documents, mode=mode)[:limit]
+
+
+def _keyword_candidate_limit(limit: int) -> int:
+    """Return the bounded lexical candidate pool size used before pure BM25 ranking."""
+
+    return max(limit * 25, 200)
 
 
 def get_threshold_settings() -> dict[str, float]:

@@ -19,6 +19,15 @@ build_knowledge:
   idle_stable_seconds: 900
   running_run_stale_seconds: 3600
 
+teach:
+  provider: codex
+  model: gpt-5.4-mini
+  reasoning: medium
+  timeout_seconds: 600
+  max_shellbrain_reads: 6
+  max_code_files: 5
+  max_write_commands: 12
+
 providers:
   codex:
     command: codex

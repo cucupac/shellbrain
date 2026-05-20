@@ -23,13 +23,19 @@ def execute_read_memory_with_dependencies(
 
 
 def execute_recall_memory_with_dependencies(
-    *, request, uow, dependencies: OperationDependencies, repo_root: str | None = None
+    *,
+    request,
+    uow=None,
+    uow_factory=None,
+    dependencies: OperationDependencies,
+    repo_root: str | None = None,
 ) -> RecallMemoryResult:
     """Execute recall with handler-injected retrieval settings."""
 
     return execute_recall_memory(
         request,
         uow,
+        uow_factory=uow_factory,
         read_settings=dependencies.read_settings,
         threshold_settings=dependencies.threshold_settings,
         inner_agent_runner=dependencies.build_context_inner_agent_runner,

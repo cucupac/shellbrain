@@ -6,6 +6,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     ForeignKey,
+    Index,
     Integer,
     String,
     Table,
@@ -61,4 +62,19 @@ memory_evidence = Table(
         primary_key=True,
     ),
     UniqueConstraint("memory_id", "evidence_id", name="uq_memory_evidence_pair"),
+)
+
+Index(
+    "idx_memories_read_visibility",
+    memories.c.repo_id,
+    memories.c.archived,
+    memories.c.scope,
+    memories.c.kind,
+    memories.c.id,
+)
+Index(
+    "idx_memory_embeddings_model_dim_memory",
+    memory_embeddings.c.model,
+    memory_embeddings.c.dim,
+    memory_embeddings.c.memory_id,
 )

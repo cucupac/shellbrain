@@ -128,9 +128,9 @@ shellbrain recall --json '{"query":"Have we seen this migration lock timeout bef
 
 ## Query and Session Usage
 
-Even in advanced/operator environments, the working-agent usage model stays simple: use recall when prior context may help.
+Even in advanced/operator environments, the working-agent usage model stays simple: use recall when prior context may help, and use teach only for explicit user teaching.
 
-As the working agent, use Shellbrain through `shellbrain recall`.
+As the working agent, use Shellbrain through `shellbrain recall` for normal task context.
 
 1. Maintain a mental summary of the current subproblem as `goal | surface | obstacle | hypothesis`.
 2. Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output.
@@ -145,9 +145,15 @@ Example:
 shellbrain recall --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","current_problem":{"goal":"refactor auth callback handling","surface":"auth routes and callback tests","obstacle":"unclear existing conventions for redirect behavior","hypothesis":"there is a repo-specific callback invariant"}}'
 ```
 
+If the user explicitly asks you to store or teach Shellbrain something, use `shellbrain teach`:
+
+```bash
+shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+```
+
 Avoid vague queries like "what should I know about this repo?", "what should I do?", or "anything relevant?"
 
-Working agents should not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`. Those are internal-agent commands. Shellbrain's internal recall and knowledge-builder agents handle raw retrieval, synthesis, durable memory writing, concept updates, and scenario recording.
+Working agents should not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`. Those are internal-agent commands. Shellbrain's internal recall, teach, and knowledge-builder agents handle raw retrieval, synthesis, durable memory writing, concept updates, and scenario recording.
 
 ## Host Integration
 

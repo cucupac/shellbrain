@@ -21,9 +21,43 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          python -m pip install --upgrade pip build twine
+          python -m pip install --upgrade pip build twine pytest "psycopg[binary]>=3.1,<4.0"
           python -m build
           python -m twine check dist/*
+
+      - name: Verify release artifacts
+        run: |
+          python -m venv /tmp/shellbrain-release-smoke
+          /tmp/shellbrain-release-smoke/bin/python -m pip install --upgrade pip
+          /tmp/shellbrain-release-smoke/bin/python -m pip install --no-deps dist/*.whl
+          /tmp/shellbrain-release-smoke/bin/shellbrain --help
+          /tmp/shellbrain-release-smoke/bin/shellbrain teach --help
+          python - <<'PY'
+          from pathlib import Path
+          import glob
+          import zipfile
+
+          wheels = glob.glob("dist/shellbrain-*.whl")
+          if len(wheels) != 1:
+              raise SystemExit(f"expected one wheel, found {wheels!r}")
+
+          required = {
+              "app/settings/internal-agents/defaults.yaml",
+              "app/entrypoints/cli/handlers/working_agent/teach.py",
+              "migrations/versions/20260519_0023_explicit_teach_trigger.py",
+              "migrations/versions/20260519_0024_read_retrieval_latency_indexes.py",
+              "onboarding_assets/codex/AGENTS.md",
+              "onboarding_assets/codex/shellbrain/SKILL.md",
+              "onboarding_assets/claude/skills/shellbrain/SKILL.md",
+              "onboarding_assets/cursor/skills/shellbrain/SKILL.md",
+          }
+          with zipfile.ZipFile(Path(wheels[0])) as wheel:
+              names = set(wheel.namelist())
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit("wheel is missing release-critical files: " + ", ".join(missing))
+          PY
+          python -m pytest -q tests/config/test_packaging_smoke.py tests/config/test_install_script.py
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4

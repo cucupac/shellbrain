@@ -7,6 +7,7 @@ import subprocess
 from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
     InnerAgentRunRequest,
+    TeachKnowledgeAgentRequest,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.output_parser import (
@@ -17,6 +18,7 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
     render_build_knowledge_prompt,
+    render_teach_knowledge_prompt,
 )
 
 
@@ -143,6 +145,52 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
     assert result.capture_quality == "estimated"
 
 
+def test_teach_knowledge_runner_uses_teach_mode(monkeypatch, tmp_path) -> None:
+    """Codex teach_knowledge runs with the explicit teaching inner-agent mode."""
+
+    def _fake_which(command: str) -> str:
+        assert command == "codex"
+        return "/usr/bin/codex"
+
+    def _fake_run(args, *, input, text, capture_output, timeout, check, env):
+        assert "teaching_text" in input
+        del text, capture_output, timeout, check
+        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "teach"
+        assert env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] == "run-1"
+        assert "SHELLBRAIN_DB_ADMIN_DSN" not in env
+        output_path = args[args.index("--output-last-message") + 1]
+        assert args[args.index("--ask-for-approval") + 1] == "never"
+        assert args[args.index("--sandbox") + 1] == "danger-full-access"
+        assert 'model_reasoning_effort="medium"' in args
+        with open(output_path, "w", encoding="utf-8") as handle:
+            handle.write(
+                '{"status":"ok","run_summary":"Stored teaching.",'
+                '"write_count":1,"skipped_items":[],'
+                '"read_trace":{"commands":[]},"code_trace":{"files":[]}}'
+            )
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setenv("SHELLBRAIN_DB_ADMIN_DSN", "postgresql://admin")
+    monkeypatch.setattr(
+        "app.infrastructure.host_apps.inner_agents.codex_cli.shutil.which",
+        _fake_which,
+    )
+    monkeypatch.setattr(
+        "app.infrastructure.host_apps.inner_agents.codex_cli.subprocess.run",
+        _fake_run,
+    )
+    runner = CodexCliInnerAgentRunner(command="codex")
+
+    result = runner.run_teach_knowledge(_teach_knowledge_request(repo_root=str(tmp_path)))
+
+    assert result.status == "ok"
+    assert result.write_count == 1
+    assert result.run_summary == "Stored teaching."
+    assert result.input_tokens is not None
+    assert result.output_tokens is not None
+    assert result.capture_quality == "estimated"
+
+
 def test_build_knowledge_output_parser_accepts_no_write_skips() -> None:
     """Parser should accept valid no-write builder output."""
 
@@ -177,7 +225,7 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "AUTHORITY\n" in prompt
     assert "PROTOCOL\n" in prompt
     assert "JUDGMENT\n" in prompt
-    assert prompt.index("shellbrain events") < prompt.index("shellbrain read")
+    assert prompt.index("events --json") < prompt.index("read --json")
     assert "Shellbrain is a repo-scoped memory system" in prompt
     assert "# KNOWLEDGE MODEL" in prompt
     assert "Concepts are sparse orientation nodes, not tags" in prompt
@@ -209,12 +257,12 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "knowledge_builder_notes" not in prompt
     assert "preferred_source_id" not in prompt
     assert "shellbrain --help" in prompt
-    assert "shellbrain read --help" in prompt
-    assert "shellbrain events --help" in prompt
-    assert "shellbrain concept show --help" in prompt
-    assert "shellbrain events" in prompt
-    assert "shellbrain read" in prompt
-    assert "shellbrain concept show" in prompt
+    assert "read --help" in prompt
+    assert "events --help" in prompt
+    assert "concept show --help" in prompt
+    assert "events --json" in prompt
+    assert "read --json" in prompt
+    assert "concept show --json" in prompt
     assert "shellbrain recall" in prompt
     assert "memory writes" in prompt
     assert "requested_" "expansions" not in prompt
@@ -227,9 +275,9 @@ def test_build_context_prompt_targets_repo_root_when_available(tmp_path) -> None
 
     prompt = render_build_context_prompt(_request(repo_root=str(tmp_path)))
 
-    assert f"shellbrain --repo-root {tmp_path}" in prompt
-    assert f"shellbrain --repo-root {tmp_path} events --json" in prompt
-    assert f"shellbrain --repo-root {tmp_path} read --json" in prompt
+    assert f"shellbrain --no-sync --repo-root {tmp_path}" in prompt
+    assert f"shellbrain --no-sync --repo-root {tmp_path} events --json" in prompt
+    assert f"shellbrain --no-sync --repo-root {tmp_path} read --json" in prompt
 
 
 def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
@@ -298,6 +346,60 @@ def test_build_knowledge_prompt_targets_repo_root_when_available(tmp_path) -> No
     assert f"shellbrain --repo-root {tmp_path} scenario record --json" in prompt
 
 
+def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
+    """Teach prompt should not reuse the session build protocol."""
+
+    prompt = render_teach_knowledge_prompt(
+        _teach_knowledge_request(repo_root=str(tmp_path))
+    )
+
+    assert "# IDENTITY" in prompt
+    assert "teach_knowledge" in prompt
+    assert "teaching text is already the evidence" in prompt
+    assert "Do not run the session build_knowledge" in prompt
+    assert "shellbrain events --json" not in prompt
+    assert "scenario record --json" not in prompt
+    assert "Forbidden: `shellbrain events`, `shellbrain scenario record`" in prompt
+    assert "teaching_event_id" in prompt
+    assert "teaching-evt-1" in prompt
+    assert f"shellbrain --repo-root {tmp_path} read --json" in prompt
+    assert f"shellbrain --repo-root {tmp_path} memory add --json" in prompt
+    assert f"shellbrain --repo-root {tmp_path} concept update --json" in prompt
+    assert "Run the exact `first_command`" not in prompt
+    assert "Segment the episode into memory boundaries" not in prompt
+    assert "Concept graph records:" in prompt
+    assert "definition, behavior, invariant" in prompt
+    assert "contains, involves" in prompt
+    assert "Use memory links for concept-to-memory bridges" in prompt
+    assert "created_by `manual`" in prompt
+    assert "Use current_problem only to interpret" in prompt
+    assert "If max_shellbrain_reads allows it" in prompt
+    assert "read budget is zero" in prompt
+    assert "Prefer updating aliases or scope_note" in prompt
+    assert "source_kind\":\"transcript_event" in prompt
+    assert "memory update` sparingly" in prompt
+    assert "stale or contradicted item is a concept claim" in prompt
+    assert "Do not archive historically true memories" in prompt
+    assert "You may write Shellbrain only through:" in prompt
+    assert "`shellbrain memory add`" in prompt
+    assert "`shellbrain concept update`" in prompt
+    assert "Before `add_relation`, ensure both subject and object concepts exist" in prompt
+    assert "not framed as a revision" in prompt
+    assert "Write both a memory and a concept claim only when each has independent future" in prompt
+    assert "multiple independent durable instructions" in prompt
+    assert "Prefer pytest-style tests" in prompt
+    assert "Failed deposit address lookups must not be cached" in prompt
+    assert "Concept container with scope and alias" in prompt
+    assert '"type":"add_concept"' in prompt
+    assert '"aliases":["deposit lookup","depository lookup"]' in prompt
+    assert "Concept relation when the teaching explicitly relates two concepts" in prompt
+    assert '"type":"add_relation"' in prompt
+    assert "Grounding after narrow verification of a named anchor" in prompt
+    assert '"type":"add_grounding"' in prompt
+    assert "Concept-memory link when the memory explains the concept" in prompt
+    assert '"type":"link_memory"' in prompt
+
+
 def _request(*, repo_root: str | None = None) -> InnerAgentRunRequest:
     return InnerAgentRunRequest(
         agent_name="build_context",
@@ -336,4 +438,29 @@ def _build_knowledge_request(
         max_shellbrain_reads=8,
         max_code_files=24,
         max_write_commands=20,
+    )
+
+
+def _teach_knowledge_request(*, repo_root: str = "/tmp/repo") -> TeachKnowledgeAgentRequest:
+    return TeachKnowledgeAgentRequest(
+        run_id="run-1",
+        provider="codex",
+        model="gpt-5.4-mini",
+        reasoning="medium",
+        timeout_seconds=600,
+        repo_id="repo-a",
+        repo_root=repo_root,
+        episode_id="episode-1",
+        teaching_event_id="teaching-evt-1",
+        teaching_event_seq=4,
+        teaching_text="Startup wires dependencies but should not own workflow behavior.",
+        current_problem={
+            "goal": "record architecture preference",
+            "surface": "startup",
+            "obstacle": "agents may put behavior in startup",
+            "hypothesis": "store a preference",
+        },
+        max_shellbrain_reads=6,
+        max_code_files=5,
+        max_write_commands=12,
     )

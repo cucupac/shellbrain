@@ -8,6 +8,7 @@ import shlex
 from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
     InnerAgentRunRequest,
+    TeachKnowledgeAgentRequest,
 )
 
 
@@ -44,17 +45,17 @@ You may run only read-only Shellbrain commands:
 
 - `events`: inspect recent working-session evidence.
   ```bash
-  shellbrain --repo-root "<repo_root>" events --json '{"limit":10}'
+  shellbrain --no-sync --repo-root "<repo_root>" events --json '{"limit":10}'
   ```
 
 - `read`: retrieve stored memories plus concept orientation.
   ```bash
-  shellbrain --repo-root "<repo_root>" read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
+  shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
   ```
 
 - `concept show`: expand one concept ref before relying on it.
   ```bash
-  shellbrain --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
+  shellbrain --no-sync --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
   ```
 
 When using expanded concept context:
@@ -71,9 +72,9 @@ When using expanded concept context:
 Use help only when syntax is unclear or a payload fails:
 ```bash
 shellbrain --help
-shellbrain --repo-root "<repo_root>" events --help
-shellbrain --repo-root "<repo_root>" read --help
-shellbrain --repo-root "<repo_root>" concept show --help
+shellbrain --no-sync --repo-root "<repo_root>" events --help
+shellbrain --no-sync --repo-root "<repo_root>" read --help
+shellbrain --no-sync --repo-root "<repo_root>" concept show --help
 ```
 
 Forbidden: `shellbrain recall`, memory writes, concept writes, scenario writes,
@@ -86,7 +87,7 @@ writes.
    provided. Do not omit `--repo-root` in nested Codex.
 2. Run events first:
    ```bash
-   shellbrain --repo-root "<repo_root>" events --json '{"limit":10}'
+   shellbrain --no-sync --repo-root "<repo_root>" events --json '{"limit":10}'
    ```
 3. Build a compact search text from the query and useful parts of
    current_problem.goal, surface, obstacle, and hypothesis. Omit placeholders
@@ -95,7 +96,7 @@ writes.
    events to sharpen the query when they reveal better terms.
 4. Run at least one targeted read:
    ```bash
-   shellbrain --repo-root "<repo_root>" read --json '{"query":"<combined search text>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
+   shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"<combined search text>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
    ```
 5. If relevant concept refs appear, expand only the concepts likely to change
    the brief. Prioritize concepts that match the current obstacle, contain
@@ -104,11 +105,11 @@ writes.
    detailed concept claims, relations, groundings, or memory links unless you
    inspected them.
    ```bash
-   shellbrain --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"<concept-ref>","include":["claims","relations","groundings","memory_links"]}'
+   shellbrain --no-sync --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"<concept-ref>","include":["claims","relations","groundings","memory_links"]}'
    ```
    You may also use explicit read expansion:
    ```bash
-   shellbrain --repo-root "<repo_root>" read --json '{"query":"<query>","kinds":["problem","solution","failed_tactic","fact","preference","change"],"expand":{"concepts":{"mode":"explicit","refs":["<concept-ref>"],"facets":["claims","relations","groundings","memory_links","evidence"]}}}'
+   shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"<query>","kinds":["problem","solution","failed_tactic","fact","preference","change"],"expand":{"concepts":{"mode":"explicit","refs":["<concept-ref>"],"facets":["claims","relations","groundings","memory_links","evidence"]}}}'
    ```
    If multiple concepts match, inspect at most the few most relevant within
    budget. Prefer concepts whose claims, groundings, or memory links connect
@@ -464,10 +465,208 @@ code_trace. Count memory, concept, and scenario write commands in write_count.
 """
 
 
+_TEACH_KNOWLEDGE_PROMPT_TEMPLATE = """\
+# IDENTITY
+You are Shellbrain teach_knowledge, the immediate explicit-teaching agent.
+
+# JOB
+Turn one user-provided teaching into durable Shellbrain knowledge now. The
+teaching text is already the evidence. Do not run the session build_knowledge
+protocol and do not inspect episode events.
+
+# KNOWLEDGE MODEL
+Shellbrain stores concrete memories and sparse concept graph orientation.
+
+Memories are concrete reusable records: fact, preference, change, problem,
+solution, and failed_tactic.
+
+Concepts are durable repo ideas, not tags: domains, capabilities, processes,
+entities, rules, and components. Concepts may have claims, relations,
+groundings, and memory links.
+
+Concept graph records:
+- claim: statement about one concept. Types: definition, behavior, invariant,
+  failure_mode, usage_note, open_question.
+- relation: durable edge between concepts. Predicates: contains, involves,
+  precedes, constrains, depends_on. Prefer specific predicates; use `involves`
+  only when no more precise predicate fits.
+- grounding: concept-to-anchor link. Roles: implementation, entrypoint,
+  storage, configuration, test, observability, documentation.
+- memory_link: concept-to-memory bridge. Roles: example_of, solution_for,
+  failed_tactic_for, changed, validated, contradicted, warned_about.
+
+Use memory links for concept-to-memory bridges. Use groundings for
+concept-to-anchor bridges such as files, symbols, tests, config_key, api_route,
+DB tables, docs, commits, logs, or metrics.
+
+For concept graph writes, include provenance when supported: evidence
+`{"kind":"transcript","transcript_ref":"<teaching-event-id>"}`, source_kind
+`transcript_event`, source_ref `<teaching-event-id>`, and created_by `manual`.
+Use high confidence for explicit user preferences or instructions; use lower
+confidence when the teaching is interpretive or unverified.
+
+# AUTHORITY
+You may read Shellbrain only to avoid duplicates and find existing concepts:
+
+```bash
+shellbrain --repo-root "<repo_root>" read --json '{"query":"<teaching topic>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
+shellbrain --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"<concept-ref>","include":["claims","relations","groundings","memory_links"]}'
+```
+
+You may inspect repository files read-only only when teaching_text names a
+specific file, symbol, test, config_key, api_route, or table and verification is
+needed for a grounding. Do not search broadly or infer anchors from unstated
+code.
+
+You may write Shellbrain only through:
+- `shellbrain memory add`
+- `shellbrain memory update`
+- `shellbrain concept add`
+- `shellbrain concept update`
+
+```bash
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"<durable fact or preference>","kind":"fact","evidence_refs":["<teaching-event-id>"]}}'
+shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"<change-memory-id>","update":{"type":"fact_update_link","old_fact_id":"<old-fact-id>","new_fact_id":"<new-fact-id>","evidence_refs":["<teaching-event-id>"]}}'
+shellbrain --repo-root "<repo_root>" concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"<slug>","name":"<Name>","kind":"rule","scope_note":"<when this concept applies>","aliases":["<alternate user term>"]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"<concept-ref>","claim_type":"usage_note","text":"<teaching>","confidence":0.9,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
+```
+
+Use help only when syntax is unclear or a payload fails:
+```bash
+shellbrain --help
+shellbrain --repo-root "<repo_root>" read --help
+shellbrain --repo-root "<repo_root>" concept show --help
+shellbrain --repo-root "<repo_root>" memory add --help
+shellbrain --repo-root "<repo_root>" memory update --help
+shellbrain --repo-root "<repo_root>" concept add --help
+shellbrain --repo-root "<repo_root>" concept update --help
+```
+
+Forbidden: `shellbrain events`, `shellbrain scenario record`, `shellbrain
+recall`, admin/init/upgrade/metrics, direct DB writes, editing files,
+formatters, commits, pushes, and any write command not listed above.
+
+# PROTOCOL
+1. Read the payload: repo_id, repo_root, teaching_text, teaching_event_id,
+   current_problem, and budgets.
+2. Treat teaching_text as primary user-authored evidence. Use
+   teaching_event_id as the evidence reference for every write.
+   Use current_problem only to interpret the teaching topic or build a dedupe
+   query. Do not treat current_problem as durable evidence unless teaching_text
+   itself states the knowledge.
+3. If max_shellbrain_reads allows it, run at least one targeted `read` before
+   any durable write to dedupe and find existing memory/concept homes. If the
+   read budget is zero, write only narrow high-confidence teachings, avoid new
+   concept creation, and record in read_trace/skipped_items that dedupe was not
+   performed.
+4. If a relevant concept exists, inspect it with `concept show` before adding
+   claims, relations, groundings, or memory links.
+   Before creating a concept, check for an existing concept with the same
+   meaning. Prefer updating aliases or scope_note on an existing concept over
+   creating a near-duplicate.
+5. Write the smallest durable representation:
+   - use `preference` for user conventions, style choices, workflow
+     preferences, naming preferences, or "always/never prefer" instructions.
+   - use `fact` for stable repo truth directly taught by the user.
+   - use `change` when the teaching supersedes or revises prior truth.
+   - use a concept claim when the teaching states a reusable belief about a
+     durable concept.
+   - use a relation only when the teaching explicitly describes a durable
+     relationship between two concepts and the predicate is precise.
+     Before `add_relation`, ensure both subject and object concepts exist;
+     create a missing endpoint only when it independently satisfies the
+     concept-creation bar.
+   - use a grounding only when the teaching names a concrete anchor and narrow
+     read-only verification confirms it.
+   - use a memory link only when a concrete memory explains, validates,
+     contradicts, changes, exemplifies, or warns about a concept.
+6. Do not create scenarios. Do not invent a problem/solution/failed_tactic
+   boundary. If the teaching explicitly describes such a boundary, create the
+   relevant memories and link solution/failed_tactic memories to the problem
+   memory when supported, but still do not record a scenario.
+7. If one teaching contains multiple independent durable instructions, split
+   only the independent durable units. Do not split stylistic restatements or
+   supporting explanation into separate records.
+
+# JUDGMENT
+Prefer one strong write over several weak writes. Leave the teaching as only an
+episode event when it is duplicate, too vague, not durable, or contradicted by
+stronger current knowledge and not framed as a revision. When the user is
+intentionally revising or superseding prior truth, preserve it as a change
+memory or changed/contradicted concept link when expressible.
+
+Write both a memory and a concept claim only when each has independent future
+recall value: the memory preserves the explicit teaching as a concrete taught
+record, and the claim improves reusable concept orientation.
+
+Use `memory update` sparingly: fact_update_link for factual supersession,
+association_link for explicit durable memory association, and archive_state only
+for duplicate, malformed, or clearly erroneous memories. Do not archive historically true memories.
+
+If the stale or contradicted item is a concept claim, relation, grounding, or
+memory_link and the CLI cannot directly mark that record stale/superseded, do
+not imply it was updated. Write the best expressible change memory or concept
+memory link, then include a skipped_item naming the stale graph record and the
+missing lifecycle update.
+
+A useful memory does not need a concept home. Do not create a concept solely to
+house one local memory.
+
+# EXAMPLES
+Preference memory:
+```bash
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Prefer pytest-style tests over unittest-style tests in this repo.","kind":"preference","evidence_refs":["<teaching-event-id>"]}}'
+```
+
+Stable fact memory:
+```bash
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Deposit address lookup must not cache failed lookups.","kind":"fact","evidence_refs":["<teaching-event-id>"]}}'
+```
+
+Concept container with scope and alias:
+```bash
+shellbrain --repo-root "<repo_root>" concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-address-lookup","name":"Deposit Address Lookup","kind":"capability","scope_note":"How the repo resolves and caches deposit addresses.","aliases":["deposit lookup","depository lookup"]}]}'
+```
+
+Concept claim from explicit teaching:
+```bash
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-address-lookup","claim_type":"invariant","text":"Failed deposit address lookups must not be cached.","confidence":0.9,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
+```
+
+Concept relation when the teaching explicitly relates two concepts:
+```bash
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_relation","subject":"deposit-address-lookup","predicate":"depends_on","object":"address-normalization","confidence":0.8,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
+```
+
+Grounding after narrow verification of a named anchor:
+```bash
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_grounding","concept":"deposit-address-lookup","role":"implementation","anchor":{"kind":"symbol","locator":{"path":"app/deposits.py","symbol":"resolve_deposit_address"}},"confidence":0.8,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
+```
+
+Concept-memory link when the memory explains the concept:
+```bash
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"deposit-address-lookup","role":"changed","memory_id":"<change-memory-id>","confidence":0.9,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"memory","memory_id":"<change-memory-id>"},{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
+```
+
+Change/supersession with old and new fact memories:
+```bash
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Failed deposit address lookups must not be cached.","kind":"fact","evidence_refs":["<teaching-event-id>"]}}'
+shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"The old guidance to cache all deposit address lookup results is superseded by the rule that failed lookups must not be cached.","kind":"change","evidence_refs":["<teaching-event-id>"]}}'
+shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"<change-memory-id>","update":{"type":"fact_update_link","old_fact_id":"<old-fact-id>","new_fact_id":"<new-fact-id>","evidence_refs":["<teaching-event-id>"]}}'
+```
+
+# OUTPUT
+Return only valid JSON matching `output_contract`.
+Count memory and concept write commands in write_count. Include read_trace and
+code_trace. If no write is justified, return status `skipped`, write_count 0,
+and a skipped_item explaining why the teaching event was left as evidence only.
+"""
+
+
 def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
     """Render the JSON-first prompt sent to an autonomous read-only provider."""
 
-    shellbrain = _shellbrain_command(request.repo_root)
+    shellbrain = _shellbrain_command(request.repo_root, no_sync=True)
     payload = {
         "query": request.query,
         "current_problem": request.current_problem,
@@ -646,9 +845,128 @@ def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
     return f"{_BUILD_KNOWLEDGE_PROMPT_TEMPLATE}\n{payload_json}"
 
 
-def _shellbrain_command(repo_root: str | None) -> str:
+def render_teach_knowledge_prompt(request: TeachKnowledgeAgentRequest) -> str:
+    """Render the prompt sent to the autonomous explicit-teaching provider."""
+
+    shellbrain = _shellbrain_command(request.repo_root)
+    payload = {
+        "run_id": request.run_id,
+        "repo_id": request.repo_id,
+        "repo_root": request.repo_root,
+        "episode_id": request.episode_id,
+        "teaching_event_id": request.teaching_event_id,
+        "teaching_event_seq": request.teaching_event_seq,
+        "teaching_text": request.teaching_text,
+        "current_problem": request.current_problem,
+        "budgets": {
+            "max_shellbrain_reads": request.max_shellbrain_reads,
+            "max_code_files": request.max_code_files,
+            "max_write_commands": request.max_write_commands,
+            "timeout_seconds": request.timeout_seconds,
+        },
+        "first_read_example": (
+            f"{shellbrain} read --json "
+            '\'{"query":"<teaching topic>","kinds":["problem","solution",'
+            '"failed_tactic","fact","preference","change"]}\''
+        ),
+        "allowed_write_examples": {
+            "memory_add_preference": (
+                f"{shellbrain} memory add --json "
+                f"'{{\"memory\":{{\"text\":\"<durable preference>\","
+                f"\"kind\":\"preference\",\"evidence_refs\":["
+                f"\"{request.teaching_event_id}\"]}}}}'"
+            ),
+            "memory_update_fact_update_link": (
+                f"{shellbrain} memory update --json "
+                f"'{{\"memory_id\":\"<change-memory-id>\",\"update\":{{"
+                f"\"type\":\"fact_update_link\","
+                f"\"old_fact_id\":\"<old-fact-id>\","
+                f"\"new_fact_id\":\"<new-fact-id>\","
+                f"\"evidence_refs\":[\"{request.teaching_event_id}\"]}}}}'"
+            ),
+            "concept_add_with_aliases": (
+                f"{shellbrain} concept add --json "
+                f"'{{\"schema_version\":\"concept.v1\",\"actions\":[{{"
+                f"\"type\":\"add_concept\",\"slug\":\"<slug>\","
+                f"\"name\":\"<Name>\",\"kind\":\"rule\","
+                f"\"scope_note\":\"<when this concept applies>\","
+                f"\"aliases\":[\"<alternate user term>\"]}}]}}'"
+            ),
+            "concept_add_claim": (
+                f"{shellbrain} concept update --json "
+                f"'{{\"schema_version\":\"concept.v1\",\"actions\":[{{"
+                f"\"type\":\"add_claim\",\"concept\":\"<concept-ref>\","
+                f"\"claim_type\":\"usage_note\",\"text\":\"<teaching>\","
+                f"\"confidence\":0.9,"
+                f"\"source_kind\":\"transcript_event\","
+                f"\"source_ref\":\"{request.teaching_event_id}\","
+                f"\"created_by\":\"manual\","
+                f"\"evidence\":[{{\"kind\":\"transcript\","
+                f"\"transcript_ref\":\"{request.teaching_event_id}\"}}]}}]}}'"
+            ),
+            "concept_link_memory": (
+                f"{shellbrain} concept update --json "
+                f"'{{\"schema_version\":\"concept.v1\",\"actions\":[{{"
+                f"\"type\":\"link_memory\",\"concept\":\"<concept-ref>\","
+                f"\"role\":\"changed\",\"memory_id\":\"<memory-id>\","
+                f"\"confidence\":0.9,"
+                f"\"source_kind\":\"transcript_event\","
+                f"\"source_ref\":\"{request.teaching_event_id}\","
+                f"\"created_by\":\"manual\","
+                f"\"evidence\":[{{\"kind\":\"memory\","
+                f"\"memory_id\":\"<memory-id>\"}},{{\"kind\":\"transcript\","
+                f"\"transcript_ref\":\"{request.teaching_event_id}\"}}]}}]}}'"
+            ),
+        },
+        "help_commands": [
+            "shellbrain --help",
+            f"{shellbrain} read --help",
+            f"{shellbrain} concept show --help",
+            f"{shellbrain} memory add --help",
+            f"{shellbrain} memory update --help",
+            f"{shellbrain} concept add --help",
+            f"{shellbrain} concept update --help",
+        ],
+        "output_contract": {
+            "status": "ok|skipped",
+            "run_summary": "string explaining what was taught or why no write was justified",
+            "write_count": "integer count of shellbrain memory/concept write commands executed",
+            "skipped_items": [
+                {
+                    "summary": "duplicate, too vague, unsupported, or low-confidence item",
+                    "reason": "why it was not written",
+                    "evidence_event_ids": [request.teaching_event_id],
+                }
+            ],
+            "read_trace": {
+                "commands": [
+                    {
+                        "command": "shellbrain ...",
+                        "purpose": "string",
+                        "source_ids": ["memory ids used"],
+                        "concept_refs": ["concept refs inspected"],
+                    }
+                ]
+            },
+            "code_trace": {
+                "files": [
+                    {
+                        "path": "repo-relative path",
+                        "symbols": ["function/class/config/table names"],
+                        "purpose": "why it matters for the written knowledge",
+                    }
+                ]
+            },
+        },
+    }
+    payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"{_TEACH_KNOWLEDGE_PROMPT_TEMPLATE}\n{payload_json}"
+
+
+def _shellbrain_command(repo_root: str | None, *, no_sync: bool = False) -> str:
     """Return a shell-safe Shellbrain command prefix for one repo target."""
 
+    flags = " --no-sync" if no_sync else ""
     if not repo_root:
-        return "shellbrain"
-    return f"shellbrain --repo-root {shlex.quote(repo_root)}"
+        return f"shellbrain{flags}"
+    return f"shellbrain{flags} --repo-root {shlex.quote(repo_root)}"

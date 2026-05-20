@@ -91,7 +91,7 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
                 "current_problem": _current_problem(),
             }
         ),
-        object(),
+        None,
         inner_agent_runner=runner,
         build_context_settings=_enabled_build_context_settings(),
     )
@@ -153,6 +153,41 @@ def test_build_context_provider_unavailable_uses_deterministic_fallback(
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["status"] == "provider_unavailable"
     assert telemetry["fallback_used"] is True
+
+
+def test_build_context_lazy_fallback_opens_uow_only_for_internal_read(
+    monkeypatch,
+) -> None:
+    """build_context should not require a DB transaction for the provider attempt."""
+
+    opened = 0
+
+    class _FakeUow:
+        def __enter__(self):
+            nonlocal opened
+            opened += 1
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+            return None
+
+    _stub_internal_read(monkeypatch, pack=_candidate_pack())
+
+    result = execute_build_context(
+        MemoryRecallRequest.model_validate(
+            {
+                "op": "recall",
+                "repo_id": "repo-a",
+                "query": "migration timeout",
+                "current_problem": _current_problem(),
+            }
+        ),
+        None,
+        uow_factory=_FakeUow,
+    )
+
+    assert opened == 1
+    assert result.data["fallback_reason"] is None
 
 
 def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
