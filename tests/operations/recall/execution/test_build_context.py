@@ -143,7 +143,19 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
     assert runner.request.synthesis_only is True
-    assert runner.request.deterministic_pack == graph_pack
+    synthesis_pack = runner.request.deterministic_pack
+    assert synthesis_pack is not None
+    assert synthesis_pack["memories"] == graph_pack["memories"]
+    assert synthesis_pack["concepts"] == graph_pack["concepts"]
+    assert "query_lanes" not in synthesis_pack
+    assert "pack_trace" not in synthesis_pack
+    assert "synthesis_trace" not in synthesis_pack
+    assert (
+        graph_pack["pack_trace"]["pack_budget"][
+            "synthesis_candidate_tokens_estimated"
+        ]
+        > 0
+    )
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["private_read_count"] == 0
     assert telemetry["concept_expansion_count"] == 1
@@ -326,7 +338,6 @@ def _autonomous_build_context_settings() -> InnerAgentSettings:
         reasoning="low",
         timeout_seconds=90,
         max_private_reads=3,
-        max_candidate_tokens=10_000,
         max_brief_tokens=1_800,
     )
 
@@ -341,7 +352,6 @@ def _deterministic_only_settings() -> InnerAgentSettings:
         reasoning="low",
         timeout_seconds=90,
         max_private_reads=0,
-        max_candidate_tokens=10_000,
         max_brief_tokens=1_800,
     )
 
@@ -409,6 +419,7 @@ def _graph_pack() -> dict:
             "lane_results": [],
             "concept_candidates": {"selected": 1},
             "graph_traversal": {},
+            "pack_budget": {},
         },
     }
 

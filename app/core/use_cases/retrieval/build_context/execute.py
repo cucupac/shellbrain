@@ -19,7 +19,9 @@ from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
 from app.core.use_cases.retrieval.deterministic_graph_recall import (
     build_deterministic_graph_pack,
     deterministic_brief_from_graph_pack,
+    record_synthesis_pack_size,
     source_items_from_graph_pack,
+    synthesis_pack_from_graph_pack,
 )
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.use_cases.retrieval.recall.result import RecallMemoryResult
@@ -32,7 +34,6 @@ _DEFAULT_SETTINGS = InnerAgentSettings(
     reasoning="low",
     timeout_seconds=90,
     max_private_reads=0,
-    max_candidate_tokens=10_000,
     max_brief_tokens=1_800,
 )
 
@@ -157,7 +158,6 @@ def _inner_agent_request(
         reasoning=settings.reasoning,
         timeout_seconds=settings.timeout_seconds,
         max_private_reads=settings.max_private_reads,
-        max_candidate_tokens=settings.max_candidate_tokens,
         max_brief_tokens=settings.max_brief_tokens,
         query=request.query,
         current_problem=request.current_problem.model_dump(mode="python"),
@@ -257,13 +257,18 @@ def _deterministic_graph_result(
             },
         )
 
+    synthesis_pack = synthesis_pack_from_graph_pack(graph_pack)
+    record_synthesis_pack_size(
+        graph_pack=graph_pack,
+        synthesis_pack=synthesis_pack,
+    )
     synthesis_result = _run_inner_agent(
         request=request,
         settings=settings,
         inner_agent_runner=inner_agent_runner,
         repo_root=repo_root,
         synthesis_only=True,
-        deterministic_pack=graph_pack,
+        deterministic_pack=synthesis_pack,
     )
     if synthesis_result.status == "ok" and synthesis_result.brief is not None:
         return RecallMemoryResult(
