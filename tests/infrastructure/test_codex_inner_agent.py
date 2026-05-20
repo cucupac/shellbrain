@@ -351,10 +351,10 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "# CHANGE AND CONTRADICTION JUDGMENT" in prompt
     assert "# SECTION RULES" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
-    assert "Every non-empty section" in prompt
+    assert "do not include read_trace or sources" in prompt
+    assert "deterministic source provenance" in prompt
     assert "mem-1" in prompt
     assert "shellbrain read --json" not in prompt
-    assert "do not include read_trace" in prompt
 
 
 def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
