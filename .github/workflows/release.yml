@@ -46,6 +46,8 @@ jobs:
               "app/entrypoints/cli/handlers/working_agent/teach.py",
               "migrations/versions/20260519_0023_explicit_teach_trigger.py",
               "migrations/versions/20260519_0024_read_retrieval_latency_indexes.py",
+              "migrations/versions/20260519_0025_repair_recall_source_input_section_constraint.py",
+              "migrations/versions/20260519_0026_repair_knowledge_build_trigger_constraint.py",
               "onboarding_assets/codex/AGENTS.md",
               "onboarding_assets/codex/shellbrain/SKILL.md",
               "onboarding_assets/claude/skills/shellbrain/SKILL.md",
