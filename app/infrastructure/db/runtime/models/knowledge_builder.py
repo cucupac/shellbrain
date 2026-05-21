@@ -118,6 +118,20 @@ knowledge_build_runs = Table(
     ),
 )
 
+
+knowledge_build_lifecycle = Table(
+    "knowledge_build_lifecycle",
+    metadata,
+    Column("repo_id", String, primary_key=True),
+    Column("activated_at", TIMESTAMP(timezone=True), nullable=False),
+    Column(
+        "created_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+)
+
 Index(
     "idx_knowledge_build_runs_episode_status_created_at",
     knowledge_build_runs.c.repo_id,

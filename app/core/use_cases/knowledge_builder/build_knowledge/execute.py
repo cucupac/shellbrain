@@ -116,6 +116,16 @@ def execute_build_knowledge(
                 finished_at=now,
             )
 
+        if request.baseline_only and previous_watermark is None:
+            return _record_baseline_run(
+                request=request,
+                settings=settings,
+                uow=uow,
+                id_generator=id_generator,
+                event_watermark=event_watermark,
+                now=now,
+            )
+
         run_id = id_generator.new_id()
         uow.knowledge_build_runs.add(
             KnowledgeBuildRun(
@@ -259,6 +269,56 @@ def _fresh_running_run(
         if run.started_at is None or run.started_at > stale_before:
             return run
     return None
+
+
+def _record_baseline_run(
+    *,
+    request: BuildKnowledgeRequest,
+    settings: BuildKnowledgeSettings,
+    uow: IUnitOfWork,
+    id_generator: IIdGenerator,
+    event_watermark: int,
+    now: datetime,
+) -> BuildKnowledgeResult:
+    """Persist a no-provider watermark for history that predates lifecycle builds."""
+
+    run_id = id_generator.new_id()
+    run_summary = (
+        "Baselined legacy episode without invoking build_knowledge; "
+        "future events after this watermark remain eligible."
+    )
+    uow.knowledge_build_runs.add(
+        KnowledgeBuildRun(
+            id=run_id,
+            repo_id=request.repo_id,
+            episode_id=request.episode_id,
+            trigger=request.trigger,
+            status=KnowledgeBuildRunStatus.SKIPPED,
+            event_watermark=event_watermark,
+            previous_event_watermark=None,
+            provider=settings.provider,
+            model=settings.model,
+            reasoning=settings.reasoning,
+            run_summary=run_summary,
+            error_code="legacy_episode_baselined",
+            started_at=now,
+            finished_at=now,
+            created_at=now,
+        )
+    )
+    return BuildKnowledgeResult(
+        status=KnowledgeBuildRunStatus.SKIPPED,
+        run_id=run_id,
+        event_watermark=event_watermark,
+        previous_event_watermark=None,
+        provider=settings.provider,
+        model=settings.model,
+        reasoning=settings.reasoning,
+        write_count=0,
+        skipped_item_count=0,
+        run_summary=run_summary,
+        error_code="legacy_episode_baselined",
+    )
 
 
 def _skipped_result(
