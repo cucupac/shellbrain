@@ -155,7 +155,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert summary_rows[0]["fallback_reason"] is None
     assert summary_rows[0]["provider"] == "codex"
     assert summary_rows[0]["model"] == "gpt-5.4-mini"
-    assert summary_rows[0]["reasoning"] == "low"
+    assert summary_rows[0]["reasoning"] == "medium"
     assert summary_rows[0]["private_read_count"] == 0
     assert summary_rows[0]["concept_expansion_count"] == 1
 

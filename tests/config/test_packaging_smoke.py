@@ -225,7 +225,7 @@ def test_git_file_install_should_package_internal_agent_settings(
 
     assert "build_context:" in completed.stdout
     assert "model: gpt-5.4-mini" in completed.stdout
-    assert "reasoning: low" in completed.stdout
+    assert "reasoning: medium" in completed.stdout
 
 
 def test_admin_migrate_should_initialize_schema_from_an_installed_package(

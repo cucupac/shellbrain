@@ -38,7 +38,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["build_context"]["strategy"] == "deterministic_synthesis"
     assert settings["build_context"]["provider"] == "codex"
     assert settings["build_context"]["model"] == "gpt-5.4-mini"
-    assert settings["build_context"]["reasoning"] == "low"
+    assert settings["build_context"]["reasoning"] == "medium"
     assert "enabled" not in settings["build_context"]
     assert "fallback" not in settings["build_context"]
     assert "enabled" not in settings["build_knowledge"]

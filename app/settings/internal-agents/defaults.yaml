@@ -3,7 +3,7 @@ build_context:
   strategy: deterministic_synthesis
   provider: codex
   model: gpt-5.4-mini
-  reasoning: low
+  reasoning: medium
   timeout_seconds: 90
   max_private_reads: 3
   max_brief_tokens: 1800
