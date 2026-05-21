@@ -45,7 +45,7 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         assert args[args.index("--sandbox") + 1] == "danger-full-access"
         assert args[args.index("--cd") + 1] != str(tmp_path)
         assert "--model" in args
-        assert 'model_reasoning_effort="low"' in args
+        assert 'model_reasoning_effort="medium"' in args
         tmp_path.joinpath("seen.txt").write_text("ran", encoding="utf-8")
         with open(output_path, "w", encoding="utf-8") as handle:
             handle.write(
@@ -487,7 +487,7 @@ def _request(
         agent_name="build_context",
         provider="codex",
         model="gpt-5.4-mini",
-        reasoning="low",
+        reasoning="medium",
         timeout_seconds=90,
         max_brief_tokens=1_800,
         query="what matters?",
