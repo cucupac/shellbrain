@@ -13,6 +13,7 @@ from app.infrastructure.process.episode_sync.poller import run_episode_poller
 
 
 OLD = datetime(2000, 1, 1, tzinfo=timezone.utc)
+PAST = datetime(1999, 1, 1, tzinfo=timezone.utc)
 FUTURE = datetime(3026, 5, 19, 11, tzinfo=timezone.utc)
 
 
@@ -267,6 +268,46 @@ def test_poller_builds_stable_episode_after_restart(
     assert calls[0]["trigger"] is KnowledgeBuildTrigger.WATERMARK_STABLE
 
 
+def test_poller_baselines_legacy_first_build(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """old pre-activation episodes get watermarked without provider consolidation."""
+
+    calls: list[dict[str, object]] = []
+    snapshots = {
+        "ep-1": _snapshot(
+            episode_id="ep-1",
+            status=EpisodeStatus.ACTIVE,
+            latest_event_seq=8,
+            latest_event_at=OLD,
+            latest_successful_build_watermark=None,
+        )
+    }
+    _patch_no_discovery(monkeypatch)
+
+    run_episode_poller(
+        repo_id="repo-a",
+        repo_root=tmp_path,
+        uow_factory=lambda: _FakeUnitOfWork(
+            snapshots=snapshots.values(),
+            lifecycle_activated_at=FUTURE,
+        ),
+        run_build_knowledge=_record_build_and_mark(calls, snapshots),
+        idle_stable_seconds=0,
+    )
+
+    assert calls == [
+        {
+            "repo_id": "repo-a",
+            "repo_root": tmp_path.resolve(),
+            "episode_id": "ep-1",
+            "trigger": KnowledgeBuildTrigger.WATERMARK_STABLE,
+            "baseline_only": True,
+        }
+    ]
+
+
 def test_recent_active_episode_does_not_block_stable_episode_build(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -428,11 +469,27 @@ class _FakeEpisodesRepo:
         return tuple(self._snapshots)
 
 
+class _FakeBuildRunsRepo:
+    """Minimal build-run repo for stable build planning tests."""
+
+    def __init__(self, *, lifecycle_activated_at: datetime = PAST) -> None:
+        self._lifecycle_activated_at = lifecycle_activated_at
+
+    def ensure_lifecycle_activation_started_at(self, *, repo_id: str, activated_at):
+        del repo_id
+        return self._lifecycle_activated_at
+
+
 class _FakeUnitOfWork:
     """Minimal context-manager unit of work."""
 
-    def __init__(self, *, snapshots) -> None:
+    def __init__(
+        self, *, snapshots, lifecycle_activated_at: datetime = PAST
+    ) -> None:
         self.episodes = _FakeEpisodesRepo(snapshots=snapshots)
+        self.knowledge_build_runs = _FakeBuildRunsRepo(
+            lifecycle_activated_at=lifecycle_activated_at
+        )
 
     def __enter__(self):
         return self

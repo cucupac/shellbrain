@@ -24,6 +24,7 @@ def run_build_knowledge(
     repo_root: Path,
     episode_id: str,
     trigger: KnowledgeBuildTrigger | str,
+    baseline_only: bool = False,
 ) -> dict[str, object]:
     """Wire dependencies and run build_knowledge for one episode."""
 
@@ -32,6 +33,7 @@ def run_build_knowledge(
         repo_root=str(repo_root.resolve()),
         episode_id=episode_id,
         trigger=KnowledgeBuildTrigger(trigger),
+        baseline_only=baseline_only,
     )
     result = execute_build_knowledge(
         request,

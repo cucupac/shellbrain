@@ -16,6 +16,7 @@ class KnowledgeBuildPlan:
 
     episode_id: str
     trigger: KnowledgeBuildTrigger
+    baseline_only: bool = False
 
 
 def plan_stable_watermark_builds(
@@ -23,12 +24,18 @@ def plan_stable_watermark_builds(
     snapshots: Iterable[EpisodeBuildSnapshot],
     now: datetime,
     idle_stable_seconds: int,
+    lifecycle_activated_at: datetime | None = None,
 ) -> tuple[KnowledgeBuildPlan, ...]:
     """Return build plans for closed or idle-stable episodes with new events."""
 
     if idle_stable_seconds < 0:
         raise ValueError("idle_stable_seconds must be non-negative")
     stable_before = now - timedelta(seconds=idle_stable_seconds)
+    legacy_baseline_before = (
+        None
+        if lifecycle_activated_at is None
+        else lifecycle_activated_at - timedelta(seconds=idle_stable_seconds)
+    )
     plans: list[KnowledgeBuildPlan] = []
     seen: set[str] = set()
     for snapshot in snapshots:
@@ -46,6 +53,10 @@ def plan_stable_watermark_builds(
             KnowledgeBuildPlan(
                 episode_id=snapshot.episode_id,
                 trigger=KnowledgeBuildTrigger.WATERMARK_STABLE,
+                baseline_only=_should_baseline_legacy_first_build(
+                    snapshot=snapshot,
+                    legacy_baseline_before=legacy_baseline_before,
+                ),
             )
         )
     return tuple(plans)
@@ -69,3 +80,17 @@ def _is_stable_build_candidate(
     if snapshot.status is not EpisodeStatus.ACTIVE:
         return False
     return snapshot.latest_event_at <= stable_before
+
+
+def _should_baseline_legacy_first_build(
+    *,
+    snapshot: EpisodeBuildSnapshot,
+    legacy_baseline_before: datetime | None,
+) -> bool:
+    """Return whether an old first-build episode should be watermarked only."""
+
+    if legacy_baseline_before is None:
+        return False
+    if snapshot.latest_successful_build_watermark is not None:
+        return False
+    return snapshot.latest_event_at <= legacy_baseline_before

@@ -25,6 +25,12 @@ class IKnowledgeBuildRunsRepo(ABC):
         """Return the newest successfully processed event watermark."""
 
     @abstractmethod
+    def ensure_lifecycle_activation_started_at(
+        self, *, repo_id: str, activated_at: datetime
+    ) -> datetime:
+        """Return the repo lifecycle-builder activation time, creating it if absent."""
+
+    @abstractmethod
     def list_running_runs(
         self, *, repo_id: str, episode_id: str
     ) -> tuple[KnowledgeBuildRun, ...]:

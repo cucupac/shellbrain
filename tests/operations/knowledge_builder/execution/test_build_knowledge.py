@@ -101,6 +101,31 @@ def test_build_knowledge_records_provider_unavailable() -> None:
     )
 
 
+def test_build_knowledge_baselines_legacy_episode_without_provider() -> None:
+    """baseline-only requests should write a skipped watermark without provider work."""
+
+    uow = _FakeUnitOfWork(event_watermark=7, latest_success=None)
+    runner = _FakeBuildKnowledgeRunner()
+
+    result = execute_build_knowledge(
+        _request(baseline_only=True),
+        uow_factory=lambda: uow,
+        clock=_FakeClock(),
+        id_generator=_FakeIdGenerator(),
+        settings=_settings(),
+        agent_runner=runner,
+    )
+
+    assert result.status is KnowledgeBuildRunStatus.SKIPPED
+    assert result.run_id == "run-1"
+    assert result.event_watermark == 7
+    assert result.error_code == "legacy_episode_baselined"
+    assert runner.request is None
+    assert uow.knowledge_build_runs.added[0].status is KnowledgeBuildRunStatus.SKIPPED
+    assert uow.knowledge_build_runs.added[0].finished_at == _FakeClock().now()
+    assert uow.knowledge_build_runs.added[0].error_code == "legacy_episode_baselined"
+
+
 def test_build_knowledge_skips_when_existing_run_is_running() -> None:
     """running build rows should prevent duplicate provider work."""
 
@@ -283,13 +308,16 @@ class _FakeUnitOfWork:
 
 
 def _request(
-    *, trigger: KnowledgeBuildTrigger = KnowledgeBuildTrigger.WATERMARK_STABLE
+    *,
+    trigger: KnowledgeBuildTrigger = KnowledgeBuildTrigger.WATERMARK_STABLE,
+    baseline_only: bool = False,
 ) -> BuildKnowledgeRequest:
     return BuildKnowledgeRequest(
         repo_id="repo-a",
         repo_root="/repo",
         episode_id="episode-1",
         trigger=trigger,
+        baseline_only=baseline_only,
     )
 
 

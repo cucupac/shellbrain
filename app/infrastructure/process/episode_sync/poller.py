@@ -272,14 +272,22 @@ def _run_stable_builds_best_effort(
         return
     try:
         with uow_factory() as uow:
+            now = _utc_now()
+            lifecycle_activated_at = (
+                uow.knowledge_build_runs.ensure_lifecycle_activation_started_at(
+                    repo_id=repo_id,
+                    activated_at=now,
+                )
+            )
             snapshots = tuple(uow.episodes.list_build_snapshots(repo_id=repo_id))
     except Exception:
         return
 
     for plan in plan_stable_watermark_builds(
         snapshots=snapshots,
-        now=_utc_now(),
+        now=now,
         idle_stable_seconds=idle_stable_seconds,
+        lifecycle_activated_at=lifecycle_activated_at,
     ):
         _run_build_knowledge_plan_best_effort(
             run_build_knowledge=run_build_knowledge,
@@ -301,12 +309,15 @@ def _run_build_knowledge_plan_best_effort(
     if run_build_knowledge is None or plan is None:
         return
     try:
-        run_build_knowledge(
-            repo_id=repo_id,
-            repo_root=repo_root,
-            episode_id=plan.episode_id,
-            trigger=plan.trigger,
-        )
+        kwargs = {
+            "repo_id": repo_id,
+            "repo_root": repo_root,
+            "episode_id": plan.episode_id,
+            "trigger": plan.trigger,
+        }
+        if plan.baseline_only:
+            kwargs["baseline_only"] = True
+        run_build_knowledge(**kwargs)
     except Exception:
         return
 

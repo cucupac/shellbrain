@@ -42,6 +42,80 @@ def test_active_stable_unbuilt_episode_should_plan_watermark_build() -> None:
     )
 
 
+def test_legacy_first_build_should_plan_baseline_only() -> None:
+    plans = plan_stable_watermark_builds(
+        snapshots=(
+            _snapshot(
+                episode_id="ep-1",
+                status=EpisodeStatus.ACTIVE,
+                latest_event_seq=8,
+                latest_event_at=OLD,
+                latest_successful_build_watermark=None,
+            ),
+        ),
+        now=NOW,
+        idle_stable_seconds=900,
+        lifecycle_activated_at=NOW,
+    )
+
+    assert plans == (
+        KnowledgeBuildPlan(
+            episode_id="ep-1",
+            trigger=KnowledgeBuildTrigger.WATERMARK_STABLE,
+            baseline_only=True,
+        ),
+    )
+
+
+def test_recent_at_activation_first_build_should_not_baseline() -> None:
+    later = datetime(2026, 5, 19, 12, 20, tzinfo=timezone.utc)
+    plans = plan_stable_watermark_builds(
+        snapshots=(
+            _snapshot(
+                episode_id="ep-1",
+                status=EpisodeStatus.ACTIVE,
+                latest_event_seq=8,
+                latest_event_at=RECENT,
+                latest_successful_build_watermark=None,
+            ),
+        ),
+        now=later,
+        idle_stable_seconds=900,
+        lifecycle_activated_at=NOW,
+    )
+
+    assert plans == (
+        KnowledgeBuildPlan(
+            episode_id="ep-1",
+            trigger=KnowledgeBuildTrigger.WATERMARK_STABLE,
+        ),
+    )
+
+
+def test_episodes_with_previous_watermark_should_not_baseline() -> None:
+    plans = plan_stable_watermark_builds(
+        snapshots=(
+            _snapshot(
+                episode_id="ep-1",
+                status=EpisodeStatus.ACTIVE,
+                latest_event_seq=8,
+                latest_event_at=OLD,
+                latest_successful_build_watermark=3,
+            ),
+        ),
+        now=NOW,
+        idle_stable_seconds=900,
+        lifecycle_activated_at=NOW,
+    )
+
+    assert plans == (
+        KnowledgeBuildPlan(
+            episode_id="ep-1",
+            trigger=KnowledgeBuildTrigger.WATERMARK_STABLE,
+        ),
+    )
+
+
 def test_active_recent_episode_should_not_build_yet() -> None:
     plans = plan_stable_watermark_builds(
         snapshots=(

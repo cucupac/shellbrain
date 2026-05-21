@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import desc, select, text, update
+from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.knowledge_builder import (
     KnowledgeBuildRun,
@@ -12,7 +13,10 @@ from app.core.entities.knowledge_builder import (
     KnowledgeBuildTrigger,
 )
 from app.core.ports.db.knowledge_builder import IKnowledgeBuildRunsRepo
-from app.infrastructure.db.runtime.models.knowledge_builder import knowledge_build_runs
+from app.infrastructure.db.runtime.models.knowledge_builder import (
+    knowledge_build_lifecycle,
+    knowledge_build_runs,
+)
 
 
 class KnowledgeBuildRunsRepo(IKnowledgeBuildRunsRepo):
@@ -66,6 +70,27 @@ class KnowledgeBuildRunsRepo(IKnowledgeBuildRunsRepo):
             .first()
         )
         return None if row is None else int(row)
+
+    def ensure_lifecycle_activation_started_at(
+        self, *, repo_id: str, activated_at: datetime
+    ) -> datetime:
+        """Return the repo lifecycle-builder activation time, creating it if absent."""
+
+        self._session.execute(
+            insert(knowledge_build_lifecycle)
+            .values(
+                repo_id=repo_id,
+                activated_at=activated_at,
+                created_at=activated_at,
+            )
+            .on_conflict_do_nothing(index_elements=[knowledge_build_lifecycle.c.repo_id])
+        )
+        value = self._session.execute(
+            select(knowledge_build_lifecycle.c.activated_at).where(
+                knowledge_build_lifecycle.c.repo_id == repo_id
+            )
+        ).scalar_one()
+        return value
 
     def list_running_runs(
         self, *, repo_id: str, episode_id: str

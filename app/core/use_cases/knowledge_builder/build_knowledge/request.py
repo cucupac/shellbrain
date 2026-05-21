@@ -18,6 +18,7 @@ class BuildKnowledgeRequest(_StrictModel):
     repo_root: str = Field(min_length=1)
     episode_id: str = Field(min_length=1)
     trigger: KnowledgeBuildTrigger
+    baseline_only: bool = False
 
     @field_validator("repo_id", "repo_root", "episode_id")
     @classmethod
