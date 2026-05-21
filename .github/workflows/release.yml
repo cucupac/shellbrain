@@ -49,6 +49,7 @@ jobs:
               "migrations/versions/20260519_0025_repair_recall_source_input_section_constraint.py",
               "migrations/versions/20260519_0026_repair_knowledge_build_trigger_constraint.py",
               "migrations/versions/20260519_0027_concept_embeddings.py",
+              "migrations/versions/20260520_0028_knowledge_build_lifecycle.py",
               "onboarding_assets/codex/AGENTS.md",
               "onboarding_assets/codex/shellbrain/SKILL.md",
               "onboarding_assets/claude/skills/shellbrain/SKILL.md",
