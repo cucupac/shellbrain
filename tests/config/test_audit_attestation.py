@@ -12,6 +12,7 @@ EXPECTED_FAILURE_MESSAGE = """Audit attestation required.
 
 Agent path:
   Use Codex skills $clean-architecture and $clean-code on `git diff --cached`.
+  Make any improvements those skills surface in the staged diff.
   Run relevant tests/checks.
   Then: scripts/audit-attestation attest --tests "<commands run>"
 
