@@ -21,7 +21,12 @@ from app.core.entities.episodes import (
     EpisodeEventSource,
     EpisodeStatus,
 )
-from app.core.entities.memories import Memory, MemoryKind, MemoryScope
+from app.core.entities.memories import (
+    Memory,
+    MemoryKind,
+    MemoryLifecycleStatus,
+    MemoryScope,
+)
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.infrastructure.db.runtime.engine import get_engine
 from app.infrastructure.db.runtime.models.registry import target_metadata
@@ -156,17 +161,24 @@ def seed_memory(uow_factory: Callable[[], PostgresUnitOfWork]) -> Callable[..., 
         scope: MemoryScope,
         kind: MemoryKind,
         text_value: str,
+        status: MemoryLifecycleStatus | str = MemoryLifecycleStatus.ACTIVE,
     ) -> Memory:
         normalized_scope = (
             scope if isinstance(scope, MemoryScope) else MemoryScope(scope)
         )
         normalized_kind = kind if isinstance(kind, MemoryKind) else MemoryKind(kind)
+        normalized_status = (
+            status
+            if isinstance(status, MemoryLifecycleStatus)
+            else MemoryLifecycleStatus(status)
+        )
         memory = Memory(
             id=memory_id,
             repo_id=repo_id,
             scope=normalized_scope,
             kind=normalized_kind,
             text=text_value,
+            status=normalized_status,
         )
         with uow_factory() as uow:
             uow.memories.create(memory)

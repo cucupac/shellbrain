@@ -11,7 +11,7 @@ from app.core.entities.evidence import (
     EvidenceTarget,
 )
 from app.core.entities.facts import FactUpdate, ProblemAttempt
-from app.core.entities.memories import Memory
+from app.core.entities.memories import Memory, MemoryLifecycleEvent
 from app.core.entities.utility import UtilityObservation
 
 
@@ -31,8 +31,14 @@ class IMemoriesRepo(ABC):
         """This method fetches memories in the input identifier order."""
 
     @abstractmethod
-    def set_archived(self, *, memory_id: str, archived: bool) -> bool:
-        """This method updates the archived state for a shellbrain and reports whether a row changed."""
+    def update_lifecycle(self, memory: Memory) -> bool:
+        """Update lifecycle fields for one concrete memory."""
+
+    @abstractmethod
+    def add_lifecycle_event(
+        self, event: MemoryLifecycleEvent
+    ) -> MemoryLifecycleEvent:
+        """Append one auditable concrete memory lifecycle transition."""
 
     @abstractmethod
     def upsert_embedding(

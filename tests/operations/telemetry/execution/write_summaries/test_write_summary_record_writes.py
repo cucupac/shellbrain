@@ -317,13 +317,13 @@ def test_update_fact_update_link_should_always_append_one_write_summary_row_with
     assert rows[0]["fact_update_count"] == 1
 
 
-def test_update_archive_state_should_always_append_one_write_summary_row_with_update_type_archive_state_and_archived_memory_count(
+def test_update_lifecycle_archive_should_always_append_one_write_summary_row_with_update_type_and_archived_memory_count(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """update archive_state should always append one write summary row with update type archive_state and archived-memory count."""
+    """update_lifecycle archived status should increment the archived-memory summary count."""
 
     seed_memory(
         memory_id="archive-target",
@@ -337,8 +337,11 @@ def test_update_archive_state_should_always_append_one_write_summary_row_with_up
         {
             "memory_id": "archive-target",
             "update": {
-                "type": "archive_state",
-                "archived": True,
+                "type": "update_lifecycle",
+                "status": "archived",
+                "rationale": "Retired duplicate.",
+                "actor": "manual",
+                "evidence": [{"kind": "manual", "note": "Verified."}],
             },
         },
         uow_factory=uow_factory,
@@ -352,5 +355,5 @@ def test_update_archive_state_should_always_append_one_write_summary_row_with_up
     )
 
     assert len(rows) == 1
-    assert rows[0]["update_type"] == "archive_state"
+    assert rows[0]["update_type"] == "update_lifecycle"
     assert rows[0]["archived_memory_count"] == 1

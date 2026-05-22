@@ -81,4 +81,5 @@ def _snapshot_update_tables(count_rows: Callable[[str], int]) -> dict[str, int]:
         "association_edge_evidence": count_rows("association_edge_evidence"),
         "evidence_links": count_rows("evidence_links"),
         "evidence_refs": count_rows("evidence_refs"),
+        "memory_lifecycle_events": count_rows("memory_lifecycle_events"),
     }

@@ -146,18 +146,18 @@ def test_keyword_lane_uses_bm25_to_prefer_denser_shorter_matches(
     assert _candidate_ids(candidates) == ["compact-hit", "verbose-hit"]
 
 
-def test_keyword_lane_applies_visibility_scope_kind_and_archived_filters_before_scoring(
+def test_keyword_lane_applies_visibility_scope_kind_and_status_filters_before_scoring(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
 ) -> None:
     """keyword retrieval should always gate the visible lexical corpus before scoring."""
 
-    for memory_id, repo_id, scope, kind, archived in (
-        ("repo-a-fact", "repo-a", "repo", "fact", False),
-        ("repo-a-global-fact", "repo-a", "global", "fact", False),
-        ("repo-b-fact", "repo-b", "repo", "fact", False),
-        ("repo-a-problem", "repo-a", "repo", "problem", False),
-        ("repo-a-archived-fact", "repo-a", "repo", "fact", True),
+    for memory_id, repo_id, scope, kind, status in (
+        ("repo-a-fact", "repo-a", "repo", "fact", "active"),
+        ("repo-a-global-fact", "repo-a", "global", "fact", "active"),
+        ("repo-b-fact", "repo-b", "repo", "fact", "active"),
+        ("repo-a-problem", "repo-a", "repo", "problem", "active"),
+        ("repo-a-archived-fact", "repo-a", "repo", "fact", "archived"),
     ):
         seed_read_memory(
             memory_id=memory_id,
@@ -165,7 +165,7 @@ def test_keyword_lane_applies_visibility_scope_kind_and_archived_filters_before_
             scope=scope,
             kind=kind,
             text_value="Deployment issue lexical visibility probe.",
-            archived=archived,
+            status=status,
         )
 
     with uow_factory() as uow:

@@ -541,6 +541,7 @@ def _memory_link_payloads(
                 "memory_id": link.memory_id,
                 "kind": memory.kind.value if memory else None,
                 "text": memory.text if memory else None,
+                "memory_status": memory.status.value if memory else None,
                 "memory_created_at": _iso(memory.created_at) if memory else None,
             }
         )

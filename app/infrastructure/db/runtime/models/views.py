@@ -5,7 +5,7 @@ CREATE OR REPLACE VIEW current_fact_snapshot AS
 SELECT m.*
 FROM memories m
 WHERE m.kind = 'fact'
-  AND m.archived = FALSE
+  AND m.status = 'active'
   AND NOT EXISTS (
     SELECT 1 FROM fact_updates fu WHERE fu.old_fact_id = m.id
   );

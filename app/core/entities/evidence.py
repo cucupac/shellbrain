@@ -27,6 +27,7 @@ class EvidenceTargetType(str, Enum):
     CONCEPT_GROUNDING = "concept_grounding"
     CONCEPT_MEMORY_LINK = "concept_memory_link"
     CONCEPT_LIFECYCLE_EVENT = "concept_lifecycle_event"
+    MEMORY_LIFECYCLE_EVENT = "memory_lifecycle_event"
 
 
 class EvidenceSourceKind(str, Enum):

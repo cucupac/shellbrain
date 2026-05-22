@@ -2,13 +2,22 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import CURRENT_FACT_SNAPSHOT_SQL
-
 
 revision = "20260312_0003"
 down_revision = "20260312_0002"
 branch_labels = None
 depends_on = None
+
+CURRENT_FACT_SNAPSHOT_SQL = """
+CREATE OR REPLACE VIEW current_fact_snapshot AS
+SELECT m.*
+FROM memories m
+WHERE m.kind = 'fact'
+  AND m.archived = FALSE
+  AND NOT EXISTS (
+    SELECT 1 FROM fact_updates fu WHERE fu.old_fact_id = m.id
+  );
+"""
 
 
 def upgrade() -> None:

@@ -387,7 +387,7 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "problem_attempts" in prompt
     assert "links.problem_id" in prompt
     assert "Treat idle-stable episodes as partial" in prompt
-    assert "Do not archive historically true memories" in prompt
+    assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
     assert "do not vote on ordinary" in prompt.lower()
     assert "leave the memory unlinked" in prompt
     assert "update_lifecycle" in prompt
@@ -456,7 +456,7 @@ def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
     assert "source_kind\":\"transcript_event" in prompt
     assert "memory update` sparingly" in prompt
     assert "stale or contradicted item is a concept claim" in prompt
-    assert "Do not archive historically true memories" in prompt
+    assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
     assert "You may write Shellbrain only through:" in prompt
     assert "`shellbrain memory add`" in prompt
     assert "`shellbrain concept update`" in prompt

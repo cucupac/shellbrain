@@ -298,7 +298,7 @@ def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
     assert item_ids(first) == item_ids(second)
 
 
-def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion_paths(
+def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and_all_expansion_paths(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
     seed_read_embedding: Callable[..., None],
@@ -308,24 +308,44 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
     stub_vector_search: Callable[[dict[str, list[float]]], IVectorSearch],
     semantic_retrieval_override_factory: Callable[..., object],
 ) -> None:
-    """read should always exclude archived memories from direct retrieval and all expansion paths."""
+    """read should exclude wrong, superseded, and archived memories from normal retrieval."""
 
     seed_read_memory(
         memory_id="visible-problem",
         repo_id="repo-a",
         scope="repo",
         kind="problem",
-        text_value="archived probe visible problem anchor",
+        text_value="lifecycle probe visible problem anchor",
     )
     seed_read_memory(
         memory_id="archived-direct",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="archived probe archived direct memory",
-        archived=True,
+        text_value="lifecycle probe archived direct memory",
+        status="archived",
+    )
+    seed_read_memory(
+        memory_id="wrong-direct",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="lifecycle probe wrong direct memory",
+        status="wrong",
+    )
+    seed_read_memory(
+        memory_id="superseded-direct",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="lifecycle probe superseded direct memory",
+        status="superseded",
     )
     seed_read_embedding(memory_id="archived-direct", vector=[1.0, 0.0, 0.0, 0.0])
+    seed_read_embedding(memory_id="wrong-direct", vector=[1.0, 0.0, 0.0, 0.0])
+    seed_read_embedding(
+        memory_id="superseded-direct", vector=[1.0, 0.0, 0.0, 0.0]
+    )
 
     seed_read_memory(
         memory_id="visible-solution",
@@ -335,19 +355,19 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         text_value="visible solution without query overlap",
     )
     seed_read_memory(
-        memory_id="archived-failed-tactic",
+        memory_id="wrong-failed-tactic",
         repo_id="repo-a",
         scope="repo",
         kind="failed_tactic",
-        text_value="archived failed tactic without query overlap",
-        archived=True,
+        text_value="wrong failed tactic without query overlap",
+        status="wrong",
     )
     seed_problem_attempt_link(
         problem_id="visible-problem", attempt_id="visible-solution", role="solution"
     )
     seed_problem_attempt_link(
         problem_id="visible-problem",
-        attempt_id="archived-failed-tactic",
+        attempt_id="wrong-failed-tactic",
         role="failed_tactic",
     )
 
@@ -356,7 +376,7 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="archived probe visible fact anchor",
+        text_value="lifecycle probe visible fact anchor",
     )
     seed_read_memory(
         memory_id="visible-change",
@@ -366,18 +386,18 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         text_value="visible change without query overlap",
     )
     seed_read_memory(
-        memory_id="archived-new-fact",
+        memory_id="superseded-new-fact",
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="archived replacement fact without query overlap",
-        archived=True,
+        text_value="superseded replacement fact without query overlap",
+        status="superseded",
     )
     seed_fact_update_link(
         link_id="fact-link-archived",
         old_fact_id="visible-old-fact",
         change_id="visible-change",
-        new_fact_id="archived-new-fact",
+        new_fact_id="superseded-new-fact",
     )
 
     seed_read_memory(
@@ -385,7 +405,7 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         repo_id="repo-a",
         scope="repo",
         kind="fact",
-        text_value="archived probe visible association anchor",
+        text_value="lifecycle probe visible association anchor",
     )
     seed_read_memory(
         memory_id="visible-assoc-neighbor",
@@ -400,7 +420,7 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         scope="repo",
         kind="fact",
         text_value="archived association neighbor without query overlap",
-        archived=True,
+        status="archived",
     )
     seed_association_edge(
         edge_id="edge-visible",
@@ -439,7 +459,7 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
         scope="repo",
         kind="fact",
         text_value="archived latent neighbor without shared query tokens",
-        archived=True,
+        status="archived",
     )
     seed_read_embedding(
         memory_id="visible-semantic-anchor", vector=[1.0, 0.0, 0.0, 0.0]
@@ -453,13 +473,13 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
 
     request = make_read_request(
         repo_id="repo-a",
-        query="archived probe",
+        query="lifecycle probe",
         expand={"semantic_hops": 1},
     )
     result = _execute_read_with_semantic_override(
         request,
         uow_factory=uow_factory,
-        vector_search=stub_vector_search({"archived probe": [1.0, 0.0, 0.0, 0.0]}),
+        vector_search=stub_vector_search({"lifecycle probe": [1.0, 0.0, 0.0, 0.0]}),
         semantic_retrieval_override_factory=semantic_retrieval_override_factory,
     )
 
@@ -473,8 +493,10 @@ def test_read_excludes_archived_memories_from_direct_retrieval_and_all_expansion
     assert "visible-semantic-anchor" in ids
     assert "visible-semantic-neighbor" in ids
     assert "archived-direct" not in ids
-    assert "archived-failed-tactic" not in ids
-    assert "archived-new-fact" not in ids
+    assert "wrong-direct" not in ids
+    assert "superseded-direct" not in ids
+    assert "wrong-failed-tactic" not in ids
+    assert "superseded-new-fact" not in ids
     assert "archived-assoc-neighbor" not in ids
     assert "archived-semantic-neighbor" not in ids
 

@@ -100,6 +100,7 @@ def run_update_memory_operation(
                     request,
                     uow,
                     id_generator=dependencies.id_generator,
+                    clock=dependencies.clock,
                     policy_settings=dependencies.update_policy,
                 )
                 planned_side_effects = core_result.planned_effects

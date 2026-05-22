@@ -20,8 +20,12 @@ class _StubKeywordRetrieval:
     def list_keyword_corpus(self, **kwargs):
         _ = kwargs
         return [
-            {"memory_id": "keyword-keep", "text": "rollback issue"},
-            {"memory_id": "keyword-drop", "text": "rollback"},
+            {
+                "memory_id": "keyword-keep",
+                "text": "rollback issue",
+                "status": "active",
+            },
+            {"memory_id": "keyword-drop", "text": "rollback", "status": "active"},
         ]
 
 

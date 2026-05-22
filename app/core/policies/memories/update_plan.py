@@ -4,8 +4,9 @@ from typing import Any
 
 from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
+    EvidenceSourceEffectParams,
     FactUpdateCreateEffectParams,
-    MemoryArchiveStateEffectParams,
+    MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
     UtilityObservationAppendEffectParams,
     make_side_effect,
@@ -30,12 +31,35 @@ def build_update_plan(
     memory_id = payload["memory_id"]
     repo_id = payload["repo_id"]
 
-    if update_type == "archive_state":
+    if update_type == "update_lifecycle":
         return [
             make_side_effect(
-                "memory.archive_state",
-                MemoryArchiveStateEffectParams(
-                    memory_id=memory_id, archived=update["archived"]
+                "memory.lifecycle_update",
+                MemoryLifecycleUpdateEffectParams(
+                    event_id=_required(
+                        plan_ids.memory_lifecycle_event_id,
+                        "memory_lifecycle_event_id",
+                    ),
+                    repo_id=repo_id,
+                    memory_id=memory_id,
+                    status=update["status"],
+                    rationale=update["rationale"],
+                    actor=update["actor"],
+                    validated_at=update.get("validated_at"),
+                    superseded_by_id=update.get("superseded_by_id"),
+                    evidence=tuple(
+                        EvidenceSourceEffectParams(
+                            kind=item["kind"],
+                            ref=item.get("ref"),
+                            episode_event_id=item.get("episode_event_id"),
+                            anchor_id=item.get("anchor_id"),
+                            memory_id=item.get("memory_id"),
+                            commit_ref=item.get("commit_ref"),
+                            transcript_ref=item.get("transcript_ref"),
+                            note=item.get("note"),
+                        )
+                        for item in update["evidence"]
+                    ),
                 ),
             )
         ]

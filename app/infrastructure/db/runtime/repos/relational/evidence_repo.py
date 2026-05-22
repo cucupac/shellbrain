@@ -257,6 +257,13 @@ _TARGET_VALIDATION_QUERIES = {
           AND repo_id = :repo_id
         LIMIT 1
     """,
+    EvidenceTargetType.MEMORY_LIFECYCLE_EVENT: """
+        SELECT 1
+        FROM memory_lifecycle_events
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
 }
 
 

@@ -1,8 +1,10 @@
 """Record-write contracts for update execution."""
 
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.system.clock import IClock
 from app.core.use_cases.memories.update import execute_update_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.runtime.models.associations import (
@@ -18,6 +20,11 @@ from tests.operations.update._execution_helpers import (
     make_update_request,
     snapshot_related_update_counts,
 )
+
+
+class _FixedClock(IClock):
+    def now(self) -> datetime:
+        return datetime(2026, 5, 22, 12, 0, tzinfo=timezone.utc)
 
 
 def test_update_utility_vote_commit_appends_observation_with_exact_payload(
@@ -214,6 +221,7 @@ def test_update_writes_only_its_own_related_record_family(
                 "association_edge_evidence": 0,
                 "evidence_links": 0,
                 "evidence_refs": 0,
+                "memory_lifecycle_events": 0,
             },
         ),
         (
@@ -254,6 +262,7 @@ def test_update_writes_only_its_own_related_record_family(
                 "association_edge_evidence": 0,
                 "evidence_links": 0,
                 "evidence_refs": 0,
+                "memory_lifecycle_events": 0,
             },
         ),
         (
@@ -290,6 +299,34 @@ def test_update_writes_only_its_own_related_record_family(
                 "association_edge_evidence": 0,
                 "evidence_links": 1,
                 "evidence_refs": 1,
+                "memory_lifecycle_events": 0,
+            },
+        ),
+        (
+            "lifecycle-memory",
+            {
+                "type": "update_lifecycle",
+                "status": "wrong",
+                "rationale": "Contradicted by later implementation.",
+                "actor": "manual",
+                "evidence": [{"kind": "manual", "note": "Verified."}],
+            },
+            lambda: seed_memory(
+                memory_id="lifecycle-memory",
+                repo_id="repo-a",
+                scope=MemoryScope.REPO,
+                kind=MemoryKind.FACT,
+                text_value="Lifecycle target.",
+            ),
+            {
+                "utility_observations": 0,
+                "fact_updates": 0,
+                "association_edges": 0,
+                "association_observations": 0,
+                "association_edge_evidence": 0,
+                "evidence_links": 1,
+                "evidence_refs": 1,
+                "memory_lifecycle_events": 1,
             },
         ),
     ]
@@ -302,7 +339,12 @@ def test_update_writes_only_its_own_related_record_family(
         )
 
         with uow_factory() as uow:
-            execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
+            execute_update_memory(
+                request,
+                uow,
+                id_generator=SequenceIdGenerator(),
+                clock=_FixedClock(),
+            )
 
         after_counts = snapshot_related_update_counts(count_rows)
         assert _count_deltas(before_counts, after_counts) == expected_deltas

@@ -102,8 +102,11 @@ def test_update_validation_failures_should_always_append_one_failed_operation_in
     result = handle_update(
         {
             "update": {
-                "type": "archive_state",
-                "archived": True,
+                "type": "update_lifecycle",
+                "status": "archived",
+                "rationale": "Retired duplicate.",
+                "actor": "manual",
+                "evidence": [{"kind": "manual", "note": "Verified."}],
             }
         },
         uow_factory=uow_factory,

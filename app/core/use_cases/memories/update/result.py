@@ -15,6 +15,7 @@ class UpdatePlanIds:
     fact_update_id: str | None = None
     association_edge_id: str | None = None
     association_observation_id: str | None = None
+    memory_lifecycle_event_id: str | None = None
 
 
 @dataclass(frozen=True)

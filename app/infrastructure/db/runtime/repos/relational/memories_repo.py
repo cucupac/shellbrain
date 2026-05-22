@@ -6,9 +6,20 @@ from typing import Sequence
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.entities.memories import Memory, MemoryKind, MemoryScope
+from app.core.entities.memories import (
+    Memory,
+    MemoryKind,
+    MemoryLifecycleActor,
+    MemoryLifecycleEvent,
+    MemoryLifecycleStatus,
+    MemoryScope,
+)
 from app.core.ports.db.memory_repositories import IMemoriesRepo
-from app.infrastructure.db.runtime.models.memories import memories, memory_embeddings
+from app.infrastructure.db.runtime.models.memories import (
+    memories,
+    memory_embeddings,
+    memory_lifecycle_events,
+)
 
 
 class MemoriesRepo(IMemoriesRepo):
@@ -30,7 +41,11 @@ class MemoriesRepo(IMemoriesRepo):
                 kind=memory.kind.value,
                 text=memory.text,
                 created_at=memory.created_at or datetime.now(timezone.utc),
-                archived=memory.archived,
+                status=memory.status.value,
+                validated_at=memory.validated_at,
+                invalidated_at=memory.invalidated_at,
+                superseded_by_id=memory.superseded_by_id,
+                updated_by=memory.updated_by.value if memory.updated_by else None,
             )
         )
 
@@ -74,16 +89,50 @@ class MemoriesRepo(IMemoriesRepo):
             kind=MemoryKind(row["kind"]),
             text=row["text"],
             created_at=row["created_at"],
-            archived=row["archived"],
+            status=MemoryLifecycleStatus(row["status"]),
+            validated_at=row["validated_at"],
+            invalidated_at=row["invalidated_at"],
+            superseded_by_id=row["superseded_by_id"],
+            updated_by=MemoryLifecycleActor(row["updated_by"])
+            if row["updated_by"] is not None
+            else None,
         )
 
-    def set_archived(self, *, memory_id: str, archived: bool) -> bool:
-        """This method updates the archived state for a shellbrain and returns whether a row changed."""
+    def update_lifecycle(self, memory: Memory) -> bool:
+        """Update lifecycle fields for one concrete memory."""
 
         result = self._session.execute(
-            update(memories).where(memories.c.id == memory_id).values(archived=archived)
+            update(memories)
+            .where(memories.c.id == memory.id)
+            .values(
+                status=memory.status.value,
+                validated_at=memory.validated_at,
+                invalidated_at=memory.invalidated_at,
+                superseded_by_id=memory.superseded_by_id,
+                updated_by=memory.updated_by.value if memory.updated_by else None,
+            )
         )
         return bool(result.rowcount)
+
+    def add_lifecycle_event(
+        self, event: MemoryLifecycleEvent
+    ) -> MemoryLifecycleEvent:
+        """Append one auditable concrete memory lifecycle transition."""
+
+        self._session.execute(
+            memory_lifecycle_events.insert().values(
+                id=event.id,
+                repo_id=event.repo_id,
+                memory_id=event.memory_id,
+                from_status=event.from_status.value,
+                to_status=event.to_status.value,
+                rationale=event.rationale,
+                actor=event.actor.value,
+                superseded_by_id=event.superseded_by_id,
+                created_at=event.created_at or datetime.now(timezone.utc),
+            )
+        )
+        return event
 
     def upsert_embedding(
         self, *, memory_id: str, model: str, vector: Sequence[float]

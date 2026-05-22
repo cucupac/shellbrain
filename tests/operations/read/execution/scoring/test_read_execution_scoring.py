@@ -501,6 +501,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
                 "kind": "problem",
                 "text": "Anchor memory.",
                 "created_at": "2024-01-01T00:00:00+00:00",
+                "status": "active",
                 "why_included": "direct_match",
             }
         ],
@@ -518,6 +519,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
                     "kind": "solution",
                     "text": "Deep memory.",
                     "created_at": "2024-01-01T00:00:00+00:00",
+                    "status": "active",
                 },
                 {
                     "memory_id": "shallow",
@@ -528,6 +530,7 @@ def test_read_scoring_should_always_order_competing_expanded_candidates_via_the_
                     "kind": "solution",
                     "text": "Shallow memory.",
                     "created_at": "2024-01-01T00:00:00+00:00",
+                    "status": "active",
                 },
             ],
             "implicit": [],

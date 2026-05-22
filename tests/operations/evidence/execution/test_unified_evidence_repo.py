@@ -19,7 +19,13 @@ from app.core.entities.evidence import (
     EvidenceTargetType,
 )
 from app.core.entities.facts import FactUpdate
-from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.entities.memories import (
+    MemoryKind,
+    MemoryLifecycleActor,
+    MemoryLifecycleEvent,
+    MemoryLifecycleStatus,
+    MemoryScope,
+)
 from app.core.entities.utility import UtilityObservation
 from app.core.ports.system.clock import IClock
 from app.core.use_cases.concepts.add import add_concepts
@@ -34,6 +40,7 @@ from app.infrastructure.db.runtime.models.concepts import (
     concept_relations,
 )
 from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
+from app.infrastructure.db.runtime.models.memories import memory_lifecycle_events
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations._shared.id_generators import SequenceIdGenerator
 
@@ -81,6 +88,18 @@ def test_unified_attach_should_write_concrete_evidence_links(
                 strength=0.5,
             )
         )
+        event = uow.memories.add_lifecycle_event(
+            MemoryLifecycleEvent(
+                id="memory-lifecycle-event-1",
+                repo_id="repo-a",
+                memory_id="memory-1",
+                from_status=MemoryLifecycleStatus.ACTIVE,
+                to_status=MemoryLifecycleStatus.WRONG,
+                rationale="Disproved by evidence.",
+                actor=MemoryLifecycleActor.MANUAL,
+                created_at=_FixedClock().now(),
+            )
+        )
         targets = (
             EvidenceTarget(
                 target_type=EvidenceTargetType.MEMORY, target_id="memory-1"
@@ -97,6 +116,10 @@ def test_unified_attach_should_write_concrete_evidence_links(
                 target_type=EvidenceTargetType.ASSOCIATION_EDGE,
                 target_id=edge.id,
             ),
+            EvidenceTarget(
+                target_type=EvidenceTargetType.MEMORY_LIFECYCLE_EVENT,
+                target_id=event.id,
+            ),
         )
         for target in targets:
             uow.evidence.attach_evidence(
@@ -110,8 +133,9 @@ def test_unified_attach_should_write_concrete_evidence_links(
                 ),
             )
 
-    assert len(fetch_rows(evidence_refs, evidence_refs.c.repo_id == "repo-a")) == 4
-    assert len(fetch_rows(evidence_links, evidence_links.c.repo_id == "repo-a")) == 4
+    assert len(fetch_rows(evidence_refs, evidence_refs.c.repo_id == "repo-a")) == 5
+    assert len(fetch_rows(evidence_links, evidence_links.c.repo_id == "repo-a")) == 5
+    assert len(fetch_rows(memory_lifecycle_events)) == 1
 
     with uow_factory() as uow:
         links = uow.evidence.resolve_evidence(repo_id="repo-a", targets=targets)
@@ -121,6 +145,7 @@ def test_unified_attach_should_write_concrete_evidence_links(
         EvidenceTargetType.FACT_UPDATE,
         EvidenceTargetType.UTILITY_OBSERVATION,
         EvidenceTargetType.ASSOCIATION_EDGE,
+        EvidenceTargetType.MEMORY_LIFECYCLE_EVENT,
     }
     assert {link.source.source_kind for link in links} == {EvidenceSourceKind.MANUAL}
     assert {link.role for link in links} == {EvidenceRole.SUPPORTS}

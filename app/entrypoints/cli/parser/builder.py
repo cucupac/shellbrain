@@ -243,7 +243,7 @@ _UPDATE_HELP = dedent(
     Update one existing Shellbrain entry.
 
     Update types:
-      - `archive_state`
+      - `update_lifecycle`
       - `utility_vote` (`-1.0` to `1.0`; negative = unhelpful, `0.0` = neutral, positive = helpful)
       - `fact_update_link`
       - `association_link`
@@ -252,7 +252,7 @@ _UPDATE_HELP = dedent(
       shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-456"]}}'
       shellbrain memory update --json '{"memory_id":"mem-old-fact","update":{"type":"fact_update_link","old_fact_id":"mem-old-fact","new_fact_id":"mem-new-fact","evidence_refs":["evt-457"]}}'
       shellbrain memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","confidence":0.8,"salience":0.6,"evidence_refs":["evt-458"]}}'
-      shellbrain memory update --json '{"memory_id":"mem-stale","update":{"type":"archive_state","archived":true,"rationale":"Superseded by mem-new-fact"}}'
+      shellbrain memory update --json '{"memory_id":"mem-stale","update":{"type":"update_lifecycle","status":"superseded","superseded_by_id":"mem-new-fact","rationale":"Replaced by later implementation evidence.","actor":"manual","evidence":[{"kind":"manual","note":"Verified during review."}]}}'
     """
 )
 

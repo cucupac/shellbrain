@@ -6,6 +6,7 @@ from app.core.use_cases.memories.update.request import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
     MemoryBatchUpdateRequest,
+    MemoryLifecycleUpdate,
     MemoryUpdateRequest,
 )
 from app.core.entities.memories import MemoryKind
@@ -99,4 +100,15 @@ def validate_update_semantics(
                     field="memory_id",
                 )
             )
+    if (
+        isinstance(update, MemoryLifecycleUpdate)
+        and update.superseded_by_id == request.memory_id
+    ):
+        errors.append(
+            ErrorDetail(
+                code=ErrorCode.SEMANTIC_ERROR,
+                message="superseded_by_id cannot reference the updated memory",
+                field="update.superseded_by_id",
+            )
+        )
     return errors

@@ -8,6 +8,7 @@ from app.core.entities.memories import (
     EvidenceRefs,
     Memory,
     MemoryKind,
+    MemoryLifecycleStatus,
     MemoryScope,
     SalienceValue,
     UtilityVoteValue,
@@ -40,6 +41,17 @@ def test_memory_visibility_allows_same_repo_or_global_scope() -> None:
     assert repo_memory.is_visible_in("repo-a")
     assert not repo_memory.is_visible_in("repo-b")
     assert global_memory.is_visible_in("repo-a")
+
+
+def test_memory_lifecycle_status_defines_retrieval_signal() -> None:
+    """memory lifecycle should distinguish retrievable from excluded states."""
+
+    assert MemoryLifecycleStatus.ACTIVE.has_positive_retrieval_signal
+    assert MemoryLifecycleStatus.MAYBE_STALE.has_positive_retrieval_signal
+    assert MemoryLifecycleStatus.STALE.has_positive_retrieval_signal
+    assert not MemoryLifecycleStatus.SUPERSEDED.has_positive_retrieval_signal
+    assert not MemoryLifecycleStatus.WRONG.has_positive_retrieval_signal
+    assert not MemoryLifecycleStatus.ARCHIVED.has_positive_retrieval_signal
 
 
 def test_evidence_refs_require_non_empty_unique_values() -> None:
