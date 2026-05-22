@@ -1,11 +1,15 @@
 """High-level behavior contracts for update execution."""
 
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.system.clock import IClock
 from app.core.use_cases.memories.update import execute_update_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
+from app.infrastructure.db.runtime.models.evidence import evidence_links
 from app.infrastructure.db.runtime.models.memories import memories
+from app.infrastructure.db.runtime.models.memories import memory_lifecycle_events
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.update._execution_helpers import (
     make_update_request,
@@ -13,13 +17,18 @@ from tests.operations.update._execution_helpers import (
 )
 
 
-def test_update_archiving_changes_only_archived_flag(
+class _FixedClock(IClock):
+    def now(self) -> datetime:
+        return datetime(2026, 5, 22, 12, 0, tzinfo=timezone.utc)
+
+
+def test_update_lifecycle_archives_memory_and_records_auditable_event(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
     count_rows: Callable[[str], int],
     fetch_rows: Callable[..., list[dict[str, object]]],
 ) -> None:
-    """archiving a shellbrain should always change only its archived flag."""
+    """lifecycle updates should mutate status and append event evidence."""
 
     seed_memory(
         memory_id="memory-1",
@@ -33,22 +42,100 @@ def test_update_archiving_changes_only_archived_flag(
     request = make_update_request(
         repo_id="repo-a",
         memory_id="memory-1",
-        update={"type": "archive_state", "archived": True},
+        update={
+            "type": "update_lifecycle",
+            "status": "archived",
+            "rationale": "Retired duplicate.",
+            "actor": "manual",
+            "evidence": [{"kind": "manual", "note": "Verified."}],
+        },
     )
 
     with uow_factory() as uow:
-        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
+        execute_update_memory(
+            request,
+            uow,
+            id_generator=SequenceIdGenerator(),
+            clock=_FixedClock(),
+        )
 
     after_row = _fetch_memory_row(fetch_rows, "memory-1")
-    assert before_row["archived"] is False
-    assert after_row["archived"] is True
+    assert before_row["status"] == "active"
+    assert after_row["status"] == "archived"
+    assert after_row["updated_by"] == "manual"
+    assert after_row["validated_at"] is None
+    assert after_row["invalidated_at"] is None
 
     comparable_before = dict(before_row)
     comparable_after = dict(after_row)
-    comparable_before.pop("archived")
-    comparable_after.pop("archived")
+    for field in ("status", "updated_by"):
+        comparable_before.pop(field)
+        comparable_after.pop(field)
     assert comparable_after == comparable_before
-    assert snapshot_related_update_counts(count_rows) == before_counts
+    assert snapshot_related_update_counts(count_rows) == {
+        **before_counts,
+        "evidence_refs": before_counts["evidence_refs"] + 1,
+        "evidence_links": before_counts["evidence_links"] + 1,
+        "memory_lifecycle_events": before_counts["memory_lifecycle_events"] + 1,
+    }
+    events = fetch_rows(memory_lifecycle_events)
+    assert events[0]["memory_id"] == "memory-1"
+    assert events[0]["from_status"] == "active"
+    assert events[0]["to_status"] == "archived"
+    assert events[0]["rationale"] == "Retired duplicate."
+    assert fetch_rows(
+        evidence_links,
+        evidence_links.c.target_type == "memory_lifecycle_event",
+        evidence_links.c.target_id == events[0]["id"],
+    )
+
+
+def test_update_lifecycle_supersedes_memory_with_replacement(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+    fetch_rows: Callable[..., list[dict[str, object]]],
+) -> None:
+    """superseded lifecycle updates should persist replacement and invalidation time."""
+
+    seed_memory(
+        memory_id="old-fact",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Old fact.",
+    )
+    seed_memory(
+        memory_id="new-fact",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="New fact.",
+    )
+    request = make_update_request(
+        repo_id="repo-a",
+        memory_id="old-fact",
+        update={
+            "type": "update_lifecycle",
+            "status": "superseded",
+            "superseded_by_id": "new-fact",
+            "rationale": "Replaced by newer fact.",
+            "actor": "manual",
+            "evidence": [{"kind": "manual", "note": "Verified replacement."}],
+        },
+    )
+
+    with uow_factory() as uow:
+        execute_update_memory(
+            request,
+            uow,
+            id_generator=SequenceIdGenerator(),
+            clock=_FixedClock(),
+        )
+
+    old_fact = _fetch_memory_row(fetch_rows, "old-fact")
+    assert old_fact["status"] == "superseded"
+    assert old_fact["superseded_by_id"] == "new-fact"
+    assert old_fact["invalidated_at"] == _FixedClock().now()
 
 
 def test_update_non_archiving_preserves_original_memory_row(

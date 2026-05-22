@@ -605,7 +605,7 @@ def _memory_row(
         "kind": kind,
         "text": text_value,
         "created_at": datetime.now(timezone.utc),
-        "archived": False,
+        "status": "active",
     }
 
 

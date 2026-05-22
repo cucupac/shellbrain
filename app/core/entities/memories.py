@@ -12,6 +12,10 @@ MemoryKindValue = Literal[
     "problem", "solution", "failed_tactic", "fact", "preference", "change"
 ]
 AssociationRelationValue = Literal["depends_on", "associated_with"]
+MemoryLifecycleStatusValue = Literal[
+    "active", "maybe_stale", "stale", "superseded", "wrong", "archived"
+]
+MemoryLifecycleActorValue = Literal["worker", "librarian", "manual", "import"]
 
 
 class MemoryKind(str, Enum):
@@ -62,6 +66,55 @@ class MemoryScope(str, Enum):
 
     REPO = "repo"
     GLOBAL = "global"
+
+
+class MemoryLifecycleStatus(str, Enum):
+    """Lifecycle state for concrete durable memories."""
+
+    ACTIVE = "active"
+    MAYBE_STALE = "maybe_stale"
+    STALE = "stale"
+    SUPERSEDED = "superseded"
+    WRONG = "wrong"
+    ARCHIVED = "archived"
+
+    @property
+    def has_positive_retrieval_signal(self) -> bool:
+        """Return whether normal read/recall may retrieve this memory."""
+
+        return self in DEFAULT_RETRIEVABLE_MEMORY_STATUSES
+
+    @property
+    def retrieval_multiplier(self) -> float:
+        """Return the default retrieval strength multiplier for this lifecycle state."""
+
+        return {
+            MemoryLifecycleStatus.ACTIVE: 1.0,
+            MemoryLifecycleStatus.MAYBE_STALE: 0.65,
+            MemoryLifecycleStatus.STALE: 0.25,
+            MemoryLifecycleStatus.SUPERSEDED: 0.0,
+            MemoryLifecycleStatus.WRONG: 0.0,
+            MemoryLifecycleStatus.ARCHIVED: 0.0,
+        }[self]
+
+
+class MemoryLifecycleActor(str, Enum):
+    """Actor classes allowed to mutate concrete memory lifecycle state."""
+
+    WORKER = "worker"
+    LIBRARIAN = "librarian"
+    MANUAL = "manual"
+    IMPORT = "import"
+
+
+DEFAULT_RETRIEVABLE_MEMORY_STATUSES: Final[tuple[MemoryLifecycleStatus, ...]] = (
+    MemoryLifecycleStatus.ACTIVE,
+    MemoryLifecycleStatus.MAYBE_STALE,
+    MemoryLifecycleStatus.STALE,
+)
+DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES: Final[tuple[str, ...]] = tuple(
+    status.value for status in DEFAULT_RETRIEVABLE_MEMORY_STATUSES
+)
 
 
 @dataclass(frozen=True)
@@ -137,9 +190,33 @@ class Memory:
     kind: MemoryKind
     text: str
     created_at: datetime | None = None
-    archived: bool = False
+    status: MemoryLifecycleStatus = MemoryLifecycleStatus.ACTIVE
+    validated_at: datetime | None = None
+    invalidated_at: datetime | None = None
+    superseded_by_id: MemoryId | None = None
+    updated_by: MemoryLifecycleActor | None = None
 
     def is_visible_in(self, repo_id: RepoId | str) -> bool:
         """Return whether this memory is visible inside a repo operation context."""
 
         return self.repo_id == repo_id or self.scope == MemoryScope.GLOBAL
+
+    def has_positive_retrieval_signal(self) -> bool:
+        """Return whether normal read/recall should retrieve this memory."""
+
+        return self.status.has_positive_retrieval_signal
+
+
+@dataclass(kw_only=True)
+class MemoryLifecycleEvent:
+    """Append-only audit event for concrete memory lifecycle transitions."""
+
+    id: str
+    repo_id: RepoId
+    memory_id: MemoryId
+    from_status: MemoryLifecycleStatus
+    to_status: MemoryLifecycleStatus
+    rationale: str
+    actor: MemoryLifecycleActor
+    superseded_by_id: MemoryId | None = None
+    created_at: datetime | None = None

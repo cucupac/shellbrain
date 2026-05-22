@@ -49,14 +49,14 @@ def test_read_applies_real_semantic_lane_visibility_and_kind_filters_before_admi
     seed_read_memory: Callable[..., None],
     seed_read_embedding: Callable[..., None],
 ) -> None:
-    """read should always apply archived, repo visibility, include_global, and kinds filters in the real semantic lane."""
+    """read should always apply lifecycle, repo visibility, include_global, and kinds filters in the real semantic lane."""
 
-    for memory_id, repo_id, scope, kind, archived in (
-        ("repo-a-fact", "repo-a", "repo", "fact", False),
-        ("repo-a-global-fact", "repo-a", "global", "fact", False),
-        ("repo-b-fact", "repo-b", "repo", "fact", False),
-        ("repo-a-problem", "repo-a", "repo", "problem", False),
-        ("repo-a-archived-fact", "repo-a", "repo", "fact", True),
+    for memory_id, repo_id, scope, kind, status in (
+        ("repo-a-fact", "repo-a", "repo", "fact", "active"),
+        ("repo-a-global-fact", "repo-a", "global", "fact", "active"),
+        ("repo-b-fact", "repo-b", "repo", "fact", "active"),
+        ("repo-a-problem", "repo-a", "repo", "problem", "active"),
+        ("repo-a-archived-fact", "repo-a", "repo", "fact", "archived"),
     ):
         seed_read_memory(
             memory_id=memory_id,
@@ -64,7 +64,7 @@ def test_read_applies_real_semantic_lane_visibility_and_kind_filters_before_admi
             scope=scope,
             kind=kind,
             text_value=f"{memory_id} without lexical overlap.",
-            archived=archived,
+            status=status,
         )
         seed_read_embedding(memory_id=memory_id, vector=[1.0, 0.0, 0.0, 0.0])
 

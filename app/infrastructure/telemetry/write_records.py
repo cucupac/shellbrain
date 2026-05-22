@@ -11,11 +11,12 @@ from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     EffectParams,
     EffectType,
+    EvidenceSourceEffectParams,
     FactUpdateCreateEffectParams,
     MemoryAddEffectParams,
-    MemoryArchiveStateEffectParams,
     MemoryEmbeddingUpsertEffectParams,
     MemoryEvidenceAttachEffectParams,
+    MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
     ProblemAttemptCreateEffectParams,
     UtilityObservationAppendEffectParams,
@@ -57,9 +58,9 @@ def build_write_summary_records(
         if effect_type is EffectType.MEMORY_CREATE:
             created_memory_count += 1
         elif (
-            effect_type is EffectType.MEMORY_ARCHIVE_STATE
-            and isinstance(params, MemoryArchiveStateEffectParams)
-            and params.archived
+            effect_type is EffectType.MEMORY_LIFECYCLE_UPDATE
+            and isinstance(params, MemoryLifecycleUpdateEffectParams)
+            and params.status == "archived"
         ):
             archived_memory_count += 1
         elif effect_type is EffectType.UTILITY_OBSERVATION_APPEND:
@@ -167,8 +168,21 @@ def _coerce_effect_params(
         )
     if effect_type is EffectType.PROBLEM_ATTEMPT_CREATE:
         return ProblemAttemptCreateEffectParams(**params)
-    if effect_type is EffectType.MEMORY_ARCHIVE_STATE:
-        return MemoryArchiveStateEffectParams(**params)
+    if effect_type is EffectType.MEMORY_LIFECYCLE_UPDATE:
+        return MemoryLifecycleUpdateEffectParams(
+            event_id=str(params["event_id"]),
+            repo_id=str(params["repo_id"]),
+            memory_id=str(params["memory_id"]),
+            status=str(params["status"]),
+            rationale=str(params["rationale"]),
+            actor=str(params["actor"]),
+            validated_at=params.get("validated_at"),
+            superseded_by_id=params.get("superseded_by_id"),
+            evidence=tuple(
+                EvidenceSourceEffectParams(**item)
+                for item in params.get("evidence", ())
+            ),
+        )
     if effect_type is EffectType.UTILITY_OBSERVATION_APPEND:
         return UtilityObservationAppendEffectParams(**params)
     if effect_type is EffectType.FACT_UPDATE_CREATE:
@@ -202,10 +216,24 @@ def _compact_effect_params(params: dict[str, Any]) -> dict[str, Any]:
     """Drop bulky fields so telemetry stores compact, queryable side-effect metadata."""
 
     return {
-        str(key): value
+        str(key): _jsonable(value)
         for key, value in params.items()
         if key not in {"text", "vector"}
     }
+
+
+def _jsonable(value: Any) -> Any:
+    """Return one value in a JSON-safe shape for write telemetry."""
+
+    if isinstance(value, datetime):
+        return value.isoformat()
+    if isinstance(value, tuple):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, list):
+        return [_jsonable(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _jsonable(item) for key, item in value.items()}
+    return value
 
 
 def _primary_memory_id(params: dict[str, Any]) -> str | None:

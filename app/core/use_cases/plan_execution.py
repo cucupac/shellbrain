@@ -1,5 +1,8 @@
 """This module defines shared side-effect execution for create and update policies."""
 
+from dataclasses import replace
+from datetime import datetime
+
 from app.core.entities.associations import (
     AssociationEdge,
     AssociationObservation,
@@ -15,16 +18,24 @@ from app.core.entities.evidence import (
     EvidenceTargetType,
 )
 from app.core.entities.facts import FactUpdate, ProblemAttempt, ProblemAttemptRole
-from app.core.entities.memories import Memory, MemoryKind, MemoryScope
+from app.core.entities.memories import (
+    Memory,
+    MemoryKind,
+    MemoryScope,
+    MemoryLifecycleActor,
+    MemoryLifecycleEvent,
+    MemoryLifecycleStatus,
+)
 from app.core.entities.utility import UtilityObservation
 from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
+    EvidenceSourceEffectParams,
     EffectType,
     FactUpdateCreateEffectParams,
-    MemoryArchiveStateEffectParams,
     MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
     MemoryEvidenceAttachEffectParams,
+    MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
     ProblemAttemptCreateEffectParams,
     UtilityObservationAppendEffectParams,
@@ -38,6 +49,7 @@ def apply_side_effects(
     uow: IUnitOfWork,
     *,
     embedding_provider: IEmbeddingProvider | None = None,
+    now: datetime | None = None,
 ) -> None:
     """This function executes a deterministic side-effect plan inside one transaction."""
 
@@ -93,15 +105,9 @@ def apply_side_effects(
             )
             continue
 
-        if effect_type is EffectType.MEMORY_ARCHIVE_STATE:
-            assert isinstance(params, MemoryArchiveStateEffectParams)
-            updated = uow.memories.set_archived(
-                memory_id=params.memory_id, archived=params.archived
-            )
-            if not updated:
-                raise LookupError(
-                    f"Target shellbrain not found for archive update: {params.memory_id}"
-                )
+        if effect_type is EffectType.MEMORY_LIFECYCLE_UPDATE:
+            assert isinstance(params, MemoryLifecycleUpdateEffectParams)
+            _apply_memory_lifecycle_update(uow, params=params, now=now)
             continue
 
         if effect_type is EffectType.UTILITY_OBSERVATION_APPEND:
@@ -200,4 +206,114 @@ def _attach_episode_event_evidence(
             for ref in sorted(refs)
         ),
         role=EvidenceRole.SUPPORTS,
+    )
+
+
+def _apply_memory_lifecycle_update(
+    uow: IUnitOfWork,
+    *,
+    params: MemoryLifecycleUpdateEffectParams,
+    now: datetime | None,
+) -> None:
+    """Apply one auditable memory lifecycle transition."""
+
+    if now is None:
+        raise ValueError("memory lifecycle updates require a timestamp")
+    memory = uow.memories.get(params.memory_id)
+    if memory is None:
+        raise LookupError(
+            f"Target shellbrain not found for lifecycle update: {params.memory_id}"
+        )
+    status = MemoryLifecycleStatus(params.status)
+    replacement_id = (
+        params.superseded_by_id
+        if status is MemoryLifecycleStatus.SUPERSEDED
+        else None
+    )
+    updated_memory = replace(
+        memory,
+        status=status,
+        validated_at=_memory_validated_at_for_update(
+            status=status,
+            action_validated_at=params.validated_at,
+            current_validated_at=memory.validated_at,
+            now=now,
+        ),
+        invalidated_at=_memory_invalidated_at_for_update(
+            status=status,
+            current_invalidated_at=memory.invalidated_at,
+            now=now,
+        ),
+        superseded_by_id=replacement_id,
+        updated_by=MemoryLifecycleActor(params.actor),
+    )
+    if not uow.memories.update_lifecycle(updated_memory):
+        raise LookupError(
+            f"Target shellbrain not found for lifecycle update: {params.memory_id}"
+        )
+    uow.memories.add_lifecycle_event(
+        MemoryLifecycleEvent(
+            id=params.event_id,
+            repo_id=params.repo_id,
+            memory_id=params.memory_id,
+            from_status=memory.status,
+            to_status=status,
+            rationale=params.rationale,
+            actor=MemoryLifecycleActor(params.actor),
+            superseded_by_id=replacement_id,
+            created_at=now,
+        )
+    )
+    uow.evidence.attach_evidence(
+        repo_id=params.repo_id,
+        target=EvidenceTarget(
+            target_type=EvidenceTargetType.MEMORY_LIFECYCLE_EVENT,
+            target_id=params.event_id,
+        ),
+        sources=tuple(_evidence_source_from_params(item) for item in params.evidence),
+        role=EvidenceRole.SUPPORTS,
+    )
+
+
+def _memory_validated_at_for_update(
+    *,
+    status: MemoryLifecycleStatus,
+    action_validated_at: datetime | None,
+    current_validated_at: datetime | None,
+    now: datetime,
+) -> datetime | None:
+    if action_validated_at is not None:
+        return action_validated_at
+    if status is MemoryLifecycleStatus.ACTIVE:
+        return now
+    return current_validated_at
+
+
+def _memory_invalidated_at_for_update(
+    *,
+    status: MemoryLifecycleStatus,
+    current_invalidated_at: datetime | None,
+    now: datetime,
+) -> datetime | None:
+    if status in {
+        MemoryLifecycleStatus.STALE,
+        MemoryLifecycleStatus.SUPERSEDED,
+        MemoryLifecycleStatus.WRONG,
+    }:
+        return current_invalidated_at or now
+    return None
+
+
+def _evidence_source_from_params(params: EvidenceSourceEffectParams) -> EvidenceSource:
+    """Convert one planned evidence source into the domain evidence entity."""
+
+    return EvidenceSource(
+        source_kind=EvidenceSourceKind(params.kind),
+        ref=params.ref,
+        episode_event_id=params.episode_event_id,
+        anchor_id=params.anchor_id,
+        memory_id=params.memory_id,
+        commit_ref=params.commit_ref,
+        transcript_ref=params.transcript_ref,
+        note=params.note,
     )

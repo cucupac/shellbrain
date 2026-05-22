@@ -1355,10 +1355,10 @@ def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_a
         conn.execute(
             text(
                 """
-                INSERT INTO memories (id, repo_id, scope, kind, text, created_at, archived)
+                INSERT INTO memories (id, repo_id, scope, kind, text, created_at, status)
                 VALUES
-                  ('problem-1', 'telemetry-repo', 'repo', 'problem', 'lock timeout', '2026-03-18T10:00:10+00:00', FALSE),
-                  ('solution-1', 'telemetry-repo', 'repo', 'solution', 'raise lock timeout', '2026-03-18T10:02:00+00:00', FALSE)
+                  ('problem-1', 'telemetry-repo', 'repo', 'problem', 'lock timeout', '2026-03-18T10:00:10+00:00', 'active'),
+                  ('solution-1', 'telemetry-repo', 'repo', 'solution', 'raise lock timeout', '2026-03-18T10:02:00+00:00', 'active')
                 """
             )
         )
@@ -1524,11 +1524,11 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
         conn.execute(
             text(
                 """
-                INSERT INTO memories (id, repo_id, scope, kind, text, created_at, archived)
+                INSERT INTO memories (id, repo_id, scope, kind, text, created_at, status)
                 VALUES
-                  ('problem-2', 'telemetry-repo', 'repo', 'problem', 'flaky latest metric', '2026-03-18T11:00:10+00:00', FALSE),
-                  ('solution-2a', 'telemetry-repo', 'repo', 'solution', 'first workaround', '2026-03-18T11:02:00+00:00', FALSE),
-                  ('solution-2b', 'telemetry-repo', 'repo', 'solution', 'final fix', '2026-03-18T11:04:00+00:00', FALSE)
+                  ('problem-2', 'telemetry-repo', 'repo', 'problem', 'flaky latest metric', '2026-03-18T11:00:10+00:00', 'active'),
+                  ('solution-2a', 'telemetry-repo', 'repo', 'solution', 'first workaround', '2026-03-18T11:02:00+00:00', 'active'),
+                  ('solution-2b', 'telemetry-repo', 'repo', 'solution', 'final fix', '2026-03-18T11:04:00+00:00', 'active')
                 """
             )
         )
@@ -2016,10 +2016,10 @@ def _insert_problem_with_solution_and_optional_read(
     conn.execute(
         text(
             """
-            INSERT INTO memories (id, repo_id, scope, kind, text, created_at, archived)
+            INSERT INTO memories (id, repo_id, scope, kind, text, created_at, status)
             VALUES
-              (:problem_id, 'telemetry-repo', 'repo', 'problem', :problem_text, :problem_created_at, FALSE),
-              (:solution_id, 'telemetry-repo', 'repo', 'solution', :solution_text, :solution_created_at, FALSE)
+              (:problem_id, 'telemetry-repo', 'repo', 'problem', :problem_text, :problem_created_at, 'active'),
+              (:solution_id, 'telemetry-repo', 'repo', 'solution', :solution_text, :solution_created_at, 'active')
             """
         ),
         {

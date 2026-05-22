@@ -18,7 +18,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260522_0031"
+CURRENT_ALEMBIC_HEAD = "20260522_0032"
 
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
@@ -537,6 +537,8 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                 assert cur.fetchone()[0] == CURRENT_ALEMBIC_HEAD
                 cur.execute("SELECT to_regclass('public.concept_lifecycle_events');")
                 assert cur.fetchone()[0] == "concept_lifecycle_events"
+                cur.execute("SELECT to_regclass('public.memory_lifecycle_events');")
+                assert cur.fetchone()[0] == "memory_lifecycle_events"
 
                 cur.execute(
                     """
@@ -590,23 +592,75 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                     )
                     """
                 )
-
                 cur.execute(
-                    "SELECT kind, text FROM memories WHERE id = 'pre0009-problem';"
+                    """
+                    INSERT INTO memory_lifecycle_events (
+                      id, repo_id, memory_id, from_status, to_status,
+                      rationale, actor
+                    )
+                    VALUES (
+                      'memory-lifecycle-event-after-cleanup',
+                      'example/repo',
+                      'pre0009-fact',
+                      'active',
+                      'maybe_stale',
+                      'Packaging smoke validates memory lifecycle event schema.',
+                      'manual'
+                    )
+                    """
                 )
-                assert cur.fetchone() == ("problem", "pre-frontier problem")
-
                 cur.execute(
-                    "SELECT kind, text FROM memories WHERE id = 'pre0009-fact';"
+                    """
+                    INSERT INTO evidence_refs (
+                      id, repo_id, kind, ref, canonical_hash, note
+                    )
+                    VALUES (
+                      'memory-lifecycle-event-evidence-after-cleanup',
+                      'example/repo',
+                      'manual',
+                      'Packaging smoke memory lifecycle evidence.',
+                      'packaging-smoke-memory-lifecycle-evidence',
+                      'Memory lifecycle event evidence target remains accepted.'
+                    )
+                    """
                 )
-                assert cur.fetchone() == ("fact", "pre-frontier fact")
+                cur.execute(
+                    """
+                    INSERT INTO evidence_links (
+                      id, repo_id, target_type, target_id, evidence_id, evidence_role
+                    )
+                    VALUES (
+                      'memory-lifecycle-event-evidence-link-after-cleanup',
+                      'example/repo',
+                      'memory_lifecycle_event',
+                      'memory-lifecycle-event-after-cleanup',
+                      'memory-lifecycle-event-evidence-after-cleanup',
+                      'supports'
+                    )
+                    """
+                )
 
                 cur.execute(
-                    "SELECT kind, text FROM memories WHERE id = 'solution-anchor-memory';"
+                    "SELECT kind, text, status FROM memories WHERE id = 'pre0009-problem';"
+                )
+                assert cur.fetchone() == (
+                    "problem",
+                    "pre-frontier problem",
+                    "active",
+                )
+
+                cur.execute(
+                    "SELECT kind, text, status FROM memories WHERE id = 'pre0009-fact';"
+                )
+                assert cur.fetchone() == ("fact", "pre-frontier fact", "active")
+
+                cur.execute(
+                    "SELECT kind, text, status FROM memories WHERE id = 'solution-anchor-memory';"
                 )
                 assert cur.fetchone() == (
                     "solution",
                     "solution linked through memory anchor",
+                    "active",
                 )
 
                 cur.execute(
@@ -725,8 +779,8 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                 with pytest.raises(psycopg.Error):
                     cur.execute(
                         """
-                        INSERT INTO memories (id, repo_id, scope, kind, text)
-                        VALUES ('frontier-after-cleanup', 'example/repo', 'repo', 'frontier', 'frontier no longer allowed')
+                        INSERT INTO memories (id, repo_id, scope, kind, text, status)
+                        VALUES ('frontier-after-cleanup', 'example/repo', 'repo', 'frontier', 'frontier no longer allowed', 'active')
                         """
                     )
                 conn.rollback()

@@ -9,8 +9,11 @@ def test_update_hydration_infers_missing_repo_id() -> None:
     payload = {
         "memory_id": "memory-1",
         "update": {
-            "type": "archive_state",
-            "archived": True,
+            "type": "update_lifecycle",
+            "status": "archived",
+            "rationale": "Retired duplicate.",
+            "actor": "manual",
+            "evidence": [{"kind": "manual", "note": "Verified."}],
         },
     }
 
@@ -21,8 +24,11 @@ def test_update_hydration_infers_missing_repo_id() -> None:
         "repo_id": "repo-inferred",
         "memory_id": "memory-1",
         "update": {
-            "type": "archive_state",
-            "archived": True,
+            "type": "update_lifecycle",
+            "status": "archived",
+            "rationale": "Retired duplicate.",
+            "actor": "manual",
+            "evidence": [{"kind": "manual", "note": "Verified."}],
         },
     }
 
@@ -35,8 +41,11 @@ def test_update_hydration_preserves_explicit_repo_id() -> None:
         "repo_id": "repo-explicit",
         "memory_id": "memory-1",
         "update": {
-            "type": "archive_state",
-            "archived": True,
+            "type": "update_lifecycle",
+            "status": "archived",
+            "rationale": "Retired duplicate.",
+            "actor": "manual",
+            "evidence": [{"kind": "manual", "note": "Verified."}],
         },
     }
 

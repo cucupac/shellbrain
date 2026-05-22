@@ -6,6 +6,7 @@ from typing import Any, Sequence
 
 from sqlalchemy import or_, select, union_all
 
+from app.core.entities.memories import DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES
 from app.core.ports.db.retrieval_repositories import IReadPolicyRepo
 from app.infrastructure.db.runtime.models.associations import association_edges
 from app.infrastructure.db.runtime.models.experiences import fact_updates, problem_attempts
@@ -217,7 +218,7 @@ class ReadPolicyRepo(IReadPolicyRepo):
         scope_values = ["repo", "global"] if include_global else ["repo"]
         filters: list[Any] = [
             memories.c.repo_id == repo_id,
-            memories.c.archived.is_(False),
+            memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
             memories.c.scope.in_(scope_values),
         ]
         if kinds:

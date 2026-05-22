@@ -409,7 +409,7 @@ You may write Shellbrain only through:
   shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Migration deadlocked because lock_timeout was unset","kind":"problem","evidence_refs":["evt-123"]}}'
   ```
 
-- `memory update`: utility_vote, fact_update_link, association_link, archive_state.
+- `memory update`: utility_vote, fact_update_link, association_link, update_lifecycle.
   ```bash
   shellbrain --repo-root "<repo_root>" memory update --json '{"memory_id":"mem-solution","update":{"type":"association_link","to_memory_id":"mem-fact","relation_type":"depends_on","confidence":0.8,"salience":0.6,"evidence_refs":["evt-458"]}}'
   ```
@@ -494,10 +494,10 @@ graph_patches, and any write not listed above.
    neutral only when it looked relevant enough to affect work but proved
    non-useful in a way future ranking should learn from. Do not vote on ordinary
    irrelevant reads.
-9. Use `archive_state` only for duplicate, malformed, or clearly erroneous
-   memories. Do not archive historically true memories merely because newer
-   evidence changes current guidance; write a `change` memory and concept links
-   instead.
+9. Use `update_lifecycle` with evidence to mark duplicate, malformed, stale,
+   superseded, or clearly erroneous memories. Do not mark historically true
+   memories wrong merely because newer evidence changes current guidance; write
+   a `change` memory and link the replacement when the change is durable.
 10. Build concept graph after concrete memories exist:
     - create sparse concepts only for durable ideas future recall should orient on.
     - add aliases/scope_note when names are ambiguous or users use multiple names.
@@ -744,8 +744,9 @@ recall value: the memory preserves the explicit teaching as a concrete taught
 record, and the claim improves reusable concept orientation.
 
 Use `memory update` sparingly: fact_update_link for factual supersession,
-association_link for explicit durable memory association, and archive_state only
-for duplicate, malformed, or clearly erroneous memories. Do not archive historically true memories.
+association_link for explicit durable memory association, and update_lifecycle
+for duplicate, malformed, stale, superseded, or clearly erroneous memories. Do
+not mark historically true memories wrong.
 
 If the stale or contradicted item is a concept claim, relation, grounding, or
 memory_link, prefer an evidence-backed `update_lifecycle` action over creating a

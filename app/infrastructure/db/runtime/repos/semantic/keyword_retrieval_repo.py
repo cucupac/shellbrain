@@ -6,6 +6,7 @@ from typing import Any, Sequence
 
 from sqlalchemy import desc, func, literal_column, select
 
+from app.core.entities.memories import DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES
 from app.core.ports.db.retrieval_repositories import IKeywordRetrievalRepo
 from app.infrastructure.db.runtime.models.memories import memories
 
@@ -70,6 +71,7 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
             select(
                 memories.c.id.label("memory_id"),
                 memories.c.text,
+                memories.c.status,
             )
             .where(
                 *self._visibility_filters(
@@ -100,10 +102,11 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
             select(
                 memories.c.id.label("memory_id"),
                 memories.c.text,
+                memories.c.status,
             )
             .where(
                 memories.c.repo_id == repo_id,
-                memories.c.archived.is_(False),
+                memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
                 memories.c.scope.in_(scope_values),
             )
             .order_by(memories.c.id.asc())
@@ -125,7 +128,7 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
         scope_values = ["repo", "global"] if include_global else ["repo"]
         filters: list[Any] = [
             memories.c.repo_id == repo_id,
-            memories.c.archived.is_(False),
+            memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
             memories.c.scope.in_(scope_values),
         ]
         if kinds:
@@ -137,7 +140,11 @@ def _rows_to_corpus(rows: Sequence[Any]) -> list[dict[str, Any]]:
     """Normalize SQL rows into the keyword corpus shape expected by core policy."""
 
     return [
-        {"memory_id": str(row["memory_id"]), "text": str(row["text"])}
+        {
+            "memory_id": str(row["memory_id"]),
+            "text": str(row["text"]),
+            "status": str(row["status"]),
+        }
         for row in rows
     ]
 

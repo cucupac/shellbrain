@@ -253,6 +253,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
                     "kind": "problem",
                     "text": "Primary direct memory.",
                     "created_at": "2024-01-01T00:00:00+00:00",
+                    "status": "active",
                     "why_included": "direct_match",
                 }
             ]
@@ -271,6 +272,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
                         "kind": "solution",
                         "text": "Linked association memory.",
                         "created_at": "2024-01-01T00:00:00+00:00",
+                        "status": "active",
                         "why_included": "association_link",
                         "anchor_memory_id": "direct-1",
                         "relation_type": "depends_on",
@@ -283,6 +285,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
                         "kind": "fact",
                         "text": "Nearby semantic memory.",
                         "created_at": "2024-01-01T00:00:00+00:00",
+                        "status": "active",
                         "why_included": "semantic_neighbor",
                         "anchor_memory_id": "direct-1",
                     }

@@ -17,7 +17,7 @@ def test_update_requires_visible_target_memory(
     missing_request = _make_update_request(
         repo_id="repo-a",
         memory_id="missing-memory",
-        update={"type": "archive_state", "archived": True},
+        update=_lifecycle_update(),
     )
 
     with uow_factory() as uow:
@@ -38,7 +38,7 @@ def test_update_requires_visible_target_memory(
     hidden_request = _make_update_request(
         repo_id="repo-a",
         memory_id="hidden-memory",
-        update={"type": "archive_state", "archived": True},
+        update=_lifecycle_update(),
     )
 
     with uow_factory() as uow:
@@ -47,6 +47,65 @@ def test_update_requires_visible_target_memory(
     assert any(
         error.code.value == "integrity_error" and error.field == "memory_id"
         for error in hidden_errors
+    )
+
+
+def test_lifecycle_supersession_requires_same_repo_same_kind_replacement(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+) -> None:
+    """superseded memories should only point at same-repo replacements of the same kind."""
+
+    seed_memory(
+        memory_id="old-fact",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Old fact.",
+    )
+    seed_memory(
+        memory_id="other-repo-fact",
+        repo_id="repo-b",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Other repo fact.",
+    )
+    seed_memory(
+        memory_id="same-repo-problem",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.PROBLEM,
+        text_value="Problem memory.",
+    )
+
+    cross_repo_request = _make_update_request(
+        repo_id="repo-a",
+        memory_id="old-fact",
+        update=_lifecycle_update(
+            status="superseded", superseded_by_id="other-repo-fact"
+        ),
+    )
+    wrong_kind_request = _make_update_request(
+        repo_id="repo-a",
+        memory_id="old-fact",
+        update=_lifecycle_update(
+            status="superseded", superseded_by_id="same-repo-problem"
+        ),
+    )
+
+    with uow_factory() as uow:
+        cross_repo_errors = validate_update_integrity(cross_repo_request, uow)
+        wrong_kind_errors = validate_update_integrity(wrong_kind_request, uow)
+
+    assert any(
+        error.field == "update.superseded_by_id"
+        and "same repo" in error.message
+        for error in cross_repo_errors
+    )
+    assert any(
+        error.field == "update.superseded_by_id"
+        and "same memory kind" in error.message
+        for error in wrong_kind_errors
     )
 
 
@@ -492,3 +551,17 @@ def _make_update_request(
             "update": update,
         }
     )
+
+
+def _lifecycle_update(**overrides) -> dict[str, object]:
+    """Return a minimal auditable lifecycle update payload."""
+
+    payload: dict[str, object] = {
+        "type": "update_lifecycle",
+        "status": "archived",
+        "rationale": "Retired duplicate.",
+        "actor": "manual",
+        "evidence": [{"kind": "manual", "note": "Verified."}],
+    }
+    payload.update(overrides)
+    return payload

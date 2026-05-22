@@ -6,11 +6,15 @@ from app.core.use_cases.memories.update.request import (
     AssociationLinkUpdate,
     FactUpdateLinkUpdate,
     MemoryBatchUpdateRequest,
+    MemoryLifecycleEvidencePayload,
+    MemoryLifecycleUpdate,
     MemoryUpdateRequest,
     UtilityVoteUpdate,
 )
+from app.core.entities.evidence import EvidenceSourceKind
 from app.core.entities.memories import (
     Memory,
+    MemoryLifecycleStatus,
     MemoryKind,
 )
 from app.core.ports.db.unit_of_work import IUnitOfWork
@@ -312,4 +316,95 @@ def validate_update_integrity(
                     field="update.to_memory_id",
                 )
             )
+    if isinstance(update, MemoryLifecycleUpdate):
+        errors.extend(
+            _validate_lifecycle_evidence(
+                uow,
+                repo_id=request.repo_id,
+                evidence=update.evidence,
+                field_prefix="update.evidence",
+            )
+        )
+        if target_memory and target_memory.repo_id != request.repo_id:
+            errors.append(
+                ErrorDetail(
+                    code=ErrorCode.INTEGRITY_ERROR,
+                    message="Lifecycle target memory must belong to this repo_id",
+                    field="memory_id",
+                )
+            )
+        if update.status == MemoryLifecycleStatus.SUPERSEDED.value:
+            replacement, replacement_errors = _require_memory(
+                uow,
+                memory_id=str(update.superseded_by_id),
+                field="update.superseded_by_id",
+            )
+            errors.extend(replacement_errors)
+            if replacement and target_memory:
+                if replacement.repo_id != target_memory.repo_id:
+                    errors.append(
+                        ErrorDetail(
+                            code=ErrorCode.INTEGRITY_ERROR,
+                            message="superseded_by_id must reference a memory in the same repo",
+                            field="update.superseded_by_id",
+                        )
+                    )
+                if replacement.kind != target_memory.kind:
+                    errors.append(
+                        ErrorDetail(
+                            code=ErrorCode.INTEGRITY_ERROR,
+                            message="superseded_by_id must reference the same memory kind",
+                            field="update.superseded_by_id",
+                        )
+                    )
+    return errors
+
+
+def _validate_lifecycle_evidence(
+    uow: IUnitOfWork,
+    *,
+    repo_id: str,
+    evidence: list[MemoryLifecycleEvidencePayload],
+    field_prefix: str,
+) -> list[ErrorDetail]:
+    """Validate lifecycle evidence sources that can be checked before storage."""
+
+    errors: list[ErrorDetail] = []
+    episode_refs = [
+        item.ref
+        for item in evidence
+        if item.kind == EvidenceSourceKind.EPISODE_EVENT.value and item.ref is not None
+    ]
+    errors.extend(
+        _validate_evidence_refs(
+            uow,
+            repo_id=repo_id,
+            refs=episode_refs,
+            field_prefix=field_prefix,
+        )
+    )
+    for index, item in enumerate(evidence):
+        if item.kind == EvidenceSourceKind.MEMORY.value and item.memory_id is not None:
+            memory, memory_errors = _require_memory(
+                uow, memory_id=item.memory_id, field=f"{field_prefix}.{index}.memory_id"
+            )
+            errors.extend(memory_errors)
+            if memory and not memory.is_visible_in(repo_id):
+                errors.append(
+                    ErrorDetail(
+                        code=ErrorCode.INTEGRITY_ERROR,
+                        message="Evidence memory is not visible for this repo_id",
+                        field=f"{field_prefix}.{index}.memory_id",
+                    )
+                )
+        if item.kind == EvidenceSourceKind.ANCHOR.value and item.anchor_id is not None:
+            anchor = uow.concepts.get_anchor(repo_id=repo_id, anchor_id=item.anchor_id)
+            if anchor is None:
+                errors.append(
+                    ErrorDetail(
+                        code=ErrorCode.NOT_FOUND,
+                        message=f"Evidence anchor not found: {item.anchor_id}",
+                        field=f"{field_prefix}.{index}.anchor_id",
+                    )
+                )
     return errors

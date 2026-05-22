@@ -1,7 +1,10 @@
 """This module defines the update-shellbrain use-case orchestration entry point."""
 
+from datetime import datetime
+
 from app.core.errors import DomainValidationError
 from app.core.entities.settings import UpdatePolicySettings
+from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.policies.memories.update_plan import build_update_plan
@@ -24,6 +27,7 @@ def execute_update_memory(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    clock: IClock | None = None,
     policy_settings: UpdatePolicySettings | None = None,
 ) -> UpdateMemoryResult | BatchUpdateMemoryResult:
     """Orchestrate memory update validation, planning, and side-effect execution."""
@@ -54,7 +58,7 @@ def execute_update_memory(
                 )
             )
             updated_memory_ids.append(item.memory_id)
-        apply_side_effects(plan, uow)
+        apply_side_effects(plan, uow, now=_required_clock_now(plan, clock=clock))
         problem_id = request.updates[0].update.problem_id
         return BatchUpdateMemoryResult(
             problem_id=problem_id,
@@ -68,7 +72,7 @@ def execute_update_memory(
         payload,
         plan_ids=_build_update_plan_ids(payload["update"], id_generator=id_generator),
     )
-    apply_side_effects(plan, uow)
+    apply_side_effects(plan, uow, now=_required_clock_now(plan, clock=clock))
     return UpdateMemoryResult(memory_id=request.memory_id, planned_effects=plan)
 
 
@@ -87,4 +91,18 @@ def _build_update_plan_ids(
             association_edge_id=id_generator.new_id(),
             association_observation_id=id_generator.new_id(),
         )
+    if update_type == "update_lifecycle":
+        return UpdatePlanIds(memory_lifecycle_event_id=id_generator.new_id())
     return UpdatePlanIds()
+
+
+def _required_clock_now(
+    plan: list[PlannedEffect], *, clock: IClock | None
+) -> datetime | None:
+    """Return the timestamp needed by lifecycle side effects, or None when unused."""
+
+    if not any(effect.effect_type.value == "memory.lifecycle_update" for effect in plan):
+        return None
+    if clock is None:
+        raise ValueError("memory lifecycle updates require a clock")
+    return clock.now()

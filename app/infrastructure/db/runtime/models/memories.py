@@ -2,7 +2,6 @@
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    Boolean,
     CheckConstraint,
     Column,
     ForeignKey,
@@ -18,6 +17,12 @@ from sqlalchemy.dialects.postgresql import TIMESTAMP
 from app.infrastructure.db.runtime.models.metadata import metadata
 
 
+_MEMORY_LIFECYCLE_STATUSES = (
+    "'active', 'maybe_stale', 'stale', 'superseded', 'wrong', 'archived'"
+)
+_MEMORY_LIFECYCLE_ACTORS = "'worker', 'librarian', 'manual', 'import'"
+
+
 memories = Table(
     "memories",
     metadata,
@@ -27,7 +32,54 @@ memories = Table(
     Column("kind", String, nullable=False),
     Column("text", Text, nullable=False),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
-    Column("archived", Boolean, nullable=False, default=False),
+    Column("status", String, nullable=False),
+    Column("validated_at", TIMESTAMP(timezone=True)),
+    Column("invalidated_at", TIMESTAMP(timezone=True)),
+    Column("superseded_by_id", String, ForeignKey("memories.id", ondelete="SET NULL")),
+    Column("updated_by", String),
+    CheckConstraint(
+        f"status IN ({_MEMORY_LIFECYCLE_STATUSES})",
+        name="ck_memories_status",
+    ),
+    CheckConstraint(
+        f"updated_by IS NULL OR updated_by IN ({_MEMORY_LIFECYCLE_ACTORS})",
+        name="ck_memories_updated_by",
+    ),
+)
+
+memory_lifecycle_events = Table(
+    "memory_lifecycle_events",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column("repo_id", String, nullable=False),
+    Column(
+        "memory_id",
+        String,
+        ForeignKey("memories.id", ondelete="CASCADE"),
+        nullable=False,
+    ),
+    Column("from_status", String, nullable=False),
+    Column("to_status", String, nullable=False),
+    Column("rationale", Text, nullable=False),
+    Column("actor", String, nullable=False),
+    Column("superseded_by_id", String, ForeignKey("memories.id", ondelete="SET NULL")),
+    Column("created_at", TIMESTAMP(timezone=True), nullable=False),
+    CheckConstraint(
+        f"from_status IN ({_MEMORY_LIFECYCLE_STATUSES})",
+        name="ck_memory_lifecycle_events_from_status",
+    ),
+    CheckConstraint(
+        f"to_status IN ({_MEMORY_LIFECYCLE_STATUSES})",
+        name="ck_memory_lifecycle_events_to_status",
+    ),
+    CheckConstraint(
+        f"actor IN ({_MEMORY_LIFECYCLE_ACTORS})",
+        name="ck_memory_lifecycle_events_actor",
+    ),
+    CheckConstraint(
+        "length(btrim(rationale)) > 0",
+        name="ck_memory_lifecycle_events_rationale",
+    ),
 )
 
 memory_embeddings = Table(
@@ -67,10 +119,16 @@ memory_evidence = Table(
 Index(
     "idx_memories_read_visibility",
     memories.c.repo_id,
-    memories.c.archived,
+    memories.c.status,
     memories.c.scope,
     memories.c.kind,
     memories.c.id,
+)
+Index(
+    "idx_memory_lifecycle_events_memory",
+    memory_lifecycle_events.c.repo_id,
+    memory_lifecycle_events.c.memory_id,
+    memory_lifecycle_events.c.created_at,
 )
 Index(
     "idx_memory_embeddings_model_dim_memory",

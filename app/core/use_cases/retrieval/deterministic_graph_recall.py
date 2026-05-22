@@ -18,7 +18,11 @@ from app.core.entities.concepts import (
     ConceptRelation,
     ConceptStatus,
 )
-from app.core.entities.memories import MATURE_MEMORY_KIND_VALUES, Memory
+from app.core.entities.memories import (
+    MATURE_MEMORY_KIND_VALUES,
+    Memory,
+    MemoryLifecycleStatus,
+)
 from app.core.entities.settings import (
     ThresholdSettings,
     default_threshold_settings,
@@ -718,7 +722,7 @@ def _visible_memories_by_id(
     return {
         str(memory.id): memory
         for memory in memories
-        if not memory.archived and memory.is_visible_in(repo_id)
+        if memory.has_positive_retrieval_signal() and memory.is_visible_in(repo_id)
     }
 
 
@@ -1200,7 +1204,8 @@ def _summary(*, memories: Sequence[dict[str, Any]], concepts: Sequence[dict[str,
 
 
 def _memory_candidate_score(candidate: dict[str, Any]) -> float:
-    base = float(candidate["score"])
+    memory: Memory = candidate["memory"]
+    base = float(candidate["score"]) * memory.status.retrieval_multiplier
     if candidate["link_roles"] & _HIGH_SIGNAL_LINK_ROLES:
         base += 1.0
     if "graph_linked_memory" in candidate["why"]:
@@ -1211,6 +1216,11 @@ def _memory_candidate_score(candidate: dict[str, Any]) -> float:
 def _memory_currentness_payload(candidate: dict[str, Any]) -> dict[str, str]:
     memory: Memory = candidate["memory"]
     roles = set(candidate["link_roles"])
+    if memory.status is not MemoryLifecycleStatus.ACTIVE:
+        return {
+            "currentness": memory.status.value,
+            "temporal_reason": f"memory lifecycle status is {memory.status.value}",
+        }
     if "contradicted" in roles:
         return {
             "currentness": "conflicted",

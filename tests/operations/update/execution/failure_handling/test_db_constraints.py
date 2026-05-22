@@ -29,7 +29,7 @@ def test_problem_attempt_rows_reject_identical_problem_and_attempt_ids(
                 kind="problem",
                 text="Problem memory.",
                 created_at=datetime.now(timezone.utc),
-                archived=False,
+                status="active",
             )
         )
         session.commit()
@@ -212,6 +212,6 @@ def _insert_memory_row(
             kind=kind,
             text=text_value,
             created_at=datetime.now(timezone.utc),
-            archived=False,
+            status="active",
         )
     )

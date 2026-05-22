@@ -3,6 +3,7 @@
 from typing import Any, Sequence
 
 from app.core.entities.settings import ThresholdSettings, default_threshold_settings
+from app.core.entities.memories import MemoryLifecycleStatus
 from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.core.ports.db.retrieval_repositories import (
     IKeywordRetrievalRepo,
@@ -96,7 +97,26 @@ def _rank_keyword_candidates(
         for row in corpus_rows
     ]
     scored_documents = score_documents(lexical_query.terms, documents)
-    return admit_scored_documents(scored_documents, mode=mode)[:limit]
+    status_by_memory_id = {
+        str(row["memory_id"]): _required_status(row) for row in corpus_rows
+    }
+    admitted = []
+    for candidate in admit_scored_documents(scored_documents, mode=mode):
+        status = MemoryLifecycleStatus(status_by_memory_id[str(candidate["memory_id"])])
+        item = dict(candidate)
+        item["score"] = float(item["score"]) * status.retrieval_multiplier
+        if item["score"] > 0:
+            admitted.append(item)
+    admitted.sort(key=lambda item: (-float(item["score"]), str(item["memory_id"])))
+    return admitted[:limit]
+
+
+def _required_status(row: dict[str, Any]) -> str:
+    """Return the required memory status for keyword retrieval rows."""
+
+    if "status" not in row:
+        raise ValueError(f"Keyword corpus row {row.get('memory_id')} is missing status")
+    return str(row["status"])
 
 
 def _keyword_candidate_limit(limit: int) -> int:

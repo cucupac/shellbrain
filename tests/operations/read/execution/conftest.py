@@ -10,7 +10,12 @@ import pytest
 from sqlalchemy import insert, select
 from sqlalchemy.engine import Engine
 
-from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.entities.memories import (
+    DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES,
+    MemoryKind,
+    MemoryLifecycleStatus,
+    MemoryScope,
+)
 from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.infrastructure.db.runtime.models.associations import association_edges
 from app.infrastructure.db.runtime.models.experiences import fact_updates, problem_attempts
@@ -76,11 +81,12 @@ def seed_read_memory(integration_engine: Engine) -> Callable[..., None]:
         scope: MemoryScope | str,
         kind: MemoryKind | str,
         text_value: str,
-        archived: bool = False,
+        status: MemoryLifecycleStatus | str = MemoryLifecycleStatus.ACTIVE,
         created_at: datetime | None = None,
     ) -> None:
         scope_value = scope.value if isinstance(scope, MemoryScope) else scope
         kind_value = kind.value if isinstance(kind, MemoryKind) else kind
+        status_value = status.value if isinstance(status, MemoryLifecycleStatus) else status
         ts = created_at or _BASE_TS
         with integration_engine.begin() as conn:
             conn.execute(
@@ -91,7 +97,7 @@ def seed_read_memory(integration_engine: Engine) -> Callable[..., None]:
                     kind=kind_value,
                     text=text_value,
                     created_at=ts,
-                    archived=archived,
+                    status=status_value,
                 )
             )
 
@@ -362,7 +368,7 @@ class DeterministicSemanticRetrievalRepo:
             )
             .where(
                 memories.c.repo_id == repo_id,
-                memories.c.archived.is_(False),
+                memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
                 memories.c.scope.in_(scope_values),
             )
         )

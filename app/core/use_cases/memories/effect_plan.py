@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from typing import TypeAlias
 
@@ -14,7 +15,7 @@ class EffectType(str, Enum):
     MEMORY_EMBEDDING_UPSERT = "memory_embedding.upsert"
     MEMORY_EVIDENCE_ATTACH = "memory_evidence.attach"
     PROBLEM_ATTEMPT_CREATE = "problem_attempt.create"
-    MEMORY_ARCHIVE_STATE = "memory.archive_state"
+    MEMORY_LIFECYCLE_UPDATE = "memory.lifecycle_update"
     UTILITY_OBSERVATION_APPEND = "utility_observation.append"
     FACT_UPDATE_CREATE = "fact_update.create"
     ASSOCIATION_UPSERT_AND_OBSERVE = "association.upsert_and_observe"
@@ -51,9 +52,28 @@ class ProblemAttemptCreateEffectParams:
 
 
 @dataclass(frozen=True)
-class MemoryArchiveStateEffectParams:
+class EvidenceSourceEffectParams:
+    kind: str
+    ref: str | None = None
+    episode_event_id: str | None = None
+    anchor_id: str | None = None
+    memory_id: str | None = None
+    commit_ref: str | None = None
+    transcript_ref: str | None = None
+    note: str | None = None
+
+
+@dataclass(frozen=True)
+class MemoryLifecycleUpdateEffectParams:
+    event_id: str
+    repo_id: str
     memory_id: str
-    archived: bool
+    status: str
+    rationale: str
+    actor: str
+    validated_at: datetime | None
+    superseded_by_id: str | None
+    evidence: tuple[EvidenceSourceEffectParams, ...]
 
 
 @dataclass(frozen=True)
@@ -99,7 +119,7 @@ EffectParams: TypeAlias = (
     | MemoryEmbeddingUpsertEffectParams
     | MemoryEvidenceAttachEffectParams
     | ProblemAttemptCreateEffectParams
-    | MemoryArchiveStateEffectParams
+    | MemoryLifecycleUpdateEffectParams
     | UtilityObservationAppendEffectParams
     | FactUpdateCreateEffectParams
     | AssociationUpsertAndObserveEffectParams

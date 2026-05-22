@@ -2,8 +2,9 @@
 
 from typing import Any, Sequence
 
-from sqlalchemy import or_, select
+from sqlalchemy import case, desc, or_, select
 
+from app.core.entities.memories import DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES
 from app.core.ports.db.retrieval_repositories import ISemanticRetrievalRepo
 from app.infrastructure.db.runtime.models.memories import memories, memory_embeddings
 
@@ -44,7 +45,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         )
 
         distance = memory_embeddings.c.vector.cosine_distance(query_values)
-        score = (1.0 - distance).label("score")
+        score = ((1.0 - distance) * _memory_status_multiplier()).label("score")
         stmt = (
             select(
                 memories.c.id.label("memory_id"),
@@ -63,7 +64,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 ),
                 memory_embeddings.c.dim == len(query_values),
             )
-            .order_by(distance.asc(), memories.c.id.asc())
+            .order_by(desc(score), memories.c.id.asc())
             .limit(limit)
         )
         if query_model is not None:
@@ -108,7 +109,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         )
 
         distance = memory_embeddings.c.vector.cosine_distance(anchor_row["vector"])
-        score = (1.0 - distance).label("score")
+        score = ((1.0 - distance) * _memory_status_multiplier()).label("score")
         stmt = (
             select(
                 memories.c.id.label("memory_id"),
@@ -129,7 +130,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 memory_embeddings.c.dim == int(anchor_row["dim"]),
                 memory_embeddings.c.model == str(anchor_row["model"]),
             )
-            .order_by(distance.asc(), memories.c.id.asc())
+            .order_by(desc(score), memories.c.id.asc())
         )
         if limit is not None:
             stmt = stmt.limit(limit)
@@ -248,7 +249,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         scope_values = ["repo", "global"] if include_global else ["repo"]
         filters: list[Any] = [
             memories.c.repo_id == repo_id,
-            memories.c.archived.is_(False),
+            memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
             memories.c.scope.in_(scope_values),
         ]
         if kinds:
@@ -305,3 +306,13 @@ def _is_positive_score(value: Any) -> bool:
         return False
     score = float(value)
     return score > 0.0 and score == score
+
+
+def _memory_status_multiplier():
+    """Return SQL expression for lifecycle-aware memory retrieval strength."""
+
+    return case(
+        (memories.c.status == "maybe_stale", 0.65),
+        (memories.c.status == "stale", 0.25),
+        else_=1.0,
+    )
