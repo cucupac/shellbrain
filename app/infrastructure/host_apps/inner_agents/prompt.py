@@ -374,11 +374,11 @@ Lifecycle fields on claim/relation/grounding/memory_link:
 - created_by: use `librarian` for build_knowledge graph writes.
 
 Current CLI note: reads expose concept status/confidence/timestamps, and
-`concept show` exposes fuller lifecycle detail. The builder cannot directly mark
-an existing claim/relation/grounding/memory_link as stale, wrong, or superseded
-yet. If the stale item is a graph record, do not pretend a new link updates that
-record. Write the best expressible `change` memory and concept link, then add a
-skipped_item naming the stale graph record and missing direct update.
+`concept show` exposes fuller lifecycle detail. Use `concept update` with
+`update_lifecycle` to mark an existing claim/relation/grounding/memory_link as
+active, maybe_stale, stale, superseded, wrong, or archived. Lifecycle updates
+require rationale and evidence; superseded updates require the same-type
+superseding record id.
 `concept show` does not include evidence details; use explicit `read` concept
 expansion for evidence when needed.
 
@@ -748,10 +748,9 @@ association_link for explicit durable memory association, and archive_state only
 for duplicate, malformed, or clearly erroneous memories. Do not archive historically true memories.
 
 If the stale or contradicted item is a concept claim, relation, grounding, or
-memory_link and the CLI cannot directly mark that record stale/superseded, do
-not imply it was updated. Write the best expressible change memory or concept
-memory link, then include a skipped_item naming the stale graph record and the
-missing lifecycle update.
+memory_link, prefer an evidence-backed `update_lifecycle` action over creating a
+new vague change link. Still write a concrete change memory when the change is
+itself durable reusable knowledge.
 
 A useful memory does not need a concept home. Do not create a concept solely to
 house one local memory.

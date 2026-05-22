@@ -32,5 +32,6 @@ def snapshot_related_update_counts(count_rows: Callable[[str], int]) -> dict[str
         "association_edges": count_rows("association_edges"),
         "association_observations": count_rows("association_observations"),
         "association_edge_evidence": count_rows("association_edge_evidence"),
+        "evidence_links": count_rows("evidence_links"),
         "evidence_refs": count_rows("evidence_refs"),
     }

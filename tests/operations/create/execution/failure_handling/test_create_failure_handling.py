@@ -49,6 +49,7 @@ def test_validation_failure_writes_nothing(
     assert count_rows("memories") == 0
     assert count_rows("memory_embeddings") == 0
     assert count_rows("memory_evidence") == 0
+    assert count_rows("evidence_links") == 0
 
 
 def test_embedding_failure_writes_nothing(
@@ -80,6 +81,7 @@ def test_embedding_failure_writes_nothing(
     assert count_rows("memories") == 0
     assert count_rows("memory_embeddings") == 0
     assert count_rows("memory_evidence") == 0
+    assert count_rows("evidence_links") == 0
 
 
 def test_side_effect_failure_mid_write_rolls_back_all_prior_effects(
@@ -114,4 +116,5 @@ def test_side_effect_failure_mid_write_rolls_back_all_prior_effects(
     assert count_rows("memories") == 0
     assert count_rows("memory_embeddings") == 0
     assert count_rows("memory_evidence") == 0
+    assert count_rows("evidence_links") == 0
     assert count_rows("evidence_refs") == 0

@@ -54,8 +54,8 @@ def test_update_failure_rolls_back_every_partial_write(
         with uow_factory() as uow:
             monkeypatch.setattr(
                 uow.evidence,
-                "link_association_edge_evidence",
-                _raise_edge_evidence_failure,
+                "attach_evidence",
+                _raise_evidence_attach_failure,
             )
             execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
 
@@ -63,8 +63,8 @@ def test_update_failure_rolls_back_every_partial_write(
     assert after_counts == before_counts
 
 
-def _raise_edge_evidence_failure(edge_id: str, evidence_id: str) -> None:
-    """Raise a deterministic failure while linking association edge evidence."""
+def _raise_evidence_attach_failure(**kwargs) -> None:
+    """Raise a deterministic failure while attaching evidence."""
 
-    _ = (edge_id, evidence_id)
+    _ = kwargs
     raise RuntimeError("edge evidence persistence failed")

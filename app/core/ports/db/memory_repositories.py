@@ -4,7 +4,12 @@ from abc import ABC, abstractmethod
 from typing import Sequence
 
 from app.core.entities.associations import AssociationEdge, AssociationObservation
-from app.core.entities.evidence import EvidenceRef
+from app.core.entities.evidence import (
+    EvidenceLinkView,
+    EvidenceRole,
+    EvidenceSource,
+    EvidenceTarget,
+)
 from app.core.entities.facts import FactUpdate, ProblemAttempt
 from app.core.entities.memories import Memory
 from app.core.entities.utility import UtilityObservation
@@ -69,26 +74,21 @@ class IUtilityRepo(ABC):
 
 
 class IEvidenceRepo(ABC):
-    """This interface defines persistence operations for evidence references and links."""
+    """This interface defines the unified evidence attach and resolve boundary."""
 
     @abstractmethod
-    def upsert_ref(self, repo_id: str, ref: str) -> EvidenceRef:
-        """This method inserts or returns an evidence reference."""
+    def attach_evidence(
+        self,
+        *,
+        repo_id: str,
+        target: EvidenceTarget,
+        sources: Sequence[EvidenceSource],
+        role: EvidenceRole = EvidenceRole.SUPPORTS,
+    ) -> Sequence[EvidenceLinkView]:
+        """Attach evidence sources to one target through the unified evidence API."""
 
     @abstractmethod
-    def link_memory_evidence(self, memory_id: str, evidence_id: str) -> None:
-        """This method links a shellbrain to an evidence reference."""
-
-    @abstractmethod
-    def link_utility_observation_evidence(
-        self, observation_id: str, evidence_id: str
-    ) -> None:
-        """This method links a utility observation to an evidence reference."""
-
-    @abstractmethod
-    def link_fact_update_evidence(self, fact_update_id: str, evidence_id: str) -> None:
-        """This method links a fact-update row to an evidence reference."""
-
-    @abstractmethod
-    def link_association_edge_evidence(self, edge_id: str, evidence_id: str) -> None:
-        """This method links an association edge to an evidence reference."""
+    def resolve_evidence(
+        self, *, repo_id: str, targets: Sequence[EvidenceTarget]
+    ) -> Sequence[EvidenceLinkView]:
+        """Resolve evidence links for targets through the unified evidence API."""

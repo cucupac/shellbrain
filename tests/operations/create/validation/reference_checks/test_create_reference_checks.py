@@ -3,6 +3,7 @@
 from collections.abc import Callable
 
 from app.core.entities.memories import MemoryKind, MemoryScope
+from app.core.ports.embeddings.provider import IEmbeddingProvider
 from tests.operations._shared.handler_calls import handle_memory_add
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -155,11 +156,12 @@ def test_create_rejects_invisible_association_target(
     assert any(error["code"] == "integrity_error" for error in result["errors"])
 
 
-def test_create_matures_into_requires_frontier_source_and_mature_target(
+def test_create_accepts_supported_association_target(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
+    stub_embedding_provider: IEmbeddingProvider,
 ) -> None:
-    """create should always restrict matures_into edges to frontier -> mature pairs."""
+    """create should accept visible targets for supported association relations."""
 
     seed_memory(
         memory_id="target-fact",
@@ -168,42 +170,17 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
         kind=MemoryKind.FACT,
         text_value="Mature fact target.",
     )
-    seed_memory(
-        memory_id="target-frontier",
-        repo_id="repo-a",
-        scope=MemoryScope.REPO,
-        kind=MemoryKind.FRONTIER,
-        text_value="Frontier target.",
-    )
 
-    non_frontier_payload = {
+    payload = {
         "memory": {
-            "text": "Problem with invalid promotion edge.",
+            "text": "Problem with a supported association target.",
             "scope": "repo",
             "kind": "problem",
             "links": {
                 "associations": [
                     {
                         "to_memory_id": "target-fact",
-                        "relation_type": "matures_into",
-                        "confidence": 0.7,
-                        "salience": 0.6,
-                    }
-                ]
-            },
-            "evidence_refs": ["session://1"],
-        },
-    }
-    non_mature_target_payload = {
-        "memory": {
-            "text": "Half-formed idea that points at another frontier.",
-            "scope": "repo",
-            "kind": "frontier",
-            "links": {
-                "associations": [
-                    {
-                        "to_memory_id": "target-frontier",
-                        "relation_type": "matures_into",
+                        "relation_type": "depends_on",
                         "confidence": 0.7,
                         "salience": 0.6,
                     }
@@ -213,34 +190,16 @@ def test_create_matures_into_requires_frontier_source_and_mature_target(
         },
     }
 
-    non_frontier_result = handle_memory_add(
-        non_frontier_payload,
+    result = handle_memory_add(
+        payload,
         uow_factory=uow_factory,
-        embedding_provider_factory=lambda: None,
-        embedding_model="stub-v1",
-        inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
-    )
-    non_mature_target_result = handle_memory_add(
-        non_mature_target_payload,
-        uow_factory=uow_factory,
-        embedding_provider_factory=lambda: None,
+        embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
         defaults={"scope": "repo"},
     )
 
-    assert non_frontier_result["status"] == "error"
-    assert any(
-        error["field"] == "memory.links.associations.0.relation_type"
-        for error in non_frontier_result["errors"]
-    )
-
-    assert non_mature_target_result["status"] == "error"
-    assert any(
-        error["field"] == "memory.links.associations.0.relation_type"
-        for error in non_mature_target_result["errors"]
-    )
+    assert result["status"] == "ok"
 
 
 def test_create_rejects_missing_episode_event_evidence(

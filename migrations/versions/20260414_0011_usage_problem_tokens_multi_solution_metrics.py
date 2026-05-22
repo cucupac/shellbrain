@@ -2,7 +2,9 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import USAGE_PROBLEM_TOKENS_SQL
+from app.infrastructure.db.runtime.models.views import (
+    USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL,
+)
 
 revision = "20260414_0011"
 down_revision = "20260414_0010"
@@ -138,7 +140,7 @@ GROUP BY
 def upgrade() -> None:
     """Replace usage_problem_tokens with first- and latest-solution metrics."""
 
-    op.execute(USAGE_PROBLEM_TOKENS_SQL)
+    op.execute(USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL)
 
 
 def downgrade() -> None:

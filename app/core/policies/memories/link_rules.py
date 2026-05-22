@@ -8,7 +8,7 @@ from app.core.use_cases.memories.update.request import (
     MemoryBatchUpdateRequest,
     MemoryUpdateRequest,
 )
-from app.core.entities.memories import MemoryKind, is_mature_memory_kind
+from app.core.entities.memories import MemoryKind
 
 
 def validate_create_semantics(request: MemoryAddRequest) -> list[ErrorDetail]:
@@ -99,39 +99,4 @@ def validate_update_semantics(
                     field="memory_id",
                 )
             )
-    return errors
-
-
-def validate_matures_into_relation(
-    *,
-    source_kind: MemoryKind | str,
-    target_kind: MemoryKind | str | None,
-    relation_type: str,
-    field: str,
-) -> list[ErrorDetail]:
-    """Validate the frontier-to-mature kind contract for matures_into relations."""
-
-    if relation_type != "matures_into":
-        return []
-
-    normalized_source_kind = (
-        source_kind if isinstance(source_kind, MemoryKind) else MemoryKind(source_kind)
-    )
-    errors: list[ErrorDetail] = []
-    if normalized_source_kind != MemoryKind.FRONTIER:
-        errors.append(
-            ErrorDetail(
-                code=ErrorCode.INTEGRITY_ERROR,
-                message="matures_into requires the source memory to be a frontier memory",
-                field=field,
-            )
-        )
-    if target_kind is not None and not is_mature_memory_kind(target_kind):
-        errors.append(
-            ErrorDetail(
-                code=ErrorCode.INTEGRITY_ERROR,
-                message="matures_into requires the target memory to be a mature durable memory",
-                field=field,
-            )
-        )
     return errors

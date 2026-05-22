@@ -84,6 +84,26 @@ def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_cont
     assert pack["pack_trace"]["graph_traversal"]["relation_neighbors_loaded"] == 1
 
 
+def test_graph_pack_does_not_select_archived_concept_records_as_signal() -> None:
+    """archived concept records should not produce positive graph-recall signal."""
+
+    uow = _FakeUow()
+    uow.concepts = _ArchivedFakeConcepts()
+
+    pack = build_deterministic_graph_pack(
+        request=_request(query="TimeoutError in app/core/settings.py"),
+        uow=uow,
+    )
+
+    assert pack["concepts"] == []
+    memory_by_id = {memory["id"]: memory for memory in pack["memories"]}
+    assert memory_by_id["mem-direct"]["currentness"] == "current"
+    assert memory_by_id["mem-direct"]["link_roles"] == []
+    assert memory_by_id["mem-direct"]["concept_refs"] == []
+    assert pack["pack_trace"]["concept_candidates"]["candidate_count"] >= 1
+    assert pack["pack_trace"]["concept_candidates"]["selected"] == 0
+
+
 def _request(*, query: str, hypothesis: str = "missing timeout guard") -> MemoryRecallRequest:
     return MemoryRecallRequest.model_validate(
         {
@@ -285,6 +305,46 @@ class _FakeConcepts:
                 "evidence": [],
             }
         return None
+
+
+class _ArchivedFakeConcepts(_FakeConcepts):
+    def find_concepts_for_memory_ids(self, **kwargs):
+        del kwargs
+        return [
+            {
+                "concept_id": "c-db",
+                "memory_id": "mem-direct",
+                "role": "changed",
+                "status": "archived",
+                "confidence": 1.0,
+            }
+        ]
+
+    def get_concept_bundle(self, *, repo_id: str, concept_ref: str):
+        if repo_id != "repo-a" or concept_ref != "c-db":
+            return None
+        return {
+            "concept": self._concept,
+            "aliases": [],
+            "claims": [
+                ConceptClaim(
+                    id="claim-archived",
+                    repo_id="repo-a",
+                    concept_id="c-db",
+                    claim_type=ConceptClaimType.DEFINITION,
+                    text="Archived concept definition.",
+                    normalized_text="archived concept definition",
+                    lifecycle=ConceptLifecycle(
+                        status=ConceptLifecycleStatus.ARCHIVED,
+                    ),
+                )
+            ],
+            "relations": [],
+            "anchors": [],
+            "groundings": [],
+            "memory_links": [],
+            "evidence": [],
+        }
 
 
 class _FakeUow:

@@ -27,12 +27,11 @@ from app.core.entities.episodes import (
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from tests.operations._shared.handler_calls import handle_memory_add
 from app.infrastructure.db.runtime.engine import get_engine
-from app.infrastructure.db.runtime.models.evidence import evidence_refs
+from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
 from app.infrastructure.db.runtime.models.episodes import episode_events, episodes
 from app.infrastructure.db.runtime.models.memories import (
     memories,
     memory_embeddings,
-    memory_evidence,
 )
 from app.infrastructure.db.runtime.session import get_session_factory
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
@@ -261,16 +260,14 @@ class IsolatedDockerPostgres:
             memory_rows = conn.execute(select(memories)).mappings().all()
             embedding_rows = conn.execute(select(memory_embeddings)).mappings().all()
             evidence_rows = conn.execute(select(evidence_refs)).mappings().all()
-            memory_evidence_rows = (
-                conn.execute(select(memory_evidence)).mappings().all()
-            )
+            evidence_link_rows = conn.execute(select(evidence_links)).mappings().all()
 
         assert len(episode_rows) == 1
         assert len(event_rows) == 1
         assert len(memory_rows) == 1
         assert len(embedding_rows) == 1
         assert len(evidence_rows) == 1
-        assert len(memory_evidence_rows) == 1
+        assert len(evidence_link_rows) == 1
 
         episode_row = episode_rows[0]
         assert episode_row["id"] == expected.episode_id
@@ -299,9 +296,10 @@ class IsolatedDockerPostgres:
         assert evidence_row["ref"] == expected.event_id
         assert evidence_row["episode_event_id"] == expected.event_id
 
-        memory_evidence_row = memory_evidence_rows[0]
-        assert memory_evidence_row["memory_id"] == expected.memory_id
-        assert memory_evidence_row["evidence_id"] == evidence_row["id"]
+        evidence_link_row = evidence_link_rows[0]
+        assert evidence_link_row["target_type"] == "memory"
+        assert evidence_link_row["target_id"] == expected.memory_id
+        assert evidence_link_row["evidence_id"] == evidence_row["id"]
 
     def make_uow_factory(self) -> Callable[[], PostgresUnitOfWork]:
         """Return a fresh unit-of-work factory bound to the current isolated database."""

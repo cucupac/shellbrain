@@ -146,6 +146,8 @@ def _auto_concept_items(
         if bundle is None:
             continue
         score = float(candidate["score"]) * _freshness_multiplier(bundle)
+        if score <= 0:
+            continue
         ranked.append(
             (score, str(bundle["concept"].slug), {**candidate, "bundle": bundle})
         )
@@ -324,8 +326,9 @@ def _status_multiplier(status: str) -> float:
         ConceptLifecycleStatus.ACTIVE.value: 1.0,
         ConceptLifecycleStatus.MAYBE_STALE.value: 0.65,
         ConceptLifecycleStatus.STALE.value: 0.25,
-        ConceptLifecycleStatus.SUPERSEDED.value: 0.1,
+        ConceptLifecycleStatus.SUPERSEDED.value: 0.0,
         ConceptLifecycleStatus.WRONG.value: 0.0,
+        ConceptLifecycleStatus.ARCHIVED.value: 0.0,
     }[ConceptLifecycleStatus(status).value]
 
 
@@ -364,8 +367,9 @@ def _freshness(bundle: dict[str, Any]) -> dict[str, Any]:
     stale = statuses.count(ConceptLifecycleStatus.STALE.value)
     wrong = statuses.count(ConceptLifecycleStatus.WRONG.value)
     superseded = statuses.count(ConceptLifecycleStatus.SUPERSEDED.value)
+    archived = statuses.count(ConceptLifecycleStatus.ARCHIVED.value)
     status = "active"
-    if wrong or stale:
+    if wrong or stale or archived:
         status = "stale"
     elif maybe_stale or superseded:
         status = "maybe_stale"
@@ -376,6 +380,7 @@ def _freshness(bundle: dict[str, Any]) -> dict[str, Any]:
         "stale_records": stale,
         "superseded_records": superseded,
         "wrong_records": wrong,
+        "archived_records": archived,
     }
 
 

@@ -32,7 +32,6 @@ AnchorKindValue = Literal[
     "log",
     "doc",
     "commit",
-    "memory",
 ]
 ConceptGroundingRoleValue = Literal[
     "implementation",
@@ -51,6 +50,12 @@ ConceptMemoryLinkRoleValue = Literal[
     "validated",
     "contradicted",
     "warned_about",
+]
+ConceptLifecycleTargetTypeValue = Literal[
+    "relation", "claim", "grounding", "memory_link"
+]
+ConceptLifecycleStatusValue = Literal[
+    "active", "maybe_stale", "stale", "superseded", "wrong", "archived"
 ]
 ConceptEvidenceKindValue = Literal[
     "anchor", "memory", "commit", "transcript", "test", "manual"
@@ -94,7 +99,6 @@ _REQUIRED_LOCATOR_FIELDS: dict[str, tuple[str, ...]] = {
     "log": ("path",),
     "doc": ("path",),
     "commit": ("ref",),
-    "memory": ("memory_id",),
 }
 
 
@@ -285,13 +289,44 @@ class LinkMemoryAction(ConceptLifecycleActionFields):
     evidence: list[ConceptEvidencePayload] = Field(min_length=1)
 
 
+class UpdateLifecycleAction(_StrictModel):
+    """Change lifecycle state for an existing truth-bearing concept record."""
+
+    type: Literal["update_lifecycle"]
+    target_type: ConceptLifecycleTargetTypeValue
+    target_id: str = Field(min_length=1)
+    status: ConceptLifecycleStatusValue
+    rationale: str = Field(min_length=1)
+    actor: ConceptCreatedByValue
+    confidence: float | None = Field(default=None, ge=0.0, le=1.0)
+    validated_at: datetime | None = None
+    superseded_by_id: str | None = None
+    evidence: list[ConceptEvidencePayload] = Field(min_length=1)
+
+    @field_validator("target_id", "rationale", "superseded_by_id")
+    @classmethod
+    def _validate_optional_text(cls, value: str | None) -> str | None:
+        return _normalize_optional_text(value, field_name="lifecycle update field")
+
+    @model_validator(mode="after")
+    def _validate_supersession(self) -> "UpdateLifecycleAction":
+        if self.status == "superseded" and self.superseded_by_id is None:
+            raise ValueError("superseded lifecycle updates require superseded_by_id")
+        if self.status != "superseded" and self.superseded_by_id is not None:
+            raise ValueError(
+                "superseded_by_id is only valid for superseded lifecycle updates"
+            )
+        return self
+
+
 ConceptUpdateAction = Annotated[
     UpdateConceptAction
     | AddRelationAction
     | AddClaimAction
     | EnsureAnchorAction
     | AddGroundingAction
-    | LinkMemoryAction,
+    | LinkMemoryAction
+    | UpdateLifecycleAction,
     Field(discriminator="type"),
 ]
 

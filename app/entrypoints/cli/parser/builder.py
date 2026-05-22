@@ -194,16 +194,16 @@ _CONCEPT_HELP = dedent(
     Working agents should use `recall`. Internal agents may use `read`, `events`,
     `concept show`, `memory add`, `memory update`, `concept add`, and `concept update`.
 
-    Phase 1 supports:
+    Concept endpoints support:
       - concept add: create concept containers; fails when the concept exists
       - concept update: change existing concept records and graph links
       - concept show: inspect one concept and requested facets without mutating state
 
     Examples:
-      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","groundings"]}'
+      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","groundings","lifecycle_events"]}'
       shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"manual","note":"Seeded from planning."}]}]}'
-      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"update_concept","concept":"deposit-addresses","status":"validated"}]}'
+      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"update_lifecycle","target_type":"claim","target_id":"claim-123","status":"wrong","rationale":"Contradicted by later implementation evidence.","actor":"manual","evidence":[{"kind":"manual","note":"Verified during review."}]}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_relation","subject":"deposit-addresses","predicate":"depends_on","object":"refunds","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"ensure_anchor","kind":"file","locator":{"path":"app/refunds.py"}}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_grounding","concept":"deposit-addresses","role":"implementation","anchor":{"kind":"symbol","locator":{"path":"app/refunds.py","symbol":"resolve_deposit_address"}},"evidence":[{"kind":"transcript","transcript_ref":"evt-124"}]}]}'

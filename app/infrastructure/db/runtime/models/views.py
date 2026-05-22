@@ -306,8 +306,12 @@ problem_threads AS (
       FILTER (WHERE ep.thread_id IS NOT NULL)
     )[1] AS thread_id
   FROM memories p
-  JOIN memory_evidence me ON me.memory_id = p.id
-  JOIN evidence_refs er ON er.id = me.evidence_id
+  JOIN evidence_links el
+    ON el.repo_id = p.repo_id
+   AND el.target_type = 'memory'
+   AND el.target_id = p.id
+   AND el.evidence_role = 'supports'
+  JOIN evidence_refs er ON er.id = el.evidence_id
   JOIN episode_events ee ON ee.id = COALESCE(er.episode_event_id, er.ref)
   JOIN episodes ep ON ep.id = ee.episode_id
   WHERE p.kind = 'problem'
@@ -615,9 +619,28 @@ GROUP BY repo_id, solve_window, read_cohort;
 """
 
 
+_USAGE_PROBLEM_TOKENS_UNIFIED_EVIDENCE_JOIN_SQL = """  JOIN evidence_links el
+    ON el.repo_id = p.repo_id
+   AND el.target_type = 'memory'
+   AND el.target_id = p.id
+   AND el.evidence_role = 'supports'
+  JOIN evidence_refs er ON er.id = el.evidence_id"""
+_USAGE_PROBLEM_TOKENS_MEMORY_EVIDENCE_JOIN_SQL = """  JOIN memory_evidence me ON me.memory_id = p.id
+  JOIN evidence_refs er ON er.id = me.evidence_id"""
+
+USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL = USAGE_PROBLEM_TOKENS_SQL.replace(
+    _USAGE_PROBLEM_TOKENS_UNIFIED_EVIDENCE_JOIN_SQL,
+    _USAGE_PROBLEM_TOKENS_MEMORY_EVIDENCE_JOIN_SQL,
+)
 USAGE_PROBLEM_TOKENS_LEGACY_SQL = USAGE_PROBLEM_TOKENS_SQL.replace(
     "CREATE OR REPLACE VIEW usage_problem_tokens AS",
     "CREATE OR REPLACE VIEW usage_problem_tokens_legacy AS",
+)
+USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_LEGACY_SQL = (
+    USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL.replace(
+        "CREATE OR REPLACE VIEW usage_problem_tokens AS",
+        "CREATE OR REPLACE VIEW usage_problem_tokens_legacy AS",
+    )
 )
 USAGE_PROBLEM_READ_ROI_LEGACY_SQL = USAGE_PROBLEM_READ_ROI_SQL.replace(
     "CREATE OR REPLACE VIEW usage_problem_read_roi AS",

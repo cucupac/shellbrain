@@ -7,8 +7,9 @@ from app.core.entities.concepts import (
     Anchor,
     Concept,
     ConceptClaim,
-    ConceptEvidence,
     ConceptGrounding,
+    ConceptLifecycleEvent,
+    ConceptLifecycleTargetType,
     ConceptMemoryLink,
     ConceptRelation,
     GraphPatch,
@@ -65,8 +66,23 @@ class IConceptsRepo(ABC):
         """This method inserts or returns an active concept-memory link."""
 
     @abstractmethod
-    def add_evidence(self, evidence: ConceptEvidence) -> ConceptEvidence:
-        """This method appends one evidence pointer for a concept graph record."""
+    def get_lifecycle_target(
+        self, *, repo_id: str, target_type: ConceptLifecycleTargetType, target_id: str
+    ) -> ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink | None:
+        """This method fetches one truth-bearing concept record by lifecycle target."""
+
+    @abstractmethod
+    def update_lifecycle_target(
+        self,
+        target: ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink,
+    ) -> ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink:
+        """This method updates lifecycle fields for one truth-bearing concept record."""
+
+    @abstractmethod
+    def add_lifecycle_event(
+        self, event: ConceptLifecycleEvent
+    ) -> ConceptLifecycleEvent:
+        """This method appends one auditable concept lifecycle transition."""
 
     @abstractmethod
     def create_graph_patch(self, patch: GraphPatch) -> GraphPatch:
@@ -74,7 +90,11 @@ class IConceptsRepo(ABC):
 
     @abstractmethod
     def get_concept_bundle(
-        self, *, repo_id: str, concept_ref: str
+        self,
+        *,
+        repo_id: str,
+        concept_ref: str,
+        include_lifecycle_events: bool = False,
     ) -> dict[str, Any] | None:
         """This method returns one concept plus directly related graph records."""
 

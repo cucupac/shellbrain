@@ -332,6 +332,38 @@ def test_read_should_penalize_stale_concept_links_in_auto_mode(
     ]
 
 
+def test_read_should_not_select_concepts_from_archived_memory_links(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    integration_engine: Engine,
+    monkeypatch,
+) -> None:
+    """archived concept-memory links should not create positive retrieval signal."""
+
+    seed_read_memory(
+        memory_id="refund-problem-1",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.PROBLEM,
+        text_value="Refund problem.",
+    )
+    _seed_deposit_addresses(uow_factory)
+    with integration_engine.begin() as conn:
+        conn.execute(
+            update(concept_memory_links).values(
+                status=ConceptLifecycleStatus.ARCHIVED.value
+            )
+        )
+    _stub_pack(monkeypatch, direct_memory_ids=["refund-problem-1"])
+
+    with uow_factory() as uow:
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="unrelated token"), uow
+        )
+
+    assert result.data["pack"]["concepts"]["items"] == []
+
+
 def test_read_should_reject_concept_links_missing_ranking_evidence() -> None:
     """auto concept ranking should not invent status or confidence for malformed links."""
 

@@ -5,7 +5,7 @@ from alembic import op
 from app.infrastructure.db.runtime.models.views import (
     USAGE_COMMAND_DAILY_SQL,
     USAGE_MEMORY_RETRIEVAL_SQL,
-    USAGE_PROBLEM_TOKENS_SQL,
+    USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL,
     USAGE_SESSION_PROTOCOL_SQL,
     USAGE_SESSION_TOKENS_SQL,
     USAGE_SYNC_HEALTH_SQL,
@@ -60,7 +60,7 @@ def upgrade() -> None:
     op.execute(USAGE_SYNC_HEALTH_SQL)
     op.execute(USAGE_SESSION_PROTOCOL_SQL)
     op.execute(USAGE_SESSION_TOKENS_SQL)
-    op.execute(USAGE_PROBLEM_TOKENS_SQL)
+    op.execute(USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL)
     op.execute(USAGE_TOKEN_CAPTURE_HEALTH_SQL)
 
 

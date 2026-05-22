@@ -35,6 +35,16 @@ class ConceptLifecycleStatus(str, Enum):
     STALE = "stale"
     SUPERSEDED = "superseded"
     WRONG = "wrong"
+    ARCHIVED = "archived"
+
+
+class ConceptLifecycleTargetType(str, Enum):
+    """Truth-bearing concept record types with mutable lifecycle state."""
+
+    RELATION = "relation"
+    CLAIM = "claim"
+    GROUNDING = "grounding"
+    MEMORY_LINK = "memory_link"
 
 
 class ConceptRelationPredicate(str, Enum):
@@ -73,7 +83,6 @@ class AnchorKind(str, Enum):
     LOG = "log"
     DOC = "doc"
     COMMIT = "commit"
-    MEMORY = "memory"
 
 
 class AnchorStatus(str, Enum):
@@ -116,6 +125,7 @@ class ConceptEvidenceTargetType(str, Enum):
     CLAIM = "claim"
     GROUNDING = "grounding"
     MEMORY_LINK = "memory_link"
+    LIFECYCLE_EVENT = "lifecycle_event"
 
 
 class ConceptEvidenceKind(str, Enum):
@@ -193,10 +203,28 @@ class ConceptLifecycle:
     confidence: float = 0.5
     observed_at: datetime | None = None
     validated_at: datetime | None = None
+    invalidated_at: datetime | None = None
     source_kind: ConceptSourceKind | None = None
     source_ref: str | None = None
     superseded_by_id: str | None = None
     created_by: ConceptCreatedBy = ConceptCreatedBy.MANUAL
+    updated_by: ConceptCreatedBy | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class ConceptLifecycleEvent:
+    """One auditable lifecycle transition for a truth-bearing concept record."""
+
+    id: str
+    repo_id: str
+    target_type: ConceptLifecycleTargetType
+    target_id: str
+    from_status: ConceptLifecycleStatus
+    to_status: ConceptLifecycleStatus
+    rationale: str
+    actor: ConceptCreatedBy
+    superseded_by_id: str | None = None
+    created_at: datetime | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

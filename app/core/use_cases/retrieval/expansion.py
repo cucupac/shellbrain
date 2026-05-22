@@ -82,26 +82,26 @@ def expand_candidates(
 
         if expand["include_association_links"] and max_association_depth > 0:
             seen_association_memory_ids = {str(anchor_memory_id)}
-            association_frontier = [str(anchor_memory_id)]
+            association_queue = [str(anchor_memory_id)]
             for depth in range(1, max_association_depth + 1):
-                next_association_frontier: list[str] = []
-                for frontier_memory_id in association_frontier:
+                next_association_queue: list[str] = []
+                for queued_memory_id in association_queue:
                     edge_rows = read_policy.list_association_edge_rows(
                         repo_id=repo_id,
                         include_global=include_global,
-                        anchor_memory_id=frontier_memory_id,
+                        anchor_memory_id=queued_memory_id,
                         kinds=kinds,
                     )
                     for neighbor in select_association_neighbors(
                         edge_rows,
-                        anchor_memory_id=frontier_memory_id,
+                        anchor_memory_id=queued_memory_id,
                         min_strength=min_strength,
                     ):
                         neighbor_memory_id = str(neighbor["memory_id"])
                         if neighbor_memory_id in seen_association_memory_ids:
                             continue
                         seen_association_memory_ids.add(neighbor_memory_id)
-                        next_association_frontier.append(neighbor_memory_id)
+                        next_association_queue.append(neighbor_memory_id)
                         explicit.append(
                             {
                                 "memory_id": neighbor_memory_id,
@@ -113,20 +113,20 @@ def expand_candidates(
                                 "relation_type": neighbor["relation_type"],
                             }
                         )
-                association_frontier = next_association_frontier
-                if not association_frontier:
+                association_queue = next_association_queue
+                if not association_queue:
                     break
 
         if semantic_hops > 0:
             seen_memory_ids = {str(anchor_memory_id)}
-            frontier = [str(anchor_memory_id)]
+            semantic_queue = [str(anchor_memory_id)]
             for hop in range(1, semantic_hops + 1):
-                next_frontier: list[str] = []
-                for frontier_memory_id in frontier:
+                next_semantic_queue: list[str] = []
+                for queued_memory_id in semantic_queue:
                     for neighbor in semantic_retrieval.list_semantic_neighbors(
                         repo_id=repo_id,
                         include_global=include_global,
-                        anchor_memory_id=frontier_memory_id,
+                        anchor_memory_id=queued_memory_id,
                         kinds=kinds,
                         limit=request_data.get("limit"),
                     ):
@@ -134,7 +134,7 @@ def expand_candidates(
                         if neighbor_memory_id in seen_memory_ids:
                             continue
                         seen_memory_ids.add(neighbor_memory_id)
-                        next_frontier.append(neighbor_memory_id)
+                        next_semantic_queue.append(neighbor_memory_id)
                         implicit.append(
                             {
                                 "memory_id": neighbor_memory_id,
@@ -145,8 +145,8 @@ def expand_candidates(
                                 "neighbor_similarity": float(neighbor["score"]),
                             }
                         )
-                frontier = next_frontier
-                if not frontier:
+                semantic_queue = next_semantic_queue
+                if not semantic_queue:
                     break
 
     return {"explicit": explicit, "implicit": implicit}
