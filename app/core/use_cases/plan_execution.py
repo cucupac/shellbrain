@@ -7,6 +7,13 @@ from app.core.entities.associations import (
     AssociationSourceMode,
     AssociationState,
 )
+from app.core.entities.evidence import (
+    EvidenceRole,
+    EvidenceSource,
+    EvidenceSourceKind,
+    EvidenceTarget,
+    EvidenceTargetType,
+)
 from app.core.entities.facts import FactUpdate, ProblemAttempt, ProblemAttemptRole
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.entities.utility import UtilityObservation
@@ -66,11 +73,13 @@ def apply_side_effects(
 
         if effect_type is EffectType.MEMORY_EVIDENCE_ATTACH:
             assert isinstance(params, MemoryEvidenceAttachEffectParams)
-            for ref in sorted(params.refs):
-                evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
-                uow.evidence.link_memory_evidence(
-                    memory_id=params.memory_id, evidence_id=evidence.id
-                )
+            _attach_episode_event_evidence(
+                uow,
+                repo_id=params.repo_id,
+                target_type=EvidenceTargetType.MEMORY,
+                target_id=params.memory_id,
+                refs=params.refs,
+            )
             continue
 
         if effect_type is EffectType.PROBLEM_ATTEMPT_CREATE:
@@ -106,11 +115,13 @@ def apply_side_effects(
                     rationale=params.rationale,
                 )
             )
-            for ref in sorted(params.evidence_refs):
-                evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
-                uow.evidence.link_utility_observation_evidence(
-                    observation_id=params.id, evidence_id=evidence.id
-                )
+            _attach_episode_event_evidence(
+                uow,
+                repo_id=params.repo_id,
+                target_type=EvidenceTargetType.UTILITY_OBSERVATION,
+                target_id=params.id,
+                refs=params.evidence_refs,
+            )
             continue
 
         if effect_type is EffectType.FACT_UPDATE_CREATE:
@@ -123,11 +134,13 @@ def apply_side_effects(
                     new_fact_id=params.new_fact_id,
                 )
             )
-            for ref in sorted(params.evidence_refs):
-                evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
-                uow.evidence.link_fact_update_evidence(
-                    fact_update_id=params.id, evidence_id=evidence.id
-                )
+            _attach_episode_event_evidence(
+                uow,
+                repo_id=params.repo_id,
+                target_type=EvidenceTargetType.FACT_UPDATE,
+                target_id=params.id,
+                refs=params.evidence_refs,
+            )
             continue
 
         if effect_type is EffectType.ASSOCIATION_UPSERT_AND_OBSERVE:
@@ -157,11 +170,34 @@ def apply_side_effects(
                     salience=float(params.salience),
                 )
             )
-            for ref in sorted(params.evidence_refs):
-                evidence = uow.evidence.upsert_ref(repo_id=params.repo_id, ref=ref)
-                uow.evidence.link_association_edge_evidence(
-                    edge_id=edge.id, evidence_id=evidence.id
-                )
+            _attach_episode_event_evidence(
+                uow,
+                repo_id=params.repo_id,
+                target_type=EvidenceTargetType.ASSOCIATION_EDGE,
+                target_id=edge.id,
+                refs=params.evidence_refs,
+            )
             continue
 
         raise ValueError(f"Unsupported side effect type: {effect_type}")
+
+
+def _attach_episode_event_evidence(
+    uow: IUnitOfWork,
+    *,
+    repo_id: str,
+    target_type: EvidenceTargetType,
+    target_id: str,
+    refs: tuple[str, ...],
+) -> None:
+    """Attach episode-event evidence refs through the unified evidence port."""
+
+    uow.evidence.attach_evidence(
+        repo_id=repo_id,
+        target=EvidenceTarget(target_type=target_type, target_id=target_id),
+        sources=tuple(
+            EvidenceSource(source_kind=EvidenceSourceKind.EPISODE_EVENT, ref=ref)
+            for ref in sorted(refs)
+        ),
+        role=EvidenceRole.SUPPORTS,
+    )

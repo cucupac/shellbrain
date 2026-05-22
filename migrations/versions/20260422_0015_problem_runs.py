@@ -5,7 +5,7 @@ from alembic import op
 from app.infrastructure.db.runtime.models.views import (
     USAGE_PROBLEM_READ_ROI_LEGACY_SQL,
     USAGE_PROBLEM_RUN_TOKENS_SQL,
-    USAGE_PROBLEM_TOKENS_LEGACY_SQL,
+    USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_LEGACY_SQL,
     USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL,
 )
 
@@ -77,7 +77,7 @@ def upgrade() -> None:
           ON problem_runs(solution_memory_id);
         """
     )
-    op.execute(USAGE_PROBLEM_TOKENS_LEGACY_SQL)
+    op.execute(USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_LEGACY_SQL)
     op.execute(USAGE_PROBLEM_READ_ROI_LEGACY_SQL)
     op.execute(USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL)
     op.execute(USAGE_PROBLEM_RUN_TOKENS_SQL)
@@ -96,6 +96,8 @@ def downgrade() -> None:
         DROP VIEW IF EXISTS usage_problem_tokens_legacy;
         """
     )
-    op.execute(_unsuffixed_proxy_sql(USAGE_PROBLEM_TOKENS_LEGACY_SQL))
+    op.execute(
+        _unsuffixed_proxy_sql(USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_LEGACY_SQL)
+    )
     op.execute(_unsuffixed_proxy_sql(USAGE_PROBLEM_READ_ROI_LEGACY_SQL))
     op.execute(_unsuffixed_proxy_sql(USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL))

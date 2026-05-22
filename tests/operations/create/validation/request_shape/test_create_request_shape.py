@@ -179,34 +179,6 @@ def test_create_hydration_preserves_explicit_scope() -> None:
     assert hydrated == payload
 
 
-def test_create_accepts_frontier_kind_and_matures_into_association() -> None:
-    """create requests should always accept frontier memories and matures_into associations."""
-
-    payload = {
-        "memory": {
-            "text": "Open question about retrieval behavior.",
-            "scope": "repo",
-            "kind": "frontier",
-            "links": {
-                "associations": [
-                    {
-                        "to_memory_id": "fact-1",
-                        "relation_type": "matures_into",
-                        "confidence": 0.8,
-                        "salience": 0.7,
-                    }
-                ]
-            },
-            "evidence_refs": ["session://1"],
-        },
-    }
-
-    request, errors = validate_create_schema(payload)
-
-    assert errors == []
-    assert request is not None
-
-
 def test_create_associations_require_explicit_strength_values() -> None:
     """create association links should not invent confidence or salience defaults."""
 
@@ -214,12 +186,12 @@ def test_create_associations_require_explicit_strength_values() -> None:
         "memory": {
             "text": "Open question about retrieval behavior.",
             "scope": "repo",
-            "kind": "frontier",
+            "kind": "problem",
             "links": {
                 "associations": [
                     {
                         "to_memory_id": "fact-1",
-                        "relation_type": "matures_into",
+                        "relation_type": "depends_on",
                     }
                 ]
             },

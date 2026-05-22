@@ -447,9 +447,10 @@ def _discover_concepts(
         candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
         confidence = float(link.get("confidence") or 0.5)
         role = str(link.get("role") or "")
-        candidate["score"] += 10.0 * _lifecycle_multiplier(str(link["status"])) * max(
-            confidence, 0.1
-        )
+        lifecycle_multiplier = _lifecycle_multiplier(str(link["status"]))
+        if lifecycle_multiplier <= 0:
+            continue
+        candidate["score"] += 10.0 * lifecycle_multiplier * max(confidence, 0.1)
         candidate["why"].append(
             {"reason": "linked_memory", "role": role, "memory_id": str(link["memory_id"])}
         )
@@ -516,6 +517,9 @@ def _select_concepts(
             identifiers=_extract_identifiers(request.query),
         )
         score *= _concept_freshness_multiplier(bundle)
+        if score <= 0:
+            rejected_count += 1
+            continue
         selected.append(
             (
                 score,
@@ -763,11 +767,13 @@ def _concept_freshness_multiplier(bundle: dict[str, Any]) -> float:
         for record in bundle[key]:
             statuses.append(record.lifecycle.status.value)
     if ConceptLifecycleStatus.WRONG.value in statuses:
-        return 0.35
+        return 0.0
+    if ConceptLifecycleStatus.ARCHIVED.value in statuses:
+        return 0.0
     if ConceptLifecycleStatus.STALE.value in statuses:
         return 0.45
     if ConceptLifecycleStatus.SUPERSEDED.value in statuses:
-        return 0.55
+        return 0.0
     if ConceptLifecycleStatus.MAYBE_STALE.value in statuses:
         return 0.75
     return 1.0
@@ -993,7 +999,7 @@ def _conflicts_from_concepts(
         ref = concept.get("ref") or concept.get("id")
         for claim in concept.get("claims", []):
             status = claim.get("status")
-            if status in {"maybe_stale", "stale", "superseded", "wrong"}:
+            if status in {"maybe_stale", "stale", "superseded", "wrong", "archived"}:
                 claim_id = str(claim.get("id") or "")
                 add(
                     {
@@ -1014,7 +1020,7 @@ def _conflicts_from_concepts(
                 )
         for grounding in concept.get("groundings", []):
             status = grounding.get("status")
-            if status in {"maybe_stale", "stale", "superseded", "wrong"}:
+            if status in {"maybe_stale", "stale", "superseded", "wrong", "archived"}:
                 grounding_id = str(grounding.get("id") or "")
                 add(
                     {
@@ -1246,6 +1252,11 @@ def _concept_currentness_payload(bundle: dict[str, Any]) -> dict[str, str]:
             "currentness": "wrong",
             "temporal_reason": "one or more concept facets are marked wrong",
         }
+    if statuses[ConceptLifecycleStatus.ARCHIVED.value]:
+        return {
+            "currentness": "archived",
+            "temporal_reason": "one or more concept facets are marked archived",
+        }
     if statuses[ConceptLifecycleStatus.SUPERSEDED.value]:
         return {
             "currentness": "superseded",
@@ -1421,8 +1432,9 @@ def _lifecycle_multiplier(status: str) -> float:
         "active": 1.0,
         "maybe_stale": 0.65,
         "stale": 0.25,
-        "superseded": 0.1,
+        "superseded": 0.0,
         "wrong": 0.0,
+        "archived": 0.0,
     }[ConceptLifecycleStatus(status).value]
 
 

@@ -17,7 +17,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260520_0028"
+CURRENT_ALEMBIC_HEAD = "20260522_0031"
 
 
 def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_tables_and_views_from_packaged_artifacts(
@@ -110,6 +110,8 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
                 knowledge_build_columns = {row[0] for row in cur.fetchall()}
                 cur.execute("SELECT to_regclass('public.concepts');")
                 concepts_table = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.concept_lifecycle_events');")
+                concept_lifecycle_events_table = cur.fetchone()[0]
                 cur.execute("SELECT version_num FROM alembic_version;")
                 alembic_version = cur.fetchone()[0]
 
@@ -146,6 +148,7 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
             "capture_quality",
         }.issubset(knowledge_build_columns)
         assert concepts_table is not None
+        assert concept_lifecycle_events_table is not None
         assert alembic_version == CURRENT_ALEMBIC_HEAD
     finally:
         drop_temp_database(admin_dsn, db_name)

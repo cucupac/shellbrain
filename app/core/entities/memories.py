@@ -9,9 +9,9 @@ from app.core.entities.ids import MemoryId, RepoId
 
 
 MemoryKindValue = Literal[
-    "problem", "solution", "failed_tactic", "fact", "preference", "change", "frontier"
+    "problem", "solution", "failed_tactic", "fact", "preference", "change"
 ]
-AssociationRelationValue = Literal["depends_on", "associated_with", "matures_into"]
+AssociationRelationValue = Literal["depends_on", "associated_with"]
 
 
 class MemoryKind(str, Enum):
@@ -23,7 +23,6 @@ class MemoryKind(str, Enum):
     FACT = "fact"
     PREFERENCE = "preference"
     CHANGE = "change"
-    FRONTIER = "frontier"
 
     @property
     def requires_problem_link(self) -> bool:

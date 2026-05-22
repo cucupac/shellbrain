@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any, Sequence
 
 
-_REVERSIBLE_ASSOCIATION_TYPES = frozenset({"associated_with", "matures_into"})
+_REVERSIBLE_ASSOCIATION_TYPES = frozenset({"associated_with"})
 
 
 def select_problem_attempt_neighbors(

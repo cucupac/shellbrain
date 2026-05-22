@@ -24,7 +24,9 @@ from app.core.entities.concepts import (
     ConceptGroundingRole,
     ConceptKind,
     ConceptLifecycle,
+    ConceptLifecycleEvent,
     ConceptLifecycleStatus,
+    ConceptLifecycleTargetType,
     ConceptMemoryLink,
     ConceptMemoryLinkRole,
     ConceptRelation,
@@ -39,13 +41,14 @@ from app.infrastructure.db.runtime.models.concepts import (
     concept_aliases,
     concept_claims,
     concept_embeddings,
-    concept_evidence,
     concept_groundings,
+    concept_lifecycle_events,
     concept_memory_links,
     concept_relations,
     concepts,
     graph_patches,
 )
+from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
 
 
 class ConceptsRepo(IConceptsRepo):
@@ -364,44 +367,71 @@ class ConceptsRepo(IConceptsRepo):
         )
         return memory_link
 
-    def add_evidence(self, evidence: ConceptEvidence) -> ConceptEvidence:
-        """Append one evidence pointer for a concept graph record."""
+    def get_lifecycle_target(
+        self, *, repo_id: str, target_type: ConceptLifecycleTargetType, target_id: str
+    ) -> ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink | None:
+        """Fetch one truth-bearing concept record by lifecycle target."""
 
-        existing = (
+        table, converter = _lifecycle_target_table(target_type)
+        row = (
             self._session.execute(
-                select(concept_evidence).where(
-                    concept_evidence.c.repo_id == evidence.repo_id,
-                    concept_evidence.c.target_type == evidence.target_type.value,
-                    concept_evidence.c.target_id == evidence.target_id,
-                    concept_evidence.c.evidence_kind == evidence.evidence_kind.value,
-                    concept_evidence.c.anchor_id == evidence.anchor_id,
-                    concept_evidence.c.memory_id == evidence.memory_id,
-                    concept_evidence.c.commit_ref == evidence.commit_ref,
-                    concept_evidence.c.transcript_ref == evidence.transcript_ref,
-                    concept_evidence.c.note == evidence.note,
+                select(table).where(
+                    table.c.repo_id == repo_id, table.c.id == target_id
                 )
             )
             .mappings()
             .first()
         )
-        if existing is not None:
-            return _to_evidence(existing)
+        return converter(row) if row is not None else None
+
+    def update_lifecycle_target(
+        self,
+        target: ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink,
+    ) -> ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink:
+        """Update lifecycle fields for one truth-bearing concept record."""
+
+        target_type = _target_type_for_record(target)
+        table, converter = _lifecycle_target_table(target_type)
+        now = datetime.now(timezone.utc)
         self._session.execute(
-            concept_evidence.insert().values(
-                id=evidence.id,
-                repo_id=evidence.repo_id,
-                target_type=evidence.target_type.value,
-                target_id=evidence.target_id,
-                evidence_kind=evidence.evidence_kind.value,
-                anchor_id=evidence.anchor_id,
-                memory_id=evidence.memory_id,
-                commit_ref=evidence.commit_ref,
-                transcript_ref=evidence.transcript_ref,
-                note=evidence.note,
+            update(table)
+            .where(table.c.repo_id == target.repo_id, table.c.id == target.id)
+            .values(
+                **_lifecycle_values(target.lifecycle, now),
+                updated_at=now,
+            )
+        )
+        row = (
+            self._session.execute(
+                select(table).where(
+                    table.c.repo_id == target.repo_id, table.c.id == target.id
+                )
+            )
+            .mappings()
+            .one()
+        )
+        return converter(row)
+
+    def add_lifecycle_event(
+        self, event: ConceptLifecycleEvent
+    ) -> ConceptLifecycleEvent:
+        """Append one auditable concept lifecycle transition."""
+
+        self._session.execute(
+            concept_lifecycle_events.insert().values(
+                id=event.id,
+                repo_id=event.repo_id,
+                target_type=event.target_type.value,
+                target_id=event.target_id,
+                from_status=event.from_status.value,
+                to_status=event.to_status.value,
+                rationale=event.rationale,
+                actor=event.actor.value,
+                superseded_by_id=event.superseded_by_id,
                 created_at=datetime.now(timezone.utc),
             )
         )
-        return evidence
+        return event
 
     def create_graph_patch(self, patch: GraphPatch) -> GraphPatch:
         """Store one graph patch proposal record."""
@@ -422,7 +452,11 @@ class ConceptsRepo(IConceptsRepo):
         return patch
 
     def get_concept_bundle(
-        self, *, repo_id: str, concept_ref: str
+        self,
+        *,
+        repo_id: str,
+        concept_ref: str,
+        include_lifecycle_events: bool = False,
     ) -> dict[str, Any] | None:
         """Return one concept plus directly related graph records."""
 
@@ -495,30 +529,48 @@ class ConceptsRepo(IConceptsRepo):
                 .all()
             )
         target_pairs = (
-            [("relation", str(row["id"])) for row in relation_rows]
-            + [("claim", str(row["id"])) for row in claim_rows]
-            + [("grounding", str(row["id"])) for row in grounding_rows]
-            + [("memory_link", str(row["id"])) for row in memory_link_rows]
+            [("relation", "concept_relation", str(row["id"])) for row in relation_rows]
+            + [("claim", "concept_claim", str(row["id"])) for row in claim_rows]
+            + [
+                ("grounding", "concept_grounding", str(row["id"]))
+                for row in grounding_rows
+            ]
+            + [
+                ("memory_link", "concept_memory_link", str(row["id"]))
+                for row in memory_link_rows
+            ]
         )
-        evidence_rows = []
-        if target_pairs:
-            evidence_rows = (
+        lifecycle_event_rows = []
+        if include_lifecycle_events and target_pairs:
+            lifecycle_event_rows = (
                 self._session.execute(
-                    select(concept_evidence).where(
-                        concept_evidence.c.repo_id == repo_id,
+                    select(concept_lifecycle_events).where(
+                        concept_lifecycle_events.c.repo_id == repo_id,
                         or_(
                             *[
                                 and_(
-                                    concept_evidence.c.target_type == target_type,
-                                    concept_evidence.c.target_id == target_id,
+                                    concept_lifecycle_events.c.target_type
+                                    == legacy_target_type,
+                                    concept_lifecycle_events.c.target_id
+                                    == target_id,
                                 )
-                                for target_type, target_id in target_pairs
+                                for legacy_target_type, _, target_id in target_pairs
                             ]
                         ),
                     )
                 )
                 .mappings()
                 .all()
+            )
+        event_pairs = [
+            ("lifecycle_event", "concept_lifecycle_event", str(row["id"]))
+            for row in lifecycle_event_rows
+        ]
+        evidence_rows = []
+        evidence_pairs = target_pairs + event_pairs
+        if evidence_pairs:
+            evidence_rows = self._concept_evidence_rows(
+                repo_id=repo_id, evidence_pairs=evidence_pairs
             )
         return {
             "concept": concept,
@@ -527,9 +579,59 @@ class ConceptsRepo(IConceptsRepo):
             "claims": [_to_claim(row) for row in claim_rows],
             "groundings": [_to_grounding(row) for row in grounding_rows],
             "memory_links": [_to_memory_link(row) for row in memory_link_rows],
+            "lifecycle_events": [
+                _to_lifecycle_event(row) for row in lifecycle_event_rows
+            ],
             "anchors": [_to_anchor(row) for row in anchor_rows],
             "evidence": [_to_evidence(row) for row in evidence_rows],
         }
+
+    def _concept_evidence_rows(
+        self, *, repo_id: str, evidence_pairs: Sequence[tuple[str, str, str]]
+    ) -> list[dict[str, Any]]:
+        """Return concept evidence rows from unified evidence storage."""
+
+        rows = (
+            self._session.execute(
+                select(
+                    evidence_links.c.id.label("id"),
+                    evidence_links.c.repo_id,
+                    evidence_links.c.target_type,
+                    evidence_links.c.target_id,
+                    evidence_links.c.created_at,
+                    evidence_refs.c.kind,
+                    evidence_refs.c.ref,
+                    evidence_refs.c.episode_event_id,
+                    evidence_refs.c.anchor_id,
+                    evidence_refs.c.memory_id,
+                    evidence_refs.c.commit_ref,
+                    evidence_refs.c.transcript_ref,
+                    evidence_refs.c.note,
+                )
+                .select_from(
+                    evidence_links.join(
+                        evidence_refs,
+                        evidence_refs.c.id == evidence_links.c.evidence_id,
+                    )
+                )
+                .where(
+                    evidence_links.c.repo_id == repo_id,
+                    or_(
+                        *[
+                            and_(
+                                evidence_links.c.target_type == unified_target_type,
+                                evidence_links.c.target_id == target_id,
+                            )
+                            for _, unified_target_type, target_id in evidence_pairs
+                        ]
+                    ),
+                )
+                .order_by(evidence_links.c.created_at, evidence_links.c.id)
+            )
+            .mappings()
+            .all()
+        )
+        return [_unified_evidence_to_concept_row(row) for row in rows]
 
     def find_concepts_for_memory_ids(
         self, *, repo_id: str, memory_ids: Sequence[str]
@@ -605,12 +707,16 @@ def _lifecycle_values(lifecycle: ConceptLifecycle, now: datetime) -> dict[str, A
         "confidence": lifecycle.confidence,
         "observed_at": lifecycle.observed_at or now,
         "validated_at": lifecycle.validated_at,
+        "invalidated_at": lifecycle.invalidated_at,
         "source_kind": lifecycle.source_kind.value
         if lifecycle.source_kind is not None
         else None,
         "source_ref": lifecycle.source_ref,
         "superseded_by_id": lifecycle.superseded_by_id,
         "created_by": lifecycle.created_by.value,
+        "updated_by": lifecycle.updated_by.value
+        if lifecycle.updated_by is not None
+        else None,
     }
 
 
@@ -622,12 +728,16 @@ def _to_lifecycle(row) -> ConceptLifecycle:
         confidence=float(row["confidence"]),
         observed_at=row["observed_at"],
         validated_at=row["validated_at"],
+        invalidated_at=row["invalidated_at"],
         source_kind=ConceptSourceKind(row["source_kind"])
         if row["source_kind"] is not None
         else None,
         source_ref=row["source_ref"],
         superseded_by_id=row["superseded_by_id"],
         created_by=ConceptCreatedBy(row["created_by"]),
+        updated_by=ConceptCreatedBy(row["updated_by"])
+        if row["updated_by"] is not None
+        else None,
     )
 
 
@@ -735,6 +845,89 @@ def _to_evidence(row) -> ConceptEvidence:
         note=row["note"],
         created_at=row["created_at"],
     )
+
+
+def _unified_evidence_to_concept_row(row) -> dict[str, Any]:
+    """Convert unified evidence storage rows into concept evidence view rows."""
+
+    source_kind = str(row["kind"])
+    evidence_kind = _CONCEPT_EVIDENCE_KIND_BY_SOURCE_KIND[source_kind]
+    values: dict[str, Any] = {
+        "id": row["id"],
+        "repo_id": row["repo_id"],
+        "target_type": _CONCEPT_TARGET_TYPE_BY_UNIFIED[str(row["target_type"])],
+        "target_id": row["target_id"],
+        "evidence_kind": evidence_kind,
+        "anchor_id": row["anchor_id"],
+        "memory_id": row["memory_id"],
+        "commit_ref": row["commit_ref"],
+        "transcript_ref": row["transcript_ref"],
+        "note": row["note"],
+        "created_at": row["created_at"],
+    }
+    if source_kind == "episode_event":
+        values["evidence_kind"] = "transcript"
+        values["transcript_ref"] = row["episode_event_id"] or row["ref"]
+    return values
+
+
+def _to_lifecycle_event(row) -> ConceptLifecycleEvent:
+    return ConceptLifecycleEvent(
+        id=row["id"],
+        repo_id=row["repo_id"],
+        target_type=ConceptLifecycleTargetType(row["target_type"]),
+        target_id=row["target_id"],
+        from_status=ConceptLifecycleStatus(row["from_status"]),
+        to_status=ConceptLifecycleStatus(row["to_status"]),
+        rationale=row["rationale"],
+        actor=ConceptCreatedBy(row["actor"]),
+        superseded_by_id=row["superseded_by_id"],
+        created_at=row["created_at"],
+    )
+
+
+def _lifecycle_target_table(target_type: ConceptLifecycleTargetType):
+    if target_type == ConceptLifecycleTargetType.RELATION:
+        return concept_relations, _to_relation
+    if target_type == ConceptLifecycleTargetType.CLAIM:
+        return concept_claims, _to_claim
+    if target_type == ConceptLifecycleTargetType.GROUNDING:
+        return concept_groundings, _to_grounding
+    if target_type == ConceptLifecycleTargetType.MEMORY_LINK:
+        return concept_memory_links, _to_memory_link
+    raise ValueError(f"Unsupported lifecycle target type: {target_type.value}")
+
+
+def _target_type_for_record(
+    target: ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink,
+) -> ConceptLifecycleTargetType:
+    if isinstance(target, ConceptRelation):
+        return ConceptLifecycleTargetType.RELATION
+    if isinstance(target, ConceptClaim):
+        return ConceptLifecycleTargetType.CLAIM
+    if isinstance(target, ConceptGrounding):
+        return ConceptLifecycleTargetType.GROUNDING
+    if isinstance(target, ConceptMemoryLink):
+        return ConceptLifecycleTargetType.MEMORY_LINK
+    raise ValueError(f"Unsupported lifecycle target record: {type(target).__name__}")
+
+
+_CONCEPT_TARGET_TYPE_BY_UNIFIED = {
+    "concept_relation": "relation",
+    "concept_claim": "claim",
+    "concept_grounding": "grounding",
+    "concept_memory_link": "memory_link",
+    "concept_lifecycle_event": "lifecycle_event",
+}
+_CONCEPT_EVIDENCE_KIND_BY_SOURCE_KIND = {
+    "anchor": "anchor",
+    "memory": "memory",
+    "commit": "commit",
+    "transcript": "transcript",
+    "test": "test",
+    "manual": "manual",
+    "episode_event": "transcript",
+}
 
 
 def _normalize_text(value: str) -> str:

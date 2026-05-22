@@ -390,7 +390,7 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "Do not archive historically true memories" in prompt
     assert "do not vote on ordinary" in prompt.lower()
     assert "leave the memory unlinked" in prompt
-    assert "stale graph record" in prompt
+    assert "update_lifecycle" in prompt
     assert "final decisive solution" in prompt
     assert "failed_tactic records that a tactic failed in this episode's context" in prompt
     assert "closed_event_id" in prompt

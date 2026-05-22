@@ -21,12 +21,13 @@ from app.infrastructure.db.runtime.models.metadata import metadata
 
 _CONCEPT_KINDS = "'domain', 'capability', 'process', 'entity', 'rule', 'component'"
 _CONCEPT_STATUSES = "'active', 'deprecated', 'archived'"
-_LIFECYCLE_STATUSES = "'active', 'maybe_stale', 'stale', 'superseded', 'wrong'"
+_LIFECYCLE_STATUSES = "'active', 'maybe_stale', 'stale', 'superseded', 'wrong', 'archived'"
+_LIFECYCLE_TARGET_TYPES = "'relation', 'claim', 'grounding', 'memory_link'"
 _RELATION_PREDICATES = "'contains', 'involves', 'precedes', 'constrains', 'depends_on'"
 _CLAIM_TYPES = "'definition', 'behavior', 'invariant', 'failure_mode', 'usage_note', 'open_question'"
 _ANCHOR_KINDS = (
     "'file', 'symbol', 'line_range', 'api_route', 'db_table', 'schema', 'config_key', "
-    "'test', 'metric', 'log', 'doc', 'commit', 'memory'"
+    "'test', 'metric', 'log', 'doc', 'commit'"
 )
 _ANCHOR_STATUSES = "'active', 'maybe_stale', 'stale', 'deprecated'"
 _GROUNDING_ROLES = (
@@ -39,7 +40,7 @@ _MEMORY_LINK_ROLES = (
 )
 _SOURCE_KINDS = "'commit', 'file_hash', 'symbol_hash', 'memory', 'transcript_event', 'manual', 'doc', 'runtime_trace'"
 _CREATED_BY_VALUES = "'worker', 'librarian', 'manual', 'import'"
-_EVIDENCE_TARGET_TYPES = "'relation', 'claim', 'grounding', 'memory_link'"
+_EVIDENCE_TARGET_TYPES = "'relation', 'claim', 'grounding', 'memory_link', 'lifecycle_event'"
 _EVIDENCE_KINDS = "'anchor', 'memory', 'commit', 'transcript', 'test', 'manual'"
 _PATCH_STATUSES = "'pending', 'applied', 'rejected'"
 
@@ -150,6 +151,7 @@ concept_relations = Table(
         server_default=text("NOW()"),
     ),
     Column("validated_at", TIMESTAMP(timezone=True)),
+    Column("invalidated_at", TIMESTAMP(timezone=True)),
     Column("source_kind", String),
     Column("source_ref", Text),
     Column(
@@ -158,6 +160,7 @@ concept_relations = Table(
         ForeignKey("concept_relations.id", ondelete="SET NULL"),
     ),
     Column("created_by", String, nullable=False, server_default=text("'manual'")),
+    Column("updated_by", String),
     Column(
         "created_at",
         TIMESTAMP(timezone=True),
@@ -190,6 +193,10 @@ concept_relations = Table(
     CheckConstraint(
         f"created_by IN ({_CREATED_BY_VALUES})", name="ck_concept_relations_created_by"
     ),
+    CheckConstraint(
+        f"updated_by IS NULL OR updated_by IN ({_CREATED_BY_VALUES})",
+        name="ck_concept_relations_updated_by",
+    ),
 )
 
 concept_claims = Table(
@@ -215,12 +222,14 @@ concept_claims = Table(
         server_default=text("NOW()"),
     ),
     Column("validated_at", TIMESTAMP(timezone=True)),
+    Column("invalidated_at", TIMESTAMP(timezone=True)),
     Column("source_kind", String),
     Column("source_ref", Text),
     Column(
         "superseded_by_id", String, ForeignKey("concept_claims.id", ondelete="SET NULL")
     ),
     Column("created_by", String, nullable=False, server_default=text("'manual'")),
+    Column("updated_by", String),
     Column(
         "created_at",
         TIMESTAMP(timezone=True),
@@ -248,6 +257,10 @@ concept_claims = Table(
     ),
     CheckConstraint(
         f"created_by IN ({_CREATED_BY_VALUES})", name="ck_concept_claims_created_by"
+    ),
+    CheckConstraint(
+        f"updated_by IS NULL OR updated_by IN ({_CREATED_BY_VALUES})",
+        name="ck_concept_claims_updated_by",
     ),
     UniqueConstraint(
         "repo_id",
@@ -316,6 +329,7 @@ concept_groundings = Table(
         server_default=text("NOW()"),
     ),
     Column("validated_at", TIMESTAMP(timezone=True)),
+    Column("invalidated_at", TIMESTAMP(timezone=True)),
     Column("source_kind", String),
     Column("source_ref", Text),
     Column(
@@ -324,6 +338,7 @@ concept_groundings = Table(
         ForeignKey("concept_groundings.id", ondelete="SET NULL"),
     ),
     Column("created_by", String, nullable=False, server_default=text("'manual'")),
+    Column("updated_by", String),
     Column(
         "created_at",
         TIMESTAMP(timezone=True),
@@ -349,6 +364,10 @@ concept_groundings = Table(
     ),
     CheckConstraint(
         f"created_by IN ({_CREATED_BY_VALUES})", name="ck_concept_groundings_created_by"
+    ),
+    CheckConstraint(
+        f"updated_by IS NULL OR updated_by IN ({_CREATED_BY_VALUES})",
+        name="ck_concept_groundings_updated_by",
     ),
 )
 
@@ -379,6 +398,7 @@ concept_memory_links = Table(
         server_default=text("NOW()"),
     ),
     Column("validated_at", TIMESTAMP(timezone=True)),
+    Column("invalidated_at", TIMESTAMP(timezone=True)),
     Column("source_kind", String),
     Column("source_ref", Text),
     Column(
@@ -387,6 +407,7 @@ concept_memory_links = Table(
         ForeignKey("concept_memory_links.id", ondelete="SET NULL"),
     ),
     Column("created_by", String, nullable=False, server_default=text("'manual'")),
+    Column("updated_by", String),
     Column(
         "created_at",
         TIMESTAMP(timezone=True),
@@ -415,6 +436,49 @@ concept_memory_links = Table(
     CheckConstraint(
         f"created_by IN ({_CREATED_BY_VALUES})",
         name="ck_concept_memory_links_created_by",
+    ),
+    CheckConstraint(
+        f"updated_by IS NULL OR updated_by IN ({_CREATED_BY_VALUES})",
+        name="ck_concept_memory_links_updated_by",
+    ),
+)
+
+concept_lifecycle_events = Table(
+    "concept_lifecycle_events",
+    metadata,
+    Column("id", String, primary_key=True),
+    Column("repo_id", String, nullable=False),
+    Column("target_type", String, nullable=False),
+    Column("target_id", String, nullable=False),
+    Column("from_status", String, nullable=False),
+    Column("to_status", String, nullable=False),
+    Column("rationale", Text, nullable=False),
+    Column("actor", String, nullable=False),
+    Column("superseded_by_id", String),
+    Column(
+        "created_at",
+        TIMESTAMP(timezone=True),
+        nullable=False,
+        server_default=text("NOW()"),
+    ),
+    CheckConstraint(
+        f"target_type IN ({_LIFECYCLE_TARGET_TYPES})",
+        name="ck_concept_lifecycle_events_target_type",
+    ),
+    CheckConstraint(
+        f"from_status IN ({_LIFECYCLE_STATUSES})",
+        name="ck_concept_lifecycle_events_from_status",
+    ),
+    CheckConstraint(
+        f"to_status IN ({_LIFECYCLE_STATUSES})",
+        name="ck_concept_lifecycle_events_to_status",
+    ),
+    CheckConstraint(
+        f"actor IN ({_CREATED_BY_VALUES})",
+        name="ck_concept_lifecycle_events_actor",
+    ),
+    CheckConstraint(
+        "btrim(rationale) <> ''", name="ck_concept_lifecycle_events_rationale"
     ),
 )
 
@@ -533,6 +597,13 @@ Index(
     concept_evidence.c.repo_id,
     concept_evidence.c.target_type,
     concept_evidence.c.target_id,
+)
+Index(
+    "idx_concept_lifecycle_events_target",
+    concept_lifecycle_events.c.repo_id,
+    concept_lifecycle_events.c.target_type,
+    concept_lifecycle_events.c.target_id,
+    concept_lifecycle_events.c.created_at,
 )
 Index(
     "idx_concept_embeddings_repo_model_dim_concept",

@@ -12,6 +12,7 @@ from app.core.entities.concepts import (
     ConceptEvidence,
     ConceptGrounding,
     ConceptLifecycle,
+    ConceptLifecycleEvent,
     ConceptMemoryLink,
     ConceptRelation,
 )
@@ -59,6 +60,18 @@ def serialize_concept_bundle(
         payload["groundings"] = groundings
     if "memory_links" in include:
         payload["memory_links"] = memory_links
+    if "lifecycle_events" in include:
+        payload["lifecycle_events"] = _lifecycle_event_payloads(
+            bundle["lifecycle_events"],
+            evidence_counts=evidence_counts,
+            included_targets=_included_lifecycle_targets(
+                include=include,
+                relations=relations,
+                claims=claims,
+                groundings=groundings,
+                memory_links=memory_links,
+            ),
+        )
     if "preview_concept" in include:
         payload["preview_concept"] = _preview_concept(
             concept=concept,
@@ -147,10 +160,12 @@ def _lifecycle_payload(lifecycle: ConceptLifecycle) -> dict[str, Any]:
         "confidence": lifecycle.confidence,
         "observed_at": _iso(lifecycle.observed_at),
         "validated_at": _iso(lifecycle.validated_at),
+        "invalidated_at": _iso(lifecycle.invalidated_at),
         "source_kind": lifecycle.source_kind.value if lifecycle.source_kind else None,
         "source_ref": lifecycle.source_ref,
         "superseded_by_id": lifecycle.superseded_by_id,
         "created_by": lifecycle.created_by.value,
+        "updated_by": lifecycle.updated_by.value if lifecycle.updated_by else None,
     }
 
 
@@ -160,6 +175,54 @@ def _evidence_counts(evidence_items: list[ConceptEvidence]) -> dict[str, int]:
         key = f"{item.target_type.value}:{item.target_id}"
         counts[key] = counts.get(key, 0) + 1
     return counts
+
+
+def _included_lifecycle_targets(
+    *,
+    include: set[str],
+    relations: list[dict[str, Any]],
+    claims: list[dict[str, Any]],
+    groundings: list[dict[str, Any]],
+    memory_links: list[dict[str, Any]],
+) -> set[tuple[str, str]]:
+    targets: set[tuple[str, str]] = set()
+    if "relations" in include:
+        targets.update(("relation", item["id"]) for item in relations)
+    if "claims" in include:
+        targets.update(("claim", item["id"]) for item in claims)
+    if "groundings" in include:
+        targets.update(("grounding", item["id"]) for item in groundings)
+    if "memory_links" in include:
+        targets.update(("memory_link", item["id"]) for item in memory_links)
+    return targets
+
+
+def _lifecycle_event_payloads(
+    events: list[ConceptLifecycleEvent],
+    *,
+    evidence_counts: dict[str, int],
+    included_targets: set[tuple[str, str]],
+) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": event.id,
+            "target_type": event.target_type.value,
+            "target_id": event.target_id,
+            "from_status": event.from_status.value,
+            "to_status": event.to_status.value,
+            "rationale": event.rationale,
+            "actor": event.actor.value,
+            "superseded_by_id": event.superseded_by_id,
+            "created_at": _iso(event.created_at),
+            "evidence_count": evidence_counts.get(
+                f"lifecycle_event:{event.id}", 0
+            ),
+        }
+        for event in sorted(
+            events, key=lambda item: (_iso(item.created_at) or "", item.id)
+        )
+        if (event.target_type.value, event.target_id) in included_targets
+    ]
 
 
 def _status_rollup(*record_groups: list[dict[str, Any]]) -> dict[str, int]:

@@ -10,6 +10,7 @@ from app.infrastructure.db.runtime.models.associations import (
     association_edges,
     association_observations,
 )
+from app.infrastructure.db.runtime.models.evidence import evidence_links
 from app.infrastructure.db.runtime.models.experiences import fact_updates
 from app.infrastructure.db.runtime.models.utility import utility_observations
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
@@ -163,69 +164,15 @@ def test_update_association_link_commit_persists_edge_observation_and_edge_evide
     assert len(observations) == 1
 
     edge_evidence_rows = fetch_rows(
-        association_edge_evidence,
-        association_edge_evidence.c.edge_id == edge_id,
+        evidence_links,
+        evidence_links.c.target_type == "association_edge",
+        evidence_links.c.target_id == edge_id,
     )
     assert len(edge_evidence_rows) == 2
-
-
-def test_update_matures_into_commit_persists_edge_observation_and_edge_evidence(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    seed_memory: Callable[..., object],
-    fetch_rows: Callable[..., list[dict[str, object]]],
-) -> None:
-    """update(matures_into) commit should always persist edge, observation, and edge evidence links."""
-
-    seed_memory(
-        memory_id="frontier-memory",
-        repo_id="repo-a",
-        scope=MemoryScope.REPO,
-        kind=MemoryKind.FRONTIER,
-        text_value="Half-formed theory.",
-    )
-    seed_memory(
-        memory_id="mature-memory",
-        repo_id="repo-a",
-        scope=MemoryScope.REPO,
-        kind=MemoryKind.FACT,
-        text_value="Ratified fact.",
-    )
-    request = make_update_request(
-        repo_id="repo-a",
-        memory_id="frontier-memory",
-        update={
-            "type": "association_link",
-            "to_memory_id": "mature-memory",
-            "relation_type": "matures_into",
-            "confidence": 0.9,
-            "salience": 0.8,
-            "evidence_refs": ["session://1", "session://2"],
-        },
-    )
-
-    with uow_factory() as uow:
-        execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
-    edges = fetch_rows(
-        association_edges,
-        association_edges.c.repo_id == "repo-a",
-        association_edges.c.from_memory_id == "frontier-memory",
-        association_edges.c.to_memory_id == "mature-memory",
-        association_edges.c.relation_type == "matures_into",
-    )
-    assert len(edges) == 1
-
-    edge_id = edges[0]["id"]
-    observations = fetch_rows(
-        association_observations,
-        association_observations.c.edge_id == edge_id,
-    )
-    assert len(observations) == 1
-
-    edge_evidence_rows = fetch_rows(
+    assert fetch_rows(
         association_edge_evidence,
         association_edge_evidence.c.edge_id == edge_id,
-    )
-    assert len(edge_evidence_rows) == 2
+    ) == []
 
 
 def test_update_writes_only_its_own_related_record_family(
@@ -265,6 +212,7 @@ def test_update_writes_only_its_own_related_record_family(
                 "association_edges": 0,
                 "association_observations": 0,
                 "association_edge_evidence": 0,
+                "evidence_links": 0,
                 "evidence_refs": 0,
             },
         ),
@@ -304,6 +252,7 @@ def test_update_writes_only_its_own_related_record_family(
                 "association_edges": 0,
                 "association_observations": 0,
                 "association_edge_evidence": 0,
+                "evidence_links": 0,
                 "evidence_refs": 0,
             },
         ),
@@ -338,7 +287,8 @@ def test_update_writes_only_its_own_related_record_family(
                 "fact_updates": 0,
                 "association_edges": 1,
                 "association_observations": 1,
-                "association_edge_evidence": 1,
+                "association_edge_evidence": 0,
+                "evidence_links": 1,
                 "evidence_refs": 1,
             },
         ),

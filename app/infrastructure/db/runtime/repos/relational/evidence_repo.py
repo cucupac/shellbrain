@@ -1,116 +1,338 @@
-"""This module defines relational repository operations for evidence references and links."""
+"""Relational repository operations for unified evidence refs and links."""
 
 from datetime import datetime, timezone
+from typing import Sequence
 from uuid import uuid4
 
-from sqlalchemy import select, text, update
+from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 
-from app.core.entities.evidence import EvidenceRef
+from app.core.entities.evidence import (
+    EvidenceLinkView,
+    EvidenceRef,
+    EvidenceRole,
+    EvidenceSource,
+    EvidenceSourceKind,
+    EvidenceTarget,
+    EvidenceTargetType,
+    canonical_evidence_hash,
+    evidence_source_ref,
+)
 from app.core.ports.db.memory_repositories import IEvidenceRepo
-from app.infrastructure.db.runtime.models.associations import association_edge_evidence
-from app.infrastructure.db.runtime.models.evidence import evidence_refs
-from app.infrastructure.db.runtime.models.experiences import fact_update_evidence
-from app.infrastructure.db.runtime.models.memories import memory_evidence
-from app.infrastructure.db.runtime.models.utility import utility_observation_evidence
+from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
 
 
 class EvidenceRepo(IEvidenceRepo):
-    """This class provides persistence operations for evidence references and links."""
+    """This class provides unified evidence persistence operations."""
 
     def __init__(self, session) -> None:
-        """This method stores the active DB session for repository operations."""
+        """Store the active DB session."""
 
         self._session = session
 
-    def upsert_ref(self, repo_id: str, ref: str) -> EvidenceRef:
-        """This method inserts or returns a canonical evidence reference row."""
+    def attach_evidence(
+        self,
+        *,
+        repo_id: str,
+        target: EvidenceTarget,
+        sources: Sequence[EvidenceSource],
+        role: EvidenceRole = EvidenceRole.SUPPORTS,
+    ) -> Sequence[EvidenceLinkView]:
+        """Attach evidence sources to a target through unified storage."""
 
-        self._acquire_ref_guard(repo_id=repo_id, ref=ref)
+        role = EvidenceRole(role)
+        self._require_target_visible(repo_id=repo_id, target=target)
+        return tuple(
+            self._attach_one(
+                repo_id=repo_id, target=target, source=source, role=role
+            )
+            for source in sources
+        )
+
+    def resolve_evidence(
+        self, *, repo_id: str, targets: Sequence[EvidenceTarget]
+    ) -> Sequence[EvidenceLinkView]:
+        """Resolve evidence links for targets through unified storage."""
+
+        links: list[EvidenceLinkView] = []
+        for target in targets:
+            rows = (
+                self._session.execute(
+                    select(
+                        evidence_links.c.target_type,
+                        evidence_links.c.target_id,
+                        evidence_links.c.evidence_role,
+                        evidence_links.c.created_at.label("link_created_at"),
+                        evidence_refs,
+                    )
+                    .select_from(
+                        evidence_links.join(
+                            evidence_refs,
+                            evidence_refs.c.id == evidence_links.c.evidence_id,
+                        )
+                    )
+                    .where(
+                        evidence_links.c.repo_id == repo_id,
+                        evidence_links.c.target_type == target.target_type.value,
+                        evidence_links.c.target_id == target.target_id,
+                    )
+                    .order_by(
+                        evidence_links.c.created_at,
+                        evidence_refs.c.kind,
+                        evidence_refs.c.ref,
+                    )
+                )
+                .mappings()
+                .all()
+            )
+            links.extend(_link_view_from_row(row) for row in rows)
+        return tuple(links)
+
+    def _attach_one(
+        self,
+        *,
+        repo_id: str,
+        target: EvidenceTarget,
+        source: EvidenceSource,
+        role: EvidenceRole,
+    ) -> EvidenceLinkView:
+        evidence_ref = self._upsert_ref(repo_id=repo_id, source=source)
+        created_at = datetime.now(timezone.utc)
+        self._session.execute(
+            insert(evidence_links)
+            .values(
+                id=str(uuid4()),
+                repo_id=repo_id,
+                target_type=target.target_type.value,
+                target_id=target.target_id,
+                evidence_id=evidence_ref.id,
+                evidence_role=role.value,
+                created_at=created_at,
+            )
+            .on_conflict_do_nothing(
+                index_elements=[
+                    "repo_id",
+                    "target_type",
+                    "target_id",
+                    "evidence_id",
+                    "evidence_role",
+                ]
+            )
+        )
+        return EvidenceLinkView(
+            target=target,
+            source=source,
+            role=role,
+            evidence_id=evidence_ref.id,
+            created_at=created_at,
+        )
+
+    def _upsert_ref(self, *, repo_id: str, source: EvidenceSource) -> EvidenceRef:
+        values = _source_values(repo_id=repo_id, source=source)
+        self._acquire_ref_guard(
+            repo_id=repo_id, canonical_hash=str(values["canonical_hash"])
+        )
         existing = (
             self._session.execute(
                 select(evidence_refs).where(
                     evidence_refs.c.repo_id == repo_id,
-                    (evidence_refs.c.episode_event_id == ref)
-                    | (evidence_refs.c.ref == ref),
+                    evidence_refs.c.canonical_hash == values["canonical_hash"],
                 )
             )
             .mappings()
             .first()
         )
-        if existing:
-            if existing["episode_event_id"] is None:
-                self._session.execute(
-                    update(evidence_refs)
-                    .where(evidence_refs.c.id == existing["id"])
-                    .values(episode_event_id=ref, ref=ref)
+        if existing is not None:
+            return _ref_from_row(existing)
+        self._session.execute(
+            insert(evidence_refs)
+            .values(id=str(uuid4()), created_at=datetime.now(timezone.utc), **values)
+            .on_conflict_do_nothing(index_elements=["repo_id", "canonical_hash"])
+        )
+        row = (
+            self._session.execute(
+                select(evidence_refs).where(
+                    evidence_refs.c.repo_id == repo_id,
+                    evidence_refs.c.canonical_hash == values["canonical_hash"],
                 )
-                existing = dict(existing)
-                existing["episode_event_id"] = ref
-                existing["ref"] = ref
-            return EvidenceRef(
-                id=existing["id"],
-                repo_id=existing["repo_id"],
-                ref=existing["ref"],
-                episode_event_id=existing["episode_event_id"],
+            )
+            .mappings()
+            .one()
+        )
+        return _ref_from_row(row)
+
+    def _acquire_ref_guard(self, *, repo_id: str, canonical_hash: str) -> None:
+        """Serialize concurrent writes for one repo/source pair."""
+
+        self._session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:repo_id), hashtext(:hash))"),
+            {"repo_id": repo_id, "hash": canonical_hash},
+        )
+
+    def _require_target_visible(self, *, repo_id: str, target: EvidenceTarget) -> None:
+        """Validate the polymorphic target before writing an evidence link."""
+
+        query = _TARGET_VALIDATION_QUERIES.get(target.target_type)
+        if query is None:
+            raise ValueError(f"unsupported evidence target type: {target.target_type}")
+        exists = self._session.execute(
+            text(query), {"repo_id": repo_id, "target_id": target.target_id}
+        ).scalar()
+        if not exists:
+            raise ValueError(
+                f"evidence target not found for repo {repo_id}: "
+                f"{target.target_type.value}:{target.target_id}"
             )
 
-        evidence_id = str(uuid4())
-        self._session.execute(
-            evidence_refs.insert().values(
-                id=evidence_id,
-                repo_id=repo_id,
-                ref=ref,
-                episode_event_id=ref,
-                created_at=datetime.now(timezone.utc),
-            )
+
+_TARGET_VALIDATION_QUERIES = {
+    EvidenceTargetType.MEMORY: """
+        SELECT 1
+        FROM memories
+        WHERE id = :target_id
+          AND (repo_id = :repo_id OR scope = 'global')
+        LIMIT 1
+    """,
+    EvidenceTargetType.FACT_UPDATE: """
+        SELECT 1
+        FROM fact_updates fu
+        JOIN memories old_fact ON old_fact.id = fu.old_fact_id
+        JOIN memories change_memory ON change_memory.id = fu.change_id
+        JOIN memories new_fact ON new_fact.id = fu.new_fact_id
+        WHERE fu.id = :target_id
+          AND old_fact.repo_id = :repo_id
+          AND change_memory.repo_id = :repo_id
+          AND new_fact.repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.ASSOCIATION_EDGE: """
+        SELECT 1
+        FROM association_edges
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.UTILITY_OBSERVATION: """
+        SELECT 1
+        FROM utility_observations uo
+        JOIN memories memory ON memory.id = uo.memory_id
+        JOIN memories problem ON problem.id = uo.problem_id
+        WHERE uo.id = :target_id
+          AND memory.repo_id = :repo_id
+          AND problem.repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.CONCEPT_CLAIM: """
+        SELECT 1
+        FROM concept_claims
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.CONCEPT_RELATION: """
+        SELECT 1
+        FROM concept_relations
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.CONCEPT_GROUNDING: """
+        SELECT 1
+        FROM concept_groundings
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.CONCEPT_MEMORY_LINK: """
+        SELECT 1
+        FROM concept_memory_links
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.CONCEPT_LIFECYCLE_EVENT: """
+        SELECT 1
+        FROM concept_lifecycle_events
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+}
+
+
+def _source_values(*, repo_id: str, source: EvidenceSource) -> dict[str, str | None]:
+    values: dict[str, str | None] = {
+        "repo_id": repo_id,
+        "kind": source.source_kind.value,
+        "ref": evidence_source_ref(source),
+        "canonical_hash": canonical_evidence_hash(source),
+        "episode_event_id": None,
+        "anchor_id": None,
+        "memory_id": None,
+        "commit_ref": None,
+        "transcript_ref": None,
+        "note": None,
+    }
+    if source.source_kind is EvidenceSourceKind.EPISODE_EVENT:
+        values["episode_event_id"] = source.episode_event_id
+        return values
+    field = _SOURCE_FIELD_BY_KIND[source.source_kind]
+    values[field] = getattr(source, field)
+    return values
+
+
+def _ref_from_row(row) -> EvidenceRef:
+    return EvidenceRef(
+        id=row["id"],
+        repo_id=row["repo_id"],
+        kind=EvidenceSourceKind(row["kind"]),
+        ref=row["ref"],
+        canonical_hash=row["canonical_hash"],
+        episode_event_id=row["episode_event_id"],
+        anchor_id=row["anchor_id"],
+        memory_id=row["memory_id"],
+        commit_ref=row["commit_ref"],
+        transcript_ref=row["transcript_ref"],
+        note=row["note"],
+    )
+
+
+def _link_view_from_row(row) -> EvidenceLinkView:
+    return EvidenceLinkView(
+        target=EvidenceTarget(
+            target_type=EvidenceTargetType(row["target_type"]),
+            target_id=row["target_id"],
+        ),
+        source=_source_from_row(row),
+        role=EvidenceRole(row["evidence_role"]),
+        evidence_id=row["id"],
+        created_at=row["link_created_at"],
+    )
+
+
+def _source_from_row(row) -> EvidenceSource:
+    source_kind = EvidenceSourceKind(row["kind"])
+    if source_kind is EvidenceSourceKind.EPISODE_EVENT:
+        return EvidenceSource(
+            source_kind=source_kind,
+            ref=row["ref"],
+            episode_event_id=row["episode_event_id"] or row["ref"],
         )
-        return EvidenceRef(
-            id=evidence_id, repo_id=repo_id, ref=ref, episode_event_id=ref
-        )
+    return EvidenceSource(
+        source_kind=source_kind,
+        anchor_id=row["anchor_id"],
+        memory_id=row["memory_id"],
+        commit_ref=row["commit_ref"],
+        transcript_ref=row["transcript_ref"],
+        note=row["note"],
+    )
 
-    def _acquire_ref_guard(self, *, repo_id: str, ref: str) -> None:
-        """Serialize concurrent writes for one repo/ref pair within the active transaction."""
 
-        self._session.execute(
-            text("SELECT pg_advisory_xact_lock(hashtext(:repo_id), hashtext(:ref))"),
-            {"repo_id": repo_id, "ref": ref},
-        )
-
-    def link_memory_evidence(self, memory_id: str, evidence_id: str) -> None:
-        """This method creates shellbrain-to-evidence link rows."""
-
-        self._session.execute(
-            insert(memory_evidence)
-            .values(memory_id=memory_id, evidence_id=evidence_id)
-            .on_conflict_do_nothing(index_elements=["memory_id", "evidence_id"])
-        )
-
-    def link_utility_observation_evidence(
-        self, observation_id: str, evidence_id: str
-    ) -> None:
-        """This method creates utility-observation-to-evidence link rows."""
-
-        self._session.execute(
-            insert(utility_observation_evidence)
-            .values(observation_id=observation_id, evidence_id=evidence_id)
-            .on_conflict_do_nothing(index_elements=["observation_id", "evidence_id"])
-        )
-
-    def link_fact_update_evidence(self, fact_update_id: str, evidence_id: str) -> None:
-        """This method creates fact-update-to-evidence link rows."""
-
-        self._session.execute(
-            insert(fact_update_evidence)
-            .values(fact_update_id=fact_update_id, evidence_id=evidence_id)
-            .on_conflict_do_nothing(index_elements=["fact_update_id", "evidence_id"])
-        )
-
-    def link_association_edge_evidence(self, edge_id: str, evidence_id: str) -> None:
-        """This method creates association-edge-to-evidence link rows."""
-
-        self._session.execute(
-            insert(association_edge_evidence)
-            .values(edge_id=edge_id, evidence_id=evidence_id)
-            .on_conflict_do_nothing(index_elements=["edge_id", "evidence_id"])
-        )
+_SOURCE_FIELD_BY_KIND = {
+    EvidenceSourceKind.ANCHOR: "anchor_id",
+    EvidenceSourceKind.MEMORY: "memory_id",
+    EvidenceSourceKind.COMMIT: "commit_ref",
+    EvidenceSourceKind.TRANSCRIPT: "transcript_ref",
+    EvidenceSourceKind.TEST: "note",
+    EvidenceSourceKind.MANUAL: "note",
+}

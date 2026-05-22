@@ -1,14 +1,17 @@
 """Execution contracts for the concept-show use case."""
 
 from collections.abc import Callable
+from datetime import datetime, timezone
 
 from app.core.use_cases.concepts.add.request import ConceptAddRequest
 from app.core.use_cases.concepts.show.request import ConceptShowRequest
 from app.core.use_cases.concepts.update.request import ConceptUpdateRequest
+from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.show import show_concept
 from app.core.use_cases.concepts.update import update_concepts
+from app.infrastructure.db.runtime.models.concepts import concept_claims
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
@@ -19,6 +22,11 @@ class _SequenceIdGenerator(IIdGenerator):
     def new_id(self) -> str:
         self._next += 1
         return f"concept-id-{self._next}"
+
+
+class _FixedClock(IClock):
+    def now(self) -> datetime:
+        return datetime(2026, 5, 22, 12, 0, tzinfo=timezone.utc)
 
 
 def test_concept_show_should_return_dynamic_preview_concept(
@@ -58,6 +66,72 @@ def test_concept_show_should_return_dynamic_preview_concept(
     assert payload["preview_concept"]["name"] == "Deposit Addresses"
     assert payload["preview_concept"]["claim_count"] == 1
     assert payload["status_rollup"]["active"] == 2
+
+
+def test_concept_show_should_include_lifecycle_events_for_included_records(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    fetch_rows: Callable[..., list[dict[str, object]]],
+) -> None:
+    """concept show should expose auditable lifecycle history when requested."""
+
+    _seed_deposit_addresses(uow_factory)
+    claim_id = fetch_rows(concept_claims)[0]["id"]
+
+    with uow_factory() as uow:
+        update_concepts(
+            ConceptUpdateRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
+                        {
+                            "type": "update_lifecycle",
+                            "target_type": "claim",
+                            "target_id": claim_id,
+                            "status": "wrong",
+                            "rationale": "Claim contradicted by implementation.",
+                            "actor": "manual",
+                            "evidence": [{"kind": "manual", "note": "Reviewed."}],
+                        },
+                    ],
+                }
+            ),
+            uow,
+            id_generator=_SequenceIdGenerator(),
+            clock=_FixedClock(),
+        )
+
+    with uow_factory() as uow:
+        show = show_concept(
+            ConceptShowRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "concept": "deposit-addresses",
+                    "include": ["claims", "lifecycle_events"],
+                }
+            ),
+            uow,
+        )
+
+    payload = show.data["concept"]
+    assert payload["claims"][0]["status"] == "wrong"
+    assert payload["claims"][0]["invalidated_at"]
+    assert payload["claims"][0]["updated_by"] == "manual"
+    assert payload["lifecycle_events"] == [
+        {
+            "id": "concept-id-1",
+            "target_type": "claim",
+            "target_id": claim_id,
+            "from_status": "active",
+            "to_status": "wrong",
+            "rationale": "Claim contradicted by implementation.",
+            "actor": "manual",
+            "superseded_by_id": None,
+            "created_at": payload["lifecycle_events"][0]["created_at"],
+            "evidence_count": 1,
+        }
+    ]
 
 
 def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:

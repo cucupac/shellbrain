@@ -13,7 +13,7 @@ from app.infrastructure.db.runtime.models.associations import (
     association_edge_evidence,
     association_edges,
 )
-from app.infrastructure.db.runtime.models.evidence import evidence_refs
+from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
 from app.infrastructure.db.runtime.models.memories import memory_evidence
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -23,7 +23,7 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
     stub_embedding_provider: IEmbeddingProvider,
     fetch_rows: Callable[..., list[dict[str, object]]],
 ) -> None:
-    """create should always attach each evidence ref exactly once in memory_evidence."""
+    """create should attach each evidence ref exactly once in evidence_links."""
 
     request = MemoryAddRequest.model_validate(
         {
@@ -47,11 +47,17 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
             id_generator=SequenceIdGenerator(),
         )
     memory_id = result.data["memory_id"]
-    link_rows = fetch_rows(memory_evidence, memory_evidence.c.memory_id == memory_id)
+    link_rows = fetch_rows(
+        evidence_links,
+        evidence_links.c.target_type == "memory",
+        evidence_links.c.target_id == memory_id,
+    )
     assert len(link_rows) == 2
+    assert fetch_rows(memory_evidence, memory_evidence.c.memory_id == memory_id) == []
 
     refs = fetch_rows(evidence_refs, evidence_refs.c.repo_id == "repo-a")
     assert {row["ref"] for row in refs} == {"session://1", "session://2"}
+    assert {row["kind"] for row in refs} == {"episode_event"}
     assert {row["episode_event_id"] for row in refs} == {"session://1", "session://2"}
 
 
@@ -61,7 +67,7 @@ def test_create_association_links_attach_edge_evidence(
     stub_embedding_provider: IEmbeddingProvider,
     fetch_rows: Callable[..., list[dict[str, object]]],
 ) -> None:
-    """create with associations should always link evidence refs in association_edge_evidence."""
+    """create with associations should link evidence through evidence_links."""
 
     seed_memory(
         memory_id="target-1",
@@ -113,10 +119,15 @@ def test_create_association_links_attach_edge_evidence(
 
     edge_id = str(edges[0]["id"])
     edge_evidence_rows = fetch_rows(
-        association_edge_evidence,
-        association_edge_evidence.c.edge_id == edge_id,
+        evidence_links,
+        evidence_links.c.target_type == "association_edge",
+        evidence_links.c.target_id == edge_id,
     )
     assert len(edge_evidence_rows) == 2
+    assert fetch_rows(
+        association_edge_evidence,
+        association_edge_evidence.c.edge_id == edge_id,
+    ) == []
 
 
 def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
@@ -143,13 +154,13 @@ def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
         )
 
         with uow_factory() as uow:
-            original_upsert_ref = uow.evidence.upsert_ref
+            original_upsert_ref = uow.evidence._upsert_ref
 
-            def _synchronized_upsert_ref(*, repo_id: str, ref: str):
+            def _synchronized_upsert_ref(*, repo_id: str, source):
                 barrier.wait()
-                return original_upsert_ref(repo_id=repo_id, ref=ref)
+                return original_upsert_ref(repo_id=repo_id, source=source)
 
-            uow.evidence.upsert_ref = _synchronized_upsert_ref
+            uow.evidence._upsert_ref = _synchronized_upsert_ref
             result = execute_create_memory(
                 request,
                 uow,
@@ -171,7 +182,8 @@ def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
 
     evidence_id = str(refs[0]["id"])
     link_rows = fetch_rows(
-        memory_evidence, memory_evidence.c.evidence_id == evidence_id
+        evidence_links, evidence_links.c.evidence_id == evidence_id
     )
     assert len(link_rows) == 2
-    assert {str(row["memory_id"]) for row in link_rows} == set(memory_ids)
+    assert {str(row["target_id"]) for row in link_rows} == set(memory_ids)
+    assert {str(row["target_type"]) for row in link_rows} == {"memory"}

@@ -8,7 +8,12 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 ConceptShowIncludeValue = Literal[
-    "claims", "relations", "groundings", "memory_links", "preview_concept"
+    "claims",
+    "relations",
+    "groundings",
+    "memory_links",
+    "lifecycle_events",
+    "preview_concept",
 ]
 
 

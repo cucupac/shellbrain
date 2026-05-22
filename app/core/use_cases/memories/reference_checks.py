@@ -14,7 +14,6 @@ from app.core.entities.memories import (
     MemoryKind,
 )
 from app.core.ports.db.unit_of_work import IUnitOfWork
-from app.core.policies.memories.link_rules import validate_matures_into_relation
 from app.core.policies.memories.link_rules import (
     validate_create_semantics,
     validate_update_semantics,
@@ -159,15 +158,6 @@ def validate_create_integrity(
                     code=ErrorCode.INTEGRITY_ERROR,
                     message="Association target shellbrain is not visible for this repo_id",
                     field=f"memory.links.associations.{index}.to_memory_id",
-                )
-            )
-        if target and target.is_visible_in(request.repo_id):
-            errors.extend(
-                validate_matures_into_relation(
-                    source_kind=MemoryKind(request.memory.kind),
-                    target_kind=target.kind,
-                    relation_type=association.relation_type,
-                    field=f"memory.links.associations.{index}.relation_type",
                 )
             )
     return errors
@@ -320,15 +310,6 @@ def validate_update_integrity(
                     code=ErrorCode.INTEGRITY_ERROR,
                     message="association_link.to_memory_id is not visible for this repo_id",
                     field="update.to_memory_id",
-                )
-            )
-        if target_memory and target and target.is_visible_in(request.repo_id):
-            errors.extend(
-                validate_matures_into_relation(
-                    source_kind=target_memory.kind,
-                    target_kind=target.kind,
-                    relation_type=update.relation_type,
-                    field="update.relation_type",
                 )
             )
     return errors

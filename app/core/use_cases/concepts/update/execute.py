@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 from typing import Any
 
 from app.core.use_cases.concepts.update.request import (
@@ -15,6 +16,7 @@ from app.core.use_cases.concepts.update.request import (
     EnsureAnchorAction,
     LinkMemoryAction,
     UpdateConceptAction,
+    UpdateLifecycleAction,
 )
 from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.entities.concepts import (
@@ -24,13 +26,13 @@ from app.core.entities.concepts import (
     ConceptClaim,
     ConceptClaimType,
     ConceptCreatedBy,
-    ConceptEvidence,
-    ConceptEvidenceKind,
-    ConceptEvidenceTargetType,
     ConceptGrounding,
     ConceptGroundingRole,
     ConceptKind,
     ConceptLifecycle,
+    ConceptLifecycleEvent,
+    ConceptLifecycleStatus,
+    ConceptLifecycleTargetType,
     ConceptMemoryLink,
     ConceptMemoryLinkRole,
     ConceptRelation,
@@ -38,7 +40,15 @@ from app.core.entities.concepts import (
     ConceptSourceKind,
     ConceptStatus,
 )
+from app.core.entities.evidence import (
+    EvidenceRole,
+    EvidenceSource,
+    EvidenceSourceKind,
+    EvidenceTarget,
+    EvidenceTargetType,
+)
 from app.core.ports.embeddings.provider import IEmbeddingProvider
+from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.use_cases.concepts.embeddings import upsert_concept_embeddings
@@ -59,6 +69,7 @@ def update_concepts(
     uow: IUnitOfWork,
     *,
     id_generator: IIdGenerator,
+    clock: IClock | None = None,
     embedding_provider: IEmbeddingProvider | None = None,
     embedding_model: str | None = None,
 ) -> ConceptUpdateResult:
@@ -120,6 +131,17 @@ def update_concepts(
                         action,
                         uow,
                         id_generator=id_generator,
+                        touched_concept_ids=touched_concept_ids,
+                    )
+                )
+            elif isinstance(action, UpdateLifecycleAction):
+                results.append(
+                    _update_lifecycle(
+                        request.repo_id,
+                        action,
+                        uow,
+                        id_generator=id_generator,
+                        clock=clock,
                         touched_concept_ids=touched_concept_ids,
                     )
                 )
@@ -211,11 +233,10 @@ def _add_relation(
     )
     _attach_evidence(
         repo_id,
-        ConceptEvidenceTargetType.RELATION,
+        EvidenceTargetType.CONCEPT_RELATION,
         relation.id,
         action.evidence,
         uow,
-        id_generator,
     )
     return {"type": action.type, "relation_id": relation.id}
 
@@ -243,11 +264,10 @@ def _add_claim(
     )
     _attach_evidence(
         repo_id,
-        ConceptEvidenceTargetType.CLAIM,
+        EvidenceTargetType.CONCEPT_CLAIM,
         claim.id,
         action.evidence,
         uow,
-        id_generator,
     )
     return {"type": action.type, "claim_id": claim.id}
 
@@ -298,11 +318,10 @@ def _add_grounding(
     )
     _attach_evidence(
         repo_id,
-        ConceptEvidenceTargetType.GROUNDING,
+        EvidenceTargetType.CONCEPT_GROUNDING,
         grounding.id,
         action.evidence,
         uow,
-        id_generator,
     )
     return {"type": action.type, "grounding_id": grounding.id, "anchor_id": anchor.id}
 
@@ -330,13 +349,156 @@ def _link_memory(
     )
     _attach_evidence(
         repo_id,
-        ConceptEvidenceTargetType.MEMORY_LINK,
+        EvidenceTargetType.CONCEPT_MEMORY_LINK,
         memory_link.id,
         action.evidence,
         uow,
-        id_generator,
     )
     return {"type": action.type, "memory_link_id": memory_link.id}
+
+
+def _update_lifecycle(
+    repo_id: str,
+    action: UpdateLifecycleAction,
+    uow: IUnitOfWork,
+    *,
+    id_generator: IIdGenerator,
+    clock: IClock | None,
+    touched_concept_ids: set[str],
+) -> dict[str, Any]:
+    target_type = ConceptLifecycleTargetType(action.target_type)
+    target = uow.concepts.get_lifecycle_target(
+        repo_id=repo_id, target_type=target_type, target_id=action.target_id
+    )
+    if target is None:
+        raise ValueError(f"Concept lifecycle target not found: {action.target_id}")
+    _touch_lifecycle_target(target, touched_concept_ids)
+    replacement_id = _validated_replacement_id(
+        repo_id=repo_id,
+        target_type=target_type,
+        target_id=target.id,
+        status=ConceptLifecycleStatus(action.status),
+        superseded_by_id=action.superseded_by_id,
+        uow=uow,
+    )
+    if clock is None:
+        raise ValueError("concept lifecycle updates require a clock")
+    now = clock.now()
+    lifecycle = target.lifecycle
+    status = ConceptLifecycleStatus(action.status)
+    updated_lifecycle = replace(
+        lifecycle,
+        status=status,
+        confidence=action.confidence
+        if action.confidence is not None
+        else lifecycle.confidence,
+        validated_at=_validated_at_for_update(
+            status=status,
+            action_validated_at=action.validated_at,
+            current_validated_at=lifecycle.validated_at,
+            now=now,
+        ),
+        invalidated_at=_invalidated_at_for_update(
+            status=status, current_invalidated_at=lifecycle.invalidated_at, now=now
+        ),
+        superseded_by_id=replacement_id,
+        updated_by=ConceptCreatedBy(action.actor),
+    )
+    updated_target = replace(target, lifecycle=updated_lifecycle)
+    uow.concepts.update_lifecycle_target(updated_target)
+    event = uow.concepts.add_lifecycle_event(
+        ConceptLifecycleEvent(
+            id=id_generator.new_id(),
+            repo_id=repo_id,
+            target_type=target_type,
+            target_id=target.id,
+            from_status=lifecycle.status,
+            to_status=status,
+            rationale=action.rationale,
+            actor=ConceptCreatedBy(action.actor),
+            superseded_by_id=replacement_id,
+        )
+    )
+    _attach_evidence(
+        repo_id,
+        EvidenceTargetType.CONCEPT_LIFECYCLE_EVENT,
+        event.id,
+        action.evidence,
+        uow,
+    )
+    return {
+        "type": action.type,
+        "target_type": target_type.value,
+        "target_id": target.id,
+        "status": status.value,
+        "lifecycle_event_id": event.id,
+    }
+
+
+def _validated_replacement_id(
+    *,
+    repo_id: str,
+    target_type: ConceptLifecycleTargetType,
+    target_id: str,
+    status: ConceptLifecycleStatus,
+    superseded_by_id: str | None,
+    uow: IUnitOfWork,
+) -> str | None:
+    if status != ConceptLifecycleStatus.SUPERSEDED:
+        return None
+    if superseded_by_id is None:
+        raise ValueError("superseded lifecycle updates require superseded_by_id")
+    if superseded_by_id == target_id:
+        raise ValueError("superseded_by_id cannot reference the updated target")
+    replacement = uow.concepts.get_lifecycle_target(
+        repo_id=repo_id, target_type=target_type, target_id=superseded_by_id
+    )
+    if replacement is None:
+        raise ValueError(
+            f"Superseding concept lifecycle target not found: {superseded_by_id}"
+        )
+    return superseded_by_id
+
+
+def _validated_at_for_update(
+    *,
+    status: ConceptLifecycleStatus,
+    action_validated_at: datetime | None,
+    current_validated_at: datetime | None,
+    now: datetime,
+) -> datetime | None:
+    if action_validated_at is not None:
+        return action_validated_at
+    if status == ConceptLifecycleStatus.ACTIVE:
+        return now
+    return current_validated_at
+
+
+def _invalidated_at_for_update(
+    *,
+    status: ConceptLifecycleStatus,
+    current_invalidated_at: datetime | None,
+    now: datetime,
+) -> datetime | None:
+    if status in {
+        ConceptLifecycleStatus.STALE,
+        ConceptLifecycleStatus.SUPERSEDED,
+        ConceptLifecycleStatus.WRONG,
+    }:
+        return current_invalidated_at or now
+    return None
+
+
+def _touch_lifecycle_target(
+    target: ConceptRelation | ConceptClaim | ConceptGrounding | ConceptMemoryLink,
+    touched_concept_ids: set[str],
+) -> None:
+    if isinstance(target, ConceptRelation):
+        touched_concept_ids.update(
+            (target.subject_concept_id, target.object_concept_id)
+        )
+        return
+    touched_concept_ids.add(target.concept_id)
 
 
 def _lifecycle_from_action(action) -> ConceptLifecycle:
@@ -373,28 +535,34 @@ def _ensure_anchor_from_payload(
 
 def _attach_evidence(
     repo_id: str,
-    target_type: ConceptEvidenceTargetType,
+    target_type: EvidenceTargetType,
     target_id: str,
     evidence_items: list[ConceptEvidencePayload],
     uow: IUnitOfWork,
-    id_generator: IIdGenerator,
 ) -> None:
+    sources: list[EvidenceSource] = []
     for item in evidence_items:
         validate_evidence_visibility(repo_id, item, uow)
-        uow.concepts.add_evidence(
-            ConceptEvidence(
-                id=id_generator.new_id(),
-                repo_id=repo_id,
-                target_type=target_type,
-                target_id=target_id,
-                evidence_kind=ConceptEvidenceKind(item.kind),
-                anchor_id=item.anchor_id,
-                memory_id=item.memory_id,
-                commit_ref=item.commit_ref,
-                transcript_ref=item.transcript_ref,
-                note=item.note,
-            )
-        )
+        sources.append(_evidence_source_from_payload(item))
+    uow.evidence.attach_evidence(
+        repo_id=repo_id,
+        target=EvidenceTarget(target_type=target_type, target_id=target_id),
+        sources=tuple(sources),
+        role=EvidenceRole.SUPPORTS,
+    )
+
+
+def _evidence_source_from_payload(item: ConceptEvidencePayload) -> EvidenceSource:
+    """Convert a concept evidence request payload into the unified evidence source."""
+
+    return EvidenceSource(
+        source_kind=EvidenceSourceKind(item.kind),
+        anchor_id=item.anchor_id,
+        memory_id=item.memory_id,
+        commit_ref=item.commit_ref,
+        transcript_ref=item.transcript_ref,
+        note=item.note,
+    )
 
 
 def _canonical_locator_hash(*, kind: str, locator: dict[str, Any]) -> str:

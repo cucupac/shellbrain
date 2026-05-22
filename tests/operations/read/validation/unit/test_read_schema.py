@@ -109,21 +109,6 @@ def test_read_kinds_reject_empty_lists() -> None:
     assert any((error.field or "").startswith("kinds") for error in errors)
 
 
-def test_read_kinds_accept_frontier() -> None:
-    """read requests should always accept frontier in explicit kinds filters."""
-
-    payload = {
-        "op": "read",
-        "query": "open questions about retrieval",
-        "kinds": ["frontier"],
-    }
-
-    request, errors = validate_read_schema(payload)
-
-    assert errors == []
-    assert request is not None
-
-
 def test_read_accepts_concept_expansion_at_agent_interface() -> None:
     """read requests should accept worker-facing concept expansion controls."""
 

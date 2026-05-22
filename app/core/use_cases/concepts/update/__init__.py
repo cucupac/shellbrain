@@ -11,6 +11,7 @@ from app.core.use_cases.concepts.update.request import (
     EnsureAnchorAction,
     LinkMemoryAction,
     UpdateConceptAction,
+    UpdateLifecycleAction,
 )
 from app.core.use_cases.concepts.update.result import ConceptUpdateResult
 
@@ -26,6 +27,7 @@ __all__ = [
     "EnsureAnchorAction",
     "LinkMemoryAction",
     "UpdateConceptAction",
+    "UpdateLifecycleAction",
     "update_concepts",
 ]
 

@@ -32,6 +32,7 @@ _TABLES_FOR_MUTATION_CHECK = (
     "association_edge_evidence",
     "utility_observations",
     "evidence_refs",
+    "evidence_links",
 )
 
 

@@ -1337,8 +1337,18 @@ def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_a
         conn.execute(
             text(
                 """
-                INSERT INTO evidence_refs (id, repo_id, ref, episode_event_id, created_at)
-                VALUES ('evidence-problem-1', 'telemetry-repo', 'evt-problem-1', 'evt-problem-1', '2026-03-18T10:00:06+00:00')
+                INSERT INTO evidence_refs (
+                  id, repo_id, kind, ref, canonical_hash, episode_event_id, created_at
+                )
+                VALUES (
+                  'evidence-problem-1',
+                  'telemetry-repo',
+                  'episode_event',
+                  'evt-problem-1',
+                  'sha256:test-problem-1',
+                  'evt-problem-1',
+                  '2026-03-18T10:00:06+00:00'
+                )
                 """
             )
         )
@@ -1355,8 +1365,18 @@ def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_a
         conn.execute(
             text(
                 """
-                INSERT INTO memory_evidence (memory_id, evidence_id)
-                VALUES ('problem-1', 'evidence-problem-1')
+                INSERT INTO evidence_links (
+                  id, repo_id, target_type, target_id, evidence_id, evidence_role, created_at
+                )
+                VALUES (
+                  'evidence-link-problem-1',
+                  'telemetry-repo',
+                  'memory',
+                  'problem-1',
+                  'evidence-problem-1',
+                  'supports',
+                  '2026-03-18T10:00:06+00:00'
+                )
                 """
             )
         )
@@ -1486,8 +1506,18 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
         conn.execute(
             text(
                 """
-                INSERT INTO evidence_refs (id, repo_id, ref, episode_event_id, created_at)
-                VALUES ('evidence-problem-2', 'telemetry-repo', 'evt-problem-2', 'evt-problem-2', '2026-03-18T11:00:06+00:00')
+                INSERT INTO evidence_refs (
+                  id, repo_id, kind, ref, canonical_hash, episode_event_id, created_at
+                )
+                VALUES (
+                  'evidence-problem-2',
+                  'telemetry-repo',
+                  'episode_event',
+                  'evt-problem-2',
+                  'sha256:test-problem-2',
+                  'evt-problem-2',
+                  '2026-03-18T11:00:06+00:00'
+                )
                 """
             )
         )
@@ -1505,8 +1535,18 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
         conn.execute(
             text(
                 """
-                INSERT INTO memory_evidence (memory_id, evidence_id)
-                VALUES ('problem-2', 'evidence-problem-2')
+                INSERT INTO evidence_links (
+                  id, repo_id, target_type, target_id, evidence_id, evidence_role, created_at
+                )
+                VALUES (
+                  'evidence-link-problem-2',
+                  'telemetry-repo',
+                  'memory',
+                  'problem-2',
+                  'evidence-problem-2',
+                  'supports',
+                  '2026-03-18T11:00:06+00:00'
+                )
                 """
             )
         )
@@ -1952,11 +1992,26 @@ def _insert_problem_with_solution_and_optional_read(
     conn.execute(
         text(
             """
-            INSERT INTO evidence_refs (id, repo_id, ref, episode_event_id, created_at)
-            VALUES (:evidence_id, 'telemetry-repo', :event_id, :event_id, :created_at)
+            INSERT INTO evidence_refs (
+              id, repo_id, kind, ref, canonical_hash, episode_event_id, created_at
+            )
+            VALUES (
+              :evidence_id,
+              'telemetry-repo',
+              'episode_event',
+              :event_id,
+              :canonical_hash,
+              :event_id,
+              :created_at
+            )
             """
         ),
-        {"evidence_id": evidence_id, "event_id": event_id, "created_at": base_time},
+        {
+            "evidence_id": evidence_id,
+            "event_id": event_id,
+            "canonical_hash": f"sha256:test-{evidence_id}",
+            "created_at": base_time,
+        },
     )
     conn.execute(
         text(
@@ -1978,9 +2033,27 @@ def _insert_problem_with_solution_and_optional_read(
     )
     conn.execute(
         text(
-            "INSERT INTO memory_evidence (memory_id, evidence_id) VALUES (:problem_id, :evidence_id)"
+            """
+            INSERT INTO evidence_links (
+              id, repo_id, target_type, target_id, evidence_id, evidence_role, created_at
+            )
+            VALUES (
+              :link_id,
+              'telemetry-repo',
+              'memory',
+              :problem_id,
+              :evidence_id,
+              'supports',
+              :created_at
+            )
+            """
         ),
-        {"problem_id": problem_id, "evidence_id": evidence_id},
+        {
+            "link_id": f"evidence-link-{suffix}",
+            "problem_id": problem_id,
+            "evidence_id": evidence_id,
+            "created_at": base_time,
+        },
     )
     conn.execute(
         text(

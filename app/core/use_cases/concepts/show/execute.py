@@ -13,7 +13,9 @@ def show_concept(request: ConceptShowRequest, uow: IUnitOfWork) -> ConceptShowRe
     """Return one concept with requested facets."""
 
     bundle = uow.concepts.get_concept_bundle(
-        repo_id=request.repo_id, concept_ref=request.concept
+        repo_id=request.repo_id,
+        concept_ref=request.concept,
+        include_lifecycle_events="lifecycle_events" in request.include,
     )
     if bundle is None:
         raise DomainValidationError(

@@ -69,6 +69,7 @@ def run_concept_update_operation(
                         request,
                         uow,
                         id_generator=dependencies.id_generator,
+                        clock=dependencies.clock,
                         embedding_provider=embedding_provider,
                         embedding_model=embedding_model,
                     )
