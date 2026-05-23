@@ -29,7 +29,7 @@ The install script also works as an upgrade path: `curl -L shellbrain.ai/upgrade
 
 ---
 
-### Recall in one command.
+## Recall in one command.
 Episodic, empirical, conceptual. Three categories, one retrieval surface.
 
 ---
