@@ -83,7 +83,7 @@ Use Shellbrain in your agent of choice. Then, just work normally.
 
 **Claude Code:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
-**Codex:** *Use $shellbrain to remember Shellbrain recall at the right task boundaries.*
+**Codex:** *Use `$shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
 **Cursor:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
