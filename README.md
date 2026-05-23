@@ -51,7 +51,7 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 
 ---
 
-## How agents use ShellBrain
+## How Agents Use ShellBrain
 
 ### Recall
 
@@ -91,7 +91,7 @@ Use Shellbrain in your agent of choice. Then, just work normally.
 
 ## Repair
 
-`shellbrain admin doctor` to inspect. `shellbrain init` to repair if doctor flags it. Do not rerun init every session — it is not a no-op.
+`shellbrain admin doctor` to inspect. `shellbrain init` to repair if doctor flags it. Do not rerun init every session.
 
 ---
 
