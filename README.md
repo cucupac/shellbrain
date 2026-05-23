@@ -8,6 +8,27 @@
 
 Agents forget across sessions. They rediscover the same problems, repeat the same mistakes, and relearn what you already taught them. **ShellBrain makes their work compound.**
 
+## Install
+
+```bash
+curl -L shellbrain.ai/install | bash
+```
+
+**Works for Codex, Claude Code, and Cursor.** The installer runs `shellbrain init` for you. Repos register themselves on first use.
+
+Requirements.
+- macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
+
+### Upgrade for latest capabilities
+
+```bash
+shellbrain upgrade
+```
+
+The install script also works as an upgrade path: `curl -L shellbrain.ai/upgrade | bash`. Manual alternative: `pipx upgrade shellbrain && shellbrain init`.
+
+---
+
 ### Recall in one command.
 Episodic, empirical, conceptual. Three categories, one retrieval surface.
 
@@ -52,27 +73,6 @@ When a user explicitly says to store or teach Shellbrain something, working agen
 Memory that is grounded in evidence, small in scope, and asked for rather than pushed is memory that compounds. Everything else is noise for working agents.
 
 **A memory layer that cannot justify itself should not persist.**
-
----
-
-## Install
-
-```bash
-curl -L shellbrain.ai/install | bash
-```
-
-**Works for Codex, Claude Code, and Cursor.** The installer runs `shellbrain init` for you. Repos register themselves on first use.
-
-Requirements.
-- macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
-
-### Upgrade for latest capabilities
-
-```bash
-shellbrain upgrade
-```
-
-The install script also works as an upgrade path: `curl -L shellbrain.ai/upgrade | bash`. Manual alternative: `pipx upgrade shellbrain && shellbrain init`.
 
 ---
 
