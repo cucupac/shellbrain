@@ -43,7 +43,7 @@ Episodic, empirical, conceptual. Three categories, one retrieval surface.
 - An ontology of problems, solutions, failed tactics, facts, preferences, changes.
 - This is **case-based reasoning** in a semantic graph.
 
-**Conceptual konwledge** is the _abstractive_ layer.
+**Conceptual knowledge** is the _abstractive_ layer.
 - A **higher-level concept graph** with claims, relations, and implementations that link back to the concrete layer.
 - **Progressive disclosure.** agents get oriented first, then ask for depth only where tasks require it.
 
@@ -58,7 +58,36 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 **Working agents call `shellbrain recall`.** That is the normal interface they have to think about. One command, **one _carefully curated_ compact brief**, with sources cited.
 
 ```bash
-shellbrain recall --json '{"query":"what context matters for this migration lock timeout?","current_problem":{"goal":"fix the migration hang","surface":"db admin","obstacle":"lock timeout","hypothesis":"none yet"}}'
+shellbrain recall --json '{"query":"What is ShellBrain and how does it help a working coding agent?","current_problem":{"goal":"understand ShellBrain","surface":"README","obstacle":"new readers do not know the product yet","hypothesis":"a real recall brief should show what agents get back"}}'
+```
+
+Example response, abridged from a real recall:
+
+```text
+Summary
+ShellBrain is a repo-scoped, evidence-backed long-term memory system for
+working agents. It helps by turning recall into a read-only synthesis layer
+that combines the agent query with the user problem, pre-ranks relevant
+memories and concepts, and exposes expansion handles instead of raw graph
+internals.
+
+Constraints
+- Use recall for normal task context.
+- Use teach only when the user explicitly asks ShellBrain to store something.
+- Frame ShellBrain as evidence-backed long-term memory, not a generic summary
+  product.
+- Keep source events inspectable.
+
+Known traps
+- Treating recall/read as raw retrieval instead of synthesized context.
+- Writing the README/example as a broad summary instead of a concrete,
+  product-relevant explanation.
+
+Concept orientation
+- ShellBrain System: repo-scoped case-based memory for agent work.
+- ShellBrain Agent Interface: working-agent recall/teach surface; internal
+  read/event/concept/memory/scenario commands stay internal.
+- Build Context: read-only recall synthesis behind `shellbrain recall`.
 ```
 
 **Working agents focus on only their work.**
