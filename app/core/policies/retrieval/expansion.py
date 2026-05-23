@@ -4,41 +4,18 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
+from app.core.policies.retrieval.ontology_semantics import (
+    REVERSIBLE_ASSOCIATION_RELATION_TYPES,
+    structural_relation_expansion_type,
+)
 
-_REVERSIBLE_ASSOCIATION_TYPES = frozenset({"associated_with"})
 
-
-def select_problem_attempt_neighbors(
+def select_structural_memory_relation_neighbors(
     rows: Sequence[dict[str, Any]],
     *,
     anchor_memory_id: str,
 ) -> list[dict[str, Any]]:
-    """Return visible problem-attempt neighbors for one anchor."""
-
-    neighbors: dict[str, dict[str, Any]] = {}
-    for row in rows:
-        visible_memory_ids = {
-            str(memory_id) for memory_id in row.get("visible_memory_ids", ())
-        }
-        for candidate_id in (str(row["problem_id"]), str(row["attempt_id"])):
-            if (
-                candidate_id == anchor_memory_id
-                or candidate_id not in visible_memory_ids
-            ):
-                continue
-            neighbors[candidate_id] = {
-                "memory_id": candidate_id,
-                "expansion_type": "problem_attempt",
-            }
-    return [neighbors[memory_id] for memory_id in sorted(neighbors)]
-
-
-def select_fact_update_neighbors(
-    rows: Sequence[dict[str, Any]],
-    *,
-    anchor_memory_id: str,
-) -> list[dict[str, Any]]:
-    """Return visible fact-update neighbors for one anchor."""
+    """Return visible structural relation neighbors for one anchor."""
 
     neighbors: dict[str, dict[str, Any]] = {}
     for row in rows:
@@ -46,9 +23,8 @@ def select_fact_update_neighbors(
             str(memory_id) for memory_id in row.get("visible_memory_ids", ())
         }
         for candidate_id in (
-            str(row["old_fact_id"]),
-            str(row["change_id"]),
-            str(row["new_fact_id"]),
+            str(row["subject_memory_id"]),
+            str(row["object_memory_id"]),
         ):
             if (
                 candidate_id == anchor_memory_id
@@ -57,7 +33,10 @@ def select_fact_update_neighbors(
                 continue
             neighbors[candidate_id] = {
                 "memory_id": candidate_id,
-                "expansion_type": "fact_update",
+                "relation_type": str(row["predicate"]),
+                "expansion_type": structural_relation_expansion_type(
+                    row["predicate"]
+                ),
             }
     return [neighbors[memory_id] for memory_id in sorted(neighbors)]
 
@@ -118,7 +97,7 @@ def _association_neighbor(
         neighbor_id = to_memory_id
     elif (
         to_memory_id == anchor_memory_id
-        and relation_type in _REVERSIBLE_ASSOCIATION_TYPES
+        and relation_type in REVERSIBLE_ASSOCIATION_RELATION_TYPES
     ):
         neighbor_id = from_memory_id
     else:

@@ -1,6 +1,7 @@
 """This module defines the create-shellbrain use-case orchestration entry point."""
 
 from app.core.errors import DomainValidationError
+from app.core.entities.memories import MemoryKind
 from app.core.entities.settings import CreatePolicySettings
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.ports.system.idgen import IIdGenerator
@@ -32,8 +33,17 @@ def execute_create_memory(
     if validation_errors:
         raise DomainValidationError(validation_errors)
     associations = request.memory.links.associations
+    problem_link_count = (
+        1
+        if MemoryKind(request.memory.kind).requires_problem_link
+        and request.memory.links.problem_id
+        else 0
+    )
     plan_ids = CreatePlanIds(
         memory_id=id_generator.new_id(),
+        structural_relation_ids=tuple(
+            id_generator.new_id() for _ in range(problem_link_count)
+        ),
         association_edge_ids=tuple(id_generator.new_id() for _ in associations),
         association_observation_ids=tuple(id_generator.new_id() for _ in associations),
     )

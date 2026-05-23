@@ -444,20 +444,20 @@ def test_problem_runs_schema_should_enforce_window_constraints_and_rename_proxy_
     """problem_runs should exist as the explicit run-window substrate and old proxy views should be legacy only."""
 
     assert_relation_exists("problem_runs")
-    assert_relation_exists("usage_problem_tokens_legacy")
-    assert_relation_exists("usage_problem_read_roi_legacy")
-    assert_relation_exists("usage_read_before_solve_roi_legacy")
+    assert_relation_exists("usage_problem_tokens")
+    assert_relation_exists("usage_problem_read_roi")
+    assert_relation_exists("usage_read_before_solve_roi")
     assert_relation_exists("usage_problem_run_tokens")
 
     with integration_engine.connect() as conn:
         old_proxy_view = conn.execute(
-            text("SELECT to_regclass('public.usage_problem_tokens');")
+            text("SELECT to_regclass('public.usage_problem_tokens_legacy');")
         ).scalar_one()
         old_roi_view = conn.execute(
-            text("SELECT to_regclass('public.usage_problem_read_roi');")
+            text("SELECT to_regclass('public.usage_problem_read_roi_legacy');")
         ).scalar_one()
         old_aggregate_view = conn.execute(
-            text("SELECT to_regclass('public.usage_read_before_solve_roi');")
+            text("SELECT to_regclass('public.usage_read_before_solve_roi_legacy');")
         ).scalar_one()
         indexes = {
             row["indexname"]
@@ -1310,12 +1310,12 @@ def test_usage_problem_run_agent_tokens_should_split_worker_recall_and_builder_u
     assert knowledge_breakdown[0]["capture_quality"] == "estimated"
 
 
-def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_and_first_solution_and_latest_solution_when_only_one_solution_exists(
+def test_usage_problem_tokens_should_sum_usage_between_problem_creation_and_first_solution_and_latest_solution_when_only_one_solution_exists(
     integration_engine,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """usage_problem_tokens_legacy should expose identical first/latest metrics when one solution exists."""
+    """usage_problem_tokens should expose identical first/latest metrics when one solution exists."""
 
     with integration_engine.begin() as conn:
         conn.execute(
@@ -1383,8 +1383,18 @@ def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_a
         conn.execute(
             text(
                 """
-                INSERT INTO problem_attempts (problem_id, attempt_id, role, created_at)
-                VALUES ('problem-1', 'solution-1', 'solution', '2026-03-18T10:02:00+00:00')
+                INSERT INTO structural_memory_relations (
+                  id, repo_id, subject_memory_id, predicate, object_memory_id, created_at, updated_at
+                )
+                VALUES (
+                  'relation-problem-1-solution-1',
+                  'telemetry-repo',
+                  'problem-1',
+                  'solved_by',
+                  'solution-1',
+                  '2026-03-18T10:02:00+00:00',
+                  '2026-03-18T10:02:00+00:00'
+                )
                 """
             )
         )
@@ -1461,9 +1471,9 @@ def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_a
             )
         )
 
-    assert_relation_exists("usage_problem_tokens_legacy")
+    assert_relation_exists("usage_problem_tokens")
     rows = fetch_relation_rows(
-        "usage_problem_tokens_legacy",
+        "usage_problem_tokens",
         where_sql="repo_id = :repo_id AND problem_id = :problem_id",
         params={"repo_id": "telemetry-repo", "problem_id": "problem-1"},
     )
@@ -1479,12 +1489,12 @@ def test_usage_problem_tokens_legacy_should_sum_usage_between_problem_creation_a
     assert rows[0]["latest_all_tokens_including_cache"] == 130
 
 
-def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_metrics_when_multiple_solutions_exist(
+def test_usage_problem_tokens_should_expose_first_and_latest_solution_metrics_when_multiple_solutions_exist(
     integration_engine,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """usage_problem_tokens_legacy and usage_problem_read_roi_legacy should work across first and latest multi-solution windows."""
+    """usage_problem_tokens and usage_problem_read_roi should work across first and latest multi-solution windows."""
 
     with integration_engine.begin() as conn:
         conn.execute(
@@ -1553,10 +1563,28 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
         conn.execute(
             text(
                 """
-                INSERT INTO problem_attempts (problem_id, attempt_id, role, created_at)
+                INSERT INTO structural_memory_relations (
+                  id, repo_id, subject_memory_id, predicate, object_memory_id, created_at, updated_at
+                )
                 VALUES
-                  ('problem-2', 'solution-2a', 'solution', '2026-03-18T11:02:00+00:00'),
-                  ('problem-2', 'solution-2b', 'solution', '2026-03-18T11:04:00+00:00')
+                  (
+                    'relation-problem-2-solution-2a',
+                    'telemetry-repo',
+                    'problem-2',
+                    'solved_by',
+                    'solution-2a',
+                    '2026-03-18T11:02:00+00:00',
+                    '2026-03-18T11:02:00+00:00'
+                  ),
+                  (
+                    'relation-problem-2-solution-2b',
+                    'telemetry-repo',
+                    'problem-2',
+                    'solved_by',
+                    'solution-2b',
+                    '2026-03-18T11:04:00+00:00',
+                    '2026-03-18T11:04:00+00:00'
+                  )
                 """
             )
         )
@@ -1790,9 +1818,9 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
             )
         )
 
-    assert_relation_exists("usage_problem_tokens_legacy")
+    assert_relation_exists("usage_problem_tokens")
     rows = fetch_relation_rows(
-        "usage_problem_tokens_legacy",
+        "usage_problem_tokens",
         where_sql="repo_id = :repo_id AND problem_id = :problem_id",
         params={"repo_id": "telemetry-repo", "problem_id": "problem-2"},
     )
@@ -1807,9 +1835,9 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
     assert rows[0]["latest_fresh_work_tokens"] == 180
     assert rows[0]["latest_all_tokens_including_cache"] == 195
 
-    assert_relation_exists("usage_problem_read_roi_legacy")
+    assert_relation_exists("usage_problem_read_roi")
     roi_rows = fetch_relation_rows(
-        "usage_problem_read_roi_legacy",
+        "usage_problem_read_roi",
         where_sql="repo_id = :repo_id AND problem_id = :problem_id",
         params={"repo_id": "telemetry-repo", "problem_id": "problem-2"},
     )
@@ -1835,12 +1863,12 @@ def test_usage_problem_tokens_legacy_should_expose_first_and_latest_solution_met
     assert roi_rows[0]["read_cohort_before_latest_solution"] == "nonzero"
 
 
-def test_usage_read_before_solve_roi_legacy_should_bucket_none_zero_only_and_nonzero_read_cohorts(
+def test_usage_read_before_solve_roi_should_bucket_none_zero_only_and_nonzero_read_cohorts(
     integration_engine,
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """usage_read_before_solve_roi_legacy should aggregate per-repo cohorts across first and latest solve windows."""
+    """usage_read_before_solve_roi should aggregate per-repo cohorts across first and latest solve windows."""
 
     with integration_engine.begin() as conn:
         _insert_problem_with_solution_and_optional_read(
@@ -1877,9 +1905,9 @@ def test_usage_read_before_solve_roi_legacy_should_bucket_none_zero_only_and_non
             implicit_tokens=20,
         )
 
-    assert_relation_exists("usage_read_before_solve_roi_legacy")
+    assert_relation_exists("usage_read_before_solve_roi")
     rows = fetch_relation_rows(
-        "usage_read_before_solve_roi_legacy",
+        "usage_read_before_solve_roi",
         where_sql="repo_id = :repo_id",
         params={"repo_id": "telemetry-repo"},
         order_by="solve_window ASC, read_cohort ASC",
@@ -2058,12 +2086,23 @@ def _insert_problem_with_solution_and_optional_read(
     conn.execute(
         text(
             """
-            INSERT INTO problem_attempts (problem_id, attempt_id, role, created_at)
-            VALUES (:problem_id, :solution_id, 'solution', :solution_created_at)
+            INSERT INTO structural_memory_relations (
+              id, repo_id, subject_memory_id, predicate, object_memory_id, created_at, updated_at
+            )
+            VALUES (
+              :relation_id,
+              'telemetry-repo',
+              :problem_id,
+              'solved_by',
+              :solution_id,
+              :solution_created_at,
+              :solution_created_at
+            )
             """
         ),
         {
             "problem_id": problem_id,
+            "relation_id": f"relation-{problem_id}-{solution_id}",
             "solution_id": solution_id,
             "solution_created_at": solution_created_at,
         },

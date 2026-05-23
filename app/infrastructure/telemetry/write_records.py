@@ -12,13 +12,13 @@ from app.core.use_cases.memories.effect_plan import (
     EffectParams,
     EffectType,
     EvidenceSourceEffectParams,
-    FactUpdateCreateEffectParams,
     MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
-    MemoryEvidenceAttachEffectParams,
+    EvidenceAttachEffectParams,
     MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
-    ProblemAttemptCreateEffectParams,
+    StructuralFactChangeEffectParams,
+    StructuralProblemLinkEffectParams,
     UtilityObservationAppendEffectParams,
 )
 from app.core.use_cases.memories.update.request import (
@@ -67,7 +67,7 @@ def build_write_summary_records(
             utility_observation_count += 1
         elif effect_type is EffectType.ASSOCIATION_UPSERT_AND_OBSERVE:
             association_effect_count += 1
-        elif effect_type is EffectType.FACT_UPDATE_CREATE:
+        elif effect_type is EffectType.STRUCTURAL_FACT_CHANGE_CREATE:
             fact_update_count += 1
 
         effect_items.append(
@@ -160,14 +160,14 @@ def _coerce_effect_params(
         return MemoryAddEffectParams(**params)
     if effect_type is EffectType.MEMORY_EMBEDDING_UPSERT:
         return MemoryEmbeddingUpsertEffectParams(**params)
-    if effect_type is EffectType.MEMORY_EVIDENCE_ATTACH:
-        return MemoryEvidenceAttachEffectParams(
+    if effect_type is EffectType.EVIDENCE_ATTACH:
+        return EvidenceAttachEffectParams(
             memory_id=str(params["memory_id"]),
             repo_id=str(params["repo_id"]),
             refs=tuple(str(ref) for ref in params["refs"]),
         )
-    if effect_type is EffectType.PROBLEM_ATTEMPT_CREATE:
-        return ProblemAttemptCreateEffectParams(**params)
+    if effect_type is EffectType.STRUCTURAL_PROBLEM_LINK_CREATE:
+        return StructuralProblemLinkEffectParams(**params)
     if effect_type is EffectType.MEMORY_LIFECYCLE_UPDATE:
         return MemoryLifecycleUpdateEffectParams(
             event_id=str(params["event_id"]),
@@ -185,8 +185,8 @@ def _coerce_effect_params(
         )
     if effect_type is EffectType.UTILITY_OBSERVATION_APPEND:
         return UtilityObservationAppendEffectParams(**params)
-    if effect_type is EffectType.FACT_UPDATE_CREATE:
-        return FactUpdateCreateEffectParams(**params)
+    if effect_type is EffectType.STRUCTURAL_FACT_CHANGE_CREATE:
+        return StructuralFactChangeEffectParams(**params)
     if effect_type is EffectType.ASSOCIATION_UPSERT_AND_OBSERVE:
         return AssociationUpsertAndObserveEffectParams(
             repo_id=str(params["repo_id"]),

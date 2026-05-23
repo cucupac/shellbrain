@@ -35,13 +35,11 @@ _GROUNDING_ROLES = (
     "'observability', 'documentation'"
 )
 _MEMORY_LINK_ROLES = (
-    "'example_of', 'solution_for', 'failed_tactic_for', 'changed', 'validated', "
-    "'contradicted', 'warned_about'"
+    "'example_of', 'solution_for', 'failed_tactic_for', 'warns_about', "
+    "'change_relevant_to'"
 )
 _SOURCE_KINDS = "'commit', 'file_hash', 'symbol_hash', 'memory', 'transcript_event', 'manual', 'doc', 'runtime_trace'"
 _CREATED_BY_VALUES = "'worker', 'librarian', 'manual', 'import'"
-_EVIDENCE_TARGET_TYPES = "'relation', 'claim', 'grounding', 'memory_link', 'lifecycle_event'"
-_EVIDENCE_KINDS = "'anchor', 'memory', 'commit', 'transcript', 'test', 'manual'"
 _PATCH_STATUSES = "'pending', 'applied', 'rejected'"
 
 
@@ -482,34 +480,6 @@ concept_lifecycle_events = Table(
     ),
 )
 
-concept_evidence = Table(
-    "concept_evidence",
-    metadata,
-    Column("id", String, primary_key=True),
-    Column("repo_id", String, nullable=False),
-    Column("target_type", String, nullable=False),
-    Column("target_id", String, nullable=False),
-    Column("evidence_kind", String, nullable=False),
-    Column("anchor_id", String, ForeignKey("anchors.id", ondelete="SET NULL")),
-    Column("memory_id", String, ForeignKey("memories.id", ondelete="SET NULL")),
-    Column("commit_ref", Text),
-    Column("transcript_ref", Text),
-    Column("note", Text),
-    Column(
-        "created_at",
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=text("NOW()"),
-    ),
-    CheckConstraint(
-        f"target_type IN ({_EVIDENCE_TARGET_TYPES})",
-        name="ck_concept_evidence_target_type",
-    ),
-    CheckConstraint(
-        f"evidence_kind IN ({_EVIDENCE_KINDS})", name="ck_concept_evidence_kind"
-    ),
-)
-
 graph_patches = Table(
     "graph_patches",
     metadata,
@@ -591,12 +561,6 @@ Index(
     concept_memory_links.c.repo_id,
     concept_memory_links.c.memory_id,
     concept_memory_links.c.status,
-)
-Index(
-    "idx_concept_evidence_target",
-    concept_evidence.c.repo_id,
-    concept_evidence.c.target_type,
-    concept_evidence.c.target_id,
 )
 Index(
     "idx_concept_lifecycle_events_target",

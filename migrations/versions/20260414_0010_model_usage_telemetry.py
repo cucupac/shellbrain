@@ -2,10 +2,12 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import (
+from migrations._legacy_usage_views import (
+    USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL,
+)
+from migrations._usage_view_sql import (
     USAGE_COMMAND_DAILY_SQL,
     USAGE_MEMORY_RETRIEVAL_SQL,
-    USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL,
     USAGE_SESSION_PROTOCOL_SQL,
     USAGE_SESSION_TOKENS_SQL,
     USAGE_SYNC_HEALTH_SQL,

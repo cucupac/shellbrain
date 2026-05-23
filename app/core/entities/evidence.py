@@ -19,7 +19,6 @@ class EvidenceTargetType(str, Enum):
     """Storage-neutral targets that may carry evidence."""
 
     MEMORY = "memory"
-    FACT_UPDATE = "fact_update"
     ASSOCIATION_EDGE = "association_edge"
     UTILITY_OBSERVATION = "utility_observation"
     CONCEPT_CLAIM = "concept_claim"
@@ -28,6 +27,7 @@ class EvidenceTargetType(str, Enum):
     CONCEPT_MEMORY_LINK = "concept_memory_link"
     CONCEPT_LIFECYCLE_EVENT = "concept_lifecycle_event"
     MEMORY_LIFECYCLE_EVENT = "memory_lifecycle_event"
+    STRUCTURAL_MEMORY_RELATION = "structural_memory_relation"
 
 
 class EvidenceSourceKind(str, Enum):

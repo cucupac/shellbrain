@@ -119,12 +119,25 @@ class EvidenceRepo(IEvidenceRepo):
                 ]
             )
         )
+        link_row = (
+            self._session.execute(
+                select(evidence_links.c.created_at).where(
+                    evidence_links.c.repo_id == repo_id,
+                    evidence_links.c.target_type == target.target_type.value,
+                    evidence_links.c.target_id == target.target_id,
+                    evidence_links.c.evidence_id == evidence_ref.id,
+                    evidence_links.c.evidence_role == role.value,
+                )
+            )
+            .mappings()
+            .one()
+        )
         return EvidenceLinkView(
             target=target,
             source=source,
             role=role,
             evidence_id=evidence_ref.id,
-            created_at=created_at,
+            created_at=link_row["created_at"],
         )
 
     def _upsert_ref(self, *, repo_id: str, source: EvidenceSource) -> EvidenceRef:
@@ -193,18 +206,6 @@ _TARGET_VALIDATION_QUERIES = {
           AND (repo_id = :repo_id OR scope = 'global')
         LIMIT 1
     """,
-    EvidenceTargetType.FACT_UPDATE: """
-        SELECT 1
-        FROM fact_updates fu
-        JOIN memories old_fact ON old_fact.id = fu.old_fact_id
-        JOIN memories change_memory ON change_memory.id = fu.change_id
-        JOIN memories new_fact ON new_fact.id = fu.new_fact_id
-        WHERE fu.id = :target_id
-          AND old_fact.repo_id = :repo_id
-          AND change_memory.repo_id = :repo_id
-          AND new_fact.repo_id = :repo_id
-        LIMIT 1
-    """,
     EvidenceTargetType.ASSOCIATION_EDGE: """
         SELECT 1
         FROM association_edges
@@ -260,6 +261,13 @@ _TARGET_VALIDATION_QUERIES = {
     EvidenceTargetType.MEMORY_LIFECYCLE_EVENT: """
         SELECT 1
         FROM memory_lifecycle_events
+        WHERE id = :target_id
+          AND repo_id = :repo_id
+        LIMIT 1
+    """,
+    EvidenceTargetType.STRUCTURAL_MEMORY_RELATION: """
+        SELECT 1
+        FROM structural_memory_relations
         WHERE id = :target_id
           AND repo_id = :repo_id
         LIMIT 1

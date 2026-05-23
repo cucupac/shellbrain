@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from app.core.use_cases.concepts.add.request import ConceptAddRequest
 from app.core.use_cases.concepts.show.request import ConceptShowRequest
 from app.core.use_cases.concepts.update.request import ConceptUpdateRequest
+from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
@@ -132,6 +133,58 @@ def test_concept_show_should_include_lifecycle_events_for_included_records(
             "evidence_count": 1,
         }
     ]
+
+
+def test_concept_show_should_surface_current_memory_link_roles(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+) -> None:
+    """concept show should expose the current bridge vocabulary."""
+
+    _seed_deposit_addresses(uow_factory)
+    seed_memory(
+        memory_id="deposit-warning-memory",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.FACT,
+        text_value="Deposit address cache misses can mislead retries.",
+    )
+    with uow_factory() as uow:
+        update_concepts(
+            ConceptUpdateRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
+                        {
+                            "type": "link_memory",
+                            "concept": "deposit-addresses",
+                            "role": "warns_about",
+                            "memory_id": "deposit-warning-memory",
+                            "evidence": [{"kind": "manual", "note": "Warning."}],
+                        }
+                    ],
+                }
+            ),
+            uow,
+            id_generator=_SequenceIdGenerator(),
+        )
+
+    with uow_factory() as uow:
+        show = show_concept(
+            ConceptShowRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "concept": "deposit-addresses",
+                    "include": ["memory_links"],
+                }
+            ),
+            uow,
+        )
+
+    roles = {link["role"] for link in show.data["concept"]["memory_links"]}
+    assert roles == {"warns_about"}
 
 
 def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:

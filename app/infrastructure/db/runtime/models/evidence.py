@@ -19,9 +19,10 @@ _EVIDENCE_SOURCE_KINDS = (
     "'episode_event', 'anchor', 'memory', 'commit', 'transcript', 'test', 'manual'"
 )
 _EVIDENCE_TARGET_TYPES = (
-    "'memory', 'fact_update', 'association_edge', 'utility_observation', "
+    "'memory', 'association_edge', 'utility_observation', "
     "'concept_claim', 'concept_relation', 'concept_grounding', "
-    "'concept_memory_link', 'concept_lifecycle_event', 'memory_lifecycle_event'"
+    "'concept_memory_link', 'concept_lifecycle_event', 'memory_lifecycle_event', "
+    "'structural_memory_relation'"
 )
 _EVIDENCE_ROLES = (
     "'supports', 'contradicts', 'observed_in', 'created_from', "

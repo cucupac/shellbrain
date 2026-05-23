@@ -1,17 +1,7 @@
 """This module defines SQLAlchemy Core tables for memories and shellbrain embeddings."""
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import (
-    CheckConstraint,
-    Column,
-    ForeignKey,
-    Index,
-    Integer,
-    String,
-    Table,
-    Text,
-    UniqueConstraint,
-)
+from sqlalchemy import CheckConstraint, Column, ForeignKey, Index, Integer, String, Table, Text
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 
 from app.infrastructure.db.runtime.models.metadata import metadata
@@ -96,24 +86,6 @@ memory_embeddings = Table(
     Column("vector", Vector(), nullable=False),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
     CheckConstraint("dim > 0", name="ck_memory_embeddings_dim_positive"),
-)
-
-memory_evidence = Table(
-    "memory_evidence",
-    metadata,
-    Column(
-        "memory_id",
-        String,
-        ForeignKey("memories.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "evidence_id",
-        String,
-        ForeignKey("evidence_refs.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    UniqueConstraint("memory_id", "evidence_id", name="uq_memory_evidence_pair"),
 )
 
 Index(

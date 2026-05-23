@@ -46,7 +46,7 @@ def retrieve_seeds(
         if not resolved_query_vector:
             raise ValueError("Query embedding provider returned an empty vector")
         resolved_query_model = vector_search.model_name
-    thresholds = thresholds or _coerce_threshold_settings(get_threshold_settings())
+    thresholds = thresholds or default_threshold_settings()
     semantic = [
         candidate
         for candidate in semantic_retrieval.query_semantic(
@@ -123,20 +123,3 @@ def _keyword_candidate_limit(limit: int) -> int:
     """Return the bounded lexical candidate pool size used before pure BM25 ranking."""
 
     return max(limit * 25, 200)
-
-
-def get_threshold_settings() -> dict[str, float]:
-    """Compatibility seam for direct retrieval-stage tests."""
-
-    return default_threshold_settings().to_dict()
-
-
-def _coerce_threshold_settings(
-    settings: ThresholdSettings | dict[str, float],
-) -> ThresholdSettings:
-    if isinstance(settings, ThresholdSettings):
-        return settings
-    return ThresholdSettings(
-        semantic_threshold=float(settings["semantic_threshold"]),
-        keyword_threshold=float(settings["keyword_threshold"]),
-    )

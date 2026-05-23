@@ -12,6 +12,7 @@ class CreatePlanIds:
     """IDs preallocated by the create use case before pure planning."""
 
     memory_id: str
+    structural_relation_ids: tuple[str, ...] = ()
     association_edge_ids: tuple[str, ...] = ()
     association_observation_ids: tuple[str, ...] = ()
 

@@ -17,7 +17,6 @@ from app.core.entities.evidence import (
     EvidenceTarget,
     EvidenceTargetType,
 )
-from app.core.entities.facts import FactUpdate, ProblemAttempt, ProblemAttemptRole
 from app.core.entities.memories import (
     Memory,
     MemoryKind,
@@ -26,18 +25,23 @@ from app.core.entities.memories import (
     MemoryLifecycleEvent,
     MemoryLifecycleStatus,
 )
+from app.core.entities.structural_memory_relations import (
+    StructuralMemoryRelation,
+    StructuralMemoryRelationPredicate,
+    predicate_for_problem_link_kind,
+)
 from app.core.entities.utility import UtilityObservation
 from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     EvidenceSourceEffectParams,
     EffectType,
-    FactUpdateCreateEffectParams,
     MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
-    MemoryEvidenceAttachEffectParams,
+    EvidenceAttachEffectParams,
     MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
-    ProblemAttemptCreateEffectParams,
+    StructuralFactChangeEffectParams,
+    StructuralProblemLinkEffectParams,
     UtilityObservationAppendEffectParams,
 )
 from app.core.ports.embeddings.provider import IEmbeddingProvider
@@ -83,8 +87,8 @@ def apply_side_effects(
             )
             continue
 
-        if effect_type is EffectType.MEMORY_EVIDENCE_ATTACH:
-            assert isinstance(params, MemoryEvidenceAttachEffectParams)
+        if effect_type is EffectType.EVIDENCE_ATTACH:
+            assert isinstance(params, EvidenceAttachEffectParams)
             _attach_episode_event_evidence(
                 uow,
                 repo_id=params.repo_id,
@@ -94,14 +98,25 @@ def apply_side_effects(
             )
             continue
 
-        if effect_type is EffectType.PROBLEM_ATTEMPT_CREATE:
-            assert isinstance(params, ProblemAttemptCreateEffectParams)
-            uow.experiences.create_problem_attempt(
-                ProblemAttempt(
-                    problem_id=params.problem_id,
-                    attempt_id=params.attempt_id,
-                    role=ProblemAttemptRole(params.role),
+        if effect_type is EffectType.STRUCTURAL_PROBLEM_LINK_CREATE:
+            assert isinstance(params, StructuralProblemLinkEffectParams)
+            predicate = predicate_for_problem_link_kind(params.attempt_kind)
+            relation = uow.experiences.upsert_structural_memory_relation(
+                StructuralMemoryRelation(
+                    id=params.relation_id,
+                    repo_id=params.repo_id,
+                    subject_memory_id=params.problem_id,
+                    predicate=predicate,
+                    object_memory_id=params.attempt_id,
+                    created_by=MemoryLifecycleActor.WORKER,
                 )
+            )
+            _attach_episode_event_evidence(
+                uow,
+                repo_id=params.repo_id,
+                target_type=EvidenceTargetType.STRUCTURAL_MEMORY_RELATION,
+                target_id=relation.id,
+                refs=params.evidence_refs,
             )
             continue
 
@@ -130,23 +145,19 @@ def apply_side_effects(
             )
             continue
 
-        if effect_type is EffectType.FACT_UPDATE_CREATE:
-            assert isinstance(params, FactUpdateCreateEffectParams)
-            uow.experiences.create_fact_update(
-                FactUpdate(
-                    id=params.id,
-                    old_fact_id=params.old_fact_id,
-                    change_id=params.change_id,
-                    new_fact_id=params.new_fact_id,
+        if effect_type is EffectType.STRUCTURAL_FACT_CHANGE_CREATE:
+            assert isinstance(params, StructuralFactChangeEffectParams)
+            structural_relations = _upsert_fact_change_structural_relations(
+                uow, params=params
+            )
+            for relation in structural_relations:
+                _attach_episode_event_evidence(
+                    uow,
+                    repo_id=params.repo_id,
+                    target_type=EvidenceTargetType.STRUCTURAL_MEMORY_RELATION,
+                    target_id=relation.id,
+                    refs=params.evidence_refs,
                 )
-            )
-            _attach_episode_event_evidence(
-                uow,
-                repo_id=params.repo_id,
-                target_type=EvidenceTargetType.FACT_UPDATE,
-                target_id=params.id,
-                refs=params.evidence_refs,
-            )
             continue
 
         if effect_type is EffectType.ASSOCIATION_UPSERT_AND_OBSERVE:
@@ -206,6 +217,46 @@ def _attach_episode_event_evidence(
             for ref in sorted(refs)
         ),
         role=EvidenceRole.SUPPORTS,
+    )
+
+
+def _upsert_fact_change_structural_relations(
+    uow: IUnitOfWork, *, params: StructuralFactChangeEffectParams
+) -> tuple[StructuralMemoryRelation, ...]:
+    """Create canonical structural relations represented by one fact change."""
+
+    superseded_id, old_change_id, new_change_id = params.structural_relation_ids
+    return (
+        uow.experiences.upsert_structural_memory_relation(
+            StructuralMemoryRelation(
+                id=superseded_id,
+                repo_id=params.repo_id,
+                subject_memory_id=params.old_fact_id,
+                predicate=StructuralMemoryRelationPredicate.SUPERSEDED_BY,
+                object_memory_id=params.new_fact_id,
+                created_by=MemoryLifecycleActor.WORKER,
+            )
+        ),
+        uow.experiences.upsert_structural_memory_relation(
+            StructuralMemoryRelation(
+                id=old_change_id,
+                repo_id=params.repo_id,
+                subject_memory_id=params.old_fact_id,
+                predicate=StructuralMemoryRelationPredicate.EXPLAINED_BY_CHANGE,
+                object_memory_id=params.change_id,
+                created_by=MemoryLifecycleActor.WORKER,
+            )
+        ),
+        uow.experiences.upsert_structural_memory_relation(
+            StructuralMemoryRelation(
+                id=new_change_id,
+                repo_id=params.repo_id,
+                subject_memory_id=params.new_fact_id,
+                predicate=StructuralMemoryRelationPredicate.EXPLAINED_BY_CHANGE,
+                object_memory_id=params.change_id,
+                created_by=MemoryLifecycleActor.WORKER,
+            )
+        ),
     )
 
 

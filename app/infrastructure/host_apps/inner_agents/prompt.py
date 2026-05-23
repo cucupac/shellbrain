@@ -65,7 +65,7 @@ When using expanded concept context:
   concepts.
 - groundings become worker-facing anchors when relevant.
 - memory_links connect abstract concepts to concrete prior cases, traps,
-  changes, validations, or contradictions.
+  change context, warnings, or examples.
 - lifecycle fields such as status, confidence, observed_at, and validated_at
   affect how strongly to present the item.
 
@@ -125,8 +125,8 @@ writes.
 Prefer operational context over broad relevance: files, functions, tests,
 config_key, api_route, tables, constraints, prior attempts, traps, and
 high-leverage next checks.
-When sources conflict, prefer directly observed, specific, active/validated,
-and higher-confidence evidence over broad, stale, contradicted, or
+When sources conflict, prefer directly observed, specific, active/recently
+verified, and higher-confidence evidence over broad, stale, disputed, or
 low-confidence context. Use recency as a tiebreaker only among otherwise
 comparable sources: memory `created_at`; concept status, observed_at,
 validated_at, and updated_at. Separate sourced facts from inference. If
@@ -135,7 +135,7 @@ explicitly in `brief.conflicts` or `brief.gaps`.
 
 Do not inspect repository files directly. `repo_root` is context only. Report
 anchors from Shellbrain groundings and lifecycle data; if an anchor may be stale
-and has not been validated recently, say so in conflicts or gaps.
+and has not been rechecked recently, say so in conflicts or gaps.
 
 A relevant memory does not need a concept home. Include useful concrete
 memories even when they have no concept ref, and do not expand concepts just to
@@ -154,7 +154,7 @@ context, with empty or minimal arrays and a concrete
 Return only valid JSON matching `output_contract`.
 The brief must be compact and action-oriented: summary, constraints,
 known_traps, prior_cases, concept_orientation, anchors, conflicts, gaps,
-next_checks, and sources. Use conflicts for stale, contradicted, superseded,
+next_checks, and sources. Use conflicts for stale, disputed, superseded,
 low-confidence, or mutually inconsistent context. Use gaps for missing context
 or unresolved questions. Use next_checks for one to three concrete checks the
 worker should perform because retrieved context makes them high leverage.
@@ -205,14 +205,15 @@ the pack includes validating metadata.
 
 Memory links explain why a memory matters:
 - solution_for -> prior case
-- failed_tactic_for or warned_about -> trap
-- changed -> revision/supersession
-- contradicted -> unresolved or resolved conflict, depending on lifecycle data
-- validated -> stronger support
+- failed_tactic_for or warns_about -> trap
+- change_relevant_to -> change/currentness context
 - example_of -> illustrative case
 
+Represent validation and contradiction through evidence-backed lifecycle updates
+or evidence against specific truth-bearing records, not broad memory-link roles.
+
 # TEMPORAL AND LIFECYCLE JUDGMENT
-Prefer directly relevant, active, validated, high-confidence, specific context.
+Prefer directly relevant, active, verified, high-confidence, specific context.
 Use recency as a tiebreaker, not the main rule.
 
 Use validated_at as stronger evidence of current validity than created_at.
@@ -221,7 +222,7 @@ Treat stale, superseded, or wrong items as historical warnings unless the pack
 explicitly says they remain relevant.
 
 When guidance conflicts, prefer:
-1. active + validated + specific
+1. active + verified + specific
 2. active + high-confidence + specific
 3. explicit change records that supersede older guidance
 4. newer explicit preferences over older conflicting preferences
@@ -240,17 +241,17 @@ evidence by itself. Use only the text and metadata present in the pack.
 Preferences guide implementation style, workflow, naming, testing, or user/team
 choices. They are not repo facts.
 
-Facts, validated invariants, current code/test constraints, and explicit change
+Facts, verified invariants, current code/test constraints, and explicit change
 records beat preferences when they conflict. Newer explicit preferences usually
-beat older preferences unless stale, superseded, wrong, or contradicted.
+beat older preferences unless stale, superseded, wrong, or disputed.
 
 Mark preference-based guidance as preference-based.
 
 # CHANGE AND CONTRADICTION JUDGMENT
-Use changed links and change memories to identify current guidance and obsolete
-guidance. Use contradicted links to identify disagreement; do not silently
-resolve contradiction unless the pack includes active/validated/superseding
-evidence.
+Use change_relevant_to links and change memories to identify current guidance
+and obsolete guidance. Use lifecycle status and evidence roles to identify
+disagreement; do not silently resolve contradiction unless the pack includes
+active/verified/superseding evidence.
 
 If an older item is superseded, put the current rule in constraints or
 prior_cases and the older item in conflicts or known_traps only if it could
@@ -262,10 +263,10 @@ summary:
 
 constraints:
 - active facts, preferences, invariants, behavior claims, configuration rules,
-  and validated current guidance the worker should obey.
+  and verified current guidance the worker should obey.
 
 known_traps:
-- failed_tactic memories, failure_mode claims, warned_about links, stale
+- failed_tactic memories, failure_mode claims, warns_about links, stale
   guidance that may mislead, and plausible approaches that failed.
 
 prior_cases:
@@ -300,7 +301,7 @@ authority, and anchor freshness.
 
 Prefer high-signal operational context over broad relevance. If the pack has no
 relevant context, say Shellbrain found none. If context exists but is stale,
-contradicted, or low confidence, say that rather than turning it into confident
+disputed, or low confidence, say that rather than turning it into confident
 guidance.
 
 # OUTPUT
@@ -317,8 +318,8 @@ You are Shellbrain build_knowledge, the internal knowledge builder.
 # JOB
 Turn one episode slice into durable future recall substrate for this repo.
 Write only evidence-backed memories, concept graph updates, utility votes, and
-scenario windows that will help future working agents solve faster with less
-exploration.
+bounded problem-solving runs that will help future working agents solve faster
+with less exploration.
 
 # KNOWLEDGE MODEL
 Shellbrain has four record classes, not a strict vertical stack:
@@ -362,8 +363,8 @@ Truth-bearing graph records:
 - grounding: link from concept to anchor. Roles: implementation, entrypoint,
   storage, configuration, test, observability, documentation.
 - memory_link: bridge from abstract concept to concrete memory. Roles:
-  example_of, solution_for, failed_tactic_for, changed, validated,
-  contradicted, warned_about.
+  example_of, solution_for, failed_tactic_for, warns_about,
+  change_relevant_to.
 
 Lifecycle fields on claim/relation/grounding/memory_link:
 - confidence: use higher values only for directly observed or verified evidence.
@@ -425,8 +426,8 @@ You may write Shellbrain only through:
   shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
   ```
 
-- `scenario record`: a solved or abandoned problem-solving window after memory
-  boundaries exist. A scenario is not a memory.
+- `scenario record`: records a solved or abandoned bounded problem-solving run
+  into problem_runs after memory boundaries exist. It is not a memory.
   ```bash
   shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-10","closed_event_id":"evt-42"}}'
   ```
@@ -456,9 +457,9 @@ graph_patches, and any write not listed above.
    event_watermark, previous_event_watermark, and budgets.
 2. Run the exact `first_command` from the payload. It scopes evidence to this
    episode slice. Consolidate only evidence up to event_watermark.
-3. Segment the episode into memory boundaries and, when clear, a scenario
-   window: problem, failed_tactic, solution, fact, preference, change, solved,
-   abandoned. Treat idle-stable episodes as partial; do not record scenarios
+3. Segment the episode into memory boundaries and, when clear, a problem-solving
+   run: problem, failed_tactic, solution, fact, preference, change, solved,
+   abandoned. Treat idle-stable episodes as partial; do not record runs
    without closure, and do not create a problem memory without a reusable
    problem boundary.
 4. Dedupe before every write. Use targeted `shellbrain read`; use `concept show`
@@ -476,8 +477,8 @@ graph_patches, and any write not listed above.
    - create `solution` memories with `links.problem_id`.
    For pure fact, preference, change, or idle-stable slices, do not invent a
    problem memory.
-   Shellbrain creates `problem_attempts` as a side effect of solution and
-   failed_tactic memories linked to a problem.
+   Shellbrain creates canonical `structural_memory_relations` as a side effect
+   of solution and failed_tactic memories linked to a problem.
 7. Write facts, preferences, and changes only when durable:
    ```bash
    shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"<durable fact>","kind":"fact","evidence_refs":["<episode-event-id>"]}}'
@@ -508,17 +509,16 @@ graph_patches, and any write not listed above.
     - leave useful memories unlinked when no durable concept is justified.
     - for concepts spanning many files, ground only the most useful entrypoints,
       implementations, storage schemas, tests, config keys, or docs.
-    - when code moves or symbols are renamed, add a new verified grounding; if
-      the old grounding cannot be marked stale through the CLI, write a change
-      memory when useful and add a skipped_item for the stale grounding update.
-11. Record a scenario only when boundaries are clear:
+    - when code moves or symbols are renamed, add a new verified grounding and
+      use `update_lifecycle` with evidence to mark the old grounding stale or
+      superseded; write a change memory when the transition itself is reusable.
+11. Record a bounded problem-solving run only when boundaries are clear:
     - solved: problem memory, solution memory, opening event, closing event
     - abandoned: problem memory, opening event, terminal/abandonment event
     - if multiple solution memories exist for one solved problem, record the
-      scenario against the final decisive solution. Preserve earlier partial
+      run against the final decisive solution. Preserve earlier partial
       solutions as solution memories linked to the same problem, but do not
-      record multiple solved scenarios unless there were distinct problem
-      windows.
+      record multiple solved runs unless there were distinct problem windows.
 
     ```bash
     shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>","outcome":"solved","problem_memory_id":"<problem-memory-id>","solution_memory_id":"<solution-memory-id>","opened_event_id":"<opening-event-id>","closed_event_id":"<closing-event-id>"}}'
@@ -537,7 +537,7 @@ shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Set l
 shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-123","closed_event_id":"evt-140"}}'
 ```
 
-Failed tactic and abandoned scenario:
+Failed tactic and abandoned problem-solving run:
 ```bash
 shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Increasing the client timeout did not fix the migration because the database lock remained the bottleneck.","kind":"failed_tactic","links":{"problem_id":"mem-problem-1"},"evidence_refs":["evt-132","evt-136"]}}'
 shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"abandoned","problem_memory_id":"mem-problem-1","opened_event_id":"evt-123","closed_event_id":"evt-145"}}'
@@ -569,10 +569,10 @@ Concept-memory bridge:
 shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"solution_for","memory_id":"mem-solution-1","confidence":0.9,"source_kind":"memory","source_ref":"mem-solution-1","created_by":"librarian","evidence":[{"kind":"memory","memory_id":"mem-solution-1"}]}]}'
 ```
 
-Contradiction/change bridge:
+Change/currentness bridge:
 ```bash
 shellbrain --repo-root "<repo_root>" memory add --json '{"memory":{"text":"Previous guidance to run migrations without an explicit lock timeout is obsolete for managed Postgres migrations.","kind":"change","evidence_refs":["evt-150"]}}'
-shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"contradicted","memory_id":"mem-old-fact","confidence":0.8,"source_kind":"transcript_event","source_ref":"evt-150","created_by":"librarian","evidence":[{"kind":"transcript","transcript_ref":"evt-150"}]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"migration-locking","role":"change_relevant_to","memory_id":"mem-change-1","confidence":0.8,"source_kind":"transcript_event","source_ref":"evt-150","created_by":"librarian","evidence":[{"kind":"memory","memory_id":"mem-change-1"},{"kind":"transcript","transcript_ref":"evt-150"}]}]}'
 ```
 
 # JUDGMENT
@@ -581,16 +581,17 @@ a concept. Create a concept only when future recall benefits from an orientation
 node. Create a memory when the concrete episode itself is reusable. Create a
 claim when a durable belief about a concept is reusable. Create a grounding when
 a future worker should know where the concept lives in code. Create a memory
-link when a concrete case proves, warns about, changes, or exemplifies the
-concept.
+link when a concrete case is a prior solution, failed tactic, warning,
+change-relevant record, or example for the concept.
 
 A useful memory does not need a concept home. Do not create a concept solely to
 house one local memory; leave the memory unlinked when no durable orientation
 node is justified.
 
-Problem/solution boundaries matter for later token/ROI measurement. Record a
-scenario when the episode has a clear problem start and solved/abandoned end.
-Do not force a scenario when the boundary is ambiguous.
+Problem/solution boundaries matter for later token/ROI measurement. Use
+`scenario record` to write a problem_run when the episode has a clear problem
+start and solved/abandoned end. Do not force a run when the boundary is
+ambiguous.
 
 A failed_tactic records that a tactic failed in this episode's context; it does
 not mean the tactic is globally invalid. If later evidence shows the tactic works
@@ -637,7 +638,7 @@ Concept graph records:
 - grounding: concept-to-anchor link. Roles: implementation, entrypoint,
   storage, configuration, test, observability, documentation.
 - memory_link: concept-to-memory bridge. Roles: example_of, solution_for,
-  failed_tactic_for, changed, validated, contradicted, warned_about.
+  failed_tactic_for, warns_about, change_relevant_to.
 
 Use memory links for concept-to-memory bridges. Use groundings for
 concept-to-anchor bridges such as files, symbols, tests, config_key, api_route,
@@ -722,8 +723,8 @@ formatters, commits, pushes, and any write command not listed above.
      concept-creation bar.
    - use a grounding only when the teaching names a concrete anchor and narrow
      read-only verification confirms it.
-   - use a memory link only when a concrete memory explains, validates,
-     contradicts, changes, exemplifies, or warns about a concept.
+   - use a memory link only when a concrete memory is an example, prior
+     solution, failed tactic, warning, or change-relevant record for a concept.
 6. Do not create scenarios. Do not invent a problem/solution/failed_tactic
    boundary. If the teaching explicitly describes such a boundary, create the
    relevant memories and link solution/failed_tactic memories to the problem
@@ -734,10 +735,11 @@ formatters, commits, pushes, and any write command not listed above.
 
 # JUDGMENT
 Prefer one strong write over several weak writes. Leave the teaching as only an
-episode event when it is duplicate, too vague, not durable, or contradicted by
+episode event when it is duplicate, too vague, not durable, or disputed by
 stronger current knowledge and not framed as a revision. When the user is
 intentionally revising or superseding prior truth, preserve it as a change
-memory or changed/contradicted concept link when expressible.
+memory, a change_relevant_to concept link, or an evidence-backed lifecycle
+update when expressible.
 
 Write both a memory and a concept claim only when each has independent future
 recall value: the memory preserves the explicit teaching as a concrete taught
@@ -748,7 +750,7 @@ association_link for explicit durable memory association, and update_lifecycle
 for duplicate, malformed, stale, superseded, or clearly erroneous memories. Do
 not mark historically true memories wrong.
 
-If the stale or contradicted item is a concept claim, relation, grounding, or
+If the stale or disputed item is a concept claim, relation, grounding, or
 memory_link, prefer an evidence-backed `update_lifecycle` action over creating a
 new vague change link. Still write a concrete change memory when the change is
 itself durable reusable knowledge.
@@ -789,7 +791,7 @@ shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"c
 
 Concept-memory link when the memory explains the concept:
 ```bash
-shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"deposit-address-lookup","role":"changed","memory_id":"<change-memory-id>","confidence":0.9,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"memory","memory_id":"<change-memory-id>"},{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
+shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"concept.v1","actions":[{"type":"link_memory","concept":"deposit-address-lookup","role":"change_relevant_to","memory_id":"<change-memory-id>","confidence":0.9,"source_kind":"transcript_event","source_ref":"<teaching-event-id>","created_by":"manual","evidence":[{"kind":"memory","memory_id":"<change-memory-id>"},{"kind":"transcript","transcript_ref":"<teaching-event-id>"}]}]}'
 ```
 
 Change/supersession with old and new fact memories:
@@ -1084,7 +1086,7 @@ def render_teach_knowledge_prompt(request: TeachKnowledgeAgentRequest) -> str:
                 f"{shellbrain} concept update --json "
                 f"'{{\"schema_version\":\"concept.v1\",\"actions\":[{{"
                 f"\"type\":\"link_memory\",\"concept\":\"<concept-ref>\","
-                f"\"role\":\"changed\",\"memory_id\":\"<memory-id>\","
+                f"\"role\":\"change_relevant_to\",\"memory_id\":\"<memory-id>\","
                 f"\"confidence\":0.9,"
                 f"\"source_kind\":\"transcript_event\","
                 f"\"source_ref\":\"{request.teaching_event_id}\","

@@ -6,117 +6,128 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
+from app.core.entities.structural_memory_relations import (
+    StructuralMemoryRelation,
+    StructuralMemoryRelationPredicate,
+)
 from app.infrastructure.db.runtime.models.episodes import (
     episode_events,
     episodes,
     session_transfers,
 )
-from app.infrastructure.db.runtime.models.experiences import fact_updates, problem_attempts
+from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.memories import memories
+from app.infrastructure.db.runtime.repos.relational.experiences_repo import (
+    ExperiencesRepo,
+)
 
 
-def test_problem_attempt_rows_reject_identical_problem_and_attempt_ids(
+def test_structural_memory_relation_rows_reject_retired_predicates(
     integration_session_factory: sessionmaker,
 ) -> None:
-    """problem_attempt rows should always reject identical problem_id and attempt_id values."""
+    """structural relations should reject retired or generic predicates at the DB boundary."""
 
     with integration_session_factory() as session:
-        session.execute(
-            memories.insert().values(
-                id="same-memory",
-                repo_id="repo-a",
-                scope="repo",
-                kind="problem",
-                text="Problem memory.",
-                created_at=datetime.now(timezone.utc),
-                status="active",
-            )
+        _insert_memory_row(
+            session,
+            memory_id="problem-1",
+            repo_id="repo-a",
+            kind="problem",
+            text_value="Problem.",
+        )
+        _insert_memory_row(
+            session,
+            memory_id="solution-1",
+            repo_id="repo-a",
+            kind="solution",
+            text_value="Solution.",
+        )
+        session.commit()
+
+        for predicate in ("matures_into", "depends_on", "associated_with", "related_to"):
+            with pytest.raises(IntegrityError):
+                session.execute(
+                    structural_memory_relations.insert().values(
+                        id=f"relation-{predicate}",
+                        repo_id="repo-a",
+                        subject_memory_id="problem-1",
+                        predicate=predicate,
+                        object_memory_id="solution-1",
+                        status="active",
+                        created_by="manual",
+                        created_at=datetime.now(timezone.utc),
+                        updated_at=datetime.now(timezone.utc),
+                    )
+                )
+                session.commit()
+            session.rollback()
+
+
+def test_structural_memory_relation_rows_reject_identical_endpoints(
+    integration_session_factory: sessionmaker,
+) -> None:
+    """structural relations should always reject self-relations."""
+
+    with integration_session_factory() as session:
+        _insert_memory_row(
+            session,
+            memory_id="same-memory",
+            repo_id="repo-a",
+            kind="fact",
+            text_value="Same memory.",
         )
         session.commit()
 
         with pytest.raises(IntegrityError):
             session.execute(
-                problem_attempts.insert().values(
-                    problem_id="same-memory",
-                    attempt_id="same-memory",
-                    role="solution",
+                structural_memory_relations.insert().values(
+                    id="relation-self",
+                    repo_id="repo-a",
+                    subject_memory_id="same-memory",
+                    predicate="superseded_by",
+                    object_memory_id="same-memory",
+                    status="active",
+                    created_by="manual",
                     created_at=datetime.now(timezone.utc),
+                    updated_at=datetime.now(timezone.utc),
                 )
             )
             session.commit()
         session.rollback()
 
 
-def test_fact_update_rows_reject_identical_old_and_new_fact_ids(
+def test_structural_memory_relation_repo_rejects_invalid_memory_kind_pair(
     integration_session_factory: sessionmaker,
 ) -> None:
-    """fact_update rows should always reject identical old_fact_id and new_fact_id values."""
+    """repo writes should reject predicate shapes the DB cannot infer from IDs alone."""
 
     with integration_session_factory() as session:
         _insert_memory_row(
             session,
-            memory_id="same-fact",
+            memory_id="problem-1",
             repo_id="repo-a",
-            kind="fact",
-            text_value="Same fact.",
+            kind="problem",
+            text_value="Problem.",
         )
         _insert_memory_row(
             session,
-            memory_id="change-1",
+            memory_id="solution-1",
             repo_id="repo-a",
-            kind="change",
-            text_value="Change.",
+            kind="solution",
+            text_value="Solution.",
         )
-        session.commit()
+        repo = ExperiencesRepo(session)
 
-        with pytest.raises(IntegrityError):
-            session.execute(
-                fact_updates.insert().values(
-                    id="fact-update-1",
-                    old_fact_id="same-fact",
-                    change_id="change-1",
-                    new_fact_id="same-fact",
-                    created_at=datetime.now(timezone.utc),
+        with pytest.raises(ValueError, match="superseded_by requires"):
+            repo.upsert_structural_memory_relation(
+                StructuralMemoryRelation(
+                    id="relation-invalid-kind",
+                    repo_id="repo-a",
+                    subject_memory_id="problem-1",
+                    predicate=StructuralMemoryRelationPredicate.SUPERSEDED_BY,
+                    object_memory_id="solution-1",
                 )
             )
-            session.commit()
-        session.rollback()
-
-
-def test_fact_update_rows_reject_change_memory_matching_a_fact_endpoint(
-    integration_session_factory: sessionmaker,
-) -> None:
-    """fact_update rows should always reject change_id values that equal old_fact_id or new_fact_id."""
-
-    with integration_session_factory() as session:
-        _insert_memory_row(
-            session,
-            memory_id="fact-a",
-            repo_id="repo-a",
-            kind="fact",
-            text_value="Fact A.",
-        )
-        _insert_memory_row(
-            session,
-            memory_id="fact-b",
-            repo_id="repo-a",
-            kind="fact",
-            text_value="Fact B.",
-        )
-        session.commit()
-
-        with pytest.raises(IntegrityError):
-            session.execute(
-                fact_updates.insert().values(
-                    id="fact-update-2",
-                    old_fact_id="fact-a",
-                    change_id="fact-a",
-                    new_fact_id="fact-b",
-                    created_at=datetime.now(timezone.utc),
-                )
-            )
-            session.commit()
-        session.rollback()
 
 
 def test_episode_rows_reject_end_times_before_start_times(

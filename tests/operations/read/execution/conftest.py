@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from collections.abc import Callable
 from datetime import datetime, timezone
 from math import sqrt
@@ -18,7 +19,7 @@ from app.core.entities.memories import (
 )
 from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.infrastructure.db.runtime.models.associations import association_edges
-from app.infrastructure.db.runtime.models.experiences import fact_updates, problem_attempts
+from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.memories import memories, memory_embeddings
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
@@ -29,12 +30,9 @@ _BASE_TS = datetime(2024, 1, 1, tzinfo=timezone.utc)
 _TABLES_FOR_MUTATION_CHECK = (
     "memories",
     "memory_embeddings",
-    "memory_evidence",
-    "problem_attempts",
-    "fact_updates",
+    "structural_memory_relations",
     "association_edges",
     "association_observations",
-    "association_edge_evidence",
     "utility_observations",
     "evidence_refs",
     "evidence_links",
@@ -132,24 +130,33 @@ def seed_read_embedding(integration_engine: Engine) -> Callable[..., None]:
 
 
 @pytest.fixture
-def seed_problem_attempt_link(integration_engine: Engine) -> Callable[..., None]:
-    """Insert deterministic problem-attempt links for explicit expansion scenarios."""
+def seed_structural_memory_relation(integration_engine: Engine) -> Callable[..., None]:
+    """Insert deterministic structural memory relations for explicit expansion tests."""
 
     def _seed(
         *,
-        problem_id: str,
-        attempt_id: str,
-        role: str,
+        relation_id: str,
+        repo_id: str,
+        subject_memory_id: str,
+        predicate: str,
+        object_memory_id: str,
+        status: str = "active",
+        created_by: str = "manual",
         created_at: datetime | None = None,
     ) -> None:
         ts = created_at or _BASE_TS
         with integration_engine.begin() as conn:
             conn.execute(
-                insert(problem_attempts).values(
-                    problem_id=problem_id,
-                    attempt_id=attempt_id,
-                    role=role,
+                insert(structural_memory_relations).values(
+                    id=relation_id,
+                    repo_id=repo_id,
+                    subject_memory_id=subject_memory_id,
+                    predicate=predicate,
+                    object_memory_id=object_memory_id,
+                    status=status,
+                    created_by=created_by,
                     created_at=ts,
+                    updated_at=ts,
                 )
             )
 
@@ -157,28 +164,77 @@ def seed_problem_attempt_link(integration_engine: Engine) -> Callable[..., None]
 
 
 @pytest.fixture
-def seed_fact_update_link(integration_engine: Engine) -> Callable[..., None]:
-    """Insert deterministic fact-update links for explicit expansion scenarios."""
+def seed_structural_problem_link(integration_engine: Engine) -> Callable[..., None]:
+    """Insert canonical structural relations for problem-link scenarios."""
 
     def _seed(
         *,
-        link_id: str,
+        problem_id: str,
+        linked_memory_id: str,
+        link_kind: str,
+        created_at: datetime | None = None,
+    ) -> None:
+        ts = created_at or _BASE_TS
+        predicate = {"solution": "solved_by", "failed_tactic": "failed_with"}[
+            link_kind
+        ]
+        with integration_engine.begin() as conn:
+            conn.execute(
+                insert(structural_memory_relations).values(
+                    id=_relation_id(
+                        "problem-link", problem_id, link_kind, linked_memory_id
+                    ),
+                    repo_id="repo-a",
+                    subject_memory_id=problem_id,
+                    predicate=predicate,
+                    object_memory_id=linked_memory_id,
+                    status="active",
+                    created_by="manual",
+                    created_at=ts,
+                    updated_at=ts,
+                )
+            )
+
+    return _seed
+
+
+@pytest.fixture
+def seed_structural_fact_change_relations(
+    integration_engine: Engine,
+) -> Callable[..., None]:
+    """Insert canonical structural relations for fact-change scenarios."""
+
+    def _seed(
+        *,
+        relation_group_id: str,
         old_fact_id: str,
         change_id: str,
         new_fact_id: str,
         created_at: datetime | None = None,
     ) -> None:
         ts = created_at or _BASE_TS
+        rows = [
+            (old_fact_id, "superseded_by", new_fact_id),
+            (old_fact_id, "explained_by_change", change_id),
+            (new_fact_id, "explained_by_change", change_id),
+        ]
         with integration_engine.begin() as conn:
-            conn.execute(
-                insert(fact_updates).values(
-                    id=link_id,
-                    old_fact_id=old_fact_id,
-                    change_id=change_id,
-                    new_fact_id=new_fact_id,
-                    created_at=ts,
+            for subject_id, predicate, object_id in rows:
+                conn.execute(
+                    insert(structural_memory_relations).values(
+                        id=_relation_id(
+                            relation_group_id, subject_id, predicate, object_id
+                        ),
+                        repo_id="repo-a",
+                        subject_memory_id=subject_id,
+                        predicate=predicate,
+                        object_memory_id=object_id,
+                        status="active",
+                        created_by="manual",
+                        created_at=ts,
+                        updated_at=ts,
+                    )
                 )
-            )
 
     return _seed
 
@@ -398,6 +454,11 @@ def _cosine_similarity(left: list[float], right: list[float]) -> float:
         for left_value, right_value in zip(left, right, strict=True)
     )
     return dot / (left_norm * right_norm)
+
+
+def _relation_id(prefix: str, *parts: str) -> str:
+    digest = hashlib.md5(":".join(parts).encode("utf-8")).hexdigest()
+    return f"{prefix}-{digest}"
 
 
 @pytest.fixture

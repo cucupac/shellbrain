@@ -23,6 +23,13 @@ from app.core.ports.db.retrieval_repositories import (
     IConceptKeywordRetrievalRepo,
     IConceptSemanticRetrievalRepo,
 )
+from app.core.policies.retrieval.ontology_semantics import (
+    concept_bundle_retrieval_multiplier,
+    dominant_lifecycle_status,
+    is_active_lifecycle,
+    lifecycle_retrieval_multiplier,
+    lifecycle_status_counts,
+)
 from app.core.use_cases.retrieval.concept_seed_retrieval import retrieve_concept_seeds
 
 
@@ -125,7 +132,9 @@ def _auto_concept_items(
         confidence = _required_float(
             link_match, "confidence", "concept memory link"
         )
-        candidate["score"] += 10.0 * _status_multiplier(status) * max(confidence, 0.1)
+        candidate["score"] += (
+            10.0 * lifecycle_retrieval_multiplier(status) * max(confidence, 0.1)
+        )
         _append_linked_memory_reason(candidate["why"], link_match)
 
     _add_retrieved_concept_candidates(
@@ -321,17 +330,6 @@ def _append_rank_reason(
     reasons.append({"reason": reason, "rank": rank})
 
 
-def _status_multiplier(status: str) -> float:
-    return {
-        ConceptLifecycleStatus.ACTIVE.value: 1.0,
-        ConceptLifecycleStatus.MAYBE_STALE.value: 0.65,
-        ConceptLifecycleStatus.STALE.value: 0.25,
-        ConceptLifecycleStatus.SUPERSEDED.value: 0.0,
-        ConceptLifecycleStatus.WRONG.value: 0.0,
-        ConceptLifecycleStatus.ARCHIVED.value: 0.0,
-    }[ConceptLifecycleStatus(status).value]
-
-
 def _required_string(record: dict[str, Any], field: str, record_type: str) -> str:
     """Return a required non-empty string from ranking evidence."""
 
@@ -350,32 +348,20 @@ def _required_float(record: dict[str, Any], field: str, record_type: str) -> flo
 
 
 def _freshness_multiplier(bundle: dict[str, Any]) -> float:
-    freshness = _freshness(bundle)
-    if freshness["status"] == "active":
-        return 1.0
-    if freshness["status"] == "maybe_stale":
-        return 0.7
-    return 0.35
+    return concept_bundle_retrieval_multiplier(_bundle_lifecycle_statuses(bundle))
 
 
 def _freshness(bundle: dict[str, Any]) -> dict[str, Any]:
-    statuses: list[str] = []
-    for key in ("relations", "claims", "groundings", "memory_links"):
-        for record in bundle[key]:
-            statuses.append(record.lifecycle.status.value)
-    maybe_stale = statuses.count(ConceptLifecycleStatus.MAYBE_STALE.value)
-    stale = statuses.count(ConceptLifecycleStatus.STALE.value)
-    wrong = statuses.count(ConceptLifecycleStatus.WRONG.value)
-    superseded = statuses.count(ConceptLifecycleStatus.SUPERSEDED.value)
-    archived = statuses.count(ConceptLifecycleStatus.ARCHIVED.value)
-    status = "active"
-    if wrong or stale or archived:
-        status = "stale"
-    elif maybe_stale or superseded:
-        status = "maybe_stale"
+    statuses = _bundle_lifecycle_statuses(bundle)
+    counts = lifecycle_status_counts(statuses)
+    maybe_stale = counts.get(ConceptLifecycleStatus.MAYBE_STALE.value, 0)
+    stale = counts.get(ConceptLifecycleStatus.STALE.value, 0)
+    wrong = counts.get(ConceptLifecycleStatus.WRONG.value, 0)
+    superseded = counts.get(ConceptLifecycleStatus.SUPERSEDED.value, 0)
+    archived = counts.get(ConceptLifecycleStatus.ARCHIVED.value, 0)
     return {
-        "status": status,
-        "active_records": statuses.count(ConceptLifecycleStatus.ACTIVE.value),
+        "status": dominant_lifecycle_status(statuses),
+        "active_records": counts.get(ConceptLifecycleStatus.ACTIVE.value, 0),
         "maybe_stale_records": maybe_stale,
         "stale_records": stale,
         "superseded_records": superseded,
@@ -384,13 +370,21 @@ def _freshness(bundle: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _bundle_lifecycle_statuses(bundle: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(
+        record.lifecycle.status.value
+        for key in ("relations", "claims", "groundings", "memory_links")
+        for record in bundle[key]
+    )
+
+
 def _orientation(concept: Concept, claims: list[ConceptClaim]) -> str:
     definition = next(
         (
             claim.text
             for claim in _sort_claims(claims)
             if claim.claim_type.value == "definition"
-            and claim.lifecycle.status == ConceptLifecycleStatus.ACTIVE
+            and is_active_lifecycle(claim.lifecycle.status)
         ),
         None,
     )
@@ -402,7 +396,7 @@ def _key_claims(claims: list[ConceptClaim]) -> list[dict[str, Any]]:
     active_claims = [
         claim
         for claim in _sort_claims(claims)
-        if claim.lifecycle.status == ConceptLifecycleStatus.ACTIVE
+        if is_active_lifecycle(claim.lifecycle.status)
     ]
     return [_claim_payload(claim) for claim in active_claims[:MAX_KEY_CLAIMS]]
 
@@ -466,11 +460,11 @@ def _relation_payloads(
             {
                 "id": relation.id,
                 "predicate": relation.predicate.value,
-                "subject": _concept_ref_payload(
+                "subject": _required_concept_ref_payload(
                     endpoints.get(relation.subject_concept_id),
                     relation.subject_concept_id,
                 ),
-                "object": _concept_ref_payload(
+                "object": _required_concept_ref_payload(
                     endpoints.get(relation.object_concept_id),
                     relation.object_concept_id,
                 ),
@@ -492,6 +486,11 @@ def _grounding_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
         bundle["groundings"], key=lambda item: (item.role.value, item.anchor_id)
     ):
         anchor = anchors_by_id.get(grounding.anchor_id)
+        if anchor is None:
+            raise ValueError(
+                f"Concept grounding {grounding.id} references missing anchor "
+                f"{grounding.anchor_id}"
+            )
         payloads.append(
             {
                 "id": grounding.id,
@@ -509,9 +508,7 @@ def _grounding_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
                     "status": anchor.status.value,
                     "created_at": _iso(anchor.created_at),
                     "updated_at": _iso(anchor.updated_at),
-                }
-                if anchor is not None
-                else None,
+                },
             }
         )
     return payloads
@@ -528,6 +525,11 @@ def _memory_link_payloads(
     payloads: list[dict[str, Any]] = []
     for link in sorted(links, key=lambda item: (item.role.value, item.memory_id)):
         memory = memory_by_id.get(link.memory_id)
+        if memory is None:
+            raise ValueError(
+                f"Concept memory link {link.id} references missing memory "
+                f"{link.memory_id}"
+            )
         payloads.append(
             {
                 "id": link.id,
@@ -539,10 +541,10 @@ def _memory_link_payloads(
                 "created_at": _iso(link.created_at),
                 "updated_at": _iso(link.updated_at),
                 "memory_id": link.memory_id,
-                "kind": memory.kind.value if memory else None,
-                "text": memory.text if memory else None,
-                "memory_status": memory.status.value if memory else None,
-                "memory_created_at": _iso(memory.created_at) if memory else None,
+                "kind": memory.kind.value,
+                "text": memory.text,
+                "memory_status": memory.status.value,
+                "memory_created_at": _iso(memory.created_at),
             }
         )
     return payloads
@@ -574,9 +576,13 @@ def _evidence_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
-def _concept_ref_payload(concept: Concept | None, fallback_id: str) -> dict[str, Any]:
+def _required_concept_ref_payload(
+    concept: Concept | None, referenced_concept_id: str
+) -> dict[str, Any]:
     if concept is None:
-        return {"id": fallback_id, "ref": fallback_id, "name": None, "kind": None}
+        raise ValueError(
+            f"Concept relation references missing concept {referenced_concept_id}"
+        )
     return {
         "id": concept.id,
         "ref": concept.slug,

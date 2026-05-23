@@ -302,8 +302,8 @@ def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
     seed_read_embedding: Callable[..., None],
-    seed_problem_attempt_link: Callable[..., None],
-    seed_fact_update_link: Callable[..., None],
+    seed_structural_problem_link: Callable[..., None],
+    seed_structural_fact_change_relations: Callable[..., None],
     seed_association_edge: Callable[..., None],
     stub_vector_search: Callable[[dict[str, list[float]]], IVectorSearch],
     semantic_retrieval_override_factory: Callable[..., object],
@@ -362,13 +362,15 @@ def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and
         text_value="wrong failed tactic without query overlap",
         status="wrong",
     )
-    seed_problem_attempt_link(
-        problem_id="visible-problem", attempt_id="visible-solution", role="solution"
-    )
-    seed_problem_attempt_link(
+    seed_structural_problem_link(
         problem_id="visible-problem",
-        attempt_id="wrong-failed-tactic",
-        role="failed_tactic",
+        linked_memory_id="visible-solution",
+        link_kind="solution",
+    )
+    seed_structural_problem_link(
+        problem_id="visible-problem",
+        linked_memory_id="wrong-failed-tactic",
+        link_kind="failed_tactic",
     )
 
     seed_read_memory(
@@ -393,8 +395,8 @@ def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and
         text_value="superseded replacement fact without query overlap",
         status="superseded",
     )
-    seed_fact_update_link(
-        link_id="fact-link-archived",
+    seed_structural_fact_change_relations(
+        relation_group_id="fact-link-archived",
         old_fact_id="visible-old-fact",
         change_id="visible-change",
         new_fact_id="superseded-new-fact",

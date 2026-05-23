@@ -18,7 +18,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260522_0032"
+CURRENT_ALEMBIC_HEAD = "20260522_0035"
 
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
@@ -406,7 +406,32 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                       ('pre0009-fact', 'example/repo', 'repo', 'fact', 'pre-frontier fact'),
                       ('frontier-before-cleanup', 'example/repo', 'repo', 'frontier', 'frontier should be retired'),
                       ('mature-after-upgrade', 'example/repo', 'repo', 'fact', 'mature target'),
-                      ('solution-anchor-memory', 'example/repo', 'repo', 'solution', 'solution linked through memory anchor')
+                      ('solution-anchor-memory', 'example/repo', 'repo', 'solution', 'solution linked through memory anchor'),
+                      ('failed-tactic-before-structural', 'example/repo', 'repo', 'failed_tactic', 'failed tactic before structural cleanup'),
+                      ('change-before-structural', 'example/repo', 'repo', 'change', 'change before structural cleanup'),
+                      ('new-fact-before-structural', 'example/repo', 'repo', 'fact', 'new fact before structural cleanup')
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO problem_attempts (problem_id, attempt_id, role, created_at)
+                    VALUES
+                      ('pre0009-problem', 'solution-anchor-memory', 'solution', NOW()),
+                      ('pre0009-problem', 'failed-tactic-before-structural', 'failed_tactic', NOW())
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO fact_updates (
+                      id, old_fact_id, change_id, new_fact_id, created_at
+                    )
+                    VALUES (
+                      'fact-update-before-structural',
+                      'pre0009-fact',
+                      'change-before-structural',
+                      'new-fact-before-structural',
+                      NOW()
+                    )
                     """
                 )
                 cur.execute(
@@ -457,6 +482,39 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                     """
                     INSERT INTO memory_evidence (memory_id, evidence_id)
                     VALUES ('pre0009-problem', 'legacy-evidence-ref')
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO association_edge_evidence (edge_id, evidence_id)
+                    VALUES ('pre0009-edge', 'legacy-evidence-ref')
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO utility_observations (
+                      id, memory_id, problem_id, vote, rationale, created_at
+                    )
+                    VALUES (
+                      'legacy-utility-observation',
+                      'pre0009-fact',
+                      'pre0009-problem',
+                      1.0,
+                      'Legacy utility evidence.',
+                      NOW()
+                    )
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO utility_observation_evidence (observation_id, evidence_id)
+                    VALUES ('legacy-utility-observation', 'legacy-evidence-ref')
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO fact_update_evidence (fact_update_id, evidence_id)
+                    VALUES ('fact-update-before-structural', 'legacy-evidence-ref')
                     """
                 )
                 cur.execute(
@@ -521,6 +579,63 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                     )
                     """
                 )
+                cur.execute(
+                    """
+                    INSERT INTO concept_memory_links (
+                      id, repo_id, concept_id, role, memory_id, status, confidence,
+                      source_kind, source_ref, created_by
+                    )
+                    VALUES
+                      (
+                        'legacy-role-warned',
+                        'example/repo',
+                        'concept-memory-anchor',
+                        'warned_about',
+                        'pre0009-problem',
+                        'active',
+                        0.41,
+                        'manual',
+                        'legacy-role-seed',
+                        'manual'
+                      ),
+                      (
+                        'legacy-role-changed',
+                        'example/repo',
+                        'concept-memory-anchor',
+                        'changed',
+                        'pre0009-fact',
+                        'active',
+                        0.42,
+                        'manual',
+                        'legacy-role-seed',
+                        'manual'
+                      ),
+                      (
+                        'legacy-role-validated',
+                        'example/repo',
+                        'concept-memory-anchor',
+                        'validated',
+                        'mature-after-upgrade',
+                        'active',
+                        0.43,
+                        'manual',
+                        'legacy-role-seed',
+                        'manual'
+                      ),
+                      (
+                        'legacy-role-contradicted',
+                        'example/repo',
+                        'concept-memory-anchor',
+                        'contradicted',
+                        'solution-anchor-memory',
+                        'active',
+                        0.44,
+                        'manual',
+                        'legacy-role-seed',
+                        'manual'
+                      )
+                    """
+                )
 
         completed = subprocess.run(
             [shellbrain_executable, "admin", "migrate"],
@@ -539,6 +654,21 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                 assert cur.fetchone()[0] == "concept_lifecycle_events"
                 cur.execute("SELECT to_regclass('public.memory_lifecycle_events');")
                 assert cur.fetchone()[0] == "memory_lifecycle_events"
+                cur.execute(
+                    "SELECT to_regclass('public.structural_memory_relations');"
+                )
+                assert cur.fetchone()[0] == "structural_memory_relations"
+                for retired_table in (
+                    "memory_evidence",
+                    "fact_update_evidence",
+                    "association_edge_evidence",
+                    "utility_observation_evidence",
+                    "concept_evidence",
+                    "problem_attempts",
+                    "fact_updates",
+                ):
+                    cur.execute(f"SELECT to_regclass('public.{retired_table}');")
+                    assert cur.fetchone()[0] is None
 
                 cur.execute(
                     """
@@ -579,16 +709,31 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                 )
                 cur.execute(
                     """
-                    INSERT INTO concept_evidence (
-                      id, repo_id, target_type, target_id, evidence_kind, note
+                    INSERT INTO evidence_refs (
+                      id, repo_id, kind, ref, canonical_hash, note
                     )
                     VALUES (
                       'claim-lifecycle-event-evidence-after-cleanup',
                       'example/repo',
-                      'lifecycle_event',
-                      'claim-lifecycle-event-after-cleanup',
                       'manual',
+                      'Packaging smoke concept lifecycle evidence.',
+                      'packaging-smoke-concept-lifecycle-evidence',
                       'Lifecycle event evidence remains accepted.'
+                    )
+                    """
+                )
+                cur.execute(
+                    """
+                    INSERT INTO evidence_links (
+                      id, repo_id, target_type, target_id, evidence_id, evidence_role
+                    )
+                    VALUES (
+                      'claim-lifecycle-event-evidence-link-after-cleanup',
+                      'example/repo',
+                      'concept_lifecycle_event',
+                      'claim-lifecycle-event-after-cleanup',
+                      'claim-lifecycle-event-evidence-after-cleanup',
+                      'supports'
                     )
                     """
                 )
@@ -684,7 +829,8 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                     FROM evidence_links el
                     JOIN evidence_refs er ON er.id = el.evidence_id
                     WHERE el.repo_id = 'example/repo'
-                      AND el.evidence_id = 'legacy-evidence-ref';
+                      AND el.evidence_id = 'legacy-evidence-ref'
+                      AND el.target_type = 'memory';
                     """
                 )
                 assert cur.fetchone() == (
@@ -693,16 +839,57 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                     "pre0009-problem",
                     "supports",
                 )
+                cur.execute(
+                    """
+                    SELECT target_type, target_id, evidence_role
+                    FROM evidence_links
+                    WHERE repo_id = 'example/repo'
+                      AND evidence_id = 'legacy-evidence-ref'
+                      AND target_type IN ('association_edge', 'utility_observation')
+                    ORDER BY target_type, target_id;
+                    """
+                )
+                assert cur.fetchall() == [
+                    ("association_edge", "pre0009-edge", "supports"),
+                    (
+                        "utility_observation",
+                        "legacy-utility-observation",
+                        "supports",
+                    ),
+                ]
 
                 cur.execute(
                     """
-                    SELECT memory_id, evidence_id
-                    FROM memory_evidence
-                    WHERE memory_id = 'pre0009-problem'
+                    SELECT subject_memory_id, predicate, object_memory_id
+                    FROM structural_memory_relations
+                    ORDER BY subject_memory_id, predicate, object_memory_id;
+                    """
+                )
+                assert cur.fetchall() == [
+                    (
+                        "new-fact-before-structural",
+                        "explained_by_change",
+                        "change-before-structural",
+                    ),
+                    ("pre0009-fact", "explained_by_change", "change-before-structural"),
+                    ("pre0009-fact", "superseded_by", "new-fact-before-structural"),
+                    (
+                        "pre0009-problem",
+                        "failed_with",
+                        "failed-tactic-before-structural",
+                    ),
+                    ("pre0009-problem", "solved_by", "solution-anchor-memory"),
+                ]
+
+                cur.execute(
+                    """
+                    SELECT count(*)
+                    FROM evidence_links
+                    WHERE target_type = 'structural_memory_relation'
                       AND evidence_id = 'legacy-evidence-ref';
                     """
                 )
-                assert cur.fetchone() == ("pre0009-problem", "legacy-evidence-ref")
+                assert cur.fetchone() == (3,)
 
                 cur.execute(
                     "SELECT id FROM association_observations WHERE id = 'matures-into-observation';"
@@ -741,21 +928,6 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
 
                 cur.execute(
                     """
-                    SELECT evidence_kind, memory_id, anchor_id
-                    FROM concept_evidence
-                    WHERE target_type = 'memory_link'
-                      AND target_id IN (
-                        SELECT id
-                        FROM concept_memory_links
-                        WHERE concept_id = 'concept-memory-anchor'
-                          AND memory_id = 'solution-anchor-memory'
-                      );
-                    """
-                )
-                assert cur.fetchone() == ("memory", "solution-anchor-memory", None)
-
-                cur.execute(
-                    """
                     SELECT er.kind, er.memory_id, el.target_type, el.evidence_role
                     FROM evidence_links el
                     JOIN evidence_refs er ON er.id = el.evidence_id
@@ -776,6 +948,78 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                     "supports",
                 )
 
+                cur.execute(
+                    """
+                    SELECT id, role, memory_id, confidence, source_kind, source_ref, created_by
+                    FROM concept_memory_links
+                    WHERE id LIKE 'legacy-role-%'
+                    ORDER BY id;
+                    """
+                )
+                assert cur.fetchall() == [
+                    (
+                        "legacy-role-changed",
+                        "change_relevant_to",
+                        "pre0009-fact",
+                        0.42,
+                        "manual",
+                        "legacy-role-seed",
+                        "manual",
+                    ),
+                    (
+                        "legacy-role-contradicted",
+                        "warns_about",
+                        "solution-anchor-memory",
+                        0.44,
+                        "manual",
+                        "legacy-role-seed",
+                        "manual",
+                    ),
+                    (
+                        "legacy-role-validated",
+                        "example_of",
+                        "mature-after-upgrade",
+                        0.43,
+                        "manual",
+                        "legacy-role-seed",
+                        "manual",
+                    ),
+                    (
+                        "legacy-role-warned",
+                        "warns_about",
+                        "pre0009-problem",
+                        0.41,
+                        "manual",
+                        "legacy-role-seed",
+                        "manual",
+                    ),
+                ]
+
+                cur.execute(
+                    """
+                    SELECT count(*)
+                    FROM concept_memory_links
+                    WHERE role IN ('changed', 'validated', 'contradicted', 'warned_about');
+                    """
+                )
+                assert cur.fetchone() == (0,)
+
+                with pytest.raises(psycopg.Error):
+                    cur.execute(
+                        """
+                        INSERT INTO concept_memory_links (
+                          id, repo_id, concept_id, role, memory_id
+                        )
+                        VALUES (
+                          'legacy-role-after-cleanup',
+                          'example/repo',
+                          'concept-memory-anchor',
+                          'validated',
+                          'pre0009-problem'
+                        )
+                        """
+                    )
+
                 with pytest.raises(psycopg.Error):
                     cur.execute(
                         """
@@ -789,6 +1033,22 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                         """
                         INSERT INTO association_edges (id, repo_id, from_memory_id, to_memory_id, relation_type)
                         VALUES ('matures-after-cleanup', 'example/repo', 'pre0009-problem', 'pre0009-fact', 'matures_into')
+                        """
+                    )
+                conn.rollback()
+                with pytest.raises(psycopg.Error):
+                    cur.execute(
+                        """
+                        INSERT INTO structural_memory_relations (
+                          id, repo_id, subject_memory_id, predicate, object_memory_id
+                        )
+                        VALUES (
+                          'depends-on-structural-after-cleanup',
+                          'example/repo',
+                          'pre0009-problem',
+                          'depends_on',
+                          'solution-anchor-memory'
+                        )
                         """
                     )
                 conn.rollback()

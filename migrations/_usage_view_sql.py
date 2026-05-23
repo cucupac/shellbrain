@@ -1,4 +1,8 @@
-"""This module defines view SQL strings used to build derived read-model views."""
+"""Migration-local snapshots of derived view SQL.
+
+Alembic migrations import these constants instead of runtime model modules so
+historical upgrades are not coupled to future runtime view edits.
+"""
 
 CURRENT_FACT_SNAPSHOT_SQL = """
 CREATE OR REPLACE VIEW current_fact_snapshot AS

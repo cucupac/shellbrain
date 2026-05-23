@@ -12,7 +12,7 @@ class UpdatePlanIds:
     """IDs preallocated by the update use case before pure planning."""
 
     utility_observation_id: str | None = None
-    fact_update_id: str | None = None
+    structural_relation_ids: tuple[str, ...] = ()
     association_edge_id: str | None = None
     association_observation_id: str | None = None
     memory_lifecycle_event_id: str | None = None

@@ -550,11 +550,11 @@ class ConceptsRepo(IConceptsRepo):
                             *[
                                 and_(
                                     concept_lifecycle_events.c.target_type
-                                    == legacy_target_type,
+                                    == lifecycle_target_type,
                                     concept_lifecycle_events.c.target_id
                                     == target_id,
                                 )
-                                for legacy_target_type, _, target_id in target_pairs
+                                for lifecycle_target_type, _, target_id in target_pairs
                             ]
                         ),
                     )
@@ -569,7 +569,7 @@ class ConceptsRepo(IConceptsRepo):
         evidence_rows = []
         evidence_pairs = target_pairs + event_pairs
         if evidence_pairs:
-            evidence_rows = self._concept_evidence_rows(
+            evidence_rows = self._unified_evidence_rows(
                 repo_id=repo_id, evidence_pairs=evidence_pairs
             )
         return {
@@ -586,7 +586,7 @@ class ConceptsRepo(IConceptsRepo):
             "evidence": [_to_evidence(row) for row in evidence_rows],
         }
 
-    def _concept_evidence_rows(
+    def _unified_evidence_rows(
         self, *, repo_id: str, evidence_pairs: Sequence[tuple[str, str, str]]
     ) -> list[dict[str, Any]]:
         """Return concept evidence rows from unified evidence storage."""

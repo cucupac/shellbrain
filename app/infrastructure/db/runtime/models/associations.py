@@ -86,20 +86,3 @@ association_observations = Table(
         name="ck_association_observations_no_self_loop",
     ),
 )
-
-association_edge_evidence = Table(
-    "association_edge_evidence",
-    metadata,
-    Column(
-        "edge_id",
-        String,
-        ForeignKey("association_edges.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-    Column(
-        "evidence_id",
-        String,
-        ForeignKey("evidence_refs.id", ondelete="CASCADE"),
-        primary_key=True,
-    ),
-)

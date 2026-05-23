@@ -6,10 +6,10 @@ from typing import Any, Sequence
 
 from sqlalchemy import or_, select, union_all
 
-from app.core.entities.memories import DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES
+from app.core.policies.retrieval.ontology_semantics import POSITIVE_LIFECYCLE_STATUSES
 from app.core.ports.db.retrieval_repositories import IReadPolicyRepo
 from app.infrastructure.db.runtime.models.associations import association_edges
-from app.infrastructure.db.runtime.models.experiences import fact_updates, problem_attempts
+from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.memories import memories
 
 
@@ -21,25 +21,35 @@ class ReadPolicyRepo(IReadPolicyRepo):
 
         self._session = session
 
-    def list_problem_attempt_rows(
+    def list_structural_memory_relation_rows(
         self,
         *,
         repo_id: str,
         include_global: bool,
         anchor_memory_id: str,
         kinds: Sequence[str] | None,
+        predicates: Sequence[str],
     ) -> Sequence[dict[str, Any]]:
-        """Return problem-attempt rows touching an anchor plus visible participants."""
+        """Return active structural relation rows touching an anchor."""
 
         rows = (
             self._session.execute(
                 select(
-                    problem_attempts.c.problem_id, problem_attempts.c.attempt_id
+                    structural_memory_relations.c.subject_memory_id,
+                    structural_memory_relations.c.predicate,
+                    structural_memory_relations.c.object_memory_id,
                 ).where(
+                    structural_memory_relations.c.repo_id == repo_id,
+                    structural_memory_relations.c.predicate.in_(list(predicates)),
+                    structural_memory_relations.c.status.in_(
+                        list(POSITIVE_LIFECYCLE_STATUSES)
+                    ),
                     or_(
-                        problem_attempts.c.problem_id == anchor_memory_id,
-                        problem_attempts.c.attempt_id == anchor_memory_id,
-                    )
+                        structural_memory_relations.c.subject_memory_id
+                        == anchor_memory_id,
+                        structural_memory_relations.c.object_memory_id
+                        == anchor_memory_id,
+                    ),
                 )
             )
             .mappings()
@@ -47,54 +57,9 @@ class ReadPolicyRepo(IReadPolicyRepo):
         )
         return [
             {
-                "problem_id": str(row["problem_id"]),
-                "attempt_id": str(row["attempt_id"]),
-                "visible_memory_ids": tuple(
-                    sorted(
-                        self._visible_memory_ids(
-                            repo_id=repo_id,
-                            include_global=include_global,
-                            kinds=kinds,
-                            memory_ids=(str(row["problem_id"]), str(row["attempt_id"])),
-                        )
-                    )
-                ),
-            }
-            for row in rows
-        ]
-
-    def list_fact_update_rows(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds: Sequence[str] | None,
-    ) -> Sequence[dict[str, Any]]:
-        """Return fact-update rows touching an anchor plus visible participants."""
-
-        rows = (
-            self._session.execute(
-                select(
-                    fact_updates.c.old_fact_id,
-                    fact_updates.c.change_id,
-                    fact_updates.c.new_fact_id,
-                ).where(
-                    or_(
-                        fact_updates.c.old_fact_id == anchor_memory_id,
-                        fact_updates.c.change_id == anchor_memory_id,
-                        fact_updates.c.new_fact_id == anchor_memory_id,
-                    )
-                )
-            )
-            .mappings()
-            .all()
-        )
-        return [
-            {
-                "old_fact_id": str(row["old_fact_id"]),
-                "change_id": str(row["change_id"]),
-                "new_fact_id": str(row["new_fact_id"]),
+                "subject_memory_id": str(row["subject_memory_id"]),
+                "predicate": str(row["predicate"]),
+                "object_memory_id": str(row["object_memory_id"]),
                 "visible_memory_ids": tuple(
                     sorted(
                         self._visible_memory_ids(
@@ -102,9 +67,8 @@ class ReadPolicyRepo(IReadPolicyRepo):
                             include_global=include_global,
                             kinds=kinds,
                             memory_ids=(
-                                str(row["old_fact_id"]),
-                                str(row["change_id"]),
-                                str(row["new_fact_id"]),
+                                str(row["subject_memory_id"]),
+                                str(row["object_memory_id"]),
                             ),
                         )
                     )
@@ -218,7 +182,7 @@ class ReadPolicyRepo(IReadPolicyRepo):
         scope_values = ["repo", "global"] if include_global else ["repo"]
         filters: list[Any] = [
             memories.c.repo_id == repo_id,
-            memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
+            memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
             memories.c.scope.in_(scope_values),
         ]
         if kinds:

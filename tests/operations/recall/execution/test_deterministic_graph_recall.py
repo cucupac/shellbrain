@@ -23,6 +23,7 @@ from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.use_cases.retrieval.deterministic_graph_recall import (
     _build_query_lanes,
     build_deterministic_graph_pack,
+    source_items_from_graph_pack,
 )
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 
@@ -63,12 +64,12 @@ def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_cont
     assert "mem-direct" in memory_by_id
     assert "mem-warning" in memory_by_id
     assert "mem-change" in memory_by_id
-    assert "mem-contradicted" in memory_by_id
+    assert "mem-change-context" in memory_by_id
     assert "graph_linked_memory" in memory_by_id["mem-warning"]["why"]
-    assert "warned_about" in memory_by_id["mem-warning"]["link_roles"]
+    assert "warns_about" in memory_by_id["mem-warning"]["link_roles"]
     assert memory_by_id["mem-warning"]["currentness"] == "historical_warning"
     assert memory_by_id["mem-change"]["currentness"] == "current"
-    assert memory_by_id["mem-contradicted"]["currentness"] == "conflicted"
+    assert memory_by_id["mem-change-context"]["currentness"] == "current"
     assert neighbor_refs == {"postgres-migrations"}
     assert any(anchor["locator"] == "app/core/settings.py" for anchor in pack["anchors"])
     assert pack["concepts"][0]["currentness"] == "stale"
@@ -77,8 +78,6 @@ def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_cont
     )
     conflict_types = {conflict["type"] for conflict in pack["conflicts"]}
     assert "stale_claim" in conflict_types
-    assert "changed_memory_link" in conflict_types
-    assert "contradicted_memory_link" in conflict_types
     assert pack["pack_trace"]["concept_candidates"]["candidate_count"] >= 1
     assert pack["pack_trace"]["graph_traversal"]["linked_memories_loaded"] == 3
     assert pack["pack_trace"]["graph_traversal"]["relation_neighbors_loaded"] == 1
@@ -102,6 +101,35 @@ def test_graph_pack_does_not_select_archived_concept_records_as_signal() -> None
     assert memory_by_id["mem-direct"]["concept_refs"] == []
     assert pack["pack_trace"]["concept_candidates"]["candidate_count"] >= 1
     assert pack["pack_trace"]["concept_candidates"]["selected"] == 0
+
+
+def test_graph_pack_expands_canonical_structural_memory_relations() -> None:
+    """deterministic recall should use structural relations as explicit memory context."""
+
+    uow = _FakeUow()
+    uow.concepts = _NoFakeConcepts()
+    uow.concept_semantic_retrieval = _NoFakeConceptSemanticRetrieval()
+    uow.read_policy = _StructuralFakeReadPolicy()
+
+    pack = build_deterministic_graph_pack(
+        request=_request(query="TimeoutError in app/core/settings.py"),
+        uow=uow,
+    )
+
+    memory_by_id = {memory["id"]: memory for memory in pack["memories"]}
+    assert "mem-change" in memory_by_id
+    assert "structural_memory_relation" in memory_by_id["mem-change"]["why"]
+    assert pack["pack_trace"]["structural_memory_relations"] == {
+        "expanded_memory_count": 1,
+        "relation_count": 1,
+        "relation_count_by_type": {"explained_by_change": 1},
+    }
+    sources_by_id = {
+        source["source_id"]: source
+        for source in source_items_from_graph_pack(pack)
+        if source["source_kind"] == "memory"
+    }
+    assert sources_by_id["mem-change"]["input_section"] == "explicit_related"
 
 
 def _request(*, query: str, hypothesis: str = "missing timeout guard") -> MemoryRecallRequest:
@@ -145,6 +173,12 @@ class _FakeConceptSemanticRetrieval:
         return [{"concept_id": "c-db", "score": 0.91}]
 
 
+class _NoFakeConceptSemanticRetrieval:
+    def query_concepts_semantic(self, **kwargs):
+        del kwargs
+        return []
+
+
 class _FakeConceptKeywordRetrieval:
     def list_concept_keyword_corpus(self, **kwargs):
         del kwargs
@@ -175,12 +209,12 @@ class _FakeMemories:
                 kind=MemoryKind.CHANGE,
                 text="Timeout handling moved into the app settings loader.",
             ),
-            "mem-contradicted": Memory(
-                id=MemoryId("mem-contradicted"),
+            "mem-change-context": Memory(
+                id=MemoryId("mem-change-context"),
                 repo_id=RepoId("repo-a"),
                 scope=MemoryScope.REPO,
                 kind=MemoryKind.FACT,
-                text="Old guidance said migration config timeouts were irrelevant.",
+                text="Old timeout guidance is relevant when reviewing current migration settings.",
             ),
         }
 
@@ -273,22 +307,22 @@ class _FakeConcepts:
                         id="link-warning",
                         repo_id="repo-a",
                         concept_id="c-db",
-                        role=ConceptMemoryLinkRole.WARNED_ABOUT,
+                        role=ConceptMemoryLinkRole.WARNS_ABOUT,
                         memory_id="mem-warning",
                     ),
                     ConceptMemoryLink(
                         id="link-change",
                         repo_id="repo-a",
                         concept_id="c-db",
-                        role=ConceptMemoryLinkRole.CHANGED,
+                        role=ConceptMemoryLinkRole.CHANGE_RELEVANT_TO,
                         memory_id="mem-change",
                     ),
                     ConceptMemoryLink(
-                        id="link-contradicted",
+                        id="link-change-context",
                         repo_id="repo-a",
                         concept_id="c-db",
-                        role=ConceptMemoryLinkRole.CONTRADICTED,
-                        memory_id="mem-contradicted",
+                        role=ConceptMemoryLinkRole.CHANGE_RELEVANT_TO,
+                        memory_id="mem-change-context",
                     ),
                 ],
                 "evidence": [],
@@ -314,7 +348,7 @@ class _ArchivedFakeConcepts(_FakeConcepts):
             {
                 "concept_id": "c-db",
                 "memory_id": "mem-direct",
-                "role": "changed",
+                "role": "change_relevant_to",
                 "status": "archived",
                 "confidence": 1.0,
             }
@@ -347,6 +381,38 @@ class _ArchivedFakeConcepts(_FakeConcepts):
         }
 
 
+class _NoFakeConcepts:
+    def find_concepts_for_memory_ids(self, **kwargs):
+        del kwargs
+        return []
+
+    def get_concept_bundle(self, *, repo_id: str, concept_ref: str):
+        del repo_id, concept_ref
+        return None
+
+
+class _EmptyFakeReadPolicy:
+    def list_structural_memory_relation_rows(self, **kwargs):
+        del kwargs
+        return []
+
+
+class _StructuralFakeReadPolicy:
+    def list_structural_memory_relation_rows(self, **kwargs):
+        if kwargs["anchor_memory_id"] != "mem-direct":
+            return []
+        if "explained_by_change" not in set(kwargs["predicates"]):
+            return []
+        return [
+            {
+                "subject_memory_id": "mem-direct",
+                "predicate": "explained_by_change",
+                "object_memory_id": "mem-change",
+                "visible_memory_ids": ("mem-direct", "mem-change"),
+            }
+        ]
+
+
 class _FakeUow:
     def __init__(self) -> None:
         self.memories = _FakeMemories()
@@ -355,4 +421,5 @@ class _FakeUow:
         self.keyword_retrieval = _FakeKeywordRetrieval()
         self.concept_semantic_retrieval = _FakeConceptSemanticRetrieval()
         self.concept_keyword_retrieval = _FakeConceptKeywordRetrieval()
+        self.read_policy = _EmptyFakeReadPolicy()
         self.vector_search = _FakeVectorSearch()

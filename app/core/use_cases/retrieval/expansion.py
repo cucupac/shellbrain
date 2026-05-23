@@ -9,8 +9,11 @@ from app.core.ports.db.retrieval_repositories import (
 )
 from app.core.policies.retrieval.expansion import (
     select_association_neighbors,
-    select_fact_update_neighbors,
-    select_problem_attempt_neighbors,
+    select_structural_memory_relation_neighbors,
+)
+from app.core.policies.retrieval.ontology_semantics import (
+    STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
+    STRUCTURAL_PROBLEM_RELATION_PREDICATES,
 )
 
 
@@ -41,12 +44,13 @@ def expand_candidates(
         anchor_score = _candidate_anchor_score(direct_candidate)
 
         if expand["include_problem_links"]:
-            for neighbor in select_problem_attempt_neighbors(
-                read_policy.list_problem_attempt_rows(
+            for neighbor in select_structural_memory_relation_neighbors(
+                read_policy.list_structural_memory_relation_rows(
                     repo_id=repo_id,
                     include_global=include_global,
                     anchor_memory_id=anchor_memory_id,
                     kinds=kinds,
+                    predicates=STRUCTURAL_PROBLEM_RELATION_PREDICATES,
                 ),
                 anchor_memory_id=anchor_memory_id,
             ):
@@ -59,14 +63,14 @@ def expand_candidates(
                         "expansion_type": neighbor["expansion_type"],
                     }
                 )
-
         if expand["include_fact_update_links"]:
-            for neighbor in select_fact_update_neighbors(
-                read_policy.list_fact_update_rows(
+            for neighbor in select_structural_memory_relation_neighbors(
+                read_policy.list_structural_memory_relation_rows(
                     repo_id=repo_id,
                     include_global=include_global,
                     anchor_memory_id=anchor_memory_id,
                     kinds=kinds,
+                    predicates=STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
                 ),
                 anchor_memory_id=anchor_memory_id,
             ):
@@ -79,7 +83,6 @@ def expand_candidates(
                         "expansion_type": neighbor["expansion_type"],
                     }
                 )
-
         if expand["include_association_links"] and max_association_depth > 0:
             seen_association_memory_ids = {str(anchor_memory_id)}
             association_queue = [str(anchor_memory_id)]

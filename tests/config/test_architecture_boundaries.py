@@ -859,3 +859,49 @@ def test_docs_and_onboarding_do_not_teach_removed_cli_aliases() -> None:
     assert not violations, (
         "Docs/onboarding should teach current CLI names only:\n" + "\n".join(violations)
     )
+
+
+def test_runtime_code_does_not_reference_retired_compatibility_tables() -> None:
+    """Dropped compatibility tables may appear only in migrations/test fixtures."""
+
+    retired_tables = (
+        "memory_evidence",
+        "fact_update_evidence",
+        "association_edge_evidence",
+        "utility_observation_evidence",
+        "concept_evidence",
+        "problem_attempts",
+        "fact_updates",
+    )
+    violations: list[str] = []
+    for path in _python_files(APP_ROOT):
+        text = path.read_text(encoding="utf-8")
+        for table_name in retired_tables:
+            if table_name in text:
+                rel_path = path.relative_to(REPO_ROOT).as_posix()
+                violations.append(f"{rel_path} references {table_name!r}")
+
+    assert not violations, (
+        "Runtime app code must use canonical evidence_links and "
+        "structural_memory_relations, not retired compatibility tables:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_migrations_do_not_import_runtime_model_modules() -> None:
+    """Historical migrations must keep their schema SQL local to migrations."""
+
+    forbidden_import = "app.infrastructure.db.runtime.models"
+    violations: list[str] = []
+    for path in _python_files(REPO_ROOT / "migrations"):
+        if path.name == "env.py":
+            continue
+        text = path.read_text(encoding="utf-8")
+        if forbidden_import in text:
+            rel_path = path.relative_to(REPO_ROOT).as_posix()
+            violations.append(f"{rel_path} imports runtime model code")
+
+    assert not violations, (
+        "Alembic migrations must not depend on current runtime model modules:\n"
+        + "\n".join(violations)
+    )

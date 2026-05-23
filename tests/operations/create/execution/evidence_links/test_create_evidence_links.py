@@ -9,12 +9,8 @@ from app.core.entities.memories import MemoryKind, MemoryScope
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
-from app.infrastructure.db.runtime.models.associations import (
-    association_edge_evidence,
-    association_edges,
-)
+from app.infrastructure.db.runtime.models.associations import association_edges
 from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
-from app.infrastructure.db.runtime.models.memories import memory_evidence
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
@@ -53,8 +49,6 @@ def test_create_attaches_all_memory_evidence_refs_exactly_once(
         evidence_links.c.target_id == memory_id,
     )
     assert len(link_rows) == 2
-    assert fetch_rows(memory_evidence, memory_evidence.c.memory_id == memory_id) == []
-
     refs = fetch_rows(evidence_refs, evidence_refs.c.repo_id == "repo-a")
     assert {row["ref"] for row in refs} == {"session://1", "session://2"}
     assert {row["kind"] for row in refs} == {"episode_event"}
@@ -124,11 +118,6 @@ def test_create_association_links_attach_edge_evidence(
         evidence_links.c.target_id == edge_id,
     )
     assert len(edge_evidence_rows) == 2
-    assert fetch_rows(
-        association_edge_evidence,
-        association_edge_evidence.c.edge_id == edge_id,
-    ) == []
-
 
 def test_parallel_create_reuses_one_evidence_ref_row_for_shared_event(
     uow_factory: Callable[[], PostgresUnitOfWork],

@@ -112,10 +112,8 @@ class ConceptMemoryLinkRole(str, Enum):
     EXAMPLE_OF = "example_of"
     SOLUTION_FOR = "solution_for"
     FAILED_TACTIC_FOR = "failed_tactic_for"
-    CHANGED = "changed"
-    VALIDATED = "validated"
-    CONTRADICTED = "contradicted"
-    WARNED_ABOUT = "warned_about"
+    WARNS_ABOUT = "warns_about"
+    CHANGE_RELEVANT_TO = "change_relevant_to"
 
 
 class ConceptEvidenceTargetType(str, Enum):

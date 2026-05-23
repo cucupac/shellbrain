@@ -6,8 +6,8 @@ from typing import Any, Sequence
 
 from sqlalchemy import desc, func, literal_column, select
 
-from app.core.entities.memories import DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES
 from app.core.ports.db.retrieval_repositories import IKeywordRetrievalRepo
+from app.core.policies.retrieval.ontology_semantics import POSITIVE_LIFECYCLE_STATUSES
 from app.infrastructure.db.runtime.models.memories import memories
 
 
@@ -106,7 +106,7 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
             )
             .where(
                 memories.c.repo_id == repo_id,
-                memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
+                memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
                 memories.c.scope.in_(scope_values),
             )
             .order_by(memories.c.id.asc())
@@ -128,7 +128,7 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
         scope_values = ["repo", "global"] if include_global else ["repo"]
         filters: list[Any] = [
             memories.c.repo_id == repo_id,
-            memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
+            memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
             memories.c.scope.in_(scope_values),
         ]
         if kinds:

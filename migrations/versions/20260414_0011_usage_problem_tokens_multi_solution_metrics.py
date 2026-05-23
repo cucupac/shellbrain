@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import (
+from migrations._legacy_usage_views import (
     USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_SQL,
 )
 

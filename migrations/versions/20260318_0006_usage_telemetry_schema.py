@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import (
+from migrations._usage_view_sql import (
     USAGE_COMMAND_DAILY_SQL,
     USAGE_MEMORY_RETRIEVAL_SQL,
     USAGE_SESSION_PROTOCOL_SQL,

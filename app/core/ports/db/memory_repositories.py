@@ -10,8 +10,8 @@ from app.core.entities.evidence import (
     EvidenceSource,
     EvidenceTarget,
 )
-from app.core.entities.facts import FactUpdate, ProblemAttempt
 from app.core.entities.memories import Memory, MemoryLifecycleEvent
+from app.core.entities.structural_memory_relations import StructuralMemoryRelation
 from app.core.entities.utility import UtilityObservation
 
 
@@ -48,15 +48,13 @@ class IMemoriesRepo(ABC):
 
 
 class IExperiencesRepo(ABC):
-    """This interface defines persistence operations for problem attempts and fact updates."""
+    """Persistence operations for curated structural memory relations."""
 
     @abstractmethod
-    def create_problem_attempt(self, attempt: ProblemAttempt) -> None:
-        """This method persists a problem-attempt link."""
-
-    @abstractmethod
-    def create_fact_update(self, fact_update: FactUpdate) -> None:
-        """This method persists a fact-update chain row."""
+    def upsert_structural_memory_relation(
+        self, relation: StructuralMemoryRelation
+    ) -> StructuralMemoryRelation:
+        """This method inserts or returns one curated structural relation."""
 
 
 class IAssociationsRepo(ABC):

@@ -3,6 +3,7 @@
 from typing import Any
 
 from app.core.entities.settings import ReadPolicySettings, default_read_policy_settings
+from app.core.policies.retrieval.ontology_semantics import why_included_for_expansion
 
 
 _BUCKET_ORDER = ("direct", "explicit", "implicit")
@@ -139,11 +140,7 @@ def _resolve_why_included(candidate: dict[str, Any], bucket_name: str) -> str:
     if bucket_name == "implicit":
         return "semantic_neighbor"
     expansion_type = str(candidate.get("expansion_type", ""))
-    return {
-        "problem_attempt": "problem_attempt",
-        "fact_update": "fact_update",
-        "association": "association_link",
-    }.get(expansion_type, expansion_type or "related_memory")
+    return why_included_for_expansion(expansion_type)
 
 
 def _normalize_kind(kind: Any) -> str:
