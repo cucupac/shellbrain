@@ -86,7 +86,7 @@ Known traps
 Concept orientation
 - ShellBrain System: repo-scoped case-based memory for agent work.
 - ShellBrain Agent Interface: working-agent recall/teach surface; internal
-  read/event/concept/memory/scenario commands stay internal.
+  read/events/concept/memory/scenario commands stay internal.
 - Build Context: read-only recall synthesis behind `shellbrain recall`.
 ```
 
@@ -112,7 +112,7 @@ Use Shellbrain in your agent of choice. Then, just work normally.
 
 **Claude Code:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
-**Codex:** *Use `$shellbrain` to remember Shellbrain recall at the right task boundaries.*
+**Codex:** *Use $shellbrain to remember Shellbrain recall at the right task boundaries.*
 
 **Cursor:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
 
