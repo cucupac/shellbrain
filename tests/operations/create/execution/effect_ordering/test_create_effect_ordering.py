@@ -36,13 +36,14 @@ def test_create_plan_preserves_deterministic_effect_ordering_by_operation_type()
     expected_effect_types = [
         EffectType.MEMORY_CREATE,
         EffectType.MEMORY_EMBEDDING_UPSERT,
-        EffectType.MEMORY_EVIDENCE_ATTACH,
-        EffectType.PROBLEM_ATTEMPT_CREATE,
+        EffectType.EVIDENCE_ATTACH,
+        EffectType.STRUCTURAL_PROBLEM_LINK_CREATE,
         EffectType.ASSOCIATION_UPSERT_AND_OBSERVE,
     ]
 
     plan_ids = CreatePlanIds(
         memory_id="memory-1",
+        structural_relation_ids=("structural-relation-1",),
         association_edge_ids=("edge-1",),
         association_observation_ids=("observation-1",),
     )

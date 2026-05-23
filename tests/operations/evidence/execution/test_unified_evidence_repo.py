@@ -18,13 +18,16 @@ from app.core.entities.evidence import (
     EvidenceTarget,
     EvidenceTargetType,
 )
-from app.core.entities.facts import FactUpdate
 from app.core.entities.memories import (
     MemoryKind,
     MemoryLifecycleActor,
     MemoryLifecycleEvent,
     MemoryLifecycleStatus,
     MemoryScope,
+)
+from app.core.entities.structural_memory_relations import (
+    StructuralMemoryRelation,
+    StructuralMemoryRelationPredicate,
 )
 from app.core.entities.utility import UtilityObservation
 from app.core.ports.system.clock import IClock
@@ -59,14 +62,6 @@ def test_unified_attach_should_write_concrete_evidence_links(
 
     _seed_concrete_evidence_targets(seed_memory)
     with uow_factory() as uow:
-        uow.experiences.create_fact_update(
-            FactUpdate(
-                id="fact-update-1",
-                old_fact_id="old-fact",
-                change_id="change-memory",
-                new_fact_id="new-fact",
-            )
-        )
         uow.utility.append_observation(
             UtilityObservation(
                 id="utility-observation-1",
@@ -100,13 +95,18 @@ def test_unified_attach_should_write_concrete_evidence_links(
                 created_at=_FixedClock().now(),
             )
         )
+        structural_relation = uow.experiences.upsert_structural_memory_relation(
+            StructuralMemoryRelation(
+                id="structural-memory-relation-1",
+                repo_id="repo-a",
+                subject_memory_id="old-fact",
+                predicate=StructuralMemoryRelationPredicate.SUPERSEDED_BY,
+                object_memory_id="new-fact",
+            )
+        )
         targets = (
             EvidenceTarget(
                 target_type=EvidenceTargetType.MEMORY, target_id="memory-1"
-            ),
-            EvidenceTarget(
-                target_type=EvidenceTargetType.FACT_UPDATE,
-                target_id="fact-update-1",
             ),
             EvidenceTarget(
                 target_type=EvidenceTargetType.UTILITY_OBSERVATION,
@@ -119,6 +119,10 @@ def test_unified_attach_should_write_concrete_evidence_links(
             EvidenceTarget(
                 target_type=EvidenceTargetType.MEMORY_LIFECYCLE_EVENT,
                 target_id=event.id,
+            ),
+            EvidenceTarget(
+                target_type=EvidenceTargetType.STRUCTURAL_MEMORY_RELATION,
+                target_id=structural_relation.id,
             ),
         )
         for target in targets:
@@ -142,10 +146,10 @@ def test_unified_attach_should_write_concrete_evidence_links(
 
     assert {link.target.target_type for link in links} == {
         EvidenceTargetType.MEMORY,
-        EvidenceTargetType.FACT_UPDATE,
         EvidenceTargetType.UTILITY_OBSERVATION,
         EvidenceTargetType.ASSOCIATION_EDGE,
         EvidenceTargetType.MEMORY_LIFECYCLE_EVENT,
+        EvidenceTargetType.STRUCTURAL_MEMORY_RELATION,
     }
     assert {link.source.source_kind for link in links} == {EvidenceSourceKind.MANUAL}
     assert {link.role for link in links} == {EvidenceRole.SUPPORTS}
@@ -363,15 +367,16 @@ def test_unified_attach_should_be_idempotent(
     )
 
     with uow_factory() as uow:
-        uow.evidence.attach_evidence(
+        first_links = uow.evidence.attach_evidence(
             repo_id="repo-a", target=target, sources=(source,)
         )
-        uow.evidence.attach_evidence(
+        second_links = uow.evidence.attach_evidence(
             repo_id="repo-a", target=target, sources=(source,)
         )
 
     assert len(fetch_rows(evidence_refs)) == 1
     assert len(fetch_rows(evidence_links)) == 1
+    assert first_links[0].created_at == second_links[0].created_at
 
 
 def _seed_concrete_evidence_targets(seed_memory: Callable[..., object]) -> None:

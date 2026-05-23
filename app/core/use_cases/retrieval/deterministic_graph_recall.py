@@ -18,17 +18,30 @@ from app.core.entities.concepts import (
     ConceptRelation,
     ConceptStatus,
 )
-from app.core.entities.memories import (
-    MATURE_MEMORY_KIND_VALUES,
-    Memory,
-    MemoryLifecycleStatus,
-)
+from app.core.entities.memories import MATURE_MEMORY_KIND_VALUES, Memory
 from app.core.entities.settings import (
     ThresholdSettings,
     default_threshold_settings,
 )
 from app.core.ports.db.unit_of_work import IUnitOfWork
+from app.core.policies.retrieval.expansion import (
+    select_structural_memory_relation_neighbors,
+)
 from app.core.policies.retrieval.fusion_rrf import fuse_with_rrf
+from app.core.policies.retrieval.ontology_semantics import (
+    CONCEPT_MEMORY_CHANGE_ROLES,
+    CONCEPT_MEMORY_HIGH_SIGNAL_ROLES,
+    CONCEPT_MEMORY_WARNING_ROLES,
+    STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
+    STRUCTURAL_PROBLEM_RELATION_PREDICATES,
+    aggregate_currentness_payload,
+    concept_bundle_retrieval_multiplier,
+    is_active_lifecycle,
+    lifecycle_currentness_payload,
+    lifecycle_retrieval_multiplier,
+    lifecycle_status_counts,
+    memory_currentness_payload,
+)
 from app.core.use_cases.retrieval.concept_seed_retrieval import retrieve_concept_seeds
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
@@ -40,14 +53,6 @@ _FINAL_MEMORY_HARD_CAP = 32
 _CONCEPT_TARGET = 6
 _CONCEPT_HARD_CAP = 8
 _RELATION_NEIGHBOR_CAP = 4
-_HIGH_SIGNAL_LINK_ROLES = {
-    "solution_for",
-    "failed_tactic_for",
-    "warned_about",
-    "changed",
-    "contradicted",
-    "validated",
-}
 _HIGH_SIGNAL_RELATIONS = {"depends_on", "constrains", "precedes", "contains"}
 _HIGH_SIGNAL_CLAIMS = {"invariant", "failure_mode", "usage_note", "behavior"}
 _PLACEHOLDER_VALUES = {"none", "none yet", "n/a", "na", "unknown", "not sure"}
@@ -97,6 +102,11 @@ def build_deterministic_graph_pack(
                 )
             )
 
+    structural_trace = _expand_structural_memory_relations(
+        request=request,
+        memory_candidates=memory_candidates,
+        uow=uow,
+    )
     concept_candidates = _discover_concepts(
         request=request,
         lanes=lanes,
@@ -147,6 +157,7 @@ def build_deterministic_graph_pack(
             "strategy": "deterministic_synthesis",
             "duration_ms": _duration_ms(started),
             "lane_results": lane_results,
+            "structural_memory_relations": structural_trace,
             "concept_candidates": concept_trace,
             "graph_traversal": traversal["trace"],
             "pack_composition": _pack_composition(selected_memories, anchors),
@@ -217,13 +228,13 @@ def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
     constraints = _brief_memory_texts(
         memories,
         kinds={"fact", "preference", "change"},
-        link_roles={"validated", "changed"},
+        link_roles=set(),
     )
     constraints.extend(_claim_texts(concept_items, {"invariant", "behavior"}))
     known_traps = _brief_memory_texts(
         memories,
         kinds={"problem", "failed_tactic"},
-        link_roles={"failed_tactic_for", "warned_about"},
+        link_roles={"failed_tactic_for", "warns_about"},
     )
     known_traps.extend(_claim_texts(concept_items, {"failure_mode"}))
     prior_cases = _brief_memory_texts(
@@ -355,7 +366,7 @@ def _prior_cases_lane(request: MemoryRecallRequest) -> _QueryLane | None:
         return None
     return _lane(
         "prior_cases_traps_constraints",
-        f"{strongest} prior case failed tactic warning constraint changed contradicted",
+        f"{strongest} prior case failed tactic warning constraint change currentness",
     )
 
 
@@ -433,6 +444,83 @@ def _run_memory_lane(
     }
 
 
+def _expand_structural_memory_relations(
+    *,
+    request: MemoryRecallRequest,
+    memory_candidates: dict[str, dict[str, Any]],
+    uow: IUnitOfWork,
+) -> dict[str, Any]:
+    """Add canonical structural memory-relation neighbors to recall candidates."""
+
+    discovered: list[dict[str, Any]] = []
+    for anchor_memory_id in tuple(memory_candidates):
+        anchor_entry = memory_candidates[anchor_memory_id]
+        anchor_score = max(float(anchor_entry["score"]), 0.1)
+        for predicates in (
+            STRUCTURAL_PROBLEM_RELATION_PREDICATES,
+            STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
+        ):
+            rows = uow.read_policy.list_structural_memory_relation_rows(
+                repo_id=request.repo_id,
+                include_global=True,
+                anchor_memory_id=anchor_memory_id,
+                kinds=list(MATURE_MEMORY_KIND_VALUES),
+                predicates=predicates,
+            )
+            for neighbor in select_structural_memory_relation_neighbors(
+                rows, anchor_memory_id=anchor_memory_id
+            ):
+                discovered.append(
+                    {
+                        "anchor_memory_id": anchor_memory_id,
+                        "memory_id": str(neighbor["memory_id"]),
+                        "relation_type": str(neighbor["relation_type"]),
+                        "expansion_type": str(neighbor["expansion_type"]),
+                        "anchor_score": anchor_score,
+                    }
+                )
+
+    if not discovered:
+        return {"expanded_memory_count": 0, "relation_count": 0}
+
+    hydrated = _visible_memories_by_id(
+        uow=uow,
+        repo_id=request.repo_id,
+        memory_ids=[item["memory_id"] for item in discovered],
+    )
+    relation_types = Counter()
+    expanded_ids: set[str] = set()
+    for item in discovered:
+        memory_id = item["memory_id"]
+        memory = hydrated.get(memory_id)
+        if memory is None:
+            continue
+        relation_types[item["relation_type"]] += 1
+        expanded_ids.add(memory_id)
+        candidate = memory_candidates.setdefault(
+            memory_id,
+            {
+                "memory": memory,
+                "score": 0.0,
+                "matched_lanes": [],
+                "lane_ranks": {},
+                "concept_refs": set(),
+                "link_roles": set(),
+                "why": set(),
+            },
+        )
+        candidate["score"] = max(
+            float(candidate["score"]), float(item["anchor_score"]) * 0.75
+        )
+        candidate["why"].add("structural_memory_relation")
+
+    return {
+        "expanded_memory_count": len(expanded_ids),
+        "relation_count": sum(relation_types.values()),
+        "relation_count_by_type": dict(relation_types),
+    }
+
+
 def _discover_concepts(
     *,
     request: MemoryRecallRequest,
@@ -451,7 +539,7 @@ def _discover_concepts(
         candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
         confidence = float(link.get("confidence") or 0.5)
         role = str(link.get("role") or "")
-        lifecycle_multiplier = _lifecycle_multiplier(str(link["status"]))
+        lifecycle_multiplier = lifecycle_retrieval_multiplier(str(link["status"]))
         if lifecycle_multiplier <= 0:
             continue
         candidate["score"] += 10.0 * lifecycle_multiplier * max(confidence, 0.1)
@@ -565,7 +653,7 @@ def _traverse_selected_concepts(
             if not _active(link.lifecycle.status):
                 continue
             role = link.role.value
-            if role not in _HIGH_SIGNAL_LINK_ROLES:
+            if role not in CONCEPT_MEMORY_HIGH_SIGNAL_ROLES:
                 continue
             linked_memory_ids.append(link.memory_id)
         concept_id = bundle["concept"].id
@@ -665,10 +753,10 @@ def _select_final_memories(
                 return
 
     take(_is_trap_memory, 3)
-    take(_is_changed_or_contradicted_memory, 2)
-    take(_is_validated_memory, 2)
+    take(_is_change_relevant_memory, 2)
     take(_is_fact_preference_change, 3)
     take(lambda item: "graph_linked_memory" in item["why"], 4)
+    take(lambda item: "structural_memory_relation" in item["why"], 4)
     take(lambda item: bool(item["matched_lanes"]), 12)
 
     prior_case_query = _is_prior_case_query(request.query)
@@ -749,7 +837,7 @@ def _bundle_signal_score(
             if any(term in claim.text.lower() for term in query_set):
                 score += 4.0
     for link in bundle["memory_links"]:
-        if link.role.value in _HIGH_SIGNAL_LINK_ROLES and _active(
+        if link.role.value in CONCEPT_MEMORY_HIGH_SIGNAL_ROLES and _active(
             link.lifecycle.status
         ):
             score += 5.0 * max(float(link.lifecycle.confidence), 0.1)
@@ -766,21 +854,7 @@ def _bundle_signal_score(
 
 
 def _concept_freshness_multiplier(bundle: dict[str, Any]) -> float:
-    statuses: list[str] = []
-    for key in ("claims", "relations", "groundings", "memory_links"):
-        for record in bundle[key]:
-            statuses.append(record.lifecycle.status.value)
-    if ConceptLifecycleStatus.WRONG.value in statuses:
-        return 0.0
-    if ConceptLifecycleStatus.ARCHIVED.value in statuses:
-        return 0.0
-    if ConceptLifecycleStatus.STALE.value in statuses:
-        return 0.45
-    if ConceptLifecycleStatus.SUPERSEDED.value in statuses:
-        return 0.0
-    if ConceptLifecycleStatus.MAYBE_STALE.value in statuses:
-        return 0.75
-    return 1.0
+    return concept_bundle_retrieval_multiplier(_bundle_lifecycle_statuses(bundle))
 
 
 def _compact_concept_payload(
@@ -825,7 +899,7 @@ def _claim_payloads(claims: Sequence[ConceptClaim], *, limit: int) -> list[dict[
             "observed_at": _iso(claim.lifecycle.observed_at),
             "validated_at": _iso(claim.lifecycle.validated_at),
             "superseded_by": claim.lifecycle.superseded_by_id,
-            **_lifecycle_currentness_payload(
+            **lifecycle_currentness_payload(
                 claim.lifecycle,
                 active_reason="active concept claim",
                 validated_reason="claim has validated_at evidence",
@@ -862,7 +936,7 @@ def _relation_payloads(
                 "observed_at": _iso(relation.lifecycle.observed_at),
                 "validated_at": _iso(relation.lifecycle.validated_at),
                 "superseded_by": relation.lifecycle.superseded_by_id,
-                **_lifecycle_currentness_payload(
+                **lifecycle_currentness_payload(
                     relation.lifecycle,
                     active_reason="active concept relation",
                     validated_reason="relation has validated_at evidence",
@@ -879,19 +953,24 @@ def _grounding_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
         bundle["groundings"], key=lambda item: (item.role.value, item.anchor_id)
     )[:8]:
         anchor = anchors_by_id.get(grounding.anchor_id)
+        if anchor is None:
+            raise ValueError(
+                f"Concept grounding {grounding.id} references missing anchor "
+                f"{grounding.anchor_id}"
+            )
         payloads.append(
             {
                 "id": grounding.id,
                 "role": grounding.role.value,
                 "anchor_id": grounding.anchor_id,
-                "anchor_kind": anchor.kind.value if anchor else None,
-                "locator": _locator_text(anchor.locator_json) if anchor else None,
+                "anchor_kind": anchor.kind.value,
+                "locator": _locator_text(anchor.locator_json),
                 "status": grounding.lifecycle.status.value,
                 "confidence": grounding.lifecycle.confidence,
                 "observed_at": _iso(grounding.lifecycle.observed_at),
                 "validated_at": _iso(grounding.lifecycle.validated_at),
                 "superseded_by": grounding.lifecycle.superseded_by_id,
-                **_lifecycle_currentness_payload(
+                **lifecycle_currentness_payload(
                     grounding.lifecycle,
                     active_reason="active concept grounding",
                     validated_reason="grounding has validated_at evidence",
@@ -914,7 +993,7 @@ def _memory_link_payloads(
             "observed_at": _iso(link.lifecycle.observed_at),
             "validated_at": _iso(link.lifecycle.validated_at),
             "superseded_by": link.lifecycle.superseded_by_id,
-            **_lifecycle_currentness_payload(
+            **lifecycle_currentness_payload(
                 link.lifecycle,
                 active_reason="active concept memory link",
                 validated_reason="memory link has validated_at evidence",
@@ -927,11 +1006,7 @@ def _memory_link_payloads(
 
 
 def _freshness_payload(bundle: dict[str, Any]) -> dict[str, int]:
-    counter = Counter()
-    for key in ("claims", "relations", "groundings", "memory_links"):
-        for record in bundle[key]:
-            counter[record.lifecycle.status.value] += 1
-    return dict(counter)
+    return lifecycle_status_counts(_bundle_lifecycle_statuses(bundle))
 
 
 def _memory_payload(candidate: dict[str, Any]) -> dict[str, Any]:
@@ -963,7 +1038,10 @@ def _anchors_from_concepts(
                 continue
             anchor = anchors_by_id.get(grounding.anchor_id)
             if anchor is None:
-                continue
+                raise ValueError(
+                    f"Concept grounding {grounding.id} references missing anchor "
+                    f"{grounding.anchor_id}"
+                )
             seen.add(grounding.anchor_id)
             anchors.append(
                 {
@@ -976,7 +1054,7 @@ def _anchors_from_concepts(
                     "confidence": grounding.lifecycle.confidence,
                     "observed_at": _iso(grounding.lifecycle.observed_at),
                     "validated_at": _iso(grounding.lifecycle.validated_at),
-                    **_lifecycle_currentness_payload(
+                    **lifecycle_currentness_payload(
                         grounding.lifecycle,
                         active_reason="active grounding anchor",
                         validated_reason="anchor grounding has validated_at evidence",
@@ -1043,32 +1121,6 @@ def _conflicts_from_concepts(
                         "summary": _truncate(
                             f"{ref} anchor is {status}: {grounding.get('locator')}", 280
                         ),
-                    }
-                )
-        for link in concept.get("memory_links", []):
-            role = link.get("role")
-            if role == "changed":
-                memory_id = str(link.get("memory_id") or "")
-                add(
-                    {
-                        "id": f"memory_link:{link.get('id') or memory_id}:changed",
-                        "type": "changed_memory_link",
-                        "items": [memory_id] if memory_id else [],
-                        "preferred_current_item": memory_id or None,
-                        "reason": "changed links record a revision or supersession",
-                        "summary": f"{ref} has changed memory link: {memory_id}",
-                    }
-                )
-            if role == "contradicted":
-                memory_id = str(link.get("memory_id") or "")
-                add(
-                    {
-                        "id": f"memory_link:{link.get('id') or memory_id}:contradicted",
-                        "type": "contradicted_memory_link",
-                        "items": [memory_id] if memory_id else [],
-                        "preferred_current_item": None,
-                        "reason": "contradicted links mark unresolved or resolved disagreement",
-                        "summary": f"{ref} has contradicted memory link: {memory_id}",
                     }
                 )
     return conflicts
@@ -1189,7 +1241,8 @@ def _conflict_summary(item: object) -> str:
 
 
 def _source_section_for_memory(memory: dict[str, Any]) -> str:
-    if "graph_linked_memory" in set(memory.get("why") or []):
+    reasons = set(memory.get("why") or [])
+    if "graph_linked_memory" in reasons or "structural_memory_relation" in reasons:
         return "explicit_related"
     if memory.get("matched_lanes"):
         return "direct"
@@ -1206,7 +1259,7 @@ def _summary(*, memories: Sequence[dict[str, Any]], concepts: Sequence[dict[str,
 def _memory_candidate_score(candidate: dict[str, Any]) -> float:
     memory: Memory = candidate["memory"]
     base = float(candidate["score"]) * memory.status.retrieval_multiplier
-    if candidate["link_roles"] & _HIGH_SIGNAL_LINK_ROLES:
+    if candidate["link_roles"] & CONCEPT_MEMORY_HIGH_SIGNAL_ROLES:
         base += 1.0
     if "graph_linked_memory" in candidate["why"]:
         base += 0.75
@@ -1215,111 +1268,38 @@ def _memory_candidate_score(candidate: dict[str, Any]) -> float:
 
 def _memory_currentness_payload(candidate: dict[str, Any]) -> dict[str, str]:
     memory: Memory = candidate["memory"]
-    roles = set(candidate["link_roles"])
-    if memory.status is not MemoryLifecycleStatus.ACTIVE:
-        return {
-            "currentness": memory.status.value,
-            "temporal_reason": f"memory lifecycle status is {memory.status.value}",
-        }
-    if "contradicted" in roles:
-        return {
-            "currentness": "conflicted",
-            "temporal_reason": "contradicted link marks this memory as disputed",
-        }
-    if "changed" in roles:
-        return {
-            "currentness": "current",
-            "temporal_reason": "changed link marks this memory as revision evidence",
-        }
-    if memory.kind.value == "change":
-        return {
-            "currentness": "current",
-            "temporal_reason": "change memory may supersede older guidance",
-        }
-    if "validated" in roles:
-        return {
-            "currentness": "current",
-            "temporal_reason": "validated link strengthens this memory",
-        }
-    if roles & {"failed_tactic_for", "warned_about"} or memory.kind.value == "failed_tactic":
-        return {
-            "currentness": "historical_warning",
-            "temporal_reason": "failed tactic or warning should be treated as trap context",
-        }
-    return {
-        "currentness": "current",
-        "temporal_reason": "visible memory with no supersession signal in this pack",
-    }
+    return memory_currentness_payload(
+        status=memory.status,
+        kind=memory.kind,
+        link_roles=candidate["link_roles"],
+    )
 
 
 def _concept_currentness_payload(bundle: dict[str, Any]) -> dict[str, str]:
-    statuses = Counter()
-    for key in ("claims", "relations", "groundings", "memory_links"):
-        for record in bundle[key]:
-            statuses[record.lifecycle.status.value] += 1
-    if statuses[ConceptLifecycleStatus.WRONG.value]:
-        return {
-            "currentness": "wrong",
-            "temporal_reason": "one or more concept facets are marked wrong",
-        }
-    if statuses[ConceptLifecycleStatus.ARCHIVED.value]:
-        return {
-            "currentness": "archived",
-            "temporal_reason": "one or more concept facets are marked archived",
-        }
-    if statuses[ConceptLifecycleStatus.SUPERSEDED.value]:
-        return {
-            "currentness": "superseded",
-            "temporal_reason": "one or more concept facets are marked superseded",
-        }
-    if statuses[ConceptLifecycleStatus.STALE.value]:
-        return {
-            "currentness": "stale",
-            "temporal_reason": "one or more concept facets are marked stale",
-        }
-    if statuses[ConceptLifecycleStatus.MAYBE_STALE.value]:
-        return {
-            "currentness": "maybe_stale",
-            "temporal_reason": "one or more concept facets are marked maybe_stale",
-        }
-    return {
-        "currentness": "current",
-        "temporal_reason": "all included concept facets are active",
-    }
+    return aggregate_currentness_payload(
+        _bundle_lifecycle_statuses(bundle), record_label="concept facets"
+    )
 
 
-def _lifecycle_currentness_payload(
-    lifecycle: Any, *, active_reason: str, validated_reason: str
-) -> dict[str, str]:
-    status = lifecycle.status.value
-    if status == ConceptLifecycleStatus.ACTIVE.value:
-        if lifecycle.validated_at is not None:
-            return {
-                "currentness": "current",
-                "temporal_reason": validated_reason,
-            }
-        return {"currentness": "current", "temporal_reason": active_reason}
-    return {
-        "currentness": status,
-        "temporal_reason": f"lifecycle status is {status}",
-    }
+def _bundle_lifecycle_statuses(bundle: dict[str, Any]) -> tuple[str, ...]:
+    return tuple(
+        record.lifecycle.status.value
+        for key in ("claims", "relations", "groundings", "memory_links")
+        for record in bundle[key]
+    )
 
 
 def _is_trap_memory(candidate: dict[str, Any]) -> bool:
     memory: Memory = candidate["memory"]
     return memory.kind.value == "failed_tactic" or bool(
-        candidate["link_roles"] & {"failed_tactic_for", "warned_about"}
+        candidate["link_roles"] & CONCEPT_MEMORY_WARNING_ROLES
     )
 
 
-def _is_changed_or_contradicted_memory(candidate: dict[str, Any]) -> bool:
+def _is_change_relevant_memory(candidate: dict[str, Any]) -> bool:
     return candidate["memory"].kind.value == "change" or bool(
-        candidate["link_roles"] & {"changed", "contradicted"}
+        candidate["link_roles"] & CONCEPT_MEMORY_CHANGE_ROLES
     )
-
-
-def _is_validated_memory(candidate: dict[str, Any]) -> bool:
-    return bool(candidate["link_roles"] & {"validated"})
 
 
 def _is_fact_preference_change(candidate: dict[str, Any]) -> bool:
@@ -1430,22 +1410,11 @@ def _dedupe_reasons(reasons: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 def _active(status: ConceptLifecycleStatus) -> bool:
-    return status == ConceptLifecycleStatus.ACTIVE
+    return is_active_lifecycle(status)
 
 
 def _active_concept(concept: Concept) -> bool:
     return concept.status == ConceptStatus.ACTIVE
-
-
-def _lifecycle_multiplier(status: str) -> float:
-    return {
-        "active": 1.0,
-        "maybe_stale": 0.65,
-        "stale": 0.25,
-        "superseded": 0.0,
-        "wrong": 0.0,
-        "archived": 0.0,
-    }[ConceptLifecycleStatus(status).value]
 
 
 def _truncate_list(values: Sequence[str], limit: int) -> list[str]:

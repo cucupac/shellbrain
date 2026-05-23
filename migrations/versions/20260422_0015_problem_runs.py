@@ -2,12 +2,12 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import (
+from migrations._legacy_usage_views import (
     USAGE_PROBLEM_READ_ROI_LEGACY_SQL,
-    USAGE_PROBLEM_RUN_TOKENS_SQL,
     USAGE_PROBLEM_TOKENS_PRE_UNIFIED_EVIDENCE_LEGACY_SQL,
     USAGE_READ_BEFORE_SOLVE_ROI_LEGACY_SQL,
 )
+from migrations._usage_view_sql import USAGE_PROBLEM_RUN_TOKENS_SQL
 
 revision = "20260422_0015"
 down_revision = "20260422_0014"

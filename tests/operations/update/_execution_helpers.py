@@ -28,11 +28,10 @@ def snapshot_related_update_counts(count_rows: Callable[[str], int]) -> dict[str
 
     return {
         "utility_observations": count_rows("utility_observations"),
-        "fact_updates": count_rows("fact_updates"),
         "association_edges": count_rows("association_edges"),
         "association_observations": count_rows("association_observations"),
-        "association_edge_evidence": count_rows("association_edge_evidence"),
         "evidence_links": count_rows("evidence_links"),
         "evidence_refs": count_rows("evidence_refs"),
         "memory_lifecycle_events": count_rows("memory_lifecycle_events"),
+        "structural_memory_relations": count_rows("structural_memory_relations"),
     }

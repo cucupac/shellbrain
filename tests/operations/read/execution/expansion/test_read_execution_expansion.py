@@ -7,12 +7,12 @@ from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.read._execution_helpers import item_ids, make_read_request
 
 
-def test_read_includes_problem_attempt_links_when_enabled(
+def test_read_includes_structural_problem_links_when_enabled(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
-    seed_problem_attempt_link: Callable[..., None],
+    seed_structural_problem_link: Callable[..., None],
 ) -> None:
-    """read should always include linked problem attempts when problem-link expansion is enabled."""
+    """read should include solved_by relations when problem-link expansion is enabled."""
 
     seed_read_memory(
         memory_id="problem-1",
@@ -28,8 +28,8 @@ def test_read_includes_problem_attempt_links_when_enabled(
         kind="solution",
         text_value="Candidate rollback fix for deployment failure.",
     )
-    seed_problem_attempt_link(
-        problem_id="problem-1", attempt_id="solution-1", role="solution"
+    seed_structural_problem_link(
+        problem_id="problem-1", linked_memory_id="solution-1", link_kind="solution"
     )
 
     request = make_read_request(
@@ -49,12 +49,12 @@ def test_read_includes_problem_attempt_links_when_enabled(
     assert "problem-1" in ids
 
 
-def test_read_includes_fact_update_links_when_enabled(
+def test_read_includes_structural_fact_change_relations_when_enabled(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
-    seed_fact_update_link: Callable[..., None],
+    seed_structural_fact_change_relations: Callable[..., None],
 ) -> None:
-    """read should always include linked fact updates when fact-update expansion is enabled."""
+    """read should include supersession/change relations when fact-update expansion is enabled."""
 
     seed_read_memory(
         memory_id="old-fact-1",
@@ -77,8 +77,8 @@ def test_read_includes_fact_update_links_when_enabled(
         kind="fact",
         text_value="New deploy behavior fact after release.",
     )
-    seed_fact_update_link(
-        link_id="fact-link-1",
+    seed_structural_fact_change_relations(
+        relation_group_id="fact-link-1",
         old_fact_id="old-fact-1",
         change_id="change-1",
         new_fact_id="new-fact-1",
@@ -99,6 +99,163 @@ def test_read_includes_fact_update_links_when_enabled(
     ids = item_ids(result)
     assert "old-fact-1" in ids
     assert "new-fact-1" in ids
+
+
+def test_read_includes_structural_problem_relations_with_stable_expansion_label(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_structural_memory_relation: Callable[..., None],
+) -> None:
+    """structural solved_by links should emit the stable problem_attempt category."""
+
+    seed_read_memory(
+        memory_id="problem-structural",
+        repo_id="repo-a",
+        scope="repo",
+        kind="problem",
+        text_value="Structural deployment problem.",
+    )
+    seed_read_memory(
+        memory_id="solution-structural",
+        repo_id="repo-a",
+        scope="repo",
+        kind="solution",
+        text_value="Structural deployment solution.",
+    )
+    seed_structural_memory_relation(
+        relation_id="relation-solved-by",
+        repo_id="repo-a",
+        subject_memory_id="problem-structural",
+        predicate="solved_by",
+        object_memory_id="solution-structural",
+    )
+
+    request = make_read_request(
+        repo_id="repo-a",
+        query="structural deployment problem",
+        expand={
+            "include_problem_links": True,
+            "include_fact_update_links": False,
+            "include_association_links": False,
+        },
+    )
+    with uow_factory() as uow:
+        result = execute_read_memory(request, uow)
+
+    explicit_related = result.data["pack"]["explicit_related"]
+    assert {
+        (item["memory_id"], item["why_included"]) for item in explicit_related
+    } == {("solution-structural", "problem_attempt")}
+
+
+def test_read_excludes_retired_structural_problem_relations(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_structural_memory_relation: Callable[..., None],
+) -> None:
+    """retired canonical relations should not expand explicit neighbors."""
+
+    seed_read_memory(
+        memory_id="problem-retired-relation",
+        repo_id="repo-a",
+        scope="repo",
+        kind="problem",
+        text_value="Problem with retired structural relation.",
+    )
+    seed_read_memory(
+        memory_id="solution-retired-relation",
+        repo_id="repo-a",
+        scope="repo",
+        kind="solution",
+        text_value="Solution hidden by retired structural relation.",
+    )
+    seed_structural_memory_relation(
+        relation_id="relation-retired-solved-by",
+        repo_id="repo-a",
+        subject_memory_id="problem-retired-relation",
+        predicate="solved_by",
+        object_memory_id="solution-retired-relation",
+        status="wrong",
+    )
+
+    request = make_read_request(
+        repo_id="repo-a",
+        query="retired structural relation problem",
+        expand={
+            "include_problem_links": True,
+            "include_fact_update_links": False,
+            "include_association_links": False,
+        },
+    )
+    with uow_factory() as uow:
+        result = execute_read_memory(request, uow)
+
+    assert "problem-retired-relation" in item_ids(result)
+    assert "solution-retired-relation" not in item_ids(result)
+
+
+def test_read_includes_structural_fact_update_relations_with_stable_expansion_label(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    seed_structural_memory_relation: Callable[..., None],
+) -> None:
+    """structural fact-change relations should emit the stable fact_update category."""
+
+    seed_read_memory(
+        memory_id="old-structural-fact",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="Old structural deploy fact.",
+    )
+    seed_read_memory(
+        memory_id="change-structural",
+        repo_id="repo-a",
+        scope="repo",
+        kind="change",
+        text_value="Structural deploy change.",
+    )
+    seed_read_memory(
+        memory_id="new-structural-fact",
+        repo_id="repo-a",
+        scope="repo",
+        kind="fact",
+        text_value="New structural deploy fact.",
+    )
+    seed_structural_memory_relation(
+        relation_id="relation-superseded-by",
+        repo_id="repo-a",
+        subject_memory_id="old-structural-fact",
+        predicate="superseded_by",
+        object_memory_id="new-structural-fact",
+    )
+    seed_structural_memory_relation(
+        relation_id="relation-old-change",
+        repo_id="repo-a",
+        subject_memory_id="old-structural-fact",
+        predicate="explained_by_change",
+        object_memory_id="change-structural",
+    )
+
+    request = make_read_request(
+        repo_id="repo-a",
+        query="old structural deploy",
+        expand={
+            "include_problem_links": False,
+            "include_fact_update_links": True,
+            "include_association_links": False,
+        },
+    )
+    with uow_factory() as uow:
+        result = execute_read_memory(request, uow)
+
+    explicit_related = result.data["pack"]["explicit_related"]
+    assert {
+        (item["memory_id"], item["why_included"]) for item in explicit_related
+    } == {
+        ("change-structural", "fact_update"),
+        ("new-structural-fact", "fact_update"),
+    }
 
 
 def test_read_applies_association_expansion_flag_and_strength_threshold(

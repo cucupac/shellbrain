@@ -4,8 +4,13 @@ from typing import Any, Sequence
 
 from sqlalchemy import case, desc, or_, select
 
-from app.core.entities.memories import DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES
 from app.core.ports.db.retrieval_repositories import ISemanticRetrievalRepo
+from app.core.policies.retrieval.ontology_semantics import (
+    LIFECYCLE_RETRIEVAL_MULTIPLIERS,
+    MAYBE_STALE_STATUS,
+    POSITIVE_LIFECYCLE_STATUSES,
+    STALE_STATUS,
+)
 from app.infrastructure.db.runtime.models.memories import memories, memory_embeddings
 
 
@@ -249,7 +254,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
         scope_values = ["repo", "global"] if include_global else ["repo"]
         filters: list[Any] = [
             memories.c.repo_id == repo_id,
-            memories.c.status.in_(list(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)),
+            memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
             memories.c.scope.in_(scope_values),
         ]
         if kinds:
@@ -312,7 +317,13 @@ def _memory_status_multiplier():
     """Return SQL expression for lifecycle-aware memory retrieval strength."""
 
     return case(
-        (memories.c.status == "maybe_stale", 0.65),
-        (memories.c.status == "stale", 0.25),
+        (
+            memories.c.status == MAYBE_STALE_STATUS,
+            LIFECYCLE_RETRIEVAL_MULTIPLIERS[MAYBE_STALE_STATUS],
+        ),
+        (
+            memories.c.status == STALE_STATUS,
+            LIFECYCLE_RETRIEVAL_MULTIPLIERS[STALE_STATUS],
+        ),
         else_=1.0,
     )

@@ -395,7 +395,7 @@ def test_read_scoring_should_always_rank_lower_hop_implicit_candidates_above_hig
 def test_read_scoring_should_always_return_raw_explicit_metadata_for_downstream_scoring(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
-    seed_problem_attempt_link: Callable[..., None],
+    seed_structural_problem_link: Callable[..., None],
 ) -> None:
     """read scoring should always return raw explicit metadata for downstream scoring."""
 
@@ -413,8 +413,8 @@ def test_read_scoring_should_always_return_raw_explicit_metadata_for_downstream_
         kind="solution",
         text_value="Solution neighbor for explicit scoring metadata.",
     )
-    seed_problem_attempt_link(
-        problem_id="problem-1", attempt_id="solution-1", role="solution"
+    seed_structural_problem_link(
+        problem_id="problem-1", linked_memory_id="solution-1", link_kind="solution"
     )
 
     with uow_factory() as uow:

@@ -59,7 +59,7 @@ _TOP_LEVEL_HELP = dedent(
         - Use returned `episode_event` ids as `evidence_refs`.
         - Write `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories through Shellbrain CLI commands.
         - Use `memory update` for `utility_vote`, truth evolution, and associations.
-        - Use `scenario record` to store solved or abandoned problem-solving windows after memory boundaries exist.
+        - Use `scenario record` to store solved or abandoned problem-solving runs into problem_runs after memory boundaries exist.
         - Explicit teach agents run immediately from `teach` evidence and do not call `events` or `scenario record`.
 
     Examples by audience:
@@ -113,7 +113,8 @@ _CREATE_HELP = dedent(
       - `change`: truth invalidation or revision
 
     `solution` and `failed_tactic` require `memory.links.problem_id`.
-    Shellbrain creates `problem_attempts` as a side effect for those links.
+    Shellbrain creates canonical `structural_memory_relations` as a side effect
+    for those links.
 
     Examples:
       shellbrain memory add --json '{"memory":{"text":"Migration deadlocked because lock_timeout was unset","kind":"problem","evidence_refs":["evt-123"]}}'
@@ -258,13 +259,13 @@ _UPDATE_HELP = dedent(
 
 _SCENARIO_HELP = dedent(
     """\
-    Internal knowledge-builder endpoint for recording bounded problem-solving scenarios.
+    Internal knowledge-builder endpoint for recording bounded problem-solving runs.
 
-    A scenario is not a memory. It links exact episode evidence to existing
-    problem/solution memories so Shellbrain can measure problem windows, token
-    usage, and recall ROI.
+    `scenario record` writes a problem_run, not a memory. It links exact episode
+    evidence to existing problem/solution memories so Shellbrain can measure
+    problem windows, token usage, and recall ROI.
 
-    Record the scenario only after durable problem/solution memory boundaries exist.
+    Record the run only after durable problem/solution memory boundaries exist.
     Shellbrain derives opened_at and closed_at from the referenced episode events.
 
     Outcomes:
@@ -603,8 +604,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     scenario_parser = subparsers.add_parser(
         "scenario",
-        help="Internal knowledge-builder scenario endpoint.",
-        description="Record bounded problem-solving scenarios from episode evidence.",
+        help="Internal knowledge-builder problem-run endpoint.",
+        description="Record bounded problem-solving runs from episode evidence into problem_runs.",
         epilog=_SCENARIO_HELP,
         formatter_class=_HelpFormatter,
     )
@@ -614,8 +615,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     scenario_record_parser = scenario_subparsers.add_parser(
         "record",
-        help="Record one solved or abandoned problem-solving scenario.",
-        description="Record one bounded problem-solving scenario from existing memories and episode events.",
+        help="Record one solved or abandoned problem-solving run.",
+        description="Record one bounded problem-solving run into problem_runs from existing memories and episode events.",
         epilog=_SCENARIO_HELP,
         formatter_class=_HelpFormatter,
     )

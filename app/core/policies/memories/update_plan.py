@@ -5,7 +5,7 @@ from typing import Any
 from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     EvidenceSourceEffectParams,
-    FactUpdateCreateEffectParams,
+    StructuralFactChangeEffectParams,
     MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
     UtilityObservationAppendEffectParams,
@@ -87,13 +87,15 @@ def build_update_plan(
         evidence_refs = EvidenceRefs.optional(update.get("evidence_refs", [])).values
         return [
             make_side_effect(
-                "fact_update.create",
-                FactUpdateCreateEffectParams(
-                    id=_required(plan_ids.fact_update_id, "fact_update_id"),
+                "structural_fact_change.create",
+                StructuralFactChangeEffectParams(
                     repo_id=repo_id,
                     old_fact_id=update["old_fact_id"],
                     change_id=memory_id,
                     new_fact_id=update["new_fact_id"],
+                    structural_relation_ids=_required_structural_relation_ids(
+                        plan_ids, count=3
+                    ),
                     evidence_refs=evidence_refs,
                 ),
             )
@@ -138,3 +140,14 @@ def _required(value: str | None, name: str) -> str:
     if value is None:
         raise ValueError(f"update plan ids missing {name}")
     return value
+
+
+def _required_structural_relation_ids(
+    plan_ids: UpdatePlanIds, *, count: int
+) -> tuple[str, str, str]:
+    """Return the exact structural relation IDs required by a fact change."""
+
+    if len(plan_ids.structural_relation_ids) != count:
+        raise ValueError("update plan ids missing structural relation ids")
+    first, second, third = plan_ids.structural_relation_ids
+    return (first, second, third)

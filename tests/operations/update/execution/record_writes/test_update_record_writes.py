@@ -8,12 +8,11 @@ from app.core.ports.system.clock import IClock
 from app.core.use_cases.memories.update import execute_update_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.runtime.models.associations import (
-    association_edge_evidence,
     association_edges,
     association_observations,
 )
 from app.infrastructure.db.runtime.models.evidence import evidence_links
-from app.infrastructure.db.runtime.models.experiences import fact_updates
+from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.utility import utility_observations
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 from tests.operations.update._execution_helpers import (
@@ -71,12 +70,12 @@ def test_update_utility_vote_commit_appends_observation_with_exact_payload(
     assert rows[0]["rationale"] == "Worked well for this problem."
 
 
-def test_update_fact_update_link_commit_appends_fact_update_with_change_id(
+def test_update_fact_update_link_commit_appends_structural_relations(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory: Callable[..., object],
     fetch_rows: Callable[..., list[dict[str, object]]],
 ) -> None:
-    """update(fact_update_link) commit should always append one fact_update with change_id equal to memory_id."""
+    """update(fact_update_link) should append canonical structural relations."""
 
     seed_memory(
         memory_id="change-1",
@@ -106,16 +105,35 @@ def test_update_fact_update_link_commit_appends_fact_update_with_change_id(
             "type": "fact_update_link",
             "old_fact_id": "old-fact",
             "new_fact_id": "new-fact",
+            "evidence_refs": ["session://1"],
         },
     )
 
     with uow_factory() as uow:
         execute_update_memory(request, uow, id_generator=SequenceIdGenerator())
-    rows = fetch_rows(fact_updates, fact_updates.c.change_id == "change-1")
-    assert len(rows) == 1
-    assert rows[0]["old_fact_id"] == "old-fact"
-    assert rows[0]["new_fact_id"] == "new-fact"
-    assert rows[0]["change_id"] == "change-1"
+    relation_rows = fetch_rows(
+        structural_memory_relations,
+        structural_memory_relations.c.repo_id == "repo-a",
+    )
+    relation_shapes = {
+        (
+            str(row["subject_memory_id"]),
+            str(row["predicate"]),
+            str(row["object_memory_id"]),
+        )
+        for row in relation_rows
+    }
+    assert relation_shapes == {
+        ("old-fact", "superseded_by", "new-fact"),
+        ("old-fact", "explained_by_change", "change-1"),
+        ("new-fact", "explained_by_change", "change-1"),
+    }
+    assert len(
+        fetch_rows(
+            evidence_links,
+            evidence_links.c.target_type == "structural_memory_relation",
+        )
+    ) == 3
 
 
 def test_update_association_link_commit_persists_edge_observation_and_edge_evidence(
@@ -176,10 +194,6 @@ def test_update_association_link_commit_persists_edge_observation_and_edge_evide
         evidence_links.c.target_id == edge_id,
     )
     assert len(edge_evidence_rows) == 2
-    assert fetch_rows(
-        association_edge_evidence,
-        association_edge_evidence.c.edge_id == edge_id,
-    ) == []
 
 
 def test_update_writes_only_its_own_related_record_family(
@@ -215,13 +229,12 @@ def test_update_writes_only_its_own_related_record_family(
             ),
             {
                 "utility_observations": 1,
-                "fact_updates": 0,
                 "association_edges": 0,
                 "association_observations": 0,
-                "association_edge_evidence": 0,
                 "evidence_links": 0,
                 "evidence_refs": 0,
                 "memory_lifecycle_events": 0,
+                "structural_memory_relations": 0,
             },
         ),
         (
@@ -256,13 +269,12 @@ def test_update_writes_only_its_own_related_record_family(
             ),
             {
                 "utility_observations": 0,
-                "fact_updates": 1,
                 "association_edges": 0,
                 "association_observations": 0,
-                "association_edge_evidence": 0,
                 "evidence_links": 0,
                 "evidence_refs": 0,
                 "memory_lifecycle_events": 0,
+                "structural_memory_relations": 3,
             },
         ),
         (
@@ -293,13 +305,12 @@ def test_update_writes_only_its_own_related_record_family(
             ),
             {
                 "utility_observations": 0,
-                "fact_updates": 0,
                 "association_edges": 1,
                 "association_observations": 1,
-                "association_edge_evidence": 0,
                 "evidence_links": 1,
                 "evidence_refs": 1,
                 "memory_lifecycle_events": 0,
+                "structural_memory_relations": 0,
             },
         ),
         (
@@ -320,13 +331,12 @@ def test_update_writes_only_its_own_related_record_family(
             ),
             {
                 "utility_observations": 0,
-                "fact_updates": 0,
                 "association_edges": 0,
                 "association_observations": 0,
-                "association_edge_evidence": 0,
                 "evidence_links": 1,
                 "evidence_refs": 1,
                 "memory_lifecycle_events": 1,
+                "structural_memory_relations": 0,
             },
         ),
     ]

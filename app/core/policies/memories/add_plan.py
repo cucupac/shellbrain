@@ -7,9 +7,9 @@ from app.core.use_cases.memories.effect_plan import (
     AssociationUpsertAndObserveEffectParams,
     MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
-    MemoryEvidenceAttachEffectParams,
+    EvidenceAttachEffectParams,
     PlannedEffect,
-    ProblemAttemptCreateEffectParams,
+    StructuralProblemLinkEffectParams,
     make_side_effect,
 )
 from app.core.entities.associations import AssociationSourceMode, AssociationState
@@ -53,8 +53,8 @@ def build_create_plan(
             ),
         ),
         make_side_effect(
-            "memory_evidence.attach",
-            MemoryEvidenceAttachEffectParams(
+            "evidence.attach",
+            EvidenceAttachEffectParams(
                 memory_id=memory_id,
                 repo_id=repo_id,
                 refs=evidence_refs,
@@ -64,13 +64,17 @@ def build_create_plan(
 
     problem_id = (memory.get("links") or {}).get("problem_id")
     if MemoryKind(memory["kind"]).requires_problem_link and problem_id:
+        relation_id = _required_structural_relation_id(plan_ids, 0)
         plan.append(
             make_side_effect(
-                "problem_attempt.create",
-                ProblemAttemptCreateEffectParams(
+                "structural_problem_link.create",
+                StructuralProblemLinkEffectParams(
+                    relation_id=relation_id,
+                    repo_id=repo_id,
                     problem_id=problem_id,
                     attempt_id=memory_id,
-                    role=memory["kind"],
+                    attempt_kind=memory["kind"],
+                    evidence_refs=evidence_refs,
                 ),
             )
         )
@@ -105,3 +109,14 @@ def build_create_plan(
             )
         )
     return plan
+
+
+def _required_structural_relation_id(
+    plan_ids: CreatePlanIds, index: int
+) -> str:
+    """Return a preallocated structural relation id for problem-link effects."""
+
+    try:
+        return plan_ids.structural_relation_ids[index]
+    except IndexError as exc:
+        raise ValueError("create plan ids missing structural relation id") from exc

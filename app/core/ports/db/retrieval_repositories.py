@@ -82,26 +82,16 @@ class IReadPolicyRepo(ABC):
     """This interface defines read-path visibility and explicit expansion queries."""
 
     @abstractmethod
-    def list_problem_attempt_rows(
+    def list_structural_memory_relation_rows(
         self,
         *,
         repo_id: str,
         include_global: bool,
         anchor_memory_id: str,
         kinds: Sequence[str] | None,
+        predicates: Sequence[str],
     ) -> Sequence[dict[str, Any]]:
-        """This method returns problem-attempt rows touching an anchor plus visible participants."""
-
-    @abstractmethod
-    def list_fact_update_rows(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds: Sequence[str] | None,
-    ) -> Sequence[dict[str, Any]]:
-        """This method returns fact-update rows touching an anchor plus visible participants."""
+        """Return structural relation rows touching an anchor plus visible participants."""
 
     @abstractmethod
     def list_association_edge_rows(

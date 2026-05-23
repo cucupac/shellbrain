@@ -46,10 +46,8 @@ ConceptMemoryLinkRoleValue = Literal[
     "example_of",
     "solution_for",
     "failed_tactic_for",
-    "changed",
-    "validated",
-    "contradicted",
-    "warned_about",
+    "warns_about",
+    "change_relevant_to",
 ]
 ConceptLifecycleTargetTypeValue = Literal[
     "relation", "claim", "grounding", "memory_link"

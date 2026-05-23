@@ -384,7 +384,8 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "Dedupe before every write" in prompt
     assert "do not create a problem memory without a reusable" in prompt
     assert "For problem-solving slices" in prompt
-    assert "problem_attempts" in prompt
+    assert "structural_memory_relations" in prompt
+    assert "problem_attempts" not in prompt
     assert "links.problem_id" in prompt
     assert "Treat idle-stable episodes as partial" in prompt
     assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
@@ -455,7 +456,7 @@ def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
     assert "Prefer updating aliases or scope_note" in prompt
     assert "source_kind\":\"transcript_event" in prompt
     assert "memory update` sparingly" in prompt
-    assert "stale or contradicted item is a concept claim" in prompt
+    assert "stale or disputed item is a concept claim" in prompt
     assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
     assert "You may write Shellbrain only through:" in prompt
     assert "`shellbrain memory add`" in prompt

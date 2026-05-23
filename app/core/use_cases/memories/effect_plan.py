@@ -13,11 +13,11 @@ class EffectType(str, Enum):
 
     MEMORY_CREATE = "memory.create"
     MEMORY_EMBEDDING_UPSERT = "memory_embedding.upsert"
-    MEMORY_EVIDENCE_ATTACH = "memory_evidence.attach"
-    PROBLEM_ATTEMPT_CREATE = "problem_attempt.create"
+    EVIDENCE_ATTACH = "evidence.attach"
+    STRUCTURAL_PROBLEM_LINK_CREATE = "structural_problem_link.create"
     MEMORY_LIFECYCLE_UPDATE = "memory.lifecycle_update"
     UTILITY_OBSERVATION_APPEND = "utility_observation.append"
-    FACT_UPDATE_CREATE = "fact_update.create"
+    STRUCTURAL_FACT_CHANGE_CREATE = "structural_fact_change.create"
     ASSOCIATION_UPSERT_AND_OBSERVE = "association.upsert_and_observe"
 
 
@@ -38,17 +38,20 @@ class MemoryEmbeddingUpsertEffectParams:
 
 
 @dataclass(frozen=True)
-class MemoryEvidenceAttachEffectParams:
+class EvidenceAttachEffectParams:
     memory_id: str
     repo_id: str
     refs: tuple[str, ...]
 
 
 @dataclass(frozen=True)
-class ProblemAttemptCreateEffectParams:
+class StructuralProblemLinkEffectParams:
+    relation_id: str
+    repo_id: str
     problem_id: str
     attempt_id: str
-    role: str
+    attempt_kind: str
+    evidence_refs: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -88,12 +91,12 @@ class UtilityObservationAppendEffectParams:
 
 
 @dataclass(frozen=True)
-class FactUpdateCreateEffectParams:
-    id: str
+class StructuralFactChangeEffectParams:
     repo_id: str
     old_fact_id: str
     change_id: str
     new_fact_id: str
+    structural_relation_ids: tuple[str, str, str]
     evidence_refs: tuple[str, ...]
 
 
@@ -117,11 +120,11 @@ class AssociationUpsertAndObserveEffectParams:
 EffectParams: TypeAlias = (
     MemoryAddEffectParams
     | MemoryEmbeddingUpsertEffectParams
-    | MemoryEvidenceAttachEffectParams
-    | ProblemAttemptCreateEffectParams
+    | EvidenceAttachEffectParams
+    | StructuralProblemLinkEffectParams
     | MemoryLifecycleUpdateEffectParams
     | UtilityObservationAppendEffectParams
-    | FactUpdateCreateEffectParams
+    | StructuralFactChangeEffectParams
     | AssociationUpsertAndObserveEffectParams
 )
 

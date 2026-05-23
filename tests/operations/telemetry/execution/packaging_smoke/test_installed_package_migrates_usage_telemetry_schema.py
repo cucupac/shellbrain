@@ -17,7 +17,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260522_0032"
+CURRENT_ALEMBIC_HEAD = "20260522_0035"
 
 
 def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_tables_and_views_from_packaged_artifacts(
@@ -121,10 +121,10 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
         assert model_usage_table is not None
         assert problem_runs_table is not None
         assert usage_session_tokens_view is not None
-        assert usage_problem_tokens_view is None
-        assert usage_problem_tokens_legacy_view is not None
-        assert usage_problem_read_roi_legacy_view is not None
-        assert usage_read_before_solve_roi_legacy_view is not None
+        assert usage_problem_tokens_view is not None
+        assert usage_problem_tokens_legacy_view is None
+        assert usage_problem_read_roi_legacy_view is None
+        assert usage_read_before_solve_roi_legacy_view is None
         assert usage_problem_run_tokens_view is not None
         assert usage_problem_run_agent_tokens_view is not None
         assert {

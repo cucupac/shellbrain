@@ -80,7 +80,7 @@ def test_concept_update_should_reject_truth_bearing_actions_without_evidence() -
     assert errors[0].code.value == "schema_error"
 
 
-def test_concept_update_should_still_accept_memory_evidence() -> None:
+def test_concept_update_should_accept_memory_as_evidence_source() -> None:
     """memory remains a valid evidence kind even though it is not an anchor kind."""
 
     request, errors = validate_concept_update_schema(

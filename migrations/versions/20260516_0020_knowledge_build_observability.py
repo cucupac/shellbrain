@@ -2,7 +2,7 @@
 
 from alembic import op
 
-from app.infrastructure.db.runtime.models.views import (
+from migrations._usage_view_sql import (
     USAGE_PROBLEM_RUN_AGENT_TOKENS_SQL,
 )
 

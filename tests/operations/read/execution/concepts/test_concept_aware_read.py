@@ -16,6 +16,7 @@ from app.core.use_cases.concepts.update import update_concepts
 from app.core.use_cases.retrieval.read import execute_read_memory
 from app.core.use_cases.retrieval.read_concepts import append_concepts_to_pack
 from app.infrastructure.db.runtime.models.concepts import (
+    concept_claims,
     concept_embeddings,
     concept_memory_links,
     concepts,
@@ -359,6 +360,38 @@ def test_read_should_not_select_concepts_from_archived_memory_links(
     with uow_factory() as uow:
         result = execute_read_memory(
             make_read_request(repo_id="repo-a", query="unrelated token"), uow
+        )
+
+    assert result.data["pack"]["concepts"]["items"] == []
+
+
+def test_read_should_not_select_superseded_concept_truth_records_as_auto_signal(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_read_memory: Callable[..., None],
+    integration_engine: Engine,
+    monkeypatch,
+) -> None:
+    """superseded concept truth records should not create positive auto-read signal."""
+
+    seed_read_memory(
+        memory_id="refund-problem-1",
+        repo_id="repo-a",
+        scope=MemoryScope.REPO,
+        kind=MemoryKind.PROBLEM,
+        text_value="Refund problem.",
+    )
+    _seed_deposit_addresses(uow_factory)
+    with integration_engine.begin() as conn:
+        conn.execute(
+            update(concept_claims).values(
+                status=ConceptLifecycleStatus.SUPERSEDED.value
+            )
+        )
+    _stub_pack(monkeypatch, direct_memory_ids=[])
+
+    with uow_factory() as uow:
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="deposit_addresses.py"), uow
         )
 
     assert result.data["pack"]["concepts"]["items"] == []

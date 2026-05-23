@@ -3,6 +3,9 @@
 from collections.abc import Callable
 from datetime import datetime, timezone
 
+import pytest
+from pydantic import ValidationError
+
 from app.core.use_cases.concepts.add.request import ConceptAddRequest
 from app.core.use_cases.concepts.update.request import ConceptUpdateRequest
 from app.core.entities.memories import MemoryKind, MemoryScope
@@ -134,6 +137,109 @@ def test_concept_update_should_be_idempotent_for_natural_keys(
     assert len(fetch_rows(concept_groundings)) == 1
     assert len(fetch_rows(concept_memory_links)) == 1
     assert len(fetch_rows(evidence_links)) == 5
+
+
+def test_concept_update_request_should_accept_current_memory_link_roles() -> None:
+    """concept update validation should expose only current bridge roles."""
+
+    for role in (
+        "example_of",
+        "solution_for",
+        "failed_tactic_for",
+        "warns_about",
+        "change_relevant_to",
+    ):
+        request = ConceptUpdateRequest.model_validate(
+            {
+                "schema_version": "concept.v1",
+                "repo_id": "repo-a",
+                "actions": [
+                    {
+                        "type": "link_memory",
+                        "concept": "deposit-addresses",
+                        "role": role,
+                        "memory_id": "memory-a",
+                        "evidence": [{"kind": "manual", "note": "Role check."}],
+                    }
+                ],
+            }
+        )
+
+        assert request.actions[0].role == role
+
+
+def test_concept_update_request_should_reject_retired_memory_link_roles() -> None:
+    """legacy bridge roles should fail before execution."""
+
+    for role in ("changed", "validated", "contradicted", "warned_about"):
+        with pytest.raises(ValidationError):
+            ConceptUpdateRequest.model_validate(
+                {
+                    "schema_version": "concept.v1",
+                    "repo_id": "repo-a",
+                    "actions": [
+                        {
+                            "type": "link_memory",
+                            "concept": "deposit-addresses",
+                            "role": role,
+                            "memory_id": "memory-a",
+                            "evidence": [
+                                {"kind": "manual", "note": "Retired role check."}
+                            ],
+                        }
+                    ],
+                }
+            )
+
+
+def test_concept_update_should_write_current_memory_link_roles(
+    uow_factory: Callable[[], PostgresUnitOfWork],
+    seed_memory: Callable[..., object],
+    fetch_rows: Callable[..., list[dict[str, object]]],
+) -> None:
+    """execution should persist the current bridge vocabulary."""
+
+    _seed_deposit_concepts(uow_factory)
+    current_roles = (
+        ("example_of", MemoryKind.FACT),
+        ("solution_for", MemoryKind.SOLUTION),
+        ("failed_tactic_for", MemoryKind.FAILED_TACTIC),
+        ("warns_about", MemoryKind.FACT),
+        ("change_relevant_to", MemoryKind.CHANGE),
+    )
+    for index, (_role, memory_kind) in enumerate(current_roles, start=1):
+        seed_memory(
+            memory_id=f"role-memory-{index}",
+            repo_id="repo-a",
+            scope=MemoryScope.REPO,
+            kind=memory_kind,
+            text_value=f"Role memory {index}.",
+        )
+
+    request = ConceptUpdateRequest.model_validate(
+        {
+            "schema_version": "concept.v1",
+            "repo_id": "repo-a",
+            "actions": [
+                {
+                    "type": "link_memory",
+                    "concept": "deposit-addresses",
+                    "role": role,
+                    "memory_id": f"role-memory-{index}",
+                    "evidence": [{"kind": "manual", "note": "Current role."}],
+                }
+                for index, (role, _memory_kind) in enumerate(current_roles, start=1)
+            ],
+        }
+    )
+
+    with uow_factory() as uow:
+        result = update_concepts(request, uow, id_generator=_SequenceIdGenerator())
+
+    assert result.data["updated_count"] == len(current_roles)
+    assert {row["role"] for row in fetch_rows(concept_memory_links)} == set(
+        role for role, _memory_kind in current_roles
+    )
 
 
 def test_concept_update_should_update_lifecycle_for_all_truth_record_types(

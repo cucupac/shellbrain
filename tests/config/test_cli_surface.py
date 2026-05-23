@@ -481,7 +481,8 @@ def test_memory_add_help_should_include_one_example(
     assert "shellbrain memory add --json" in output
     assert "failed_tactic" in output
     assert "memory.links.problem_id" in output
-    assert "problem_attempts" in output
+    assert "structural_memory_relations" in output
+    assert "problem_attempts" not in output
 
 
 def test_memory_update_help_should_include_one_example(
@@ -505,7 +506,7 @@ def test_memory_update_help_should_include_one_example(
 def test_scenario_record_help_should_describe_problem_windows(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """scenario record help should describe bounded problem-solving windows."""
+    """scenario record help should describe bounded problem-solving runs."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["scenario", "record", "--help"])
@@ -513,7 +514,8 @@ def test_scenario_record_help_should_describe_problem_windows(
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
     assert "Internal knowledge-builder endpoint" in output
-    assert "A scenario is not a memory" in output
+    assert "`scenario record` writes a problem_run, not a memory" in output
+    assert "problem_runs" in output
     assert "token" in output
     assert "ROI" in output
     assert "solved" in output

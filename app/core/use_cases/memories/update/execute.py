@@ -85,7 +85,9 @@ def _build_update_plan_ids(
     if update_type == "utility_vote":
         return UpdatePlanIds(utility_observation_id=id_generator.new_id())
     if update_type == "fact_update_link":
-        return UpdatePlanIds(fact_update_id=id_generator.new_id())
+        return UpdatePlanIds(
+            structural_relation_ids=tuple(id_generator.new_id() for _ in range(3)),
+        )
     if update_type == "association_link":
         return UpdatePlanIds(
             association_edge_id=id_generator.new_id(),

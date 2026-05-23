@@ -1,5 +1,6 @@
 """Threshold-config usage contracts for retrieval boot helpers."""
 
+from app.core.entities.settings import ThresholdSettings
 from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
 
 
@@ -30,14 +31,8 @@ class _StubKeywordRetrieval:
 
 
 def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thresholds(
-    monkeypatch,
 ) -> None:
     """seed retrieval should always apply configured semantic and keyword thresholds."""
-
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.seed_retrieval.get_threshold_settings",
-        lambda: {"semantic_threshold": 0.5, "keyword_threshold": 0.5},
-    )
 
     seeds = retrieve_seeds(
         {
@@ -50,6 +45,7 @@ def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thre
         semantic_retrieval=_StubSemanticRetrieval(),
         keyword_retrieval=_StubKeywordRetrieval(),
         vector_search=None,
+        thresholds=ThresholdSettings(semantic_threshold=0.5, keyword_threshold=0.5),
     )
 
     assert seeds["semantic"] == [{"memory_id": "semantic-keep", "score": 0.8}]
