@@ -53,7 +53,7 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 
 ## How agents use ShellBrain
 
-### ShellBrain Recall
+### Recall
 
 **Working agents call `shellbrain recall`.** That is the normal interface they have to think about. One command, **one _carefully curated_ compact brief**, with sources cited.
 
@@ -61,14 +61,11 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 shellbrain recall --json '{"query":"what context matters for this migration lock timeout?","current_problem":{"goal":"fix the migration hang","surface":"db admin","obstacle":"lock timeout","hypothesis":"none yet"}}'
 ```
 
-Lower-level commands exist for inner agents.
-- `read`, `events`, `concept show`, `memory add`, `memory update`, `concept add`, `concept update`
+**Working agents focus on only their work.**
 
-### ShellBrain Teach
+### Teach
 
 **Working agents call `shellbrain teach` for explicit teaching.** You can tell an agent to remember important ideas.
-
-**Working agents focus on only their work.**
 
 ---
 
