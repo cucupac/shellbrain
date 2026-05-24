@@ -164,6 +164,15 @@
       gap: var(--spacing-24);
     }
 
+    .agent-compat {
+      color: var(--color-silver-mist);
+      font-family: var(--font-roboto-mono);
+      font-size: var(--text-caption);
+      line-height: var(--leading-caption);
+      text-align: left;
+      white-space: nowrap;
+    }
+
     .button {
       appearance: none;
       border: 0;
@@ -297,6 +306,10 @@
       margin-top: var(--spacing-40);
     }
 
+    .hero-compat {
+      margin-top: var(--spacing-16);
+    }
+
     .install-command {
       display: grid;
       grid-template-columns: auto minmax(0, 1fr) auto;
@@ -398,13 +411,13 @@
     .console::after {
       content: "";
       position: absolute;
-      top: 40px;
+      top: 113px;
       right: 24px;
       width: 160px;
       height: 224px;
       background: url("../assets/shellbrain_logo_mark.png") center / contain no-repeat;
       filter: invert(1) contrast(1.08);
-      opacity: 0.045;
+      opacity: 0.02;
       pointer-events: none;
     }
 
@@ -439,6 +452,7 @@
 
     .scene-list li {
       display: flex;
+      align-items: flex-start;
       gap: var(--spacing-16);
       color: var(--color-silver-mist);
       font-size: var(--text-body-lg);
@@ -450,12 +464,21 @@
     }
 
     .scene-index {
-      width: 32px;
+      width: 18px;
+      height: 18px;
+      margin-top: 3px;
       flex: 0 0 auto;
-      color: var(--color-electric-green);
+      color: transparent;
       font-family: var(--font-roboto-mono);
-      font-size: var(--text-caption);
-      line-height: var(--leading-caption);
+      font-size: 0;
+      line-height: 0;
+      border: 1px solid rgba(39, 247, 149, 0.55);
+      border-radius: 50%;
+      background: rgba(39, 247, 149, 0.08);
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 8.2 6.8 11 12 5' fill='none' stroke='%2327f795' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: 12px 12px;
     }
 
     .metric-strip {
@@ -495,7 +518,7 @@
     }
 
     .section-muted {
-      background: var(--color-iron-oxide);
+      background: var(--color-midnight-ink);
     }
 
     .problem-section {
@@ -550,35 +573,44 @@
     .grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: var(--spacing-8);
+      gap: var(--spacing-40) var(--spacing-48);
     }
 
     .card {
-      min-height: 232px;
-      padding: var(--spacing-32);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: var(--radius-cards);
-      background: var(--color-obsidian-slate);
+      position: relative;
+      overflow: hidden;
+      min-height: 176px;
+      padding: var(--spacing-24) 0 0;
+      border: 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.09);
+      border-radius: 0;
+      background: transparent;
     }
 
     .card h3 {
+      position: relative;
       margin-bottom: var(--spacing-16);
       color: var(--color-pure-white);
-      font-size: var(--text-heading);
+      font-size: var(--text-subheading);
       line-height: var(--leading-heading);
       font-weight: 600;
       letter-spacing: 0;
     }
 
     .card p {
+      position: relative;
       color: var(--color-silver-mist);
-      font-size: var(--text-body-lg);
-      line-height: var(--leading-body-lg);
+      font-size: var(--text-body);
+      line-height: var(--leading-body);
     }
 
     .card strong {
       color: var(--color-pure-white);
       font-weight: 600;
+    }
+
+    .card code {
+      color: var(--color-pure-white);
     }
 
     .taxonomy-grid {
@@ -881,7 +913,7 @@
             <div class="eyebrow">Long-term Memory for AI</div>
             <h1 id="hero-title">ShellBrain<span>.</span></h1>
             <p class="hero-lead">
-              Agents forget. What if they didn't? ShellBrain gives agents <strong>structured, long-term memory</strong>: typed, evidence-grounded, and retrieved the moment a problem resembles something already seen.
+              Agents forget. What if they didn't? ShellBrain gives agents <strong>long-term memory</strong>. Grounded and retrieved exactly when it's needed.
             </p>
             <div class="hero-actions">
               <button class="button button-primary" type="button" data-copy-command>Install</button>
@@ -892,6 +924,7 @@
               <code id="install-cmd">curl -L ShellBrain.ai/install | bash</code>
               <button class="copy-inline" type="button" data-copy-command>Copy</button>
             </div>
+            <div class="agent-compat hero-compat">Works for Cursor, Claude, Codex</div>
           </div>
 
           <aside class="hero-visual" id="memory-ontology-constellation" aria-label="ShellBrain memory flow">
@@ -903,8 +936,8 @@
       <section class="section section-muted trace-section" aria-labelledby="trace-title">
         <div class="section-inner split">
           <div>
-            <div class="section-eyebrow">Recall Trace</div>
-            <h2 class="section-title" id="trace-title">Memory becomes context.</h2>
+            <div class="section-eyebrow">Recall</div>
+            <h2 class="section-title" id="trace-title">One Command.</h2>
           </div>
           <aside class="console" aria-label="ShellBrain recall trace">
             <div class="console-head">
@@ -912,12 +945,12 @@
               <span class="signal">Online</span>
             </div>
             <ol class="scene-list">
-              <li><span class="scene-index">01</span><span>Problem described.</span></li>
-              <li><span class="scene-index">02</span><span>Keyword and semantic lanes run in parallel.</span></li>
-              <li><span class="scene-index">03</span><span>Graph neighbors expanded through prior cases.</span></li>
-              <li><span class="scene-index">04</span><span>Synthesized context for maximal utility.</span></li>
+              <li><span class="scene-index">01</span><span>The working agent describes the current problem.</span></li>
+              <li><span class="scene-index">02</span><span>BM25 and semantic similarity search in parallel.</span></li>
+              <li><span class="scene-index">03</span><span>Graph neighbors expand over prior cases.</span></li>
+              <li><span class="scene-index">04</span><span>Context synthesized for maximal utility.</span></li>
               <li><span class="scene-index">05</span><span>ShellBrain subconscious stores new memories.</span></li>
-              <li><span class="scene-index">06</span><span>Next session starts with the hard part remembered.</span></li>
+              <li><span class="scene-index">06</span><span>Next session starts with the right context.</span></li>
             </ol>
             <div class="metric-strip">
               <div class="metric">
@@ -925,8 +958,8 @@
                 <div class="metric-label">Memory Types</div>
               </div>
               <div class="metric">
-                <div class="metric-value">04</div>
-                <div class="metric-label">Operations</div>
+                <div class="metric-value">01</div>
+                <div class="metric-label">Operation</div>
               </div>
               <div class="metric">
                 <div class="metric-value">00</div>
@@ -937,114 +970,31 @@
         </div>
       </section>
 
-      <section class="section problem-section" aria-labelledby="problem-title">
-        <div class="section-inner split">
-          <div>
-            <div class="section-eyebrow">Problem</div>
-            <h2 class="section-title" id="problem-title">Sessions start from zero.</h2>
-          </div>
-          <div class="section-copy">
-            <p><strong>Agents have no long-term memory.</strong> Every session starts from zero. Lessons vanish. Mistakes repeat. Knowledge never compounds.</p>
-            <p>ShellBrain gives agents <em>structured, long-term memory</em>: typed, evidence-grounded, and retrieved the moment a problem resembles something already seen.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-muted" aria-labelledby="system-title">
+      <section class="section section-muted" aria-labelledby="stored-memory-title">
         <div class="section-inner">
           <div class="split">
             <div>
-              <div class="section-eyebrow">System</div>
-              <h2 class="section-title" id="system-title">A graph built for recall.</h2>
+              <div class="section-eyebrow">Epistemology</div>
+              <h2 class="section-title" id="stored-memory-title">A Graph Built for Recall.</h2>
             </div>
             <div class="grid">
               <article class="card">
-                <h3>Use Model</h3>
-                <p>ShellBrain is a <strong>skill</strong>. You start each session with it. The agent reads, writes, and evolves memory on its own.</p>
+                <h3>Problems &amp; Solutions</h3>
+                <p>Every problem, solution, and failed tactic linked as a case. The next time a similar problem appears, <strong>the agent knows what to try and what to skip</strong>.</p>
               </article>
               <article class="card">
-                <h3>Compatibility</h3>
-                <p>Works with <strong>Claude Code</strong>, <strong>Cursor</strong>, and <strong>Codex</strong>. Installs as a native skill in each. Memory is shared across all of them.</p>
+                <h3>Facts &amp; Preferences</h3>
+                <p>Durable knowledge about the repo. Facts are never silently overwritten—when something changes, the revision chain is <strong>immutable</strong>.</p>
               </article>
               <article class="card">
-                <h3>Storage</h3>
-                <p>Typed memory in a <strong>knowledge graph</strong>. Scenarios, facts, preferences, associations: distinct node types with structural edges. Not markdown files.</p>
+                <h3>Evidence-Backed</h3>
+                <p>Every memory traces back to the session transcript that produced it. If the evidence is ambiguous, <strong>the write is skipped</strong>.</p>
               </article>
               <article class="card">
-                <h3>Retrieval</h3>
-                <p><strong>BM25</strong> search fused with <strong>semantic embeddings</strong>. Candidates expand through graph edges. Bounded, scored, and every result explains why it was included.</p>
+                <h3>Current Truth</h3>
+                <p>Records are <code>active</code>, <code>stale</code>, <code>superseded</code>, or <code>wrong</code>. Retrieval respects that. <strong>Truth always stays current.</strong></p>
               </article>
             </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" aria-labelledby="memory-title">
-        <div class="section-inner">
-          <div class="section-eyebrow">Memory Ontology</div>
-          <h2 class="section-title" id="memory-title">Four Memory Types.</h2>
-          <div class="taxonomy-grid" aria-label="Memory types">
-            <article class="card taxonomy-card">
-              <span class="badge">Procedural</span>
-              <p class="taxonomy-headline">Prior problems and outcomes.</p>
-              <p>Every problem, solution, and failed tactic linked as a <strong>scenario</strong>. The next time a similar problem appears, the agent knows what to try and what to skip.</p>
-              <p class="taxonomy-quiet">Case-based reasoning. Problems are never stored in isolation: only as structured cases with outcomes.</p>
-            </article>
-            <article class="card taxonomy-card">
-              <span class="badge">Semantic</span>
-              <p class="taxonomy-headline">Facts, preferences, revision history.</p>
-              <p>Facts are never overwritten. When knowledge changes, the old fact, the change, and the new fact are linked as an <strong>immutable revision chain</strong>. Preferences capture how you like to work.</p>
-              <p class="taxonomy-quiet">Facts, preferences, and changes are distinct typed nodes with their own revision semantics.</p>
-            </article>
-            <article class="card taxonomy-card">
-              <span class="badge">Episodic</span>
-              <p class="taxonomy-headline">Evidence and grounding.</p>
-              <p>Every durable memory must trace back to a real event. If the evidence is ambiguous, ShellBrain <strong>skips the write entirely</strong>.</p>
-              <p class="taxonomy-quiet">Three-layer validation: schema, semantic, integrity, rejects anything that can't cite its evidence.</p>
-            </article>
-            <article class="card taxonomy-card">
-              <span class="badge">Associative</span>
-              <p class="taxonomy-headline">Expansion beyond retrieval.</p>
-              <p>Explicit graph edges and implicit vector similarity both expand recall outward: through linked scenarios, revision chains, and <strong>semantic neighbors</strong>.</p>
-              <p class="taxonomy-quiet">Multi-hop traversal surfaces memories the agent would never think to look for.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section section-muted" aria-labelledby="feedback-title">
-        <div class="section-inner split">
-          <div>
-            <div class="section-eyebrow">Learns from Feedback</div>
-            <h2 class="section-title" id="feedback-title">Utility is earned, not assumed.</h2>
-          </div>
-          <div class="section-copy">
-            <p>After retrieval, agents vote on which memories actually helped. Utility is recorded <em>per problem</em>, not globally. The graph sharpens itself over time.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section" aria-labelledby="ops-title">
-        <div class="section-inner">
-          <div class="section-eyebrow">Operation Set</div>
-          <h2 class="section-title" id="ops-title">Four Operations. That's it.</h2>
-          <div class="operation-grid">
-            <article class="card operation">
-              <h3>Read <span>01</span></h3>
-              <p>Retrieve memories for a concrete problem. Does not mutate state.</p>
-            </article>
-            <article class="card operation">
-              <h3>Events <span>02</span></h3>
-              <p>Sync the session transcript. Returns episode event IDs the agent can cite as evidence.</p>
-            </article>
-            <article class="card operation">
-              <h3>Memory Add <span>03</span></h3>
-              <p>Write one durable memory. At least one evidence reference is required.</p>
-            </article>
-            <article class="card operation">
-              <h3>Memory Update <span>04</span></h3>
-              <p>Record utility, evolve facts, add associations, or archive.</p>
-            </article>
           </div>
         </div>
       </section>
