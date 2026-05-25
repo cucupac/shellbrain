@@ -3,172 +3,162 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>shellbrain / humans</title>
+  <title>ShellBrain | Humans</title>
+  <meta name="description" content="Install ShellBrain, understand the memory model, and use durable repo-scoped memory with Claude Code, Codex, and Cursor.">
+  <link rel="canonical" href="https://shellbrain.ai/humans/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/png" href="/assets/shellbrain_logo.png">
-  <link rel="stylesheet" href="../site.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="../assets/shellbrain_logo.png">
+  <link rel="stylesheet" href="../page.css">
   <script src="../site.js" defer></script>
 </head>
 <body>
-  <div class="page">
+  <div class="shell">
     <header class="topbar">
-      <a class="brand" href="/">shellbrain</a>
+      <a class="brand" href="../">
+        <img class="brand-mark" src="../assets/shellbrain_logo_mark.png" alt="">
+        <span>ShellBrain</span>
+      </a>
       <nav class="nav" aria-label="Primary">
-        <a href="/humans/">humans</a>
-        <a href="/agents/">agents</a>
-        <a href="/recall/">recall</a>
-        <a href="/memory/procedural/">procedural</a>
-        <a href="/memory/semantic/">semantic</a>
-        <a href="/memory/episodic/">episodic</a>
-        <a href="/memory/associative/">associative</a>
+        <a href="../humans/" aria-current="page">Humans</a>
+        <a href="../agents/">Agents</a>
+        <a href="../architecture/">Architecture</a>
+        <a href="https://github.com/cucupac/shellbrain" target="_blank" rel="noopener">Open Source</a>
       </nav>
+      <div class="nav-actions">
+        <a class="button button-primary" href="../#install-cmd">Install</a>
+      </div>
     </header>
 
     <main>
-      <section class="hero">
-        <div class="hero-top">
-          <div class="eyebrow">for humans</div>
-          <button type="button" class="copy-page" data-copy-page>copy page</button>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-inner">
+          <div class="eyebrow">For Humans</div>
+          <h1 id="hero-title">Memory That Compounds<span>.</span></h1>
+          <p class="hero-lead">
+            AI coding agents work in sessions. Each session starts from scratch. Agents re-discover the same bugs, re-learn your preferences, and repeat failed approaches. <strong>ShellBrain gives agents durable memory, scoped to a repo.</strong>
+          </p>
         </div>
-        <h1 class="title">start here.</h1>
-        <p class="lead">
-          <strong>shellbrain gives your AI agents durable, structured long-term memory.</strong> every problem solved, every failed attempt, every lesson learned&mdash;stored locally, retrieved automatically when something similar surfaces again. <em>agents that remember solve faster and repeat mistakes less.</em>
-        </p>
       </section>
 
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">install.</h2>
-          <p class="section-copy">
-            <strong>one command on supported machines.</strong> the installer installs the shellbrain CLI, sets up PATH for zsh, bash, or fish, auto-installs skills into Claude Code, Codex, and Cursor, and runs <code>shellbrain init</code>. on first bootstrap, <code>shellbrain init</code> asks where shellbrain should store data.
-          </p>
-          <div class="panel" style="margin-top: 22px;">
-            <div class="panel-head">
-              <span class="panel-label">install</span>
-              <button
-                type="button"
-                class="copy-button"
-                data-copy-source="#install-cmd"
-                data-copy-label="copy"
-                data-copy-success="copied"
-                data-copy-failed="copy failed"
-              >copy</button>
-            </div>
-            <pre id="install-cmd">curl -L shellbrain.ai/install | bash</pre>
+      <section class="section" aria-labelledby="what-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">What It Does</div>
+            <h2 class="section-title" id="what-title">Evidence-Backed Memory.</h2>
           </div>
-          <details class="requirements-details">
-            <summary class="requirements-toggle">
-              <span>view requirements</span>
-              <svg viewBox="0 0 16 16" fill="none" stroke-width="1.5" aria-hidden="true">
-                <path d="M6 3l5 5-5 5"/>
-              </svg>
-            </summary>
-            <div class="panel requirements-panel">
-              <div class="panel-head">
-                <span class="panel-label">requirements</span>
+          <div class="section-copy">
+            <p>After each session, ShellBrain distills what happened into concrete records: problems encountered, solutions that worked, tactics that failed, facts about the codebase, your preferences, and changes worth remembering.</p>
+            <p>When an agent starts a new session and hits a problem, it calls <code>shellbrain recall</code>. ShellBrain returns a compact brief: the relevant history, ranked by relevance to the current problem. Evidence-backed or not included.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="model-title">
+        <div class="section-inner">
+          <div class="section-eyebrow">The Memory Model</div>
+          <h2 class="section-title" id="model-title" style="margin-bottom: var(--spacing-40);">Three Layers.</h2>
+          <div class="module-grid-3">
+            <article class="module">
+              <h3>Episodes</h3>
+              <p>The raw transcript trail. What actually happened, in order. This is the ground truth everything else is distilled from.</p>
+              <p class="fine-label">evidence layer</p>
+            </article>
+            <article class="module">
+              <h3>Memories</h3>
+              <p>Concrete extracted records: problems, solutions, failed tactics, facts, preferences, and changes. Each one is backed by evidence from the episode trail.</p>
+              <div class="pill-row">
+                <span class="pill">active</span>
+                <span class="pill">stale</span>
+                <span class="pill">superseded</span>
+                <span class="pill">wrong</span>
               </div>
-              <ul class="requirements-list">
-                <li class="req-ok">macOS and Linux</li>
-                <li class="req-ok">Python 3.11+</li>
-                <li class="req-ok">first init asks you to choose a storage mode</li>
-                <li class="req-ok">managed local: Docker installed and running</li>
-                <li class="req-ok">external: PostgreSQL with pgvector</li>
-                <li class="req-ok">first init downloads a local embedding model (~few hundred MB)</li>
-                <li class="req-no">Windows not yet supported</li>
-              </ul>
-            </div>
-          </details>
-          <p class="section-copy" style="margin-top: 22px;">
-            <strong>we ship often.</strong> run the upgrade command when you want newer capabilities.
-          </p>
-          <div class="panel" style="margin-top: 22px;">
-            <div class="panel-head">
-              <span class="panel-label">upgrade</span>
-              <button
-                type="button"
-                class="copy-button"
-                data-copy-source="#upgrade-cmd"
-                data-copy-label="copy"
-                data-copy-success="copied"
-                data-copy-failed="copy failed"
-              >copy</button>
-            </div>
-            <pre id="upgrade-cmd">shellbrain upgrade</pre>
+            </article>
+            <article class="module">
+              <h3>Concepts</h3>
+              <p>A sparse graph of durable repo ideas: claims, relations, anchors, and links back to memories. It gives recall an abstract map while keeping every belief grounded in evidence.</p>
+              <p class="fine-label">Grounded Abstraction</p>
+            </article>
           </div>
         </div>
       </section>
 
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">use the skill with every thread.</h2>
-          <p class="section-copy" style="margin-bottom: 22px;">
-            <strong>shellbrain only activates when you tell the agent to use it.</strong> paste the prompt below at the start of every new conversation thread. the skill tells the agent how to read context, gather evidence, and write durable memories. <em>you don't manage any of this directly&mdash;the agent does.</em>
-          </p>
-          <div class="compat-grid">
-            <div class="compat-row">
-              <span class="compat-env">terminal support</span>
-              <span class="compat-pill">Codex</span>
-              <span class="compat-pill">Claude Code</span>
-            </div>
-            <div class="compat-row">
-              <span class="compat-env">desktop support</span>
-              <span class="compat-pill">Codex</span>
-              <span class="compat-pill">Claude Code</span>
-              <span class="compat-pill">Cursor</span>
-            </div>
+      <section class="section" aria-labelledby="install-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Install</div>
+            <h2 class="section-title" id="install-title">One Command.</h2>
           </div>
-          <div class="panel" style="margin-top: 22px;">
-            <div class="panel-head">
-              <span class="panel-label">prompt</span>
-              <button
-                type="button"
-                class="copy-button"
-                data-copy-source="#session-prompt"
-                data-copy-label="copy"
-                data-copy-success="copied"
-                data-copy-failed="copy failed"
-              >copy</button>
+          <div>
+            <div class="install-command" aria-label="Install command">
+              <span class="prompt">$</span>
+              <code>curl -L ShellBrain.ai/install | bash</code>
+              <button class="copy-inline" type="button" data-copy-install>Copy</button>
             </div>
-            <pre id="session-prompt">Use Shellbrain Session Start to get up to speed in this repo with shellbrain and record durable evidence-backed learnings.</pre>
+            <div class="module-grid" style="margin-top: var(--spacing-40);">
+              <article class="module">
+                <h3>Installer Work</h3>
+                <ul>
+                  <li>Installs the ShellBrain CLI</li>
+                  <li>Sets up PATH for zsh, bash, or fish</li>
+                  <li>Injects skills into Claude Code, Codex, and Cursor</li>
+                  <li>Runs <code>shellbrain init</code></li>
+                </ul>
+              </article>
+              <article class="module">
+                <h3>Storage Options</h3>
+                <p>On first init, ShellBrain asks where it should store data.</p>
+                <div class="option-list">
+                  <div class="option-row">
+                    <strong>Managed Local</strong>
+                    <span>Docker, Postgres, pgvector, fully local</span>
+                  </div>
+                  <div class="option-row">
+                    <strong>External</strong>
+                    <span>Your own Postgres with pgvector</span>
+                  </div>
+                </div>
+              </article>
+            </div>
           </div>
         </div>
       </section>
 
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">what the agent does.</h2>
-          <p class="section-copy">
-            <strong>read</strong> retrieves durable context about the problem at hand. <strong>events</strong> syncs the active transcript so evidence exists for writes. <strong>memory add</strong> and <strong>memory update</strong> turn session work into reusable long-term memory.
-          </p>
-          <p class="section-copy" style="margin-top: 14px;">
-            <em>the agent re-queries read whenever the problem shifts.</em> it runs events before every write. it stores problems, solutions, failed tactics, facts, preferences, and changes at session end.
-          </p>
+      <section class="section" aria-labelledby="agents-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Using With Your Agent</div>
+            <h2 class="section-title" id="agents-title">Just Work Normally.</h2>
+          </div>
+          <div>
+            <div class="section-copy">
+              <p>Your agent calls <code>shellbrain recall</code> when it needs context. Memory is written automatically when sessions close.</p>
+            </div>
+            <div class="module-grid-3" style="margin-top: var(--spacing-40);">
+              <article class="module">
+                <h3>Claude Code</h3>
+                <p>Use <code>/shellbrain</code> to activate the recall habit for a session.</p>
+              </article>
+              <article class="module">
+                <h3>Codex</h3>
+                <p>Use <code>$shellbrain</code> to activate the recall habit for a session.</p>
+              </article>
+              <article class="module">
+                <h3>Cursor</h3>
+                <p>Use <code>/shellbrain</code> to activate the recall habit for a session.</p>
+              </article>
+            </div>
+          </div>
         </div>
       </section>
-
-      <section class="section callout">
-        <div class="section-inner">
-          <h2 class="section-title">if something feels wrong.</h2>
-          <p class="section-copy">
-            run <code>shellbrain admin doctor</code>. it inspects your local setup and reports what needs attention. only rerun <code>shellbrain init</code> directly if doctor says repair is needed&mdash;the installer and upgrader already handle init for you.
-          </p>
-        </div>
-      </section>
-      <nav class="journey" aria-label="Journey">
-        <span></span>
-        <a href="/agents/" class="journey-link journey-link--next">
-          <span class="journey-dir">next</span>
-          <span class="journey-title">for agents</span>
-        </a>
-      </nav>
     </main>
 
     <footer class="footer">
-      <div class="footer-brand">shellbrain</div>
-      <div class="footer-sub">knowledge compounds.</div>
+      <div class="footer-brand">ShellBrain</div>
+      <div class="footer-sub">Long-Term Memory for AI</div>
     </footer>
   </div>
+  <script src="../page.js"></script>
 </body>
 </html>

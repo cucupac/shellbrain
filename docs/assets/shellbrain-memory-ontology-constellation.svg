@@ -84,9 +84,9 @@
       }
       .memory-label {
         fill: #8A8A90;
-        font-size: 15px;
+        font-size: 28px;
         font-weight: 400;
-        opacity: 0.52;
+        opacity: 0.72;
       }
       .recall-label {
         fill: #ffffff;
@@ -5202,9 +5202,9 @@
   </g>
   <g id="memory-labels">
     <text class="memory-label" x="720" y="50" text-anchor="middle">Episodic Knowledge</text>
-    <text class="memory-label" x="1128" y="410" text-anchor="start">Abstract Knowledge</text>
-    <text class="memory-label" x="720" y="770" text-anchor="middle">Semantic Knowledge</text>
-    <text class="memory-label" x="312" y="410" text-anchor="end">Procedural Knowledge</text>
+    <text class="memory-label" x="1064" y="410" text-anchor="start">Abstract Knowledge</text>
+    <text class="memory-label" x="720" y="792" text-anchor="middle">Semantic Knowledge</text>
+    <text class="memory-label" x="376" y="410" text-anchor="end">Procedural Knowledge</text>
   </g>
 
   <g id="recall-well" data-center="usable-graph-field">

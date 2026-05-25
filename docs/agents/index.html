@@ -3,178 +3,160 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>shellbrain / agents</title>
+  <title>ShellBrain | Agents</title>
+  <meta name="description" content="Agent-facing ShellBrain guidance: when to call recall, when to teach, and which internal commands to avoid.">
+  <link rel="canonical" href="https://shellbrain.ai/agents/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,200..800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300;1,400&display=swap" rel="stylesheet">
-  <link rel="icon" type="image/png" href="/assets/shellbrain_logo.png">
-  <link rel="stylesheet" href="../site.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="../assets/shellbrain_logo.png">
+  <link rel="stylesheet" href="../page.css">
   <script src="../site.js" defer></script>
 </head>
 <body>
-  <div class="page">
+  <div class="shell">
     <header class="topbar">
-      <a class="brand" href="/">shellbrain</a>
+      <a class="brand" href="../">
+        <img class="brand-mark" src="../assets/shellbrain_logo_mark.png" alt="">
+        <span>ShellBrain</span>
+      </a>
       <nav class="nav" aria-label="Primary">
-        <a href="/humans/">humans</a>
-        <a href="/agents/">agents</a>
-        <a href="/recall/">recall</a>
-        <a href="/memory/procedural/">procedural</a>
-        <a href="/memory/semantic/">semantic</a>
-        <a href="/memory/episodic/">episodic</a>
-        <a href="/memory/associative/">associative</a>
+        <a href="../humans/">Humans</a>
+        <a href="../agents/" aria-current="page">Agents</a>
+        <a href="../architecture/">Architecture</a>
+        <a href="https://github.com/cucupac/shellbrain" target="_blank" rel="noopener">Open Source</a>
       </nav>
+      <div class="nav-actions">
+        <a class="button button-primary" href="../#install-cmd">Install</a>
+      </div>
     </header>
 
-    <main>
-      <section class="hero">
-        <div class="hero-top">
-          <div class="eyebrow">for agents</div>
-          <button type="button" class="copy-page" data-copy-page>copy page</button>
-        </div>
-        <h1 class="title">long-term memory for your session.</h1>
-        <p class="lead">
-          <strong>shellbrain is a case-based memory system scoped to a repo.</strong> it stores what happened, what worked, what failed, and what the human prefers&mdash;then retrieves the relevant pieces the moment a similar problem surfaces. <em>your job is to query it, use it, and write back what you learn.</em>
-        </p>
-      </section>
-
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">four operations. that's it.</h2>
-          <div class="ops-grid">
-            <div class="ops-card">
-              <h3>read</h3>
-              <p>retrieve memories related to a concrete problem. re-run whenever the problem shifts.</p>
-            </div>
-            <div class="ops-card">
-              <h3>events</h3>
-              <p>sync the active session transcript. returns episode event ids to cite as evidence. run before every write.</p>
-            </div>
-            <div class="ops-card">
-              <h3>memory add</h3>
-              <p>write one durable memory. at least one evidence reference required.</p>
-            </div>
-            <div class="ops-card">
-              <h3>memory update</h3>
-              <p>evolve existing memories. utility votes, fact revisions, association links, or archive.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">what to store.</h2>
-          <div class="card-grid">
-            <article class="card">
-              <h3>problems, solutions, failed tactics.</h3>
-              <p><strong>procedural memory.</strong> the obstacle, what fixed it, what didn't. solutions and failed tactics must link back to their problem. <em>without that link, the write is rejected.</em></p>
-            </article>
-            <article class="card">
-              <h3>facts, preferences, changes.</h3>
-              <p><strong>semantic memory.</strong> durable truths about the repo, conventions about how work should be done, and the events that invalidated prior truth. facts are never overwritten&mdash;they are revised through an immutable chain.</p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">link memories in a knowledge graph.</h2>
-          <div class="card-grid">
-            <article class="card">
-              <h3>association links.</h3>
-              <p><strong>you can formally link any two memories with a typed, directed edge.</strong> each edge has a relation type&mdash;depends on or associated with&mdash;plus optional confidence and salience scores between zero and one. <em>these are durable, first-class records in the graph.</em></p>
-            </article>
-            <article class="card">
-              <h3>how recall uses them.</h3>
-              <p><strong>during read, shellbrain walks your explicit links up to two hops deep.</strong> linked memories surface in the explicitly related section of the context pack alongside problem-attempt and fact-revision chains. <em>the stronger and more salient the edge, the higher it ranks.</em></p>
-            </article>
-            <article class="card">
-              <h3>when to link.</h3>
-              <p><strong>link memories when the relationship matters for future retrieval.</strong> a solution that depends on a specific fact. a preference that relates to an architectural decision. link at create time or add links later via update. <em>every link requires evidence.</em></p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">vote on what helped.</h2>
-          <div class="card-grid">
-            <article class="card">
-              <h3>utility votes.</h3>
-              <p><strong>after solving a problem, vote on whether each retrieved memory actually helped.</strong> the scale is a real number from negative one to one. positive means helpful. negative means misleading. zero means neutral. <em>votes are always scoped to a specific problem.</em></p>
-            </article>
-            <article class="card">
-              <h3>why it matters.</h3>
-              <p><strong>votes accumulate across sessions and agents.</strong> memories that consistently help rank higher in future retrieval. memories that consistently mislead sink. <em>utility is earned from real feedback, not assumed.</em></p>
-            </article>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">session rhythm.</h2>
-          <p class="section-copy">
-            <strong>start with focused read queries about the concrete problem you are working on.</strong> not vague prompts. name the failure mode, the subsystem, the constraint.
-          </p>
-          <p class="section-copy" style="margin-top: 14px;">
-            <strong>re-run read whenever the search shifts</strong> or you hit a new subproblem. run events before every write. reuse the returned episode event ids as evidence references. <em>never invent evidence. if it's ambiguous, skip the write.</em>
-          </p>
-          <p class="section-copy" style="margin-top: 14px;">
-            <strong>at session end, normalize what happened into durable memories.</strong> store the problem. store each failed tactic. store the solution. store any facts, preferences, or changes that emerged. link related memories. record utility votes for memories that helped or misled.
+    <main id="page-content">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-inner">
+          <div class="eyebrow">For Agents</div>
+          <h1 id="hero-title">Use Recall<span>.</span></h1>
+          <p class="hero-lead">
+            ShellBrain is a repo-scoped long-term memory system. It stores problems, solutions, failed tactics, facts, preferences, and changes - all backed by session evidence. You retrieve it with <strong>recall</strong>.
           </p>
         </div>
       </section>
 
-      <section class="section callout">
-        <div class="section-inner">
-          <h2 class="section-title">advisory, not authoritative.</h2>
-          <p class="section-copy">
-            <strong>current repo state is always ground truth.</strong> shellbrain is long-term memory that answers one question: <em>have i seen anything like this before, and what was useful?</em> run <code>shellbrain --help</code> to see exact syntax for every operation.
-          </p>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-inner">
-          <h2 class="section-title">explore.</h2>
-          <div class="panel" style="margin-top: 22px;">
-            <div class="panel-head">
-              <span class="panel-label">sitemap</span>
+      <section class="section" aria-labelledby="recall-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Your Interface</div>
+            <h2 class="section-title" id="recall-title">Recall</h2>
+          </div>
+          <div>
+            <div class="code-block">
+              <pre>shellbrain recall --json '{
+  "query": "&lt;what you want to know&gt;",
+  "current_problem": {
+    "goal": "&lt;what you are trying to do&gt;",
+    "surface": "&lt;where you are working&gt;",
+    "obstacle": "&lt;what is blocking you&gt;",
+    "hypothesis": "&lt;your current theory&gt;"
+  }
+}'</pre>
             </div>
-            <pre>
-memory
-  procedural  → <a href="/memory/procedural/">shellbrain.ai/memory/procedural</a>
-  semantic    → <a href="/memory/semantic/">shellbrain.ai/memory/semantic</a>
-  episodic    → <a href="/memory/episodic/">shellbrain.ai/memory/episodic</a>
-  associative → <a href="/memory/associative/">shellbrain.ai/memory/associative</a>
-
-recall        → <a href="/recall/">shellbrain.ai/recall</a>
-for agents    → <a href="/agents/">shellbrain.ai/agents</a>
-for humans    → <a href="/humans/">shellbrain.ai/humans</a>
-home          → <a href="/">shellbrain.ai</a>
-</pre>
+            <div class="module-grid" style="margin-top: var(--spacing-40);">
+              <article class="module">
+                <h3>Call Recall When</h3>
+                <ul>
+                  <li>You start a task</li>
+                  <li>The problem shifts materially</li>
+                  <li>The same approach has failed twice</li>
+                  <li>You are about to make an evidence-bearing decision</li>
+                </ul>
+              </article>
+              <article class="module">
+                <h3>The Brief Returns</h3>
+                <ul>
+                  <li>summary, constraints, known traps</li>
+                  <li>prior cases, concept orientation, anchors</li>
+                  <li>conflicts and gaps</li>
+                </ul>
+              </article>
+            </div>
           </div>
         </div>
       </section>
-      <nav class="journey" aria-label="Journey">
-        <a href="/humans/" class="journey-link">
-          <span class="journey-dir">previous</span>
-          <span class="journey-title">for humans</span>
-        </a>
-        <a href="/recall/" class="journey-link journey-link--next">
-          <span class="journey-dir">next</span>
-          <span class="journey-title">recall</span>
-        </a>
-      </nav>
+
+      <section class="section" aria-labelledby="teach-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Teaching</div>
+            <h2 class="section-title" id="teach-title">Only When Asked.</h2>
+          </div>
+          <div class="module-grid">
+            <article class="module">
+              <h3>Explicit Teach</h3>
+              <div class="code-block"><pre>shellbrain teach "&lt;statement&gt;"</pre></div>
+              <p>The statement is stored and retrievable immediately.</p>
+            </article>
+            <article class="module">
+              <h3>Boundary</h3>
+              <p><strong>Only call teach when the human explicitly asks.</strong> Normal memory extraction happens automatically when the session closes.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="dont-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Boundaries</div>
+            <h2 class="section-title" id="dont-title">Do Not Manage Internals.</h2>
+          </div>
+          <div class="module-grid">
+            <article class="module">
+              <h3>Do Not Call</h3>
+              <div class="command-list" aria-label="Commands not to call">
+                <div class="command-row"><code>shellbrain read</code></div>
+                <div class="command-row"><code>shellbrain events</code></div>
+                <div class="command-row"><code>shellbrain memory add</code></div>
+                <div class="command-row"><code>shellbrain memory update</code></div>
+                <div class="command-row"><code>shellbrain concept add</code></div>
+                <div class="command-row"><code>shellbrain concept update</code></div>
+                <div class="command-row"><code>shellbrain admin</code></div>
+                <div class="command-row"><code>shellbrain init</code></div>
+                <div class="command-row"><code>shellbrain upgrade</code></div>
+              </div>
+            </article>
+            <article class="module">
+              <h3>Use Instead</h3>
+              <p>For normal task context, use <code>shellbrain recall</code>. For repair only, follow the human's instruction or the installed skill guidance.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="install-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Install</div>
+            <h2 class="section-title" id="install-title">If Missing.</h2>
+          </div>
+          <div class="module-grid">
+            <article class="module">
+              <h3>Install</h3>
+              <div class="code-block"><pre>curl -L ShellBrain.ai/install | bash</pre></div>
+              <p>Installs the CLI and injects ShellBrain skills into Claude Code, Codex, and Cursor.</p>
+            </article>
+            <article class="module">
+              <h3>Repair</h3>
+              <div class="code-block"><pre>shellbrain admin doctor</pre></div>
+              <p>If doctor flags issues, run <code>shellbrain init</code>. Do not run init every session.</p>
+            </article>
+          </div>
+        </div>
+      </section>
     </main>
 
     <footer class="footer">
-      <div class="footer-brand">shellbrain</div>
-      <div class="footer-sub">knowledge compounds.</div>
+      <div class="footer-brand">ShellBrain</div>
+      <div class="footer-sub">Long-Term Memory for AI</div>
     </footer>
   </div>
 </body>

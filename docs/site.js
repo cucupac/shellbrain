@@ -83,16 +83,21 @@ function getCopyEventName(selector) {
 // Works both on deployed site (paths like /agents/) and local file opens
 // (paths like /Users/.../docs/agents/index.html).
 (function () {
-  var path = location.pathname;
+  var normalizedPath = location.pathname.replace(/\/index\.html$/, "").replace(/\/+$/, "");
+
   document.querySelectorAll(".nav a").forEach(function (a) {
-    var href = a.getAttribute("href").replace(/\/+$/, "");
-    // href is like "/agents" or "/memory/procedural"
-    // On deployed site, path is "/agents/" — strip trailing slash and compare.
-    // On local file open, path is ".../docs/agents/index.html" — check if
-    // the path contains the href segment (e.g., "/agents").
-    if (!href || href === "/") return;
-    var normalized = path.replace(/\/index\.html$/, "").replace(/\/+$/, "");
-    if (normalized === href || normalized.endsWith(href)) {
+    var rawHref = a.getAttribute("href");
+    if (!rawHref || rawHref.startsWith("#")) return;
+
+    var linkPath;
+    try {
+      linkPath = new URL(rawHref, location.href).pathname;
+    } catch {
+      return;
+    }
+
+    var normalizedLink = linkPath.replace(/\/index\.html$/, "").replace(/\/+$/, "");
+    if (normalizedLink && normalizedPath === normalizedLink) {
       a.setAttribute("aria-current", "page");
     }
   });
