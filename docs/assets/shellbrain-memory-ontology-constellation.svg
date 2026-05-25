@@ -39,7 +39,7 @@
       .synapse-glow,
       .synapse-core {
         fill: none;
-        stroke: #34E58B;
+        stroke: #6BDCFF;
         stroke-linecap: butt;
         stroke-linejoin: miter;
         opacity: 0;
@@ -50,7 +50,7 @@
       }
       .synapse-glow { filter: url(#synapse-glow); }
       .active-cell {
-        fill: #34E58B;
+        fill: #6BDCFF;
         filter: url(#cell-glow);
         opacity: 0;
         transform-box: fill-box;
@@ -66,12 +66,12 @@
       }
       .recall-halo {
         fill: none;
-        stroke: #34E58B;
+        stroke: #6BDCFF;
         stroke-width: 1;
         animation: briefArrive 7.86s ease-in-out infinite;
       }
       .brief-dot {
-        fill: #34E58B;
+        fill: #6BDCFF;
         opacity: 0.09;
         animation: briefDot 7.86s ease-in-out infinite both;
       }
