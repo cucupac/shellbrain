@@ -129,8 +129,4 @@ Use Shellbrain in your agent of choice. Then, just work normally.
 
 - [shellbrain.ai/humans](https://shellbrain.ai/humans/) — install, upgrade, getting started
 - [shellbrain.ai/agents](https://shellbrain.ai/agents/) — agent workflow and write discipline
-- [shellbrain.ai/recall](https://shellbrain.ai/recall/) — retrieval pipeline
-- [shellbrain.ai/memory/episodic](https://shellbrain.ai/memory/episodic/) — transcript evidence
-- [shellbrain.ai/memory/semantic](https://shellbrain.ai/memory/semantic/) — facts, preferences, changes
-- [shellbrain.ai/memory/procedural](https://shellbrain.ai/memory/procedural/) — problems, solutions, failed tactics
-- [shellbrain.ai/memory/associative](https://shellbrain.ai/memory/associative/) — explicit links and semantic neighbors
+- [shellbrain.ai/architecture](https://shellbrain.ai/architecture/) — memory model, storage, and boundaries

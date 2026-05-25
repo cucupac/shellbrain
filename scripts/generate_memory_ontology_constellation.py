@@ -21,7 +21,7 @@ WIDTH = 1440
 HEIGHT = 820
 OUTPUT = Path("docs/assets/shellbrain-memory-ontology-constellation.svg")
 
-GREEN = "#34E58B"
+GREEN = "#6BDCFF"
 MUTED = "#8A8A90"
 TITLE_ZONE = (0, 0, 0, 0)
 
