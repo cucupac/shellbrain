@@ -404,4 +404,4 @@ if [ -n "$PATH_SETUP_WARNING" ]; then
   echo "  $PATH_SETUP_WARNING"
 fi
 echo ""
-echo "shellbrain. knowledge compounds."
+echo "shellbrain. Long-term Memory for AI"
