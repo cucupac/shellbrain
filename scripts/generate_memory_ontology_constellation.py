@@ -344,9 +344,9 @@ def active_markup(segments: list[Segment], pulse_cells: list[PulseCell], cells: 
 def label_markup() -> str:
     labels = [
         ("Episodic Knowledge", 720, 50, "middle"),
-        ("Abstract Knowledge", 1128, 410, "start"),
-        ("Semantic Knowledge", 720, 770, "middle"),
-        ("Procedural Knowledge", 312, 410, "end"),
+        ("Abstract Knowledge", 1064, 410, "start"),
+        ("Semantic Knowledge", 720, 792, "middle"),
+        ("Procedural Knowledge", 376, 410, "end"),
     ]
     lines = []
     for text, x, y, anchor in labels:
@@ -449,9 +449,9 @@ def render() -> str:
       }}
       .memory-label {{
         fill: {MUTED};
-        font-size: 15px;
+        font-size: 28px;
         font-weight: 400;
-        opacity: 0.52;
+        opacity: 0.72;
       }}
       .recall-label {{
         fill: #ffffff;

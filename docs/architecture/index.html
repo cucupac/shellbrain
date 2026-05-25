@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ShellBrain | Architecture</title>
+  <meta name="description" content="How ShellBrain turns evidence into memories, concepts, graph recall, and inner-agent context without cloud calls.">
+  <link rel="canonical" href="https://shellbrain.ai/architecture/">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;600;700&family=Roboto+Mono:wght@400&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="../assets/shellbrain_logo.png">
+  <link rel="stylesheet" href="../page.css">
+  <script src="../site.js" defer></script>
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="../">
+        <img class="brand-mark" src="../assets/shellbrain_logo_mark.png" alt="">
+        <span>ShellBrain</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="../humans/">Humans</a>
+        <a href="../agents/">Agents</a>
+        <a href="../architecture/" aria-current="page">Architecture</a>
+        <a href="https://github.com/cucupac/shellbrain" target="_blank" rel="noopener">Open Source</a>
+      </nav>
+      <div class="nav-actions">
+        <a class="button button-primary" href="../#install-cmd">Install</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-inner">
+          <div class="eyebrow">How It Works</div>
+          <h1 id="hero-title">Not RAG<span>.</span> Not a Journal<span>.</span></h1>
+          <p class="hero-lead">
+            ShellBrain is long-term memory for AI that grows from actual session work—and a retrieval system designed to surface the right context at the right times.
+          </p>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="shape-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Constructive</div>
+            <h2 class="section-title" id="shape-title">Each Layer Grounds the Next.</h2>
+          </div>
+          <div>
+            <div class="code-block">
+              <pre>session transcript
+  -> episodes      # what happened
+    -> memories    # what was learned
+      -> concepts  # how it's organized
+        -> recall  # what's retrieved</pre>
+            </div>
+            <p class="section-copy" style="margin-top: var(--spacing-24);">Everything grounded. Concepts point to memories. Memories point to episode events. Episode events are the raw transcript.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="evidence-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Evidence First</div>
+            <h2 class="section-title" id="evidence-title">Justified.</h2>
+          </div>
+          <div>
+            <p class="section-copy">Every durable write requires evidence: a direct reference to the specific episode event that justifies it. Not a summary. Not an inference. A foreign key to the exact moment in the session transcript.</p>
+            <p class="quote" style="margin-top: var(--spacing-40);">ShellBrain would rather have no memory than a memory it cannot justify.</p>
+            <p class="section-copy" style="margin-top: var(--spacing-24);">If the evidence is ambiguous, the write is skipped.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="stored-title">
+        <div class="section-inner">
+          <div class="section-eyebrow">What Gets Stored</div>
+          <h2 class="section-title" id="stored-title" style="margin-bottom: var(--spacing-40);">Current Truth.</h2>
+          <div class="module-grid">
+            <article class="module">
+              <h3>Problems, Solutions, Failed Tactics</h3>
+              <p>The unit of storage is a case: a problem, its solutions, and its failed tactics. Solutions and failed tactics are foreign-keyed to their problem. They cannot exist without it.</p>
+            </article>
+            <article class="module">
+              <h3>Facts, Preferences, Changes</h3>
+              <p>Nothing is silently overwritten. When a fact changes, ShellBrain writes the new fact, records the change that caused it, and links all three.</p>
+              <div class="chain">
+                <span>old fact</span><span>-></span><span>change</span><span>-></span><span>new fact</span>
+              </div>
+            </article>
+            <article class="module">
+              <h3>Concepts</h3>
+              <p>A sparse orientation graph above the concrete layer. Concepts make no factual claims themselves. They are containers with relations and links down to memories.</p>
+            </article>
+            <article class="module">
+              <h3>Episodes</h3>
+              <p>The raw transcript trail: prompts, tool calls, outputs, in order. Everything else is distilled from this.</p>
+              <div class="pill-row">
+                <span class="pill">active</span>
+                <span class="pill">maybe_stale</span>
+                <span class="pill">stale</span>
+                <span class="pill">superseded</span>
+                <span class="pill">wrong</span>
+                <span class="pill">archived</span>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="retrieval-title">
+        <div class="section-inner">
+          <div class="section-eyebrow">How Retrieval Works</div>
+          <h2 class="section-title" id="retrieval-title" style="margin-bottom: var(--spacing-40);">Three Stages.</h2>
+          <div class="module-grid-3">
+            <article class="module">
+              <div class="step">01</div>
+              <h3>Seed</h3>
+              <p>Two independent search lanes run in parallel: keyword BM25 for exact terms, and semantic embeddings for conceptual neighbors. Reciprocal rank fusion merges both ranked lists.</p>
+            </article>
+            <article class="module">
+              <div class="step">02</div>
+              <h3>Expand</h3>
+              <p>Each candidate grows outward through explicit authored edges and bounded semantic neighbor hops. Multi-hop traversal surfaces memories no query term would reach directly.</p>
+            </article>
+            <article class="module">
+              <div class="step">03</div>
+              <h3>Score and Pack</h3>
+              <p>The pipeline fills each section to its quota, deduplicates globally, and returns a bounded context pack. Every item says why it was included.</p>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="subconscious-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">The ShellBrain Subconscious</div>
+            <h2 class="section-title" id="subconscious-title">Inner Agents.</h2>
+          </div>
+          <div class="section-copy">
+            <p>Your coding agent calls <code>recall</code> when it needs context, gets an answer, and moves on. What produced that answer is not its concern.</p>
+            <p>Inner agents handle the rest: one distills sessions into memories, and one answers recall by searching, weighing what is current, and returning a brief.</p>
+            <p><em>One lever, pulled once. Everything that makes it feel like instinct runs out of sight.</em></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" aria-labelledby="local-title">
+        <div class="section-inner split">
+          <div>
+            <div class="section-eyebrow">Local Only</div>
+            <h2 class="section-title" id="local-title">Ownership.</h2>
+          </div>
+          <div class="section-copy">
+            <p>Nothing leaves the machine. No telemetry. No cloud retrieval. The embedding model runs locally.</p>
+            <p>The database is <strong>Postgres + pgvector</strong>, either managed locally via Docker or on your own infrastructure. Your knowledge graph is yours.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-brand">ShellBrain</div>
+      <div class="footer-sub">Long-Term Memory for AI</div>
+    </footer>
+  </div>
+</body>
+</html>
