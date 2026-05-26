@@ -79,6 +79,45 @@ def test_shadow_git_capture_tracks_untracked_files_and_preserves_user_index(
     assert repeated.shadow_commit_sha == result.shadow_commit_sha
 
 
+def test_shadow_git_capture_includes_tracked_ignored_files(tmp_path: Path) -> None:
+    """Tracked ignored files should capture without adding ignored local files."""
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init")
+    _git(repo, "config", "user.name", "Test User")
+    _git(repo, "config", "user.email", "test@example.com")
+    (repo / ".gitignore").write_text(".shellbrain/\n.husky/\n", encoding="utf-8")
+    husky_dir = repo / ".husky"
+    husky_dir.mkdir()
+    (husky_dir / "pre-commit").write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    _git(repo, "add", ".gitignore")
+    _git(repo, "add", "-f", ".husky/pre-commit")
+    _git(repo, "commit", "-m", "initial")
+    (husky_dir / "local-hook").write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+
+    result = ShadowGitStore().capture_snapshot(
+        ShadowGitCaptureRequest(
+            snapshot_id="snap-ignored-tracked",
+            repo_id="repo-a",
+            repo_root=str(repo),
+            reason=ShadowSnapshotReason.BASELINE,
+        )
+    )
+
+    assert result.state is ShadowGitCaptureState.CREATED
+    assert result.shadow_commit_sha is not None
+    captured_paths = _shadow_git(
+        repo,
+        "ls-tree",
+        "-r",
+        "--name-only",
+        result.shadow_commit_sha,
+    ).stdout.splitlines()
+    assert ".husky/pre-commit" in captured_paths
+    assert ".husky/local-hook" not in captured_paths
+
+
 def test_shadow_git_capture_represents_deleted_tracked_files(tmp_path: Path) -> None:
     """Deleted tracked files should disappear from the new shadow tree."""
 
