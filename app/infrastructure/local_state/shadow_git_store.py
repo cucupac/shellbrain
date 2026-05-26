@@ -53,6 +53,7 @@ class ShadowGitStore(IShadowGitStore):
                         "--work-tree",
                         str(repo_root),
                         "add",
+                        "-f",
                         "--",
                         *chunk,
                     ],
