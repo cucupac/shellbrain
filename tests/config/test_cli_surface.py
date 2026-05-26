@@ -99,6 +99,10 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "Knowledge-builder agents:" in output
     assert "Use `shellbrain recall` for normal task context" in output
     assert "Use `shellbrain teach` only when the user explicitly asks" in output
+    assert (
+        "run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response"
+        in output
+    )
     assert "Use `shellbrain concept show` for progressive concept disclosure" in output
     assert "Avoid generic prompts like" in output
     assert "Session builders run from Shellbrain episode lifecycle triggers" in output
@@ -120,6 +124,7 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "read" in output
     assert "recall" in output
     assert "teach" in output
+    assert "snapshot" in output
     assert "memory" in output
     assert "scenario" in output
     assert "events" in output
@@ -878,6 +883,33 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
     }
 
 
+def test_main_dispatches_snapshot_without_json(monkeypatch, tmp_path: Path) -> None:
+    """snapshot should be a zero-payload worker command."""
+
+    repo_root = tmp_path / "snapshot-repo"
+    repo_root.mkdir()
+    captured: dict[str, object] = {}
+
+    def _fake_run_operation_command(**kwargs):
+        captured["command"] = kwargs["command"]
+        captured["payload"] = kwargs["payload"]
+        captured["repo_context"] = kwargs["repo_context"]
+        return {"status": "ok", "data": {"result": "created"}}
+
+    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+
+    exit_code = cli_main.main(
+        ["--repo-root", str(repo_root), "--repo-id", "repo-snapshot", "snapshot"]
+    )
+
+    assert exit_code == 0
+    assert captured["command"] == "snapshot"
+    assert captured["payload"] == {}
+    resolved_context = captured["repo_context"]
+    assert resolved_context.repo_root == repo_root.resolve()
+    assert resolved_context.repo_id == "repo-snapshot"
+
+
 def test_main_returns_nonzero_for_error_operation_envelope(
     monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
@@ -996,6 +1028,7 @@ def test_inner_agent_teach_mode_allows_only_teach_writer_routes(
         "events",
         "scenario:record",
         "recall",
+        "snapshot",
         "teach",
         "admin",
         "init",

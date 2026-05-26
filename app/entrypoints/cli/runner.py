@@ -112,8 +112,12 @@ def main(
             repo_root_arg=getattr(args, "repo_root", None),
             repo_id_arg=getattr(args, "repo_id", None),
         )
-        payload = _load_payload(
-            getattr(args, "json_text", None), getattr(args, "json_file", None)
+        payload = (
+            {}
+            if command == "snapshot"
+            else _load_payload(
+                getattr(args, "json_text", None), getattr(args, "json_file", None)
+            )
         )
     except ValueError as exc:
         parser.error(str(exc))
@@ -217,7 +221,20 @@ def _dispatch_operation_command(
 
     repo_id = repo_context.repo_id
     repo_root = repo_context.repo_root
+    capture_repo_root = repo_context.registration_root or repo_context.repo_root
     dependencies = runtime.build_operation_dependencies()
+    if command == "snapshot":
+        from app.entrypoints.cli.handlers.working_agent.snapshot import (
+            run_snapshot_operation,
+        )
+
+        return run_snapshot_operation(
+            dependencies=dependencies,
+            uow_factory=runtime.get_uow_factory(),
+            inferred_repo_id=repo_id,
+            telemetry_context=runtime.get_operation_telemetry_context(),
+            repo_root=capture_repo_root,
+        )
     if command == "recall":
         from app.entrypoints.cli.handlers.working_agent.recall import (
             run_recall_memory_operation,
@@ -411,7 +428,7 @@ def _dispatch_operation_command(
             validation_errors=prepared.errors,
             validation_error_stage=prepared.error_stage,
             telemetry_context=runtime.get_operation_telemetry_context(),
-            repo_root=repo_root,
+            repo_root=capture_repo_root,
         )
     raise ValueError(f"Unsupported command: {command}")
 

@@ -370,6 +370,11 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "memory add" in prompt
     assert "concept update" in prompt
     assert "scenario record" in prompt
+    assert "snapshot-backed solution delta" in prompt
+    assert "code_delta_context" in prompt
+    assert "sharpen solution/change memories" in prompt
+    assert "Do not dump raw\n  changed-file lists" in prompt
+    assert "`shellbrain snapshot`" in prompt
     assert "editing files" in prompt
     assert "Run the exact `first_command`" in prompt
     assert "four record classes, not a strict vertical stack" in prompt
@@ -403,6 +408,7 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "shellbrain --help" in prompt
     assert "memory add --help" in prompt
     assert "scenario record --help" in prompt
+    assert "snapshot" not in prompt.split('"help_commands"')[1].split('"command_lexicon"')[0]
     assert "Write fewer, stronger records" in prompt
     assert "solved" in prompt
     assert "abandoned" in prompt

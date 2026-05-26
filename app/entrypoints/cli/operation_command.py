@@ -37,6 +37,7 @@ def run_operation_command(
             reset_operation_context=runtime.reset_operation_context,
             warn_or_fail_on_unsafe_app_role=runtime.warn_or_fail_on_unsafe_app_role,
             ensure_repo_registration=runtime.ensure_repo_registration,
+            ensure_shadow_baseline=runtime.ensure_shadow_baseline,
             maybe_start_sync=runtime.maybe_start_sync,
             update_operation_polling_status=runtime.update_operation_polling_status,
         ),

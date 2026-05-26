@@ -2,7 +2,7 @@
 
 The normal working-agent CLI interface is `shellbrain recall`.
 
-Use it when prior context may help the current problem. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something. Do not call internal Shellbrain commands directly.
+Use it when prior context may help the current problem. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something. If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed. Do not call internal Shellbrain commands directly.
 
 ## Recall
 
@@ -36,6 +36,20 @@ shellbrain teach --json '{"text":"In this repo, startup wires dependencies but s
 ```
 
 Shellbrain stores the teaching as evidence and immediately runs a separate teach agent that may write memories or concept graph updates.
+
+## Snapshot
+
+Snapshot captures exact repo state for later solution-delta linkage. It does not need a JSON payload.
+
+```bash
+shellbrain snapshot
+```
+
+Use standard repo targeting only when your shell is outside the repo:
+
+```bash
+shellbrain snapshot --repo-root /absolute/path/to/repo
+```
 
 ## Query Examples
 

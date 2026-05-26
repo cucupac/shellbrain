@@ -68,7 +68,9 @@ def run_scenario_record_operation(
                     execute_record_scenario(
                         request,
                         uow,
+                        repo_root=str(resolved_repo_root),
                         id_generator=dependencies.id_generator,
+                        shadow_git_store=dependencies.shadow_git_store,
                     )
                 )
     except DomainValidationError as exc:

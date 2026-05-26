@@ -8,10 +8,15 @@ from time import perf_counter
 
 from app.core.errors import ErrorCode, ErrorDetail
 from app.core.use_cases.episodes.events.request import EpisodeEventsRequest
+from app.core.use_cases.snapshots.code_delta_context import (
+    CodeDeltaContextRequest,
+    build_code_delta_context_for_event_window,
+)
 from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
 )
+from app.core.ports.local_state.shadow_git import IShadowGitStore
 from app.entrypoints.cli.handlers.dependencies import OperationDependencies
 from app.entrypoints.cli.handlers.result_envelopes import (
     dump_errors,
@@ -79,6 +84,8 @@ def run_read_events_operation(
             result, selection_summary = _read_exact_episode_events(
                 request=request,
                 uow_factory=uow_factory,
+                repo_root=str(resolved_repo_root),
+                shadow_git_store=dependencies.shadow_git_store,
             )
             if result.get("status") == "error":
                 error_stage = "episode_lookup"
@@ -236,6 +243,8 @@ def _read_exact_episode_events(
     *,
     request: EpisodeEventsRequest,
     uow_factory,
+    repo_root: str,
+    shadow_git_store: IShadowGitStore,
 ) -> tuple[dict, SessionSelectionSummary]:
     """Read already-stored events for an explicit episode id without syncing."""
 
@@ -272,7 +281,19 @@ def _read_exact_episode_events(
                 "expected_count": request.up_to_seq - after_seq,
                 "complete": len(events) == request.up_to_seq - after_seq,
             }
+            code_delta_context = build_code_delta_context_for_event_window(
+                CodeDeltaContextRequest(
+                    repo_id=str(request.repo_id),
+                    repo_root=repo_root,
+                    episode_id=request.episode_id,
+                    after_seq=after_seq,
+                    up_to_seq=request.up_to_seq,
+                ),
+                uow,
+                shadow_git_store=shadow_git_store,
+            )
         else:
+            code_delta_context = None
             events = uow.episodes.list_recent_events(
                 repo_id=request.repo_id,
                 episode_id=request.episode_id,
@@ -288,6 +309,8 @@ def _read_exact_episode_events(
     }
     if range_payload is not None:
         data["event_range"] = range_payload
+        assert code_delta_context is not None
+        data["code_delta_context"] = code_delta_context.to_response_data()
     return ok_envelope(data), SessionSelectionSummary(
         selected_host_app=episode.host_app,
         selected_thread_id=episode.thread_id,

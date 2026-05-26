@@ -558,6 +558,78 @@ def test_problem_runs_schema_should_enforce_window_constraints_and_rename_proxy_
                 )
 
 
+def test_shadow_snapshot_schema_should_support_solution_delta_linkage(
+    integration_engine,
+    assert_relation_exists,
+) -> None:
+    """shadow snapshot tables should persist code evidence and solved-run deltas."""
+
+    assert_relation_exists("shadow_snapshots")
+    assert_relation_exists("solution_deltas")
+
+    with integration_engine.connect() as conn:
+        snapshot_indexes = {
+            row["indexname"]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT indexname
+                    FROM pg_indexes
+                    WHERE schemaname = 'public'
+                      AND tablename = 'shadow_snapshots'
+                    """
+                )
+            ).mappings()
+        }
+        delta_indexes = {
+            row["indexname"]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT indexname
+                    FROM pg_indexes
+                    WHERE schemaname = 'public'
+                      AND tablename = 'solution_deltas'
+                    """
+                )
+            ).mappings()
+        }
+        constraints = {
+            row["conname"]
+            for row in conn.execute(
+                text(
+                    """
+                    SELECT conname
+                    FROM pg_constraint
+                    WHERE conrelid IN (
+                      'public.shadow_snapshots'::regclass,
+                      'public.solution_deltas'::regclass
+                    )
+                    """
+                )
+            ).mappings()
+        }
+
+    assert {
+        "idx_shadow_snapshots_repo_created",
+        "idx_shadow_snapshots_repo_episode_seq",
+        "idx_shadow_snapshots_commit",
+    }.issubset(snapshot_indexes)
+    assert {
+        "idx_solution_deltas_repo",
+        "idx_solution_deltas_problem_run",
+        "idx_solution_deltas_base_snapshot",
+        "idx_solution_deltas_final_snapshot",
+    }.issubset(delta_indexes)
+    assert {
+        "ck_shadow_snapshots_reason",
+        "ck_shadow_snapshots_event_seq_nonnegative",
+        "uq_shadow_snapshots_repo_commit",
+        "ck_solution_deltas_distinct_snapshots",
+        "uq_solution_deltas_problem_run",
+    }.issubset(constraints)
+
+
 def test_usage_problem_run_tokens_should_sum_run_windows_split_agent_roles_and_read_pack_costs(
     integration_engine,
     assert_relation_exists,

@@ -24,6 +24,7 @@ class CliOperationEffects:
     reset_operation_context: Callable[[Any], None]
     warn_or_fail_on_unsafe_app_role: Callable[[], None]
     ensure_repo_registration: Callable[..., None]
+    ensure_shadow_baseline: Callable[..., None]
     maybe_start_sync: Callable[[Any], bool]
     update_operation_polling_status: Callable[..., None]
 
@@ -58,6 +59,11 @@ def run_cli_operation(
         )
         result = dispatch_operation(command, payload, repo_context)
         if result.get("status") == "ok":
+            if command != "snapshot":
+                effects.ensure_shadow_baseline(
+                    repo_context=repo_context,
+                    operation_invocation_id=operation_context.invocation_id,
+                )
             if no_sync:
                 effects.update_operation_polling_status(
                     invocation_id=operation_context.invocation_id,

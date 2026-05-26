@@ -6,13 +6,26 @@ from app.core.entities.episodes import Episode, EpisodeEvent
 from app.core.entities.memories import Memory, MemoryKind
 from app.core.entities.scenarios import (
     ProblemRun,
+    ScenarioOutcome,
     outcome_to_problem_run_status,
+)
+from app.core.entities.snapshots import (
+    AvailableCodeDeltaContext,
+    SolutionDelta,
+    UnavailableCodeDeltaContext,
 )
 from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.ports.db.unit_of_work import IUnitOfWork
+from app.core.ports.local_state.shadow_git import IShadowGitStore
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.scenarios.record.request import ScenarioRecordRequest
-from app.core.use_cases.scenarios.record.result import ScenarioRecordResult
+from app.core.use_cases.scenarios.record.result import (
+    ScenarioRecordResult,
+    SolutionDeltaRecordResult,
+)
+from app.core.use_cases.snapshots.code_delta_context import (
+    build_code_delta_context_from_snapshots,
+)
 
 
 _BUILD_KNOWLEDGE_ACTOR = "build_knowledge"
@@ -22,7 +35,9 @@ def execute_record_scenario(
     request: ScenarioRecordRequest,
     uow: IUnitOfWork,
     *,
+    repo_root: str,
     id_generator: IIdGenerator,
+    shadow_git_store: IShadowGitStore,
 ) -> ScenarioRecordResult:
     """Validate references and persist one scenario run window."""
 
@@ -55,6 +70,7 @@ def execute_record_scenario(
                 scenario_id=existing.id,
                 outcome=scenario.outcome,
                 created=False,
+                solution_delta=_existing_solution_delta_result(existing.id, uow),
             )
         raise DomainValidationError(
             [
@@ -84,10 +100,112 @@ def execute_record_scenario(
         solution_memory_id=solution_memory.id if solution_memory else None,
     )
     uow.problem_runs.add(run)
+    solution_delta_result = _attach_solution_delta(
+        request=request,
+        run=run,
+        repo_root=repo_root,
+        opened_event=opened_event,
+        closed_event=closed_event,
+        uow=uow,
+        id_generator=id_generator,
+        shadow_git_store=shadow_git_store,
+    )
     return ScenarioRecordResult(
         scenario_id=run.id,
         outcome=scenario.outcome,
         created=True,
+        solution_delta=solution_delta_result,
+    )
+
+
+def _existing_solution_delta_result(
+    problem_run_id: str, uow: IUnitOfWork
+) -> SolutionDeltaRecordResult:
+    """Return replay metadata for a previously attached solution delta."""
+
+    existing_delta = uow.snapshots.get_solution_delta_for_problem_run(
+        problem_run_id=problem_run_id
+    )
+    if existing_delta is None:
+        return SolutionDeltaRecordResult(
+            status="skipped", reason="existing_problem_run_has_no_solution_delta"
+        )
+    return SolutionDeltaRecordResult(
+        status="exists",
+        solution_delta_id=existing_delta.id,
+        base_snapshot_id=existing_delta.base_snapshot_id,
+        final_snapshot_id=existing_delta.final_snapshot_id,
+        patch_sha=existing_delta.patch_sha,
+        changed_paths=existing_delta.changed_paths,
+    )
+
+
+def _attach_solution_delta(
+    *,
+    request: ScenarioRecordRequest,
+    run: ProblemRun,
+    repo_root: str,
+    opened_event: EpisodeEvent,
+    closed_event: EpisodeEvent,
+    uow: IUnitOfWork,
+    id_generator: IIdGenerator,
+    shadow_git_store: IShadowGitStore,
+) -> SolutionDeltaRecordResult:
+    """Attach a patch-backed delta when a solved run has valid snapshots."""
+
+    if request.scenario.outcome is not ScenarioOutcome.SOLVED:
+        return SolutionDeltaRecordResult(status="skipped", reason="outcome_not_solved")
+
+    base_snapshot = uow.snapshots.latest_snapshot_at_or_before_event(
+        repo_id=request.repo_id,
+        repo_root=repo_root,
+        episode_id=request.scenario.episode_id,
+        event_seq=opened_event.seq,
+    )
+    if base_snapshot is None:
+        return SolutionDeltaRecordResult(status="skipped", reason="missing_base_snapshot")
+    final_snapshot = uow.snapshots.latest_snapshot_in_event_window(
+        repo_id=request.repo_id,
+        repo_root=repo_root,
+        episode_id=request.scenario.episode_id,
+        opened_event_seq=opened_event.seq,
+        closed_event_seq=closed_event.seq,
+    )
+    if final_snapshot is None:
+        return SolutionDeltaRecordResult(
+            status="skipped", reason="missing_final_snapshot"
+        )
+    code_delta_context = build_code_delta_context_from_snapshots(
+        repo_root=repo_root,
+        base_snapshot=base_snapshot,
+        final_snapshot=final_snapshot,
+        baseline_only_base_event_seq=opened_event.seq - 1,
+        shadow_git_store=shadow_git_store,
+    )
+    if isinstance(code_delta_context, UnavailableCodeDeltaContext):
+        return SolutionDeltaRecordResult(
+            status="skipped", reason=code_delta_context.reason.value
+        )
+    assert isinstance(code_delta_context, AvailableCodeDeltaContext)
+    delta = SolutionDelta(
+        id=id_generator.new_id(),
+        problem_run_id=run.id,
+        repo_id=request.repo_id,
+        repo_root=repo_root,
+        episode_id=request.scenario.episode_id,
+        base_snapshot_id=code_delta_context.base_snapshot_id,
+        final_snapshot_id=code_delta_context.final_snapshot_id,
+        patch_sha=code_delta_context.patch_sha,
+        changed_paths=code_delta_context.changed_paths,
+    )
+    uow.snapshots.add_solution_delta(delta)
+    return SolutionDeltaRecordResult(
+        status="created",
+        solution_delta_id=delta.id,
+        base_snapshot_id=delta.base_snapshot_id,
+        final_snapshot_id=delta.final_snapshot_id,
+        patch_sha=delta.patch_sha,
+        changed_paths=delta.changed_paths,
     )
 
 

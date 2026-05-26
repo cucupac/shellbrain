@@ -168,11 +168,19 @@ def test_install_host_assets_should_merge_startup_guidance_without_overwriting_u
     assert "Keep this." in codex_text
     assert "<!-- shellbrain-managed:codex-startup start -->" in codex_text
     assert "goal | surface | obstacle | hypothesis" in codex_text
+    assert (
+        "run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response"
+        in codex_text
+    )
     assert "# User claude notes" in claude_text
     assert "Keep this too." in claude_text
     assert "<!-- shellbrain-managed:claude-startup start -->" in claude_text
     assert (
         "SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>"
+        in claude_text
+    )
+    assert (
+        "run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response"
         in claude_text
     )
     assert any(

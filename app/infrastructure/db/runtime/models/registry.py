@@ -10,6 +10,7 @@ from app.infrastructure.db.runtime.models import (
     knowledge_builder,
     memories,
     problem_runs,
+    snapshots,
     telemetry,
     utility,
 )
@@ -26,6 +27,7 @@ _ = (
     knowledge_builder,
     memories,
     problem_runs,
+    snapshots,
     telemetry,
     utility,
 )
