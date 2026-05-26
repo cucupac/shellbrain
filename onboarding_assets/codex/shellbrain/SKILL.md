@@ -25,6 +25,14 @@ shellbrain teach
 
 Teach stores the user-provided statement as evidence and immediately asks Shellbrain's teach agent to turn it into durable memories or concept graph updates.
 
+If you changed any files since your last user-facing response, run this exactly once after validation and immediately before your next user-facing response:
+
+```bash
+shellbrain snapshot
+```
+
+Snapshot stores exact repo code state in repo-local shadow Git so the knowledge builder can later attach exact solution deltas to solved problem runs.
+
 Do not call Shellbrain internal commands directly. `read`, `events`, `memory`, `concept`, and `scenario` are for Shellbrain's internal agents.
 
 ## Quick Start
@@ -113,6 +121,16 @@ Use `teach` only for explicit user teaching, not for ordinary closeout.
 
 ```bash
 shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+```
+
+## Snapshot Habit
+
+If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed. It does not need `--json`.
+
+Use standard repo targeting only when your shell is outside the repo:
+
+```bash
+shellbrain snapshot --repo-root /absolute/path/to/repo
 ```
 
 ## Query Guidance

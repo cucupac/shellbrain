@@ -160,6 +160,14 @@ shellbrain teach --json '{"text":"In this repo, startup wires dependencies but s
 
 Teach stores the user statement as evidence and immediately runs a separate teach agent. Do not use it as a generic closeout summary.
 
+If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed:
+
+```bash
+shellbrain snapshot
+```
+
+Snapshot captures exact repo code state in repo-local shadow Git. The knowledge-builder agent later links valid snapshot ranges to solved problem runs.
+
 Do not call:
 
 ```bash

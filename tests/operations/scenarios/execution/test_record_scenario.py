@@ -9,6 +9,14 @@ import pytest
 from app.core.entities.episodes import Episode, EpisodeEvent, EpisodeEventSource
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.entities.scenarios import ProblemRun, ProblemRunStatus
+from app.core.entities.snapshots import (
+    ShadowGitDiffResult,
+    ShadowGitPathChange,
+    ShadowGitPathChangeStatus,
+    ShadowSnapshot,
+    ShadowSnapshotReason,
+    SolutionDelta,
+)
 from app.core.errors import DomainValidationError
 from app.core.use_cases.scenarios.record import (
     ScenarioRecordRequest,
@@ -21,12 +29,21 @@ def test_record_solved_scenario_creates_problem_run_window() -> None:
 
     uow = _FakeUnitOfWork()
 
-    result = execute_record_scenario(_solved_request(), uow, id_generator=_IdGen())
+    result = _execute_record_scenario(_solved_request(), uow)
 
     assert result.to_response_data() == {
         "scenario_id": "scenario-1",
         "outcome": "solved",
         "created": True,
+        "solution_delta": {
+            "status": "skipped",
+            "solution_delta_id": None,
+            "base_snapshot_id": None,
+            "final_snapshot_id": None,
+            "patch_sha": None,
+            "changed_paths": [],
+            "reason": "missing_base_snapshot",
+        },
     }
     assert len(uow.problem_runs.added) == 1
     run = uow.problem_runs.added[0]
@@ -46,12 +63,51 @@ def test_record_abandoned_scenario_omits_solution_memory() -> None:
 
     uow = _FakeUnitOfWork()
 
-    result = execute_record_scenario(_abandoned_request(), uow, id_generator=_IdGen())
+    result = _execute_record_scenario(_abandoned_request(), uow)
 
     assert result.outcome.value == "abandoned"
     run = uow.problem_runs.added[0]
     assert run.status == ProblemRunStatus.ABANDONED
     assert run.solution_memory_id is None
+    assert result.solution_delta is not None
+    assert result.solution_delta.reason == "outcome_not_solved"
+
+
+def test_record_solved_scenario_creates_solution_delta_when_snapshots_exist() -> None:
+    """Solved scenarios should attach exact patch identity when snapshots bound the window."""
+
+    uow = _FakeUnitOfWork(
+        snapshots=[
+            _snapshot(
+                snapshot_id="snap-base",
+                commit_sha="commit-base",
+                reason=ShadowSnapshotReason.BASELINE,
+                event_seq=1,
+            ),
+            _snapshot(
+                snapshot_id="snap-final",
+                commit_sha="commit-final",
+                reason=ShadowSnapshotReason.CLOSEOUT,
+                event_seq=2,
+                changed_paths=("app/example.py",),
+            ),
+        ]
+    )
+
+    result = _execute_record_scenario(_solved_request(), uow)
+
+    assert result.solution_delta is not None
+    assert result.solution_delta.to_response_data() == {
+        "status": "created",
+        "solution_delta_id": "delta-1",
+        "base_snapshot_id": "snap-base",
+        "final_snapshot_id": "snap-final",
+        "patch_sha": "patch-sha",
+        "changed_paths": ["app/example.py"],
+        "reason": None,
+    }
+    assert len(uow.snapshots.solution_deltas) == 1
+    assert uow.snapshots.solution_deltas[0].problem_run_id == "scenario-1"
 
 
 def test_record_scenario_replay_is_idempotent_when_terminal_details_match() -> None:
@@ -73,12 +129,21 @@ def test_record_scenario_replay_is_idempotent_when_terminal_details_match() -> N
     )
     uow = _FakeUnitOfWork(existing=existing)
 
-    result = execute_record_scenario(_solved_request(), uow, id_generator=_IdGen())
+    result = _execute_record_scenario(_solved_request(), uow)
 
     assert result.to_response_data() == {
         "scenario_id": "scenario-existing",
         "outcome": "solved",
         "created": False,
+        "solution_delta": {
+            "status": "skipped",
+            "solution_delta_id": None,
+            "base_snapshot_id": None,
+            "final_snapshot_id": None,
+            "patch_sha": None,
+            "changed_paths": [],
+            "reason": "existing_problem_run_has_no_solution_delta",
+        },
     }
     assert uow.problem_runs.added == []
 
@@ -103,7 +168,7 @@ def test_record_scenario_rejects_conflicting_replay() -> None:
     uow = _FakeUnitOfWork(existing=existing)
 
     with pytest.raises(DomainValidationError) as excinfo:
-        execute_record_scenario(_solved_request(), uow, id_generator=_IdGen())
+        _execute_record_scenario(_solved_request(), uow)
 
     assert excinfo.value.errors[0].code.value == "conflict"
     assert uow.problem_runs.added == []
@@ -120,7 +185,7 @@ def test_record_scenario_requires_event_order_and_exact_repo_memories() -> None:
     )
 
     with pytest.raises(DomainValidationError) as excinfo:
-        execute_record_scenario(_solved_request(), uow, id_generator=_IdGen())
+        _execute_record_scenario(_solved_request(), uow)
 
     messages = [error.message for error in excinfo.value.errors]
     assert "closed_event_id must refer to an event after opened_event_id" in messages
@@ -166,8 +231,11 @@ def _dt(minute: int) -> datetime:
 
 
 class _IdGen:
+    def __init__(self) -> None:
+        self._ids = iter(("scenario-1", "delta-1", "delta-2"))
+
     def new_id(self) -> str:
-        return "scenario-1"
+        return next(self._ids)
 
 
 class _FakeUnitOfWork:
@@ -179,6 +247,7 @@ class _FakeUnitOfWork:
         closed_seq: int = 2,
         problem_repo_id: str = "repo-a",
         solution_kind: MemoryKind = MemoryKind.SOLUTION,
+        snapshots: list[ShadowSnapshot] | None = None,
     ) -> None:
         self.opened = EpisodeEvent(
             id="evt-open",
@@ -218,6 +287,7 @@ class _FakeUnitOfWork:
             }
         )
         self.problem_runs = _FakeProblemRunsRepo(existing=existing)
+        self.snapshots = _FakeSnapshotsRepo(snapshots=snapshots or [])
 
 
 class _FakeEpisodesRepo:
@@ -261,3 +331,102 @@ class _FakeProblemRunsRepo:
 
     def add(self, run: ProblemRun) -> None:
         self.added.append(run)
+
+
+class _FakeSnapshotsRepo:
+    def __init__(self, *, snapshots: list[ShadowSnapshot]) -> None:
+        self._snapshots = snapshots
+        self.solution_deltas: list[SolutionDelta] = []
+
+    def latest_snapshot(self, **kwargs) -> ShadowSnapshot | None:
+        del kwargs
+        return self._snapshots[-1] if self._snapshots else None
+
+    def latest_snapshot_at_or_before_event(
+        self, *, event_seq: int, **kwargs
+    ) -> ShadowSnapshot | None:
+        del kwargs
+        candidates = [
+            snapshot
+            for snapshot in self._snapshots
+            if snapshot.captured_after_event_seq is None
+            or snapshot.captured_after_event_seq <= event_seq
+        ]
+        return candidates[-1] if candidates else None
+
+    def latest_snapshot_in_event_window(
+        self, *, opened_event_seq: int, closed_event_seq: int, **kwargs
+    ) -> ShadowSnapshot | None:
+        del kwargs
+        candidates = [
+            snapshot
+            for snapshot in self._snapshots
+            if snapshot.reason is not ShadowSnapshotReason.BASELINE_ONLY
+            and snapshot.captured_after_event_seq is not None
+            and opened_event_seq <= snapshot.captured_after_event_seq <= closed_event_seq
+        ]
+        return candidates[-1] if candidates else None
+
+    def get_solution_delta_for_problem_run(
+        self, *, problem_run_id: str
+    ) -> SolutionDelta | None:
+        for delta in self.solution_deltas:
+            if delta.problem_run_id == problem_run_id:
+                return delta
+        return None
+
+    def add_snapshot(self, snapshot: ShadowSnapshot) -> None:
+        self._snapshots.append(snapshot)
+
+    def add_solution_delta(self, delta: SolutionDelta) -> None:
+        self.solution_deltas.append(delta)
+
+
+class _FakeShadowGitStore:
+    def diff_snapshot_pair(self, **kwargs) -> ShadowGitDiffResult:
+        assert kwargs["base_commit_sha"] == "commit-base"
+        assert kwargs["final_commit_sha"] == "commit-final"
+        return ShadowGitDiffResult(
+            patch_sha="patch-sha",
+            path_changes=(
+                ShadowGitPathChange(
+                    status=ShadowGitPathChangeStatus.MODIFIED,
+                    path="app/example.py",
+                ),
+            ),
+        )
+
+    def capture_snapshot(self, request):  # pragma: no cover - scenario tests do not capture
+        raise AssertionError("scenario record should not capture snapshots")
+
+
+def _execute_record_scenario(request: ScenarioRecordRequest, uow: _FakeUnitOfWork):
+    return execute_record_scenario(
+        request,
+        uow,
+        repo_root="/repo",
+        id_generator=_IdGen(),
+        shadow_git_store=_FakeShadowGitStore(),
+    )
+
+
+def _snapshot(
+    *,
+    snapshot_id: str,
+    commit_sha: str,
+    reason: ShadowSnapshotReason,
+    event_seq: int | None,
+    changed_paths: tuple[str, ...] = (),
+) -> ShadowSnapshot:
+    return ShadowSnapshot(
+        id=snapshot_id,
+        repo_id="repo-a",
+        repo_root="/repo",
+        episode_id="episode-1",
+        captured_after_event_seq=event_seq,
+        shadow_commit_sha=commit_sha,
+        parent_shadow_commit_sha=None,
+        changed_paths=changed_paths,
+        reason=reason,
+        created_at=_dt(event_seq or 0),
+    )

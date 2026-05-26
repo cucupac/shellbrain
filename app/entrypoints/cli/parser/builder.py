@@ -43,6 +43,7 @@ _TOP_LEVEL_HELP = dedent(
       Working agents:
         - Use `shellbrain recall` for normal task context.
         - Use `shellbrain teach` only when the user explicitly asks to store or teach Shellbrain something.
+        - If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed.
         - Send a concrete `query` plus required `current_problem`.
         - Avoid generic prompts like "what should I know about this repo?"
 
@@ -73,6 +74,7 @@ _TOP_LEVEL_HELP = dedent(
       Working agents:
       shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"lock timeout","hypothesis":"missing timeout guard"}}'
       shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
+      shellbrain snapshot
 
       Internal recall agents:
       shellbrain events --json '{"limit":10}'
@@ -522,6 +524,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(teach_parser, suppress_default=True)
     _add_payload_arguments(teach_parser)
+
+    snapshot_parser = subparsers.add_parser(
+        "snapshot",
+        help="Capture current repo state into repo-local shadow Git.",
+        description="Capture exact repo code state into .shellbrain/shadow.git and store metadata for later solution deltas.",
+        formatter_class=_HelpFormatter,
+    )
+    _add_repo_context_arguments(snapshot_parser, suppress_default=True)
 
     concept_parser = subparsers.add_parser(
         "concept",

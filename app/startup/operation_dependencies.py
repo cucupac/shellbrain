@@ -21,6 +21,7 @@ from app.core.entities.settings import (
 )
 from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
 from app.core.ports.local_state.session_state_store import ISessionStateStore
+from app.core.ports.local_state.shadow_git import IShadowGitStore
 from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.infrastructure.host_apps.identity.resolver import (
@@ -38,6 +39,7 @@ from app.infrastructure.host_apps.transcripts.session_selection import (
 from app.infrastructure.local_state.session_state_file_store import (
     FileSessionStateStore,
 )
+from app.infrastructure.local_state.shadow_git_store import ShadowGitStore
 from app.infrastructure.system.clock import SystemClock
 from app.infrastructure.system.id_generator import UuidGenerator
 from app.infrastructure.telemetry.sink import TelemetrySink
@@ -73,6 +75,7 @@ class OperationDependencies:
     build_context_settings: InnerAgentSettings
     teach_knowledge_inner_agent_runner: ITeachKnowledgeAgentRunner | None
     teach_knowledge_settings: TeachKnowledgeSettings
+    shadow_git_store: IShadowGitStore
     get_operation_telemetry_context: Callable[
         [], OperationDispatchTelemetryContext | None
     ]
@@ -105,6 +108,7 @@ def build_operation_dependencies() -> OperationDependencies:
         build_context_settings=get_build_context_settings(),
         teach_knowledge_inner_agent_runner=get_teach_knowledge_inner_agent_runner(),
         teach_knowledge_settings=get_teach_knowledge_settings(),
+        shadow_git_store=ShadowGitStore(),
         get_operation_telemetry_context=get_operation_telemetry_context,
         resolve_caller_identity=resolve_caller_identity,
         resolve_trusted_events_source=resolve_trusted_events_source,

@@ -21,6 +21,7 @@ from app.core.entities.settings import (
 )
 from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
 from app.core.ports.local_state.session_state_store import ISessionStateStore
+from app.core.ports.local_state.shadow_git import IShadowGitStore
 from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 
@@ -56,6 +57,7 @@ class OperationDependencies(Protocol):
     build_context_settings: InnerAgentSettings
     teach_knowledge_inner_agent_runner: ITeachKnowledgeAgentRunner | None
     teach_knowledge_settings: TeachKnowledgeSettings
+    shadow_git_store: IShadowGitStore
     get_operation_telemetry_context: Callable[
         [], OperationDispatchTelemetryContext | None
     ]

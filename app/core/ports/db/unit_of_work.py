@@ -15,6 +15,7 @@ from app.core.ports.db.memory_repositories import (
     IUtilityRepo,
 )
 from app.core.ports.db.problem_runs import IProblemRunsRepo
+from app.core.ports.db.snapshots import ISnapshotsRepo
 from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.core.ports.db.retrieval_repositories import (
     IConceptKeywordRetrievalRepo,
@@ -43,6 +44,7 @@ class IUnitOfWork(ABC):
     guidance: IPendingUtilityCandidatesRepo
     knowledge_build_runs: IKnowledgeBuildRunsRepo
     problem_runs: IProblemRunsRepo
+    snapshots: ISnapshotsRepo
     vector_search: IVectorSearch | None
 
     @abstractmethod

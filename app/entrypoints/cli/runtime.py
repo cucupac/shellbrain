@@ -22,6 +22,7 @@ class CliRuntime(Protocol):
     set_operation_context: Callable[[Any], Any]
     reset_operation_context: Callable[[Any], None]
     ensure_repo_registration: Callable[..., None]
+    ensure_shadow_baseline: Callable[..., None]
     maybe_start_sync: Callable[[Any], bool]
     update_operation_polling_status: Callable[..., None]
     should_register_repo_during_init: Callable[..., bool]

@@ -392,6 +392,10 @@ You may read Shellbrain:
   ```bash
   shellbrain --repo-root "<repo_root>" events --json '{"episode_id":"<episode-id>","after_seq":<previous_watermark_or_0>,"up_to_seq":<event_watermark>}'
   ```
+  Bounded `events` responses may include `code_delta_context`. When it is
+  available, use it to make solution and change memories concrete about the
+  meaningful files, symbols, tests, or mechanisms involved. Do not dump raw
+  changed-file lists, and do not treat it as a raw patch body.
 
 - `read`: retrieve existing memories and concept orientation before writing.
   ```bash
@@ -427,7 +431,9 @@ You may write Shellbrain only through:
   ```
 
 - `scenario record`: records a solved or abandoned bounded problem-solving run
-  into problem_runs after memory boundaries exist. It is not a memory.
+  into problem_runs after memory boundaries exist. It is not a memory. When
+  valid shadow snapshots exist for the run window, Shellbrain automatically
+  attaches a snapshot-backed solution delta; do not call `shellbrain snapshot`.
   ```bash
   shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-10","closed_event_id":"evt-42"}}'
   ```
@@ -449,14 +455,17 @@ You may read/search files, inspect git history/diffs, and identify
 files/functions/tests/config_key/api_route/tables for concept groundings.
 
 Forbidden: editing files, running write-producing formatters, committing,
-pushing, `shellbrain recall`, admin/init/upgrade/metrics, direct DB writes,
-graph_patches, and any write not listed above.
+pushing, `shellbrain recall`, `shellbrain snapshot`, admin/init/upgrade/metrics,
+direct DB writes, graph_patches, and any write not listed above.
 
 # PROTOCOL
 1. Read the run payload: repo_id, repo_root, episode_id, trigger,
    event_watermark, previous_event_watermark, and budgets.
 2. Run the exact `first_command` from the payload. It scopes evidence to this
-   episode slice. Consolidate only evidence up to event_watermark.
+   episode slice. Consolidate only evidence up to event_watermark. If its
+   response includes available `code_delta_context`, use that compact code
+   evidence to sharpen solution/change memories and code_trace anchors without
+   copying a raw diff or listing files merely because they changed.
 3. Segment the episode into memory boundaries and, when clear, a problem-solving
    run: problem, failed_tactic, solution, fact, preference, change, solved,
    abandoned. Treat idle-stable episodes as partial; do not record runs
@@ -519,6 +528,9 @@ graph_patches, and any write not listed above.
       run against the final decisive solution. Preserve earlier partial
       solutions as solution memories linked to the same problem, but do not
       record multiple solved runs unless there were distinct problem windows.
+    - snapshot-backed solution deltas are attached by `scenario record` when a
+      valid base/final pair exists. Your job is to choose the problem/solution
+      event boundary, not to reconstruct patches or call `shellbrain snapshot`.
 
     ```bash
     shellbrain --repo-root "<repo_root>" scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"<episode-id>","outcome":"solved","problem_memory_id":"<problem-memory-id>","solution_memory_id":"<solution-memory-id>","opened_event_id":"<opening-event-id>","closed_event_id":"<closing-event-id>"}}'
@@ -607,6 +619,8 @@ explain why in `skipped_items`.
 Return only valid JSON matching `output_contract`.
 Include status, run_summary, write_count, skipped_items, read_trace, and
 code_trace. Count memory, concept, and scenario write commands in write_count.
+Use code_trace only for lightweight file/symbol/table anchors that explain the
+knowledge written; it is not the source of exact patches.
 """
 
 
@@ -688,8 +702,9 @@ shellbrain --repo-root "<repo_root>" concept update --help
 ```
 
 Forbidden: `shellbrain events`, `shellbrain scenario record`, `shellbrain
-recall`, admin/init/upgrade/metrics, direct DB writes, editing files,
-formatters, commits, pushes, and any write command not listed above.
+recall`, `shellbrain snapshot`, admin/init/upgrade/metrics, direct DB writes,
+editing files, formatters, commits, pushes, and any write command not listed
+above.
 
 # PROTOCOL
 1. Read the payload: repo_id, repo_root, teaching_text, teaching_event_id,

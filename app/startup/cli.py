@@ -19,6 +19,7 @@ def build_cli_runtime():
     from app.startup import repo_context
     from app.startup import runtime_admin
     from app.startup import runtime_context as startup_runtime_context
+    from app.startup import snapshot_baseline
     from app.startup import use_cases
     from app.infrastructure.local_state import operation_registration
     from app.infrastructure.process.episode_sync import autostart as episode_autostart
@@ -42,6 +43,7 @@ def build_cli_runtime():
         ensure_repo_registration=(
             operation_registration.ensure_repo_registration_for_operation
         ),
+        ensure_shadow_baseline=snapshot_baseline.ensure_shadow_baseline_for_operation,
         maybe_start_sync=lambda repo_context_value: episode_autostart.maybe_start_sync(
             repo_context_value,
             ensure_episode_sync_started=(
