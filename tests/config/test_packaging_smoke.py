@@ -18,7 +18,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260522_0035"
+CURRENT_ALEMBIC_HEAD = "20260526_0036"
 
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
