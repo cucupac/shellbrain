@@ -44,7 +44,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert "enabled" not in settings["build_knowledge"]
     assert "fallback" not in settings["build_knowledge"]
     assert settings["build_knowledge"]["model"] == "gpt-5.4-mini"
-    assert settings["build_knowledge"]["reasoning"] == "medium"
+    assert settings["build_knowledge"]["reasoning"] == "xhigh"
     assert settings["build_knowledge"]["timeout_seconds"] == 600
     assert settings["build_knowledge"]["max_shellbrain_reads"] == 8
     assert settings["build_knowledge"]["max_code_files"] == 24

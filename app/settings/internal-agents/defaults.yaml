@@ -11,7 +11,7 @@ build_context:
 build_knowledge:
   provider: codex
   model: gpt-5.4-mini
-  reasoning: medium
+  reasoning: xhigh
   timeout_seconds: 600
   max_shellbrain_reads: 8
   max_code_files: 24
