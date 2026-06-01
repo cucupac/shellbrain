@@ -127,6 +127,6 @@ Use Shellbrain in your agent of choice. Then, just work normally.
 
 ## Docs
 
-- [shellbrain.ai/humans](https://shellbrain.ai/humans/) — install, upgrade, getting started
-- [shellbrain.ai/agents](https://shellbrain.ai/agents/) — agent workflow and write discipline
+- [For Humans](https://shellbrain.ai/humans/) — install, upgrade, getting started
+- [For Agents](https://shellbrain.ai/agents/) — agent workflow and write discipline
 - [Technical Docs](https://deepwiki.com/cucupac/shellbrain) — in-depth generated docs and codebase map
