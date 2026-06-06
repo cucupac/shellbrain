@@ -1,0 +1,1 @@
+"""Shellbrain Wiki tests."""

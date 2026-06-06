@@ -80,6 +80,29 @@ def parse_build_knowledge_output(output: str) -> dict[str, Any]:
     }
 
 
+def parse_wiki_summary_output(output: str) -> str:
+    """Parse provider output for one generated wiki summary."""
+
+    text = _strip_code_fence(output.strip())
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise InnerAgentOutputParseError("wiki_summary output is not valid JSON") from exc
+    if not isinstance(payload, dict):
+        raise InnerAgentOutputParseError("wiki_summary output must be a JSON object")
+    extra_keys = set(payload) - {"summary"}
+    if extra_keys:
+        names = ", ".join(sorted(str(key) for key in extra_keys))
+        raise InnerAgentOutputParseError(
+            f"wiki_summary output has unexpected keys: {names}"
+        )
+
+    summary = payload.get("summary")
+    if not isinstance(summary, str) or not summary.strip():
+        raise InnerAgentOutputParseError("wiki_summary summary is required")
+    return summary.strip()
+
+
 def _nonnegative_int(value: Any) -> int | None:
     """Return a non-negative integer or None when absent/malformed."""
 

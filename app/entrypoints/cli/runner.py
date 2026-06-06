@@ -98,6 +98,16 @@ def main(
             run_metrics_dashboard=runtime.run_metrics_dashboard,
         )
 
+    if args.command == "wiki":
+        from app.entrypoints.cli.handlers.human.wiki import run_wiki_command
+
+        return run_wiki_command(
+            args,
+            resolve_repo_context=runtime.resolve_repo_context,
+            warn_or_fail_on_unsafe_app_role=runtime.warn_or_fail_on_unsafe_app_role,
+            run_wiki=runtime.run_wiki,
+        )
+
     if args.command == "admin":
         from app.entrypoints.cli.handlers.human.admin import run_admin_command
 

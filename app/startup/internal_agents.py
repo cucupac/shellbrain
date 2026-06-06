@@ -10,11 +10,13 @@ from app.core.entities.inner_agents import (
     BuildKnowledgeSettings,
     InnerAgentSettings,
     TeachKnowledgeSettings,
+    WikiSummarySettings,
 )
 from app.core.ports.host_apps.inner_agents import (
     IBuildKnowledgeAgentRunner,
     IInnerAgentRunner,
     ITeachKnowledgeAgentRunner,
+    IWikiSummaryAgentRunner,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.startup.config import get_config_provider
@@ -47,6 +49,12 @@ def get_teach_knowledge_settings() -> TeachKnowledgeSettings:
     """Return typed settings for the explicit teaching agent."""
 
     return get_internal_agents_config().teach
+
+
+def get_wiki_summary_settings() -> WikiSummarySettings:
+    """Return typed settings for generated wiki summaries."""
+
+    return get_internal_agents_config().wiki_summary
 
 
 def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
@@ -84,6 +92,21 @@ def get_teach_knowledge_inner_agent_runner() -> ITeachKnowledgeAgentRunner | Non
 
     config = get_internal_agents_config()
     settings = config.teach
+    provider = config.providers.get(settings.provider)
+    if provider is None:
+        return None
+    if settings.provider == "codex":
+        return CodexCliInnerAgentRunner(
+            command=provider.command,
+        )
+    return None
+
+
+def get_wiki_summary_inner_agent_runner() -> IWikiSummaryAgentRunner | None:
+    """Return the configured wiki_summary provider adapter."""
+
+    config = get_internal_agents_config()
+    settings = config.wiki_summary
     provider = config.providers.get(settings.provider)
     if provider is None:
         return None

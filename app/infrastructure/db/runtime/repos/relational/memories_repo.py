@@ -79,6 +79,29 @@ class MemoriesRepo(IMemoriesRepo):
             if memory_id in memories_by_id
         ]
 
+    def list_recent(
+        self, *, repo_id: str, statuses: Sequence[str], limit: int
+    ) -> Sequence[Memory]:
+        """Load recent memories for one repository in newest-first order."""
+
+        if limit <= 0:
+            return []
+        status_values = tuple(str(status) for status in statuses)
+        if not status_values:
+            return []
+        rows = (
+            self._session.execute(
+                select(memories)
+                .where(memories.c.repo_id == repo_id)
+                .where(memories.c.status.in_(status_values))
+                .order_by(memories.c.created_at.desc(), memories.c.id.asc())
+                .limit(limit)
+            )
+            .mappings()
+            .all()
+        )
+        return [self._to_memory(row) for row in rows]
+
     def _to_memory(self, row) -> Memory:
         """Convert one relational row into the canonical shellbrain entity."""
 

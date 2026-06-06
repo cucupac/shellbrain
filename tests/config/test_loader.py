@@ -11,6 +11,7 @@ from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_knowledge_inner_agent_runner,
     get_teach_knowledge_inner_agent_runner,
+    get_wiki_summary_inner_agent_runner,
 )
 from app.startup.settings import YamlConfigProvider
 
@@ -59,6 +60,12 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["teach"]["max_code_files"] == 5
     assert settings["teach"]["max_write_commands"] == 12
     assert "idle_stable_seconds" not in settings["teach"]
+    assert settings["wiki_summary"]["model"] == "gpt-5.4-mini"
+    assert settings["wiki_summary"]["reasoning"] == "medium"
+    assert settings["wiki_summary"]["timeout_seconds"] == 120
+    assert settings["wiki_summary"]["prompt_version"] == "wiki-summary.v1"
+    assert settings["wiki_summary"]["startup_batch_limit"] == 20
+    assert settings["wiki_summary"]["periodic_batch_limit"] == 5
     assert settings["providers"]["codex"]["command"] == "codex"
     assert "working_directory" not in settings["providers"]["codex"]
     assert "allow_shellbrain_cli" not in settings["providers"]["codex"]
@@ -126,5 +133,13 @@ def test_startup_wires_codex_teach_runner() -> None:
     """startup should compose the configured Codex explicit teaching runner."""
 
     runner = get_teach_knowledge_inner_agent_runner()
+
+    assert isinstance(runner, CodexCliInnerAgentRunner)
+
+
+def test_startup_wires_codex_wiki_summary_runner() -> None:
+    """startup should compose the configured Codex wiki_summary runner."""
+
+    runner = get_wiki_summary_inner_agent_runner()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)

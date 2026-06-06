@@ -310,6 +310,7 @@ class ConceptEvidence:
     commit_ref: str | None = None
     transcript_ref: str | None = None
     note: str | None = None
+    evidence_id: str | None = None
     created_at: datetime | None = None
 
 

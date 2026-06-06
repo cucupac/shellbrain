@@ -38,6 +38,12 @@ class IConceptsRepo(ABC):
         """This method returns concepts for the provided ids."""
 
     @abstractmethod
+    def list_concepts(
+        self, *, repo_id: str, statuses: Sequence[str]
+    ) -> Sequence[Concept]:
+        """This method returns concepts for one repo and status set."""
+
+    @abstractmethod
     def list_contains_edges(self, *, repo_id: str) -> Sequence[ConceptRelation]:
         """This method returns active contains edges for cycle validation."""
 
@@ -103,6 +109,12 @@ class IConceptsRepo(ABC):
         self, *, repo_id: str, memory_ids: Sequence[str]
     ) -> Sequence[dict[str, Any]]:
         """This method returns concept-link matches for displayed memory ids."""
+
+    @abstractmethod
+    def find_concepts_for_anchor_ids(
+        self, *, repo_id: str, anchor_ids: Sequence[str]
+    ) -> Sequence[dict[str, Any]]:
+        """This method returns concept-grounding matches for displayed anchors."""
 
     @abstractmethod
     def upsert_embedding(

@@ -13,6 +13,7 @@ from app.infrastructure.db.runtime.models import (
     snapshots,
     telemetry,
     utility,
+    wiki_summaries,
 )
 from app.infrastructure.db.runtime.models.metadata import metadata
 
@@ -30,6 +31,7 @@ _ = (
     snapshots,
     telemetry,
     utility,
+    wiki_summaries,
 )
 
 target_metadata = metadata

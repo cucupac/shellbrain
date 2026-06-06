@@ -8,6 +8,8 @@ from sqlalchemy import select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.evidence import (
+    EvidenceDetail,
+    EvidenceLinkedTarget,
     EvidenceLinkView,
     EvidenceRef,
     EvidenceRole,
@@ -87,6 +89,54 @@ class EvidenceRepo(IEvidenceRepo):
             )
             links.extend(_link_view_from_row(row) for row in rows)
         return tuple(links)
+
+    def get_evidence_detail(
+        self, *, repo_id: str, evidence_id: str
+    ) -> EvidenceDetail | None:
+        """Resolve one canonical evidence source plus all linked targets."""
+
+        evidence_row = (
+            self._session.execute(
+                select(evidence_refs).where(
+                    evidence_refs.c.repo_id == repo_id,
+                    evidence_refs.c.id == evidence_id,
+                )
+            )
+            .mappings()
+            .first()
+        )
+        if evidence_row is None:
+            return None
+
+        link_rows = (
+            self._session.execute(
+                select(
+                    evidence_links.c.id,
+                    evidence_links.c.target_type,
+                    evidence_links.c.target_id,
+                    evidence_links.c.evidence_role,
+                    evidence_links.c.created_at,
+                )
+                .where(
+                    evidence_links.c.repo_id == repo_id,
+                    evidence_links.c.evidence_id == evidence_id,
+                )
+                .order_by(
+                    evidence_links.c.target_type.asc(),
+                    evidence_links.c.target_id.asc(),
+                    evidence_links.c.evidence_role.asc(),
+                )
+            )
+            .mappings()
+            .all()
+        )
+        return EvidenceDetail(
+            id=evidence_row["id"],
+            repo_id=evidence_row["repo_id"],
+            source=_source_from_row(evidence_row),
+            linked_targets=tuple(_linked_target_from_row(row) for row in link_rows),
+            created_at=evidence_row["created_at"],
+        )
 
     def _attach_one(
         self,
@@ -322,6 +372,18 @@ def _link_view_from_row(row) -> EvidenceLinkView:
         role=EvidenceRole(row["evidence_role"]),
         evidence_id=row["id"],
         created_at=row["link_created_at"],
+    )
+
+
+def _linked_target_from_row(row) -> EvidenceLinkedTarget:
+    return EvidenceLinkedTarget(
+        link_id=row["id"],
+        target=EvidenceTarget(
+            target_type=EvidenceTargetType(row["target_type"]),
+            target_id=row["target_id"],
+        ),
+        role=EvidenceRole(row["evidence_role"]),
+        created_at=row["created_at"],
     )
 
 

@@ -9,6 +9,7 @@ from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
     InnerAgentRunRequest,
     TeachKnowledgeAgentRequest,
+    WikiSummaryAgentRequest,
 )
 
 
@@ -824,6 +825,30 @@ and a skipped_item explaining why the teaching event was left as evidence only.
 """
 
 
+_WIKI_SUMMARY_PROMPT_TEMPLATE = """\
+# IDENTITY
+You are Shellbrain wiki_summary, the internal summary writer for Shellbrain Wiki.
+
+# JOB
+Write one concise wiki-style article summary from the supplied Shellbrain facts.
+Use only the supplied payload. Do not run commands. Do not inspect files. Do not
+invent facts, intent, causes, or relationships that are not present.
+
+# STYLE
+- Plain prose, suitable for a Wikipedia-like local wiki.
+- Prefer one or two compact paragraphs.
+- State what Shellbrain currently knows, and say when a definition or evidence
+  is thin instead of filling gaps.
+- Mention important counts or relationships only when they help the reader
+  understand the target.
+- Do not include Markdown links, source lists, citations, JSON handles, or a
+  heading. Shellbrain stores deterministic provenance separately.
+
+# OUTPUT
+Return only valid JSON matching `output_contract`.
+"""
+
+
 def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
     """Render the JSON-first prompt sent to an autonomous read-only provider."""
 
@@ -927,6 +952,33 @@ def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
     }
     payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
     return f"{_BUILD_CONTEXT_SYNTHESIS_PROMPT_TEMPLATE}\n{payload_json}"
+
+
+def render_wiki_summary_prompt(request: WikiSummaryAgentRequest) -> str:
+    """Render the prompt sent to a generated wiki-summary provider."""
+
+    payload = {
+        "target_type": request.target_type,
+        "repo_id": request.repo_id,
+        "target_id": request.target_id,
+        "prompt_version": request.prompt_version,
+        "max_summary_chars": request.max_summary_chars,
+        "source_payload": request.source_payload,
+        "forbidden_actions": [
+            "run shellbrain commands",
+            "inspect repository files",
+            "invent facts not present in source_payload",
+            "emit source lists, citations, or read traces",
+        ],
+        "output_contract": {
+            "summary": (
+                "string no longer than max_summary_chars, based only on "
+                "source_payload"
+            )
+        },
+    }
+    payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"{_WIKI_SUMMARY_PROMPT_TEMPLATE}\n{payload_json}"
 
 
 def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:

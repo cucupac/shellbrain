@@ -28,6 +28,18 @@ teach:
   max_code_files: 5
   max_write_commands: 12
 
+wiki_summary:
+  provider: codex
+  model: gpt-5.4-mini
+  reasoning: medium
+  timeout_seconds: 120
+  prompt_version: wiki-summary.v1
+  max_summary_chars: 900
+  running_refresh_stale_seconds: 3600
+  startup_batch_limit: 20
+  periodic_batch_limit: 5
+  periodic_seconds: 300
+
 providers:
   codex:
     command: codex

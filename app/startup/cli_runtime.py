@@ -35,4 +35,5 @@ class CliRuntime:
     run_upgrade_command: Callable[[], int]
     warn_or_fail_on_unsafe_app_role: Callable[[], None]
     run_metrics_dashboard: Callable[..., object]
+    run_wiki: Callable[..., int]
     admin_dependencies: AdminCommandDependencies

@@ -15,17 +15,21 @@ from app.core.ports.host_apps.inner_agents import (
     InnerAgentRunRequest,
     InnerAgentRunResult,
     TeachKnowledgeAgentRequest,
+    WikiSummaryAgentRequest,
+    WikiSummaryAgentResult,
 )
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
     parse_build_knowledge_output,
     parse_inner_agent_response_output,
+    parse_wiki_summary_output,
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
+    render_wiki_summary_prompt,
 )
 
 
@@ -323,6 +327,87 @@ class CodexCliInnerAgentRunner:
             code_trace=parsed["code_trace"],
         )
 
+    def run_wiki_summary(
+        self, request: WikiSummaryAgentRequest
+    ) -> WikiSummaryAgentResult:
+        """Run one Codex CLI wiki_summary request."""
+
+        command_path = shutil.which(self._command)
+        if command_path is None:
+            return _wiki_summary_result(
+                request,
+                status="provider_unavailable",
+                error_code="command_not_found",
+                error_message=f"Codex command not found: {self._command}",
+            )
+
+        prompt = render_wiki_summary_prompt(request)
+        started = perf_counter()
+        try:
+            with (
+                tempfile.TemporaryDirectory(
+                    prefix="shellbrain-inner-agent-"
+                ) as workspace,
+                tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
+            ):
+                completed = subprocess.run(
+                    _codex_exec_args(
+                        command_path=command_path,
+                        model=request.model,
+                        reasoning=request.reasoning,
+                        workspace=workspace,
+                        output_path=output_file.name,
+                    ),
+                    input=prompt,
+                    text=True,
+                    capture_output=True,
+                    timeout=request.timeout_seconds,
+                    check=False,
+                    env=_inner_agent_env(mode="wiki_summary"),
+                )
+                output_file.seek(0)
+                final_message = output_file.read()
+        except subprocess.TimeoutExpired:
+            return _wiki_summary_result(
+                request,
+                status="timeout",
+                duration_ms=_duration_ms(started),
+                input_tokens=_estimate_tokens(prompt),
+                capture_quality="estimated",
+                error_code="timeout",
+                error_message="Codex CLI timed out",
+            )
+
+        duration_ms = _duration_ms(started)
+        usage = _usage_from_jsonl(completed.stdout)
+        if completed.returncode != 0:
+            return _wiki_summary_result(
+                request,
+                status="error",
+                duration_ms=duration_ms,
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
+                error_code="codex_nonzero_exit",
+                error_message=_truncate(completed.stderr or completed.stdout, 500),
+            )
+        try:
+            body = parse_wiki_summary_output(final_message)
+        except InnerAgentOutputParseError as exc:
+            return _wiki_summary_result(
+                request,
+                status="invalid_output",
+                duration_ms=duration_ms,
+                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
+                error_code="invalid_output",
+                error_message=str(exc),
+            )
+        return _wiki_summary_result(
+            request,
+            status="ok",
+            body=body,
+            duration_ms=duration_ms,
+            **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
+        )
+
 
 def _codex_exec_args(
     *,
@@ -445,6 +530,40 @@ def _build_knowledge_result(
     )
 
 
+def _wiki_summary_result(
+    request: WikiSummaryAgentRequest,
+    *,
+    status,
+    body: str | None = None,
+    duration_ms: int = 0,
+    input_tokens: int | None = None,
+    output_tokens: int | None = None,
+    reasoning_output_tokens: int | None = None,
+    cached_input_tokens_total: int | None = None,
+    capture_quality: str | None = None,
+    error_code: str | None = None,
+    error_message: str | None = None,
+) -> WikiSummaryAgentResult:
+    """Build one provider-neutral wiki summary result."""
+
+    return WikiSummaryAgentResult(
+        status=status,
+        provider=request.provider,
+        model=request.model,
+        reasoning=request.reasoning,
+        timeout_seconds=request.timeout_seconds,
+        duration_ms=duration_ms,
+        input_tokens=input_tokens,
+        output_tokens=output_tokens,
+        reasoning_output_tokens=reasoning_output_tokens,
+        cached_input_tokens_total=cached_input_tokens_total,
+        capture_quality=capture_quality,
+        body=body,
+        error_code=error_code,
+        error_message=error_message,
+    )
+
+
 def _duration_ms(started: float) -> int:
     """Return elapsed milliseconds from one perf-counter timestamp."""
 
@@ -506,7 +625,7 @@ def _inner_agent_env(
     env = dict(os.environ)
     env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
     _inherit_parent_caller_identity(env)
-    if mode in {"build_knowledge", "teach"}:
+    if mode in {"build_knowledge", "teach", "wiki_summary"}:
         if knowledge_build_run_id:
             env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] = knowledge_build_run_id
         _scrub_admin_env(env)

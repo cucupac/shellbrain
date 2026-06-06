@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -119,6 +120,7 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "pipx upgrade shellbrain && shellbrain init" in output
     assert "shellbrain init" in output
     assert "shellbrain metrics" in output
+    assert "shellbrain wiki" in output
     assert "--repo-root" in output
     assert "--no-sync" not in output
     assert "read" in output
@@ -257,6 +259,87 @@ def test_metrics_parser_should_reject_days_and_no_open_flags() -> None:
     with pytest.raises(SystemExit) as no_open_exc:
         parser.parse_args(["metrics", "--no-open"])
     assert no_open_exc.value.code == 2
+
+
+def test_wiki_help_should_include_one_example(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """wiki help should explain the single-command local wiki path."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["wiki", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "read-only Shellbrain Wiki" in output
+    assert "shellbrain wiki" in output
+    assert "--port" not in output
+    assert "--no-open" not in output
+
+
+def test_wiki_command_should_reject_extra_flags(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """wiki command should reject options with the single-command message."""
+
+    runtime = SimpleNamespace(
+        resolve_repo_context=lambda **_kwargs: SimpleNamespace(repo_id="repo-current"),
+        warn_or_fail_on_unsafe_app_role=lambda: None,
+        run_wiki=lambda **_kwargs: 0,
+    )
+
+    assert cli_runner.main(["wiki", "--port", "8765"], runtime=runtime) == 1
+    assert (
+        "`shellbrain wiki` does not accept options. Run `shellbrain wiki`."
+        in capsys.readouterr().err
+    )
+
+    assert cli_runner.main(["wiki", "--no-open"], runtime=runtime) == 1
+    assert (
+        "`shellbrain wiki` does not accept options. Run `shellbrain wiki`."
+        in capsys.readouterr().err
+    )
+
+
+def test_wiki_command_should_delegate_to_current_repo_runtime() -> None:
+    """wiki should resolve the current repo and delegate to startup wiring."""
+
+    calls: dict[str, object] = {}
+
+    def _run_wiki(**kwargs):
+        calls.update(kwargs)
+        return 0
+
+    runtime = SimpleNamespace(
+        resolve_repo_context=lambda **_kwargs: SimpleNamespace(repo_id="repo-current"),
+        warn_or_fail_on_unsafe_app_role=lambda: None,
+        run_wiki=_run_wiki,
+    )
+
+    exit_code = cli_runner.main(["wiki"], runtime=runtime)
+
+    assert exit_code == 0
+    assert calls["repo_id"] == "repo-current"
+
+
+def test_wiki_command_should_reject_global_repo_target_options(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """wiki should fail fast when global targeting flags are passed."""
+
+    runtime = SimpleNamespace(
+        resolve_repo_context=lambda **_kwargs: SimpleNamespace(repo_id="repo-current"),
+        warn_or_fail_on_unsafe_app_role=lambda: None,
+        run_wiki=lambda **_kwargs: 0,
+    )
+
+    exit_code = cli_runner.main(["--repo-id", "repo-other", "wiki"], runtime=runtime)
+
+    assert exit_code == 1
+    assert (
+        "`shellbrain wiki` does not accept options. Run `shellbrain wiki`."
+        in capsys.readouterr().err
+    )
 
 
 def test_read_help_should_include_one_example(
@@ -977,6 +1060,7 @@ def test_inner_agent_synthesis_mode_rejects_all_shellbrain_routes(
         "read",
         "concept:show",
         "recall",
+        "wiki",
         "memory:add",
         "concept:update",
         "scenario:record",
@@ -1003,7 +1087,7 @@ def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
         "scenario:record",
     ):
         cli_runner._enforce_inner_agent_mode(command)
-    for command in ("recall", "admin", "init", "upgrade", "metrics"):
+    for command in ("recall", "admin", "init", "upgrade", "metrics", "wiki"):
         with pytest.raises(ValueError):
             cli_runner._enforce_inner_agent_mode(command)
 
@@ -1034,6 +1118,7 @@ def test_inner_agent_teach_mode_allows_only_teach_writer_routes(
         "init",
         "upgrade",
         "metrics",
+        "wiki",
     ):
         with pytest.raises(ValueError):
             cli_runner._enforce_inner_agent_mode(command)

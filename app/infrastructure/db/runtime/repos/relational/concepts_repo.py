@@ -170,6 +170,30 @@ class ConceptsRepo(IConceptsRepo):
         by_id = {str(row["id"]): _to_concept(row) for row in rows}
         return [by_id[concept_id] for concept_id in unique_ids if concept_id in by_id]
 
+    def list_concepts(
+        self, *, repo_id: str, statuses: Sequence[str]
+    ) -> Sequence[Concept]:
+        """Return concepts for one repo and status set."""
+
+        status_values = tuple(dict.fromkeys(str(status) for status in statuses))
+        if not status_values:
+            return []
+        rows = (
+            self._session.execute(
+                select(concepts)
+                .where(
+                    concepts.c.repo_id == repo_id,
+                    concepts.c.status.in_(status_values),
+                )
+                .order_by(
+                    concepts.c.kind.asc(), concepts.c.name.asc(), concepts.c.slug.asc()
+                )
+            )
+            .mappings()
+            .all()
+        )
+        return [_to_concept(row) for row in rows]
+
     def list_contains_edges(self, *, repo_id: str) -> Sequence[ConceptRelation]:
         """Return active contains edges for one repo."""
 
@@ -599,6 +623,7 @@ class ConceptsRepo(IConceptsRepo):
                     evidence_links.c.target_type,
                     evidence_links.c.target_id,
                     evidence_links.c.created_at,
+                    evidence_refs.c.id.label("evidence_id"),
                     evidence_refs.c.kind,
                     evidence_refs.c.ref,
                     evidence_refs.c.episode_event_id,
@@ -655,6 +680,44 @@ class ConceptsRepo(IConceptsRepo):
                     concept_memory_links.c.repo_id == repo_id,
                     concept_memory_links.c.memory_id.in_(unique_memory_ids),
                 )
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(row) for row in rows]
+
+    def find_concepts_for_anchor_ids(
+        self, *, repo_id: str, anchor_ids: Sequence[str]
+    ) -> Sequence[dict[str, Any]]:
+        """Return concept-grounding matches for displayed anchors."""
+
+        unique_anchor_ids = list(dict.fromkeys(str(anchor_id) for anchor_id in anchor_ids))
+        if not unique_anchor_ids:
+            return []
+        rows = (
+            self._session.execute(
+                select(
+                    concepts.c.id.label("concept_id"),
+                    concepts.c.slug,
+                    concepts.c.name,
+                    concepts.c.kind,
+                    concept_groundings.c.id.label("grounding_id"),
+                    concept_groundings.c.anchor_id,
+                    concept_groundings.c.role,
+                    concept_groundings.c.status,
+                    concept_groundings.c.confidence,
+                )
+                .select_from(
+                    concept_groundings.join(
+                        concepts, concepts.c.id == concept_groundings.c.concept_id
+                    )
+                )
+                .where(
+                    concept_groundings.c.repo_id == repo_id,
+                    concept_groundings.c.anchor_id.in_(unique_anchor_ids),
+                    concepts.c.repo_id == repo_id,
+                )
+                .order_by(concepts.c.name.asc(), concept_groundings.c.role.asc())
             )
             .mappings()
             .all()
@@ -843,6 +906,7 @@ def _to_evidence(row) -> ConceptEvidence:
         commit_ref=row["commit_ref"],
         transcript_ref=row["transcript_ref"],
         note=row["note"],
+        evidence_id=row.get("evidence_id"),
         created_at=row["created_at"],
     )
 
@@ -858,6 +922,7 @@ def _unified_evidence_to_concept_row(row) -> dict[str, Any]:
         "target_type": _CONCEPT_TARGET_TYPE_BY_UNIFIED[str(row["target_type"])],
         "target_id": row["target_id"],
         "evidence_kind": evidence_kind,
+        "evidence_id": row["evidence_id"],
         "anchor_id": row["anchor_id"],
         "memory_id": row["memory_id"],
         "commit_ref": row["commit_ref"],

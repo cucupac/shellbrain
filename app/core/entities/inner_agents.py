@@ -11,7 +11,7 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-InnerAgentName = Literal["build_context", "build_knowledge", "teach"]
+InnerAgentName = Literal["build_context", "build_knowledge", "teach", "wiki_summary"]
 InnerAgentProviderName = str
 InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 BuildContextStrategy = Literal[
@@ -64,6 +64,21 @@ class TeachKnowledgeSettings(_StrictModel):
     max_shellbrain_reads: int = Field(default=6, ge=1, le=50)
     max_code_files: int = Field(default=5, ge=0, le=200)
     max_write_commands: int = Field(default=12, ge=1, le=200)
+
+
+class WikiSummarySettings(_StrictModel):
+    """Typed model/runtime settings for generated wiki summaries."""
+
+    provider: InnerAgentProviderName = Field(min_length=1)
+    model: str = Field(min_length=1)
+    reasoning: InnerAgentReasoningLevel
+    timeout_seconds: int = Field(ge=1, le=1200)
+    prompt_version: str = Field(default="wiki-summary.v1", min_length=1)
+    max_summary_chars: int = Field(default=900, ge=100, le=4000)
+    running_refresh_stale_seconds: int = Field(default=3600, ge=60, le=86_400)
+    startup_batch_limit: int = Field(default=20, ge=0, le=200)
+    periodic_batch_limit: int = Field(default=5, ge=0, le=100)
+    periodic_seconds: int = Field(default=300, ge=30, le=86_400)
 
 
 InnerAgentSettings = BuildContextSettings

@@ -39,6 +39,7 @@ _TOP_LEVEL_HELP = dedent(
         - Upgrade with `shellbrain upgrade`.
         - Check health with `shellbrain admin doctor`.
         - Review usage with `shellbrain metrics`.
+        - Browse knowledge with `shellbrain wiki`.
 
       Working agents:
         - Use `shellbrain recall` for normal task context.
@@ -68,6 +69,7 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain init
       shellbrain upgrade
       shellbrain metrics
+      shellbrain wiki
       shellbrain admin doctor
       shellbrain admin migrate
 
@@ -383,6 +385,18 @@ _METRICS_HELP = dedent(
     """
 )
 
+_WIKI_HELP = dedent(
+    """\
+    Open the read-only Shellbrain Wiki for the current repo.
+
+    The command starts a local foreground server, opens the browser, and stops
+    when the terminal process is interrupted.
+
+    Example:
+      shellbrain wiki
+    """
+)
+
 _INSTALL_CLAUDE_HOOK_HELP = dedent(
     """\
     Install or update the repo-local Claude Code SessionStart hook used as an explicit repo-local override.
@@ -493,6 +507,32 @@ def build_parser() -> argparse.ArgumentParser:
         description="Generate local metrics snapshots and open one browser dashboard for all repos.",
         epilog=_METRICS_HELP,
         formatter_class=_HelpFormatter,
+    )
+
+    wiki_parser = subparsers.add_parser(
+        "wiki",
+        help="Open the read-only Shellbrain Wiki for this repo.",
+        description="Start the local Shellbrain Wiki and open it in the browser.",
+        epilog=_WIKI_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    wiki_parser.add_argument(
+        "wiki_extra_args",
+        nargs=argparse.REMAINDER,
+        help=argparse.SUPPRESS,
+    )
+    wiki_parser.add_argument("--port", dest="wiki_port", nargs="?", help=argparse.SUPPRESS)
+    wiki_parser.add_argument(
+        "--no-open", dest="wiki_no_open", action="store_true", help=argparse.SUPPRESS
+    )
+    wiki_parser.add_argument(
+        "--repo-id", dest="wiki_repo_id", nargs="?", help=argparse.SUPPRESS
+    )
+    wiki_parser.add_argument(
+        "--repo-root", dest="wiki_repo_root", nargs="?", help=argparse.SUPPRESS
+    )
+    wiki_parser.add_argument(
+        "--no-sync", dest="wiki_no_sync", action="store_true", help=argparse.SUPPRESS
     )
 
     read_parser = subparsers.add_parser(

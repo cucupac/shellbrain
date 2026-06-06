@@ -147,6 +147,27 @@ class EvidenceLinkView:
     created_at: datetime | None = None
 
 
+@dataclass(frozen=True, kw_only=True)
+class EvidenceLinkedTarget:
+    """One target linked to a canonical evidence source."""
+
+    link_id: str
+    target: EvidenceTarget
+    role: EvidenceRole
+    created_at: datetime | None = None
+
+
+@dataclass(frozen=True, kw_only=True)
+class EvidenceDetail:
+    """One canonical evidence source plus all linked targets."""
+
+    id: EvidenceId
+    repo_id: RepoId
+    source: EvidenceSource
+    linked_targets: tuple[EvidenceLinkedTarget, ...]
+    created_at: datetime | None = None
+
+
 @dataclass(kw_only=True)
 class MemoryEvidenceLink:
     """This dataclass models a many-to-many link between shellbrain and evidence."""

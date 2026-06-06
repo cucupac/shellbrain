@@ -106,6 +106,22 @@ class TeachKnowledgeAgentRequest(_StrictModel):
     max_write_commands: int = Field(ge=1, le=200)
 
 
+class WikiSummaryAgentRequest(_StrictModel):
+    """One provider request to generate a cached wiki summary."""
+
+    agent_name: InnerAgentName = "wiki_summary"
+    provider: InnerAgentProviderName = Field(min_length=1)
+    model: str = Field(min_length=1)
+    reasoning: InnerAgentReasoningLevel
+    timeout_seconds: int = Field(ge=1, le=1200)
+    prompt_version: str = Field(min_length=1)
+    target_type: str = Field(min_length=1)
+    repo_id: str = Field(min_length=1)
+    target_id: str = Field(min_length=1)
+    source_payload: dict[str, Any]
+    max_summary_chars: int = Field(ge=100, le=4000)
+
+
 class BuildKnowledgeAgentResult(_StrictModel):
     """Provider-neutral result from one build_knowledge run."""
 
@@ -131,6 +147,27 @@ class BuildKnowledgeAgentResult(_StrictModel):
     code_trace: dict[str, Any] = Field(default_factory=dict)
 
 
+class WikiSummaryAgentResult(_StrictModel):
+    """Provider-neutral result from one generated wiki summary run."""
+
+    status: InnerAgentRunStatus
+    provider: InnerAgentProviderName = Field(min_length=1)
+    model: str
+    reasoning: InnerAgentReasoningLevel
+    timeout_seconds: int | None = Field(default=None, ge=1, le=1200)
+    duration_ms: int = Field(default=0, ge=0)
+    input_tokens: int | None = Field(default=None, ge=0)
+    output_tokens: int | None = Field(default=None, ge=0)
+    reasoning_output_tokens: int | None = Field(default=None, ge=0)
+    cached_input_tokens_total: int | None = Field(default=None, ge=0)
+    cache_read_input_tokens: int | None = Field(default=None, ge=0)
+    cache_creation_input_tokens: int | None = Field(default=None, ge=0)
+    capture_quality: TokenCaptureQuality | None = None
+    body: str | None = None
+    error_code: str | None = None
+    error_message: str | None = None
+
+
 class IInnerAgentRunner(Protocol):
     """Behavior protocol for bounded inner-agent synthesis providers."""
 
@@ -154,3 +191,12 @@ class ITeachKnowledgeAgentRunner(Protocol):
         self, request: TeachKnowledgeAgentRequest
     ) -> BuildKnowledgeAgentResult:
         """Run one teach request and return a provider-neutral result."""
+
+
+class IWikiSummaryAgentRunner(Protocol):
+    """Behavior protocol for generated wiki summary providers."""
+
+    def run_wiki_summary(
+        self, request: WikiSummaryAgentRequest
+    ) -> WikiSummaryAgentResult:
+        """Run one wiki summary request and return provider-neutral prose."""

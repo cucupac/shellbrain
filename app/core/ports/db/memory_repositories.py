@@ -5,6 +5,7 @@ from typing import Sequence
 
 from app.core.entities.associations import AssociationEdge, AssociationObservation
 from app.core.entities.evidence import (
+    EvidenceDetail,
     EvidenceLinkView,
     EvidenceRole,
     EvidenceSource,
@@ -29,6 +30,12 @@ class IMemoriesRepo(ABC):
     @abstractmethod
     def list_by_ids(self, ids: Sequence[str]) -> Sequence[Memory]:
         """This method fetches memories in the input identifier order."""
+
+    @abstractmethod
+    def list_recent(
+        self, *, repo_id: str, statuses: Sequence[str], limit: int
+    ) -> Sequence[Memory]:
+        """Fetch recent memories for one repository in newest-first order."""
 
     @abstractmethod
     def update_lifecycle(self, memory: Memory) -> bool:
@@ -96,3 +103,9 @@ class IEvidenceRepo(ABC):
         self, *, repo_id: str, targets: Sequence[EvidenceTarget]
     ) -> Sequence[EvidenceLinkView]:
         """Resolve evidence links for targets through the unified evidence API."""
+
+    @abstractmethod
+    def get_evidence_detail(
+        self, *, repo_id: str, evidence_id: str
+    ) -> EvidenceDetail | None:
+        """Resolve one canonical evidence source plus linked targets."""

@@ -21,6 +21,7 @@ def build_cli_runtime():
     from app.startup import runtime_context as startup_runtime_context
     from app.startup import snapshot_baseline
     from app.startup import use_cases
+    from app.startup import wiki as startup_wiki
     from app.infrastructure.local_state import operation_registration
     from app.infrastructure.process.episode_sync import autostart as episode_autostart
     from app.infrastructure.telemetry import operation_polling
@@ -63,6 +64,7 @@ def build_cli_runtime():
         run_upgrade_command=run_upgrade_command,
         warn_or_fail_on_unsafe_app_role=warn_or_fail_on_unsafe_app_role,
         run_metrics_dashboard=startup_metrics.run_metrics_dashboard,
+        run_wiki=startup_wiki.run_wiki,
         admin_dependencies=build_admin_command_dependencies(),
     )
 

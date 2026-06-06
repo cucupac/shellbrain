@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import subprocess
 
+import pytest
+
 from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
     InnerAgentRunRequest,
@@ -11,9 +13,11 @@ from app.core.ports.host_apps.inner_agents import (
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.output_parser import (
+    InnerAgentOutputParseError,
     parse_build_knowledge_output,
     parse_inner_agent_brief_output,
     parse_inner_agent_response_output,
+    parse_wiki_summary_output,
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
@@ -145,6 +149,19 @@ def test_inner_agent_output_parser_accepts_read_trace() -> None:
 
     assert brief == {"summary": "Context found"}
     assert read_trace == {"source_ids": ["mem-1"]}
+
+
+def test_wiki_summary_output_parser_requires_exact_summary_object() -> None:
+    """wiki_summary output should keep a strict provider contract."""
+
+    assert parse_wiki_summary_output('{"summary":"A concise article."}') == (
+        "A concise article."
+    )
+
+    with pytest.raises(InnerAgentOutputParseError) as excinfo:
+        parse_wiki_summary_output('{"summary":"A concise article.","trace":[]}')
+
+    assert "unexpected keys: trace" in str(excinfo.value)
 
 
 def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path) -> None:
