@@ -111,23 +111,24 @@ def ensure_managed_container(config: MachineConfig) -> bool:
         _create_managed_container(config)
         _start_container(config.managed.container_name)
         return True
-    labels = info.get("Config", {}).get("Labels", {}) or {}
-    if (
-        labels.get(MANAGED_LABEL) != "true"
-        or labels.get(MANAGED_HOME_LABEL) != _home_hash()
-    ):
+    _ensure_owned_container(config, info)
+    return _start_if_stopped(config, info)
+
+
+def ensure_existing_managed_container_running(config: MachineConfig) -> bool:
+    """Start the configured managed container if it already exists and is owned."""
+
+    if config.managed is None:
         raise InitConflictError(
-            f"Container {config.managed.container_name} already exists but is not owned by Shellbrain for this machine state."
+            "Managed-local Shellbrain config is missing managed container metadata."
         )
-    if labels.get(MANAGED_INSTANCE_LABEL) != config.machine_instance_id:
+    info = inspect_container(config.managed.container_name)
+    if info is None:
         raise InitConflictError(
-            f"Managed container {config.managed.container_name} does not match the configured Shellbrain instance id."
+            f"Managed container {config.managed.container_name} does not exist. Rerun `shellbrain init` to repair it."
         )
-    state = info.get("State", {}) or {}
-    if not state.get("Running"):
-        _start_container(config.managed.container_name)
-        return True
-    return False
+    _ensure_owned_container(config, info)
+    return _start_if_stopped(config, info)
 
 
 def backup_before_repair(config: MachineConfig) -> None:
@@ -327,6 +328,8 @@ def _create_managed_container(config: MachineConfig) -> None:
         "create",
         "--name",
         config.managed.container_name,
+        "--restart",
+        "unless-stopped",
         "--label",
         f"{MANAGED_LABEL}=true",
         "--label",
@@ -378,6 +381,35 @@ def _start_container(container_name: str) -> None:
         raise InitConflictError(
             completed.stderr.strip() or f"Failed to start container {container_name}."
         )
+
+
+def _ensure_owned_container(config: MachineConfig, info: dict[str, object]) -> None:
+    """Refuse containers that are not this Shellbrain managed instance."""
+
+    assert config.managed is not None
+    labels = info.get("Config", {}).get("Labels", {}) or {}
+    if (
+        labels.get(MANAGED_LABEL) != "true"
+        or labels.get(MANAGED_HOME_LABEL) != _home_hash()
+    ):
+        raise InitConflictError(
+            f"Container {config.managed.container_name} already exists but is not owned by Shellbrain for this machine state."
+        )
+    if labels.get(MANAGED_INSTANCE_LABEL) != config.machine_instance_id:
+        raise InitConflictError(
+            f"Managed container {config.managed.container_name} does not match the configured Shellbrain instance id."
+        )
+
+
+def _start_if_stopped(config: MachineConfig, info: dict[str, object]) -> bool:
+    """Start the configured container when Docker reports it stopped."""
+
+    assert config.managed is not None
+    state = info.get("State", {}) or {}
+    if state.get("Running"):
+        return False
+    _start_container(config.managed.container_name)
+    return True
 
 
 def _select_managed_port() -> int:

@@ -691,6 +691,61 @@ def test_external_init_should_skip_managed_container_setup(
     assert saved[0].runtime_mode == "external_postgres"
 
 
+def test_ensure_managed_runtime_ready_should_start_managed_container_and_wait(
+    monkeypatch,
+) -> None:
+    """operation readiness should start the configured managed runtime once."""
+
+    config = _machine_config(bootstrap_state="ready")
+    calls: list[object] = []
+
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (config, None))
+    monkeypatch.setattr(
+        init_module, "ensure_managed_runtime_available", lambda: calls.append("deps")
+    )
+    monkeypatch.setattr(
+        init_module.managed_runtime,
+        "ensure_existing_managed_container_running",
+        lambda received: calls.append(("container", received)) or True,
+    )
+    monkeypatch.setattr(
+        init_module,
+        "wait_for_postgres",
+        lambda dsn, timeout_seconds: calls.append(("wait", dsn, timeout_seconds)),
+    )
+
+    init_module.ensure_managed_runtime_ready()
+
+    assert calls == [
+        "deps",
+        ("container", config),
+        ("wait", config.database.admin_dsn, 15),
+    ]
+
+
+@pytest.mark.parametrize(
+    "loaded_factory",
+    [
+        lambda: (None, None),
+        lambda: (None, "corrupt config"),
+        lambda: (_external_machine_config(bootstrap_state="ready"), None),
+    ],
+)
+def test_ensure_managed_runtime_ready_should_skip_without_managed_config(
+    monkeypatch, loaded_factory
+) -> None:
+    """operation readiness should leave missing, corrupt, and external configs alone."""
+
+    monkeypatch.setattr(init_module, "try_load_machine_config", loaded_factory)
+    monkeypatch.setattr(
+        init_module,
+        "ensure_managed_runtime_available",
+        lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")),
+    )
+
+    init_module.ensure_managed_runtime_ready()
+
+
 def test_reconcile_database_should_inline_role_password_literals(monkeypatch) -> None:
     """role creation should not use server-side bind params inside CREATE/ALTER ROLE."""
 
@@ -714,6 +769,122 @@ def test_reconcile_database_should_inline_role_password_literals(monkeypatch) ->
     assert changed is True
     create_role_call = admin_cursor.calls[1]
     assert create_role_call[1] is None
+
+
+def test_ensure_existing_managed_container_running_should_start_stopped_owned_container(
+    monkeypatch,
+) -> None:
+    """operation readiness should start only the configured owned container."""
+
+    config = _machine_config(bootstrap_state="ready")
+    started: list[str] = []
+
+    monkeypatch.setattr(managed_runtime, "_home_hash", lambda: "homehash")
+    monkeypatch.setattr(
+        managed_runtime,
+        "inspect_container",
+        lambda name: _container_info(config, running=False),
+    )
+    monkeypatch.setattr(
+        managed_runtime, "_start_container", lambda name: started.append(name)
+    )
+
+    changed = managed_runtime.ensure_existing_managed_container_running(config)
+
+    assert changed is True
+    assert started == [config.managed.container_name]
+
+
+def test_ensure_existing_managed_container_running_should_noop_for_running_owned_container(
+    monkeypatch,
+) -> None:
+    """operation readiness should not restart an already-running owned container."""
+
+    config = _machine_config(bootstrap_state="ready")
+
+    monkeypatch.setattr(managed_runtime, "_home_hash", lambda: "homehash")
+    monkeypatch.setattr(
+        managed_runtime,
+        "inspect_container",
+        lambda name: _container_info(config, running=True),
+    )
+    monkeypatch.setattr(
+        managed_runtime,
+        "_start_container",
+        lambda name: (_ for _ in ()).throw(AssertionError("unexpected start")),
+    )
+
+    assert managed_runtime.ensure_existing_managed_container_running(config) is False
+
+
+@pytest.mark.parametrize(
+    ("info", "message"),
+    [
+        (None, "does not exist"),
+        (
+            {
+                "Config": {"Labels": {managed_runtime.MANAGED_LABEL: "false"}},
+                "State": {"Running": False},
+            },
+            "not owned",
+        ),
+        (
+            {
+                "Config": {
+                    "Labels": {
+                        managed_runtime.MANAGED_LABEL: "true",
+                        managed_runtime.MANAGED_HOME_LABEL: "homehash",
+                        managed_runtime.MANAGED_INSTANCE_LABEL: "other",
+                    }
+                },
+                "State": {"Running": False},
+            },
+            "does not match",
+        ),
+    ],
+)
+def test_ensure_existing_managed_container_running_should_refuse_unsafe_targets(
+    monkeypatch, info, message: str
+) -> None:
+    """operation readiness should not create or adopt unsafe containers."""
+
+    config = _machine_config(bootstrap_state="ready")
+
+    monkeypatch.setattr(managed_runtime, "_home_hash", lambda: "homehash")
+    monkeypatch.setattr(managed_runtime, "inspect_container", lambda name: info)
+    monkeypatch.setattr(
+        managed_runtime,
+        "_start_container",
+        lambda name: (_ for _ in ()).throw(AssertionError("unexpected start")),
+    )
+
+    with pytest.raises(init_module.InitConflictError, match=message):
+        managed_runtime.ensure_existing_managed_container_running(config)
+
+
+def test_create_managed_container_should_enable_docker_restart_policy(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """new managed containers should restart after Docker restarts."""
+
+    config = _machine_config(bootstrap_state="provisioning", data_dir=str(tmp_path))
+    commands: list[list[str]] = []
+
+    class _Completed:
+        returncode = 0
+        stderr = ""
+
+    monkeypatch.setattr(
+        managed_runtime.subprocess,
+        "run",
+        lambda command, **kwargs: commands.append(command) or _Completed(),
+    )
+
+    managed_runtime._create_managed_container(config)
+
+    command = commands[0]
+    restart_index = command.index("--restart")
+    assert command[restart_index + 1] == "unless-stopped"
 
 
 def test_select_managed_port_should_skip_ports_claimed_by_created_containers(
@@ -751,6 +922,7 @@ def _machine_config(
     bootstrap_state: str,
     readiness_state: str = "pending",
     last_error: str | None = "repair me",
+    data_dir: str = "/tmp/shellbrain-data",
 ) -> MachineConfig:
     """Return one minimal machine config for init tests."""
 
@@ -773,7 +945,7 @@ def _machine_config(
             host="127.0.0.1",
             port=55432,
             db_name="shellbrain",
-            data_dir="/tmp/shellbrain-data",
+            data_dir=data_dir,
             admin_user="shellbrain_admin",
             admin_password="admin-secret",
             app_user="shellbrain_app",
@@ -790,6 +962,21 @@ def _machine_config(
             last_error=last_error,
         ),
     )
+
+
+def _container_info(config: MachineConfig, *, running: bool) -> dict[str, object]:
+    """Return Docker inspect data for the configured managed container."""
+
+    return {
+        "Config": {
+            "Labels": {
+                managed_runtime.MANAGED_LABEL: "true",
+                managed_runtime.MANAGED_HOME_LABEL: "homehash",
+                managed_runtime.MANAGED_INSTANCE_LABEL: config.machine_instance_id,
+            }
+        },
+        "State": {"Running": running},
+    }
 
 
 def _external_machine_config(

@@ -41,6 +41,7 @@ def build_cli_runtime():
         resolve_caller_identity=resolve_cli_caller_identity,
         set_operation_context=set_cli_operation_context,
         reset_operation_context=reset_cli_operation_context,
+        ensure_managed_runtime_ready=runtime_admin.ensure_managed_runtime_ready,
         ensure_repo_registration=(
             operation_registration.ensure_repo_registration_for_operation
         ),

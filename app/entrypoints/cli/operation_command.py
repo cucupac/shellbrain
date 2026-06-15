@@ -35,6 +35,7 @@ def run_operation_command(
             resolve_caller_identity=runtime.resolve_caller_identity,
             set_operation_context=runtime.set_operation_context,
             reset_operation_context=runtime.reset_operation_context,
+            ensure_managed_runtime_ready=runtime.ensure_managed_runtime_ready,
             warn_or_fail_on_unsafe_app_role=runtime.warn_or_fail_on_unsafe_app_role,
             ensure_repo_registration=runtime.ensure_repo_registration,
             ensure_shadow_baseline=runtime.ensure_shadow_baseline,

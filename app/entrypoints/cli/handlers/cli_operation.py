@@ -22,6 +22,7 @@ class CliOperationEffects:
     resolve_caller_identity: Callable[[], Any]
     set_operation_context: Callable[[RuntimeContext], Any]
     reset_operation_context: Callable[[Any], None]
+    ensure_managed_runtime_ready: Callable[[], None]
     warn_or_fail_on_unsafe_app_role: Callable[[], None]
     ensure_repo_registration: Callable[..., None]
     ensure_shadow_baseline: Callable[..., None]
@@ -52,6 +53,7 @@ def run_cli_operation(
     )
     token = effects.set_operation_context(operation_context)
     try:
+        effects.ensure_managed_runtime_ready()
         effects.warn_or_fail_on_unsafe_app_role()
         effects.ensure_repo_registration(
             repo_context=repo_context,

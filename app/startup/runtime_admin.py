@@ -71,6 +71,7 @@ __all__ = [
     "INIT_OUTCOME_NOOP",
     "INIT_OUTCOME_REPAIRED",
     "InitResult",
+    "ensure_managed_runtime_ready",
     "init_success_presenter_context",
     "run_init",
 ]
@@ -161,6 +162,19 @@ def _ensure_managed_dependencies() -> None:
     """Verify managed-local runtime prerequisites before mutation."""
 
     ensure_managed_runtime_available()
+
+
+def ensure_managed_runtime_ready() -> None:
+    """Prepare the configured managed-local database runtime for CLI operations."""
+
+    config, error = try_load_machine_config()
+    if error is not None or config is None:
+        return
+    if config.runtime_mode != RUNTIME_MODE_MANAGED_LOCAL:
+        return
+    ensure_managed_runtime_available()
+    managed_runtime.ensure_existing_managed_container_running(config)
+    wait_for_postgres(config.database.admin_dsn, timeout_seconds=15)
 
 
 def _build_fresh_machine_config() -> MachineConfig:

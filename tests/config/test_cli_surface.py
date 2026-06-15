@@ -10,6 +10,10 @@ import pytest
 import app.entrypoints.cli.main as cli_main
 import app.entrypoints.cli.parser.builder as cli_parser
 import app.entrypoints.cli.runner as cli_runner
+from app.entrypoints.cli.handlers.cli_operation import (
+    CliOperationEffects,
+    run_cli_operation,
+)
 from app.infrastructure.local_state import operation_registration
 import app.startup.cli as startup_cli
 from app.startup.repo_context import RepoContext, resolve_repo_context
@@ -1152,6 +1156,101 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
 
     assert exit_code == 0
     assert sync_calls == []
+
+
+def test_cli_operation_should_prepare_managed_runtime_before_db_audit(
+    tmp_path: Path,
+) -> None:
+    """operation orchestration should give managed Docker one recovery chance first."""
+
+    repo_context = SimpleNamespace(repo_root=tmp_path, repo_id="repo")
+    calls: list[str] = []
+    effects = CliOperationEffects(
+        new_invocation_id=lambda: "inv-1",
+        resolve_caller_identity=lambda: SimpleNamespace(
+            caller_identity=None, error=None
+        ),
+        set_operation_context=lambda context: calls.append("context") or "token",
+        reset_operation_context=lambda token: calls.append("reset"),
+        ensure_managed_runtime_ready=lambda: calls.append("runtime"),
+        warn_or_fail_on_unsafe_app_role=lambda: calls.append("audit"),
+        ensure_repo_registration=lambda **kwargs: calls.append("register"),
+        ensure_shadow_baseline=lambda **kwargs: calls.append("baseline"),
+        maybe_start_sync=lambda context: calls.append("sync") or False,
+        update_operation_polling_status=lambda **kwargs: calls.append("poll"),
+    )
+
+    result = run_cli_operation(
+        command="read",
+        payload={"query": "x"},
+        repo_context=repo_context,
+        repo_id_override=None,
+        no_sync=False,
+        dispatch_operation=lambda command, payload, context: (
+            calls.append("dispatch") or {"status": "ok", "data": {}}
+        ),
+        effects=effects,
+    )
+
+    assert result["status"] == "ok"
+    assert calls == [
+        "context",
+        "runtime",
+        "audit",
+        "register",
+        "dispatch",
+        "baseline",
+        "sync",
+        "poll",
+        "reset",
+    ]
+
+
+def test_operational_command_should_fail_cleanly_when_managed_runtime_is_unavailable(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """managed runtime readiness failures should use the existing clean CLI error path."""
+
+    repo_root = tmp_path / "runtime-down-repo"
+    repo_root.mkdir()
+    resets: list[object] = []
+    runtime = SimpleNamespace(
+        resolve_repo_context=lambda **_kwargs: SimpleNamespace(
+            repo_root=repo_root, repo_id="repo", registration_root=repo_root
+        ),
+        new_invocation_id=lambda: "inv-1",
+        resolve_caller_identity=lambda: SimpleNamespace(
+            caller_identity=None, error=None
+        ),
+        set_operation_context=lambda context: "token",
+        reset_operation_context=lambda token: resets.append(token),
+        ensure_managed_runtime_ready=lambda: (_ for _ in ()).throw(
+            RuntimeError("managed runtime unavailable")
+        ),
+        warn_or_fail_on_unsafe_app_role=lambda: (_ for _ in ()).throw(
+            AssertionError("unexpected audit")
+        ),
+        ensure_repo_registration=lambda **kwargs: None,
+        ensure_shadow_baseline=lambda **kwargs: None,
+        maybe_start_sync=lambda context: False,
+        update_operation_polling_status=lambda **kwargs: None,
+    )
+
+    exit_code = cli_runner.main(
+        [
+            "--repo-root",
+            str(repo_root),
+            "read",
+            "--json",
+            '{"query":"what should fail?"}',
+        ],
+        runtime=runtime,
+    )
+
+    assert exit_code == 1
+    assert "managed runtime unavailable" in capsys.readouterr().err
+    assert resets == ["token"]
 
 
 def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:

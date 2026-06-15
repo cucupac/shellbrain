@@ -25,6 +25,7 @@ class CliRuntime:
     resolve_caller_identity: Callable[[], Any]
     set_operation_context: Callable[[Any], Any]
     reset_operation_context: Callable[[Any], None]
+    ensure_managed_runtime_ready: Callable[[], None]
     ensure_repo_registration: Callable[..., None]
     ensure_shadow_baseline: Callable[..., None]
     maybe_start_sync: Callable[[Any], bool]
