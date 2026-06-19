@@ -225,6 +225,8 @@ def _iter_metadata_files(root: Path) -> Iterable[Path]:
     if direct_root.exists():
         yield from direct_root.rglob("local_*.json")
         return
+    if root.resolve() == Path.home().resolve():
+        return
     yield from root.rglob("local_*.json")
 
 
