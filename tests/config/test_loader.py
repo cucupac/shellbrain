@@ -1,14 +1,17 @@
 """Config loader contracts for renamed create and update policy sections."""
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 import app.core.entities.inner_agents as core_inner_agents
+from app.infrastructure.host_apps.inner_agents.claude_cli import ClaudeCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.startup.internal_agent_config import InternalAgentsConfig
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
+    get_build_context_settings,
     get_build_knowledge_inner_agent_runner,
     get_teach_knowledge_inner_agent_runner,
     get_wiki_summary_inner_agent_runner,
@@ -37,7 +40,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     settings = provider.get_internal_agents()
 
     assert settings["build_context"]["strategy"] == "deterministic_synthesis"
-    assert settings["build_context"]["provider"] == "codex"
+    assert settings["build_context"]["provider"] == "auto"
     assert settings["build_context"]["model"] == "gpt-5.4-mini"
     assert settings["build_context"]["reasoning"] == "medium"
     assert "enabled" not in settings["build_context"]
@@ -67,6 +70,9 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["wiki_summary"]["startup_batch_limit"] == 20
     assert settings["wiki_summary"]["periodic_batch_limit"] == 5
     assert settings["providers"]["codex"]["command"] == "codex"
+    assert settings["providers"]["codex"]["model"] == "gpt-5.4-mini"
+    assert settings["providers"]["claude"]["command"] == "claude"
+    assert settings["providers"]["claude"]["model"] == "sonnet"
     assert "working_directory" not in settings["providers"]["codex"]
     assert "allow_shellbrain_cli" not in settings["providers"]["codex"]
 
@@ -113,33 +119,116 @@ def test_provider_runtime_config_is_startup_owned() -> None:
     assert not hasattr(core_inner_agents, "InternalAgentsConfig")
 
 
-def test_startup_still_wires_codex_build_context_runner() -> None:
-    """startup should still compose the configured Codex build_context runner."""
+def test_internal_agent_config_accepts_auto_without_auto_provider() -> None:
+    """auto is a startup selector, not a configured provider key."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+
+    InternalAgentsConfig.model_validate(settings)
+
+
+def test_internal_agent_config_rejects_unknown_explicit_provider() -> None:
+    """unknown explicit providers should still fail validation."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+    settings["build_context"]["provider"] = "unknown"
+
+    with pytest.raises(ValueError):
+        InternalAgentsConfig.model_validate(settings)
+
+
+def test_internal_agent_config_requires_provider_model() -> None:
+    """provider models should be explicit, not inferred from agent defaults."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+    del settings["providers"]["claude"]["model"]
+
+    with pytest.raises(ValueError):
+        InternalAgentsConfig.model_validate(settings)
+
+
+def test_startup_auto_prefers_codex_when_both_commands_exist(monkeypatch) -> None:
+    """auto should prefer Codex over Claude when both CLIs are installed."""
+
+    _patch_which(monkeypatch, {"codex", "claude"})
 
     runner = get_build_context_inner_agent_runner()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)
 
 
-def test_startup_wires_codex_build_knowledge_runner() -> None:
-    """startup should compose the configured Codex build_knowledge runner."""
+def test_startup_auto_uses_claude_when_codex_is_missing(monkeypatch) -> None:
+    """auto should use Claude only when Codex is unavailable."""
 
-    runner = get_build_knowledge_inner_agent_runner()
+    _patch_which(monkeypatch, {"claude"})
+
+    runner = get_build_context_inner_agent_runner()
+
+    assert isinstance(runner, ClaudeCliInnerAgentRunner)
+
+
+def test_startup_auto_returns_no_runner_when_no_provider_is_installed(monkeypatch) -> None:
+    """auto should not construct a runner when no configured CLI exists."""
+
+    _patch_which(monkeypatch, set())
+
+    assert get_build_context_inner_agent_runner() is None
+
+
+def test_startup_resolves_runtime_settings_to_selected_provider(monkeypatch) -> None:
+    """runtime settings should not pass provider=auto into provider requests."""
+
+    _patch_which(monkeypatch, {"claude"})
+
+    settings = get_build_context_settings()
+
+    assert settings.provider == "claude"
+    assert settings.model == "sonnet"
+
+
+def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
+    """explicit provider selection should construct that runner without probing fallback."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+    settings["build_context"]["provider"] = "codex"
+    monkeypatch.setattr(
+        "app.startup.internal_agents.get_config_provider",
+        lambda: SimpleNamespace(get_internal_agents=lambda: settings),
+    )
+    _patch_which(monkeypatch, {"claude"})
+
+    runner = get_build_context_inner_agent_runner()
+    resolved = get_build_context_settings()
+
+    assert isinstance(runner, CodexCliInnerAgentRunner)
+    assert resolved.provider == "codex"
+    assert resolved.model == "gpt-5.4-mini"
+
+
+@pytest.mark.parametrize(
+    "runner_getter",
+    (
+        get_build_knowledge_inner_agent_runner,
+        get_teach_knowledge_inner_agent_runner,
+        get_wiki_summary_inner_agent_runner,
+    ),
+)
+def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> None:
+    """startup should compose the configured non-recall runners."""
+
+    _patch_which(monkeypatch, {"codex", "claude"})
+
+    runner = runner_getter()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)
 
 
-def test_startup_wires_codex_teach_runner() -> None:
-    """startup should compose the configured Codex explicit teaching runner."""
+def _patch_which(monkeypatch, installed: set[str]) -> None:
+    def _fake_which(command: str) -> str | None:
+        return f"/usr/bin/{command}" if command in installed else None
 
-    runner = get_teach_knowledge_inner_agent_runner()
-
-    assert isinstance(runner, CodexCliInnerAgentRunner)
-
-
-def test_startup_wires_codex_wiki_summary_runner() -> None:
-    """startup should compose the configured Codex wiki_summary runner."""
-
-    runner = get_wiki_summary_inner_agent_runner()
-
-    assert isinstance(runner, CodexCliInnerAgentRunner)
+    monkeypatch.setattr("app.startup.internal_agents.shutil.which", _fake_which)

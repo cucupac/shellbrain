@@ -340,6 +340,10 @@ def _stub_graph_pack(
 
     captured: dict[str, object] = {}
     monkeypatch.setattr(
+        "app.startup.internal_agents.shutil.which",
+        lambda command: f"/usr/bin/{command}" if command == "codex" else None,
+    )
+    monkeypatch.setattr(
         "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
         lambda: None,
     )

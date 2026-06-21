@@ -21,6 +21,7 @@ class InnerAgentProviderConfig(_StrictModel):
     """Provider-specific runtime settings selected by startup."""
 
     command: str = Field(min_length=1)
+    model: str = Field(min_length=1)
 
 
 class InternalAgentsConfig(_StrictModel):
@@ -50,6 +51,8 @@ class InternalAgentsConfig(_StrictModel):
 
         for agent_name in ("build_context", "build_knowledge", "teach", "wiki_summary"):
             agent = getattr(self, agent_name)
+            if agent.provider == "auto":
+                continue
             if agent.provider not in self.providers:
                 raise ValueError(
                     f"internal_agents.{agent_name}.provider is not configured"

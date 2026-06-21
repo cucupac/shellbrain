@@ -635,7 +635,7 @@ def _inner_agent_env(
 
 
 def _inherit_parent_caller_identity(env: dict[str, str]) -> None:
-    """Preserve the outer host identity across a nested Codex inner-agent run."""
+    """Preserve the outer host identity across a nested inner-agent run."""
 
     if env.get("CODEX_THREAD_ID"):
         env["SHELLBRAIN_PARENT_HOST_APP"] = "codex"
