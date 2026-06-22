@@ -199,9 +199,15 @@ def test_packaged_startup_guidance_assets_should_exist_for_codex_and_claude() ->
     """The packaged startup guidance blocks should ship for the managed startup-layer install."""
 
     assets_root = _onboarding_assets_root()
+    codex_startup = _read_text(assets_root / "codex" / "AGENTS.md")
+    claude_startup = _read_text(assets_root / "claude" / "CLAUDE.md")
 
     assert (assets_root / "codex" / "AGENTS.md").is_file()
     assert (assets_root / "claude" / "CLAUDE.md").is_file()
+    assert "Use Shellbrain for targeted recall during agent work." in codex_startup
+    assert "Use Shellbrain for targeted recall during agent work." in claude_startup
+    assert "You have a persistent memory system called Shellbrain" not in codex_startup
+    assert "You have a persistent memory system called Shellbrain" not in claude_startup
 
 
 def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons() -> (

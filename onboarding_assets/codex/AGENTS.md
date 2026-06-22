@@ -1,52 +1,40 @@
 ## Shellbrain
 
-You have a persistent memory system called Shellbrain. This section exists to make you remember to use it at the right moments.
+Use Shellbrain for targeted recall during agent work.
 
-### The Core Habit
-
-As you work, maintain a mental summary of your current subproblem as:
+Keep this tuple in mind:
 
 `goal | surface | obstacle | hypothesis`
 
-When that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output. This keeps Shellbrain in your local attention so you can decide whether recall would help.
+Emit one `SB:` line when the tuple changes or you hit a boundary state:
 
-Boundary states:
+- goal, surface, obstacle, or hypothesis changed
+- same approach failed twice
+- an error repeats
+- you are about to make an evidence-bearing decision
+- you switch files, subsystems, or strategy
+- you are closing out
 
-- The goal, surface, obstacle, or hypothesis changed.
-- The same approach failed twice.
-- An error is repeating.
-- You are about to make an evidence-bearing decision.
-- You are switching files, subsystems, or implementation strategy.
-- You are closing out a task.
-
-### What To Say
-
-If prior context might help:
+If prior context may help:
 
 `SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
 
-Then call Shellbrain recall:
+Then run:
 
 ```bash
 shellbrain recall --json '{"query":"<targeted question>","current_problem":{"goal":"<goal>","surface":"<surface>","obstacle":"<obstacle>","hypothesis":"<hypothesis or none yet>"}}'
 ```
 
-If the tuple has not changed and there is no new evidence, failure, or uncertainty:
+If recall would not help:
 
 `SB: skip | same signature | <one-line reason>`
 
 Then continue. Do not call recall reflexively.
 
-### Worker Boundary
-
-As the working agent, use `shellbrain recall` for normal task context. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something.
+Use `shellbrain recall` for normal task context. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something.
 
 If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed.
 
 Do not call `shellbrain read`, `shellbrain events`, `shellbrain memory`, `shellbrain concept`, or `shellbrain scenario`.
-
-Shellbrain's internal agents handle raw retrieval, synthesis, memory writing, concept updates, scenario recording, and teach consolidation.
-
-### Reference
 
 Use the installed `shellbrain` skill for the detailed recall workflow.
