@@ -81,6 +81,7 @@ def build_admin_command_dependencies():
     from app.startup import migrations
     from app.startup import model_usage_backfill
     from app.startup.admin_dependencies import AdminCommandDependencies
+    from app.infrastructure.local_state import recall_mode_store
 
     return AdminCommandDependencies(
         upgrade_database=migrations.upgrade_database,
@@ -107,6 +108,8 @@ def build_admin_command_dependencies():
         load_session_state=startup_admin.load_session_state,
         delete_session_state=startup_admin.delete_session_state,
         gc_session_state=startup_admin.gc_session_state,
+        load_recall_mode=recall_mode_store.load_recall_mode,
+        save_recall_mode=recall_mode_store.save_recall_mode,
     )
 
 

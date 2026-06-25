@@ -21,6 +21,10 @@ from app.core.ports.host_apps.inner_agents import (
 )
 from app.infrastructure.host_apps.inner_agents.claude_cli import ClaudeCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
+from app.infrastructure.local_state.recall_mode_store import (
+    RECALL_MODE_FAST,
+    load_recall_mode,
+)
 from app.startup.config import get_config_provider
 from app.startup.internal_agent_config import InternalAgentsConfig
 
@@ -43,7 +47,7 @@ def get_build_context_settings() -> InnerAgentSettings:
     """Return typed settings for the read-only build_context agent."""
 
     config = get_internal_agents_config()
-    return _resolve_settings(config, config.build_context)
+    return _resolve_build_context_settings(config)
 
 
 def get_build_knowledge_settings() -> BuildKnowledgeSettings:
@@ -71,7 +75,10 @@ def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
     """Return the configured build_context provider adapter."""
 
     config = get_internal_agents_config()
-    return _runner_for(config, config.build_context)
+    settings = _resolve_build_context_settings(config)
+    if settings.strategy == "deterministic_only":
+        return None
+    return _runner_for(config, settings)
 
 
 def get_build_knowledge_inner_agent_runner() -> IBuildKnowledgeAgentRunner | None:
@@ -136,6 +143,16 @@ def _resolve_settings(
             "model": provider.model,
         }
     )
+
+
+def _resolve_build_context_settings(config: InternalAgentsConfig) -> InnerAgentSettings:
+    settings = _resolve_settings(config, config.build_context)
+    mode, _path, exists = load_recall_mode()
+    if not exists:
+        return settings
+    if mode == RECALL_MODE_FAST:
+        return settings.model_copy(update={"strategy": "deterministic_only"})
+    return settings.model_copy(update={"strategy": "deterministic_synthesis"})
 
 
 def _select_provider(

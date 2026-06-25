@@ -106,6 +106,18 @@ def run_admin_command(
         print(json.dumps(summary.to_payload(), indent=2, sort_keys=True))
         return 0
 
+    if args.admin_command == "recall":
+        try:
+            if args.recall_command in {"fast", "full"}:
+                mode, path, exists = dependencies.save_recall_mode(args.recall_command)
+            else:
+                mode, path, exists = dependencies.load_recall_mode()
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(_format_recall_mode(mode=mode, path=path, exists=exists))
+        return 0
+
     repo_root = resolve_admin_repo_root(getattr(args, "repo_root", None))
     if args.admin_command == "install-claude-hook":
         settings_path = dependencies.install_repo_claude_hook(repo_root=repo_root)
@@ -141,3 +153,18 @@ def run_admin_command(
             print(json.dumps({"deleted": deleted}, indent=2, sort_keys=True))
             return 0
     raise ValueError(f"Unsupported admin command: {args.admin_command}")
+
+
+def _format_recall_mode(*, mode: str, path: Path, exists: bool) -> str:
+    if not exists:
+        return "Recall mode: full (default; no override file)"
+    if mode == "fast":
+        return f"Recall mode: fast (deterministic only) from {_display_path(path)}"
+    return f"Recall mode: full (LLM synthesis) from {_display_path(path)}"
+
+
+def _display_path(path: Path) -> str:
+    try:
+        return f"~/{path.expanduser().resolve().relative_to(Path.home())}"
+    except ValueError:
+        return str(path)

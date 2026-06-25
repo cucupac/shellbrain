@@ -778,6 +778,86 @@ def test_admin_backfill_token_usage_should_print_the_summary(
     assert '"records_attempted": 5' in output
 
 
+def test_admin_recall_help_should_include_modes(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """admin recall help should expose the human recall mode toggle."""
+
+    with pytest.raises(SystemExit) as excinfo:
+        cli_main.main(["admin", "recall", "--help"])
+
+    assert excinfo.value.code == 0
+    output = capsys.readouterr().out
+    assert "recall fast" in output
+    assert "recall full" in output
+    assert "recall status" in output
+
+
+def test_admin_recall_should_write_and_report_mode(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """admin recall should persist and report the machine-local recall mode."""
+
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
+
+    fast_exit = cli_main.main(["admin", "recall", "fast"])
+    fast_output = capsys.readouterr().out
+    status_exit = cli_main.main(["admin", "recall", "status"])
+    status_output = capsys.readouterr().out
+    full_exit = cli_main.main(["admin", "recall", "full"])
+    full_output = capsys.readouterr().out
+
+    assert fast_exit == 0
+    assert "Recall mode: fast (deterministic only)" in fast_output
+    assert status_exit == 0
+    assert "Recall mode: fast (deterministic only)" in status_output
+    assert full_exit == 0
+    assert "Recall mode: full (LLM synthesis)" in full_output
+    assert (tmp_path / "recall.toml").read_text(encoding="utf-8") == 'mode = "full"\n'
+
+
+def test_admin_recall_status_should_report_missing_override(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """admin recall status should explain the default when no override exists."""
+
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
+
+    exit_code = cli_main.main(["admin", "recall", "status"])
+
+    assert exit_code == 0
+    assert (
+        capsys.readouterr().out.strip()
+        == "Recall mode: full (default; no override file)"
+    )
+
+
+def test_admin_recall_rejects_invalid_mode() -> None:
+    """admin recall should reject unknown mode names at parse time."""
+
+    parser = cli_parser.build_parser()
+
+    with pytest.raises(SystemExit) as excinfo:
+        parser.parse_args(["admin", "recall", "turbo"])
+
+    assert excinfo.value.code == 2
+
+
+def test_admin_recall_status_fails_on_invalid_config(
+    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """admin recall status should fail clearly on a corrupt override file."""
+
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
+    (tmp_path / "recall.toml").write_text('mode = "turbo"\n', encoding="utf-8")
+
+    exit_code = cli_main.main(["admin", "recall", "status"])
+
+    captured = capsys.readouterr()
+    assert exit_code == 1
+    assert "Invalid recall mode config" in captured.err
+
+
 def test_admin_should_not_expose_concept_embedding_backfill_commands() -> None:
     """concept embedding backfill should not be a user-facing CLI route."""
 

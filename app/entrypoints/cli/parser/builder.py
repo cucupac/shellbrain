@@ -291,6 +291,18 @@ _ADMIN_HELP = dedent(
     Example:
       shellbrain init
       shellbrain admin migrate
+      shellbrain admin recall fast
+    """
+)
+
+_RECALL_MODE_HELP = dedent(
+    """\
+    Toggle whether recall uses the inner LLM synthesis agent.
+
+    Examples:
+      shellbrain admin recall fast
+      shellbrain admin recall full
+      shellbrain admin recall status
     """
 )
 
@@ -754,6 +766,19 @@ def build_parser() -> argparse.ArgumentParser:
         epilog=_BACKFILL_TOKEN_USAGE_HELP,
         formatter_class=_HelpFormatter,
     )
+    recall_parser = admin_subparsers.add_parser(
+        "recall",
+        help="Toggle recall between fast deterministic mode and full LLM synthesis.",
+        description="Toggle whether recall uses the inner LLM synthesis agent.",
+        epilog=_RECALL_MODE_HELP,
+        formatter_class=_HelpFormatter,
+    )
+    recall_subparsers = recall_parser.add_subparsers(
+        dest="recall_command", required=True, metavar="recall-command"
+    )
+    recall_subparsers.add_parser("fast", help="Use deterministic-only recall.")
+    recall_subparsers.add_parser("full", help="Use LLM synthesis recall.")
+    recall_subparsers.add_parser("status", help="Print the current recall mode.")
     install_hook_parser = admin_subparsers.add_parser(
         "install-claude-hook",
         help="Install the repo-local Claude hook used for trusted caller identity.",

@@ -32,3 +32,5 @@ class AdminCommandDependencies(Protocol):
     load_session_state: Callable[..., Any]
     delete_session_state: Callable[..., Any]
     gc_session_state: Callable[..., Any]
+    load_recall_mode: Callable[..., Any]
+    save_recall_mode: Callable[..., Any]

@@ -8,6 +8,10 @@ import pytest
 import app.core.entities.inner_agents as core_inner_agents
 from app.infrastructure.host_apps.inner_agents.claude_cli import ClaudeCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
+from app.infrastructure.local_state.recall_mode_store import (
+    load_recall_mode,
+    save_recall_mode,
+)
 from app.startup.internal_agent_config import InternalAgentsConfig
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
@@ -17,6 +21,11 @@ from app.startup.internal_agents import (
     get_wiki_summary_inner_agent_runner,
 )
 from app.startup.settings import YamlConfigProvider
+
+
+@pytest.fixture(autouse=True)
+def _isolated_shellbrain_home(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path / "shellbrain-home"))
 
 
 def test_yaml_config_provider_exposes_separate_create_and_update_policy_sections() -> (
@@ -187,6 +196,87 @@ def test_startup_resolves_runtime_settings_to_selected_provider(monkeypatch) -> 
 
     assert settings.provider == "claude"
     assert settings.model == "sonnet"
+
+
+def test_recall_mode_store_defaults_to_full_when_missing(tmp_path: Path) -> None:
+    """missing recall override should preserve packaged defaults."""
+
+    mode, path, exists = load_recall_mode(tmp_path / "missing.toml")
+
+    assert mode == "full"
+    assert path == tmp_path / "missing.toml"
+    assert exists is False
+
+
+@pytest.mark.parametrize("mode", ("fast", "full"))
+def test_recall_mode_store_round_trips_modes(tmp_path: Path, mode: str) -> None:
+    """machine-local recall mode should persist as tiny TOML."""
+
+    path = tmp_path / "recall.toml"
+
+    save_recall_mode(mode, path)
+
+    assert path.read_text(encoding="utf-8") == f'mode = "{mode}"\n'
+    assert load_recall_mode(path) == (mode, path, True)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ("mode = [", 'mode = "turbo"\n', 'mode = "fast"\nextra = true\n'),
+)
+def test_recall_mode_store_rejects_invalid_config(tmp_path: Path, text: str) -> None:
+    """bad recall override files should fail clearly."""
+
+    path = tmp_path / "recall.toml"
+    path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="Invalid recall mode config"):
+        load_recall_mode(path)
+
+
+def test_recall_mode_fast_skips_build_context_runner(monkeypatch, tmp_path: Path) -> None:
+    """fast recall mode should force deterministic-only recall."""
+
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
+    save_recall_mode("fast")
+    _patch_which(monkeypatch, {"codex", "claude"})
+
+    settings = get_build_context_settings()
+
+    assert settings.strategy == "deterministic_only"
+    assert get_build_context_inner_agent_runner() is None
+
+
+def test_recall_mode_full_forces_synthesis(monkeypatch, tmp_path: Path) -> None:
+    """full recall mode should force the normal synthesis strategy."""
+
+    provider = YamlConfigProvider(Path("app/settings/defaults"))
+    settings = provider.get_internal_agents()
+    settings["build_context"]["strategy"] = "deterministic_only"
+    monkeypatch.setattr(
+        "app.startup.internal_agents.get_config_provider",
+        lambda: SimpleNamespace(get_internal_agents=lambda: settings),
+    )
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
+    save_recall_mode("full")
+    _patch_which(monkeypatch, {"codex"})
+
+    resolved = get_build_context_settings()
+
+    assert resolved.strategy == "deterministic_synthesis"
+    assert isinstance(get_build_context_inner_agent_runner(), CodexCliInnerAgentRunner)
+
+
+def test_missing_recall_mode_preserves_packaged_strategy(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """missing recall override should not rewrite packaged build-context config."""
+
+    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
+
+    settings = get_build_context_settings()
+
+    assert settings.strategy == "deterministic_synthesis"
 
 
 def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
