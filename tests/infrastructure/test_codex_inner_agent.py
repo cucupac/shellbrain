@@ -295,6 +295,10 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "AUTHORITY\n" in prompt
     assert "PROTOCOL\n" in prompt
     assert "JUDGMENT\n" in prompt
+    assert "WRITE CLEARLY\n" in prompt
+    assert "Lead with the answer" in prompt
+    assert "Summary: max two sentences" in prompt
+    assert "Lists: max three items" in prompt
     assert prompt.index("events --json") < prompt.index("read --json")
     assert "Shellbrain is a repo-scoped memory system" in prompt
     assert "# KNOWLEDGE MODEL" in prompt
@@ -367,6 +371,10 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "# PREFERENCES" in prompt
     assert "# CHANGE AND CONTRADICTION JUDGMENT" in prompt
     assert "# SECTION RULES" in prompt
+    assert "# WRITE CLEARLY" in prompt
+    assert "Lead with the answer" in prompt
+    assert "Summary: max two sentences" in prompt
+    assert "Lists: max three items" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
     assert "do not include read_trace or sources" in prompt
     assert "deterministic source provenance" in prompt

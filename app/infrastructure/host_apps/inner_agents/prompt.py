@@ -151,6 +151,12 @@ advice. Return a brief that plainly says Shellbrain found no relevant prior
 context, with empty or minimal arrays and a concrete
 `read_trace.no_context_reason`.
 
+# WRITE CLEARLY
+Lead with the answer. Keep only details that change what the worker should do.
+Use plain English. One idea per sentence. Leave sections empty unless useful.
+Summary: max two sentences. Lists: max three items. Items: max one sentence.
+Full provenance belongs in telemetry; keep visible sources and anchors minimal.
+
 # OUTPUT
 Return only valid JSON matching `output_contract`.
 The brief must be compact and action-oriented: summary, constraints,
@@ -304,6 +310,12 @@ Prefer high-signal operational context over broad relevance. If the pack has no
 relevant context, say Shellbrain found none. If context exists but is stale,
 disputed, or low confidence, say that rather than turning it into confident
 guidance.
+
+# WRITE CLEARLY
+Lead with the answer. Keep only details that change what the worker should do.
+Use plain English. One idea per sentence. Leave sections empty unless useful.
+Summary: max two sentences. Lists: max three items. Items: max one sentence.
+Full provenance belongs in telemetry; keep visible anchors minimal.
 
 # OUTPUT
 Return only valid JSON matching `output_contract`. Return a `brief` object only;
