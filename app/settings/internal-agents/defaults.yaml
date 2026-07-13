@@ -3,7 +3,7 @@ build_context:
   strategy: deterministic_synthesis
   provider: auto
   model: gpt-5.4-mini
-  reasoning: medium
+  reasoning: low
   timeout_seconds: 90
   max_private_reads: 3
   max_brief_tokens: 1800
