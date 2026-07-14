@@ -370,21 +370,17 @@ def test_read_help_should_include_one_example(
 def test_recall_help_should_describe_read_only_synthesis_contract(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """recall help should describe the worker-facing synthesis payload."""
+    """recall help should describe the worker-facing natural-language query."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["recall", "--help"])
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "shellbrain recall --json" in output
+    assert 'shellbrain recall "What context matters for this migration lock timeout?"' in output
     assert "normal working-agent interface" in output
     assert "not internal commands like `read`, `events`, or `concept show`" in output
-    assert "query" in output
-    assert "Requires `query` and `current_problem`" in output
-    assert "goal" in output
-    assert "hypothesis" in output
-    assert "Accepts optional `limit`" in output
+    assert "natural-language query" in output
     assert "does not mutate" in output
 
 
@@ -1001,8 +997,8 @@ def test_main_accepts_repo_targeting_flags_after_subcommand(
     assert resolved_context.registration_root == repo_root.resolve()
 
 
-def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> None:
-    """recall should use the same operational JSON dispatch path as read."""
+def test_main_dispatches_recall_query(monkeypatch, tmp_path: Path) -> None:
+    """recall should dispatch one positional natural-language query."""
 
     repo_root = tmp_path / "recall-repo"
     repo_root.mkdir()
@@ -1029,24 +1025,14 @@ def test_main_dispatches_recall_json_payload(monkeypatch, tmp_path: Path) -> Non
             "--repo-root",
             str(repo_root),
             "recall",
-            "--json",
-            (
-                '{"query":"x","current_problem":{"goal":"g","surface":"s",'
-                '"obstacle":"o","hypothesis":"none yet"}}'
-            ),
+            "What context matters for this migration lock timeout?",
         ]
     )
 
     assert exit_code == 0
     assert captured["command"] == "recall"
     assert captured["payload"] == {
-        "query": "x",
-        "current_problem": {
-            "goal": "g",
-            "surface": "s",
-            "obstacle": "o",
-            "hypothesis": "none yet",
-        },
+        "query": "What context matters for this migration lock timeout?"
     }
 
 

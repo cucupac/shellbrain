@@ -50,16 +50,9 @@
           </div>
           <div>
             <div class="code-block">
-              <pre>shellbrain recall --json '{
-  "query": "&lt;what you want to know&gt;",
-  "current_problem": {
-    "goal": "&lt;what you are trying to do&gt;",
-    "surface": "&lt;where you are working&gt;",
-    "obstacle": "&lt;what is blocking you&gt;",
-    "hypothesis": "&lt;your current theory&gt;"
-  }
-}'</pre>
+              <pre>shellbrain recall "&lt;what you want to know&gt;"</pre>
             </div>
+            <p>Recall receives only this query, so include relevant task context naturally in the question.</p>
             <div class="module-grid" style="margin-top: var(--spacing-40);">
               <article class="module">
                 <h3>Call Recall When</h3>
@@ -92,7 +85,7 @@
           <div class="module-grid">
             <article class="module">
               <h3>Explicit Teach</h3>
-              <div class="code-block"><pre>shellbrain teach "&lt;statement&gt;"</pre></div>
+              <div class="code-block"><pre>shellbrain teach --json '{"text":"&lt;statement&gt;","current_problem":{"goal":"&lt;goal&gt;","surface":"&lt;surface&gt;","obstacle":"&lt;obstacle&gt;","hypothesis":"&lt;hypothesis&gt;"}}'</pre></div>
               <p>The statement is stored and retrievable immediately.</p>
             </article>
             <article class="module">

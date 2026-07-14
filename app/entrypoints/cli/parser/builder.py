@@ -45,7 +45,8 @@ _TOP_LEVEL_HELP = dedent(
         - Use `shellbrain recall` for normal task context.
         - Use `shellbrain teach` only when the user explicitly asks to store or teach Shellbrain something.
         - If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed.
-        - Send a concrete `query` plus required `current_problem`.
+        - Send one concrete natural-language query.
+        - Recall receives only this query, so include relevant task context naturally.
         - Avoid generic prompts like "what should I know about this repo?"
 
       Internal recall agents:
@@ -74,7 +75,7 @@ _TOP_LEVEL_HELP = dedent(
       shellbrain admin migrate
 
       Working agents:
-      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"lock timeout","hypothesis":"missing timeout guard"}}'
+      shellbrain recall "What context matters for this migration lock timeout?"
       shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
       shellbrain snapshot
 
@@ -158,14 +159,13 @@ _RECALL_HELP = dedent(
     This is the normal working-agent interface. Working agents should call
     `recall`, not internal commands like `read`, `events`, or `concept show`.
 
-    Requires `query` and `current_problem`.
-    `current_problem` must include non-empty `goal`, `surface`, `obstacle`, and
-    `hypothesis`; use an explicit value like "none yet" when there is no hypothesis.
-    Accepts optional `limit`.
+    Pass one self-contained natural-language query naming the failure mode,
+    subsystem, decision, file area, or constraint that matters. Recall receives
+    only this query, so include relevant task context naturally.
     It does not mutate memories, concepts, utility observations, or problem runs.
 
     Example:
-      shellbrain recall --json '{"query":"What context matters for this migration lock timeout?","current_problem":{"goal":"fix migration locking","surface":"db admin","obstacle":"Docker unavailable","hypothesis":"none yet"}}'
+      shellbrain recall "What context matters for this migration lock timeout?"
     """
 )
 
@@ -565,7 +565,7 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=_HelpFormatter,
     )
     _add_repo_context_arguments(recall_parser, suppress_default=True)
-    _add_payload_arguments(recall_parser)
+    recall_parser.add_argument("query", help="Natural-language recall query.")
 
     teach_parser = subparsers.add_parser(
         "teach",

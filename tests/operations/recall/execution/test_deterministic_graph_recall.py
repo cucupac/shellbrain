@@ -28,18 +28,14 @@ from app.core.use_cases.retrieval.deterministic_graph_recall import (
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 
 
-def test_query_lanes_omit_placeholder_current_problem_values() -> None:
-    """query lane construction should not preserve empty problem placeholders."""
+def test_query_lanes_extract_identifiers_from_natural_language_query() -> None:
+    """query lanes should preserve concrete identifiers from natural language."""
 
-    request = _request(
-        query='Debug `app/core/settings.py` "TimeoutError" SB-123 v1.2',
-        hypothesis="none yet",
-    )
+    request = _request(query='Debug `app/core/settings.py` "TimeoutError" SB-123 v1.2')
 
     lanes = _build_query_lanes(request)
     lane_queries = {lane.name: lane.query for lane in lanes}
 
-    assert "none yet" not in " ".join(lane_queries.values()).lower()
     assert "app/core/settings.py" in lane_queries["identifiers"]
     assert "TimeoutError" in lane_queries["identifiers"]
     assert "SB-123" in lane_queries["identifiers"]
@@ -132,18 +128,11 @@ def test_graph_pack_expands_canonical_structural_memory_relations() -> None:
     assert sources_by_id["mem-change"]["input_section"] == "explicit_related"
 
 
-def _request(*, query: str, hypothesis: str = "missing timeout guard") -> MemoryRecallRequest:
+def _request(*, query: str) -> MemoryRecallRequest:
     return MemoryRecallRequest.model_validate(
         {
-            "op": "recall",
             "repo_id": "repo-a",
             "query": query,
-            "current_problem": {
-                "goal": "fix migration",
-                "surface": "db admin app/core/settings.py",
-                "obstacle": "TimeoutError while loading config",
-                "hypothesis": hypothesis,
-            },
         }
     )
 

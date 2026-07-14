@@ -22,8 +22,10 @@ If prior context may help:
 Then run:
 
 ```bash
-shellbrain recall --json '{"query":"<targeted question>","current_problem":{"goal":"<goal>","surface":"<surface>","obstacle":"<obstacle>","hypothesis":"<hypothesis or none yet>"}}'
+shellbrain recall "<targeted natural-language question>"
 ```
+
+Recall receives only this query, so include relevant task context naturally in the question.
 
 If recall would not help:
 

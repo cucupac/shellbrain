@@ -84,10 +84,8 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": _current_problem(),
             }
         ),
         None,
@@ -105,7 +103,7 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     assert result.data["brief"]["sources"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
-    assert runner.request.current_problem == _current_problem()
+    assert runner.request.query == "migration timeout"
     assert not hasattr(runner.request, "candidate_" "context")
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["input_tokens"] == 100
@@ -125,10 +123,8 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": _current_problem(),
             }
         ),
         object(),
@@ -173,10 +169,8 @@ def test_build_context_deterministic_only_skips_provider(monkeypatch) -> None:
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": _current_problem(),
             }
         ),
         object(),
@@ -203,10 +197,8 @@ def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": _current_problem(),
             }
         ),
         object(),
@@ -246,10 +238,8 @@ def test_build_context_lazy_fallback_opens_uow_only_for_internal_read(
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": _current_problem(),
             }
         ),
         None,
@@ -268,10 +258,8 @@ def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "nothing",
-                "current_problem": _current_problem(),
             }
         ),
         object(),
@@ -294,10 +282,8 @@ def test_build_context_provider_error_uses_deterministic_fallback(
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
             {
-                "op": "recall",
                 "repo_id": "repo-a",
                 "query": "migration timeout",
-                "current_problem": _current_problem(),
             }
         ),
         object(),
@@ -356,23 +342,12 @@ def _deterministic_only_settings() -> InnerAgentSettings:
     )
 
 
-def _current_problem() -> dict[str, str]:
-    """Return the mandatory worker problem context for recall tests."""
-
-    return {
-        "goal": "fix migration",
-        "surface": "db admin",
-        "obstacle": "lock timeout",
-        "hypothesis": "missing timeout guard",
-    }
-
-
 def _graph_pack() -> dict:
     """Return one compact deterministic graph pack."""
 
     return {
         "strategy": "deterministic_graph",
-        "request": {"query": "migration timeout", "current_problem": _current_problem()},
+        "request": {"query": "migration timeout"},
         "query_lanes": [{"lane": "original", "query": "migration timeout"}],
         "memories": [
             {
@@ -430,7 +405,7 @@ def _empty_graph_pack() -> dict:
 
     return {
         "strategy": "deterministic_graph",
-        "request": {"query": "nothing", "current_problem": _current_problem()},
+        "request": {"query": "nothing"},
         "query_lanes": [],
         "memories": [],
         "concepts": [],

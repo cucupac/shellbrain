@@ -55,7 +55,6 @@ _CONCEPT_HARD_CAP = 8
 _RELATION_NEIGHBOR_CAP = 4
 _HIGH_SIGNAL_RELATIONS = {"depends_on", "constrains", "precedes", "contains"}
 _HIGH_SIGNAL_CLAIMS = {"invariant", "failure_mode", "usage_note", "behavior"}
-_PLACEHOLDER_VALUES = {"none", "none yet", "n/a", "na", "unknown", "not sure"}
 
 
 @dataclass(frozen=True)
@@ -142,7 +141,6 @@ def build_deterministic_graph_pack(
         "strategy": "deterministic_graph",
         "request": {
             "query": request.query,
-            "current_problem": request.current_problem.model_dump(mode="python"),
         },
         "query_lanes": [
             {"lane": lane.name, "query": lane.query, "terms": list(lane.terms)}
@@ -320,10 +318,9 @@ def source_items_from_graph_pack(pack: dict[str, Any]) -> list[dict[str, Any]]:
 
 def _build_query_lanes(request: MemoryRecallRequest) -> list[_QueryLane]:
     original = _lane("original", request.query)
-    current_problem = _current_problem_lane(request)
     identifiers = _identifier_lane(request)
     traps = _prior_cases_lane(request)
-    lanes = [lane for lane in (original, current_problem, identifiers, traps) if lane]
+    lanes = [lane for lane in (original, identifiers, traps) if lane]
     deduped: list[_QueryLane] = []
     seen_queries: set[str] = set()
     for lane in lanes:
@@ -343,24 +340,13 @@ def _lane(name: str, query: str) -> _QueryLane | None:
     return _QueryLane(name=name, query=text, terms=terms)
 
 
-def _current_problem_lane(request: MemoryRecallRequest) -> _QueryLane | None:
-    problem = request.current_problem.model_dump(mode="python")
-    parts = [
-        value
-        for key in ("surface", "obstacle", "hypothesis", "goal")
-        if _useful_problem_part(value := str(problem.get(key) or ""))
-    ]
-    return _lane("current_problem", " ".join(parts))
-
-
 def _identifier_lane(request: MemoryRecallRequest) -> _QueryLane | None:
-    problem_text = " ".join(request.current_problem.model_dump(mode="python").values())
-    identifiers = _extract_identifiers(f"{request.query} {problem_text}")
+    identifiers = _extract_identifiers(request.query)
     return _lane("identifiers", " ".join(identifiers))
 
 
 def _prior_cases_lane(request: MemoryRecallRequest) -> _QueryLane | None:
-    terms = list(dict.fromkeys(_tokenize(f"{request.query} {request.current_problem.obstacle}")))
+    terms = list(dict.fromkeys(_tokenize(request.query)))
     strongest = " ".join(terms[:8])
     if not strongest:
         return None
@@ -371,7 +357,7 @@ def _prior_cases_lane(request: MemoryRecallRequest) -> _QueryLane | None:
 
 
 def _broad_domain_lane(request: MemoryRecallRequest) -> _QueryLane | None:
-    terms = _tokenize(f"{request.current_problem.surface} {request.current_problem.goal}")
+    terms = _tokenize(request.query)
     if not terms:
         return None
     return _lane("broad_domain", " ".join(dict.fromkeys(terms[:8])))
@@ -1390,11 +1376,6 @@ def _extract_identifiers(text: str) -> tuple[str, ...]:
 
 def _tokenize(text: str) -> tuple[str, ...]:
     return tuple(re.findall(r"[a-z0-9_./:-]+", text.lower()))
-
-
-def _useful_problem_part(value: str) -> bool:
-    text = value.strip().lower()
-    return bool(text and text not in _PLACEHOLDER_VALUES)
 
 
 def _dedupe_reasons(reasons: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:

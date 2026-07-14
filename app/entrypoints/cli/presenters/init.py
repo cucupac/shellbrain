@@ -34,7 +34,7 @@ def render_success_lines(
             "Repo registration: deferred until first Shellbrain use inside a repo."
         )
         lines.append(
-            'Next: from inside a repo, run shellbrain recall --json \'{"query":"What prior Shellbrain context matters for this task?","current_problem":{"goal":"start work","surface":"repo session","obstacle":"none yet","hypothesis":"none yet"}}\''
+            'Next: from inside a repo, run shellbrain recall "What prior Shellbrain context matters for this task?"'
         )
     else:
         lines.insert(1, f"Repo: {registration.repo_id}")
@@ -44,7 +44,7 @@ def render_success_lines(
                 "Repo identity is weak-local and will change if this directory moves. Use --repo-id for a durable override.",
             )
         lines.append(
-            'Next: shellbrain recall --json \'{"query":"What prior Shellbrain context matters for this task?","current_problem":{"goal":"start work","surface":"repo session","obstacle":"none yet","hypothesis":"none yet"}}\''
+            'Next: shellbrain recall "What prior Shellbrain context matters for this task?"'
         )
     lines.extend(notes)
     return lines

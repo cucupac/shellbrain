@@ -122,11 +122,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     captured = _stub_graph_pack(monkeypatch, pack=_candidate_pack())
 
     result = handle_recall(
-        {
-            "query": "recall telemetry",
-            "limit": 2,
-            "current_problem": _current_problem(),
-        },
+        {"query": "recall telemetry"},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -136,9 +132,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert result["data"]["fallback_reason"] is None
     assert len(result["data"]["brief"]["sources"]) == 3
     recall_request = captured["request"]
-    assert recall_request.op == "recall"
     assert recall_request.query == "recall telemetry"
-    assert recall_request.limit == 2
 
     operation_rows = fetch_relation_rows(
         "operation_invocations", order_by="created_at DESC, id DESC"
@@ -203,7 +197,7 @@ def test_provider_recall_should_write_inner_agent_token_profile(
     )
 
     result = handle_recall(
-        {"query": "provider tokens", "current_problem": _current_problem()},
+        {"query": "provider tokens"},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -230,7 +224,7 @@ def test_no_candidate_recall_should_write_no_candidates_fallback(
     _stub_graph_pack(monkeypatch, pack=_empty_pack())
 
     result = handle_recall(
-        {"query": "nothing matches", "current_problem": _current_problem()},
+        {"query": "nothing matches"},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -260,7 +254,7 @@ def test_recall_should_not_mutate_knowledge_state(
     before = _knowledge_counts(fetch_relation_rows)
 
     result = handle_recall(
-        {"query": "read-only recall", "current_problem": _current_problem()},
+        {"query": "read-only recall"},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
     )
@@ -280,10 +274,7 @@ def test_recall_token_estimates_should_be_deterministic(
 
     for _ in range(2):
         result = handle_recall(
-            {
-                "query": "deterministic estimates",
-                "current_problem": _current_problem(),
-            },
+            {"query": "deterministic estimates"},
             uow_factory=uow_factory,
             inferred_repo_id="repo-a",
         )
@@ -365,7 +356,7 @@ def _candidate_pack() -> dict:
 
     return {
         "strategy": "deterministic_graph",
-        "request": {"query": "recall telemetry", "current_problem": _current_problem()},
+        "request": {"query": "recall telemetry"},
         "query_lanes": [{"lane": "original", "query": "recall telemetry"}],
         "memories": [
             {
@@ -410,23 +401,12 @@ def _candidate_pack() -> dict:
     }
 
 
-def _current_problem() -> dict[str, str]:
-    """Return mandatory recall problem context for telemetry handler tests."""
-
-    return {
-        "goal": "verify recall telemetry",
-        "surface": "telemetry",
-        "obstacle": "ensure summaries are written",
-        "hypothesis": "fallback recall path still emits telemetry",
-    }
-
-
 def _empty_pack() -> dict:
     """Return one deterministic graph pack with no memory or concept candidates."""
 
     return {
         "strategy": "deterministic_graph",
-        "request": {"query": "nothing matches", "current_problem": _current_problem()},
+        "request": {"query": "nothing matches"},
         "query_lanes": [],
         "memories": [],
         "concepts": [],

@@ -55,12 +55,13 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
     required_phrases = [
         "shellbrain init",
         "shellbrain admin doctor",
-        "shellbrain recall --json",
+        'shellbrain recall "',
         "shellbrain teach --json",
         "current_problem",
         "--repo-root",
         "goal | surface | obstacle | hypothesis",
         "SB: recall |",
+        "Recall receives only this query",
         "As the working agent",
         "explicitly asks",
         "Do not call",
@@ -86,6 +87,18 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
     ]
     for phrase in forbidden_worker_teaching:
         assert all(phrase not in text for text in texts)
+
+
+def test_public_agent_page_should_show_current_worker_commands() -> None:
+    """The public agent page should show the actual recall and teach interfaces."""
+
+    agent_page = _read_text(
+        Path(__file__).resolve().parents[2] / "docs" / "agents" / "index.html"
+    )
+
+    assert 'shellbrain recall "&lt;what you want to know&gt;"' in agent_page
+    assert "Recall receives only this query" in agent_page
+    assert "shellbrain teach --json" in agent_page
 
 
 def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> (
@@ -176,7 +189,6 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
         Path("assets") / "shellbrain-small.svg",
         Path("assets") / "shellbrain-large.svg",
         Path("assets") / "shellbrain_logo.png",
-        Path("references") / "request-shapes.md",
         Path("references") / "session-workflow.md",
     ]
 

@@ -87,6 +87,7 @@ jobs:
         run: |
           python -m pipx install .
           "$PIPX_BIN_DIR/shellbrain" --help
+          "$PIPX_BIN_DIR/shellbrain" recall --help
           "$PIPX_BIN_DIR/shellbrain" init --help
 
       - name: Run packaging smoke tests

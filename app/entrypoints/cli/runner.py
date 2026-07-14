@@ -122,13 +122,14 @@ def main(
             repo_root_arg=getattr(args, "repo_root", None),
             repo_id_arg=getattr(args, "repo_id", None),
         )
-        payload = (
-            {}
-            if command == "snapshot"
-            else _load_payload(
+        if command == "snapshot":
+            payload = {}
+        elif command == "recall":
+            payload = {"query": args.query}
+        else:
+            payload = _load_payload(
                 getattr(args, "json_text", None), getattr(args, "json_file", None)
             )
-        )
     except ValueError as exc:
         parser.error(str(exc))
         return 2

@@ -34,7 +34,6 @@ class InnerAgentRunRequest(_StrictModel):
     max_private_reads: int = Field(default=0, ge=0, le=10)
     max_brief_tokens: int | None = Field(default=None, ge=1, le=100_000)
     query: str = Field(min_length=1)
-    current_problem: dict[str, str]
     repo_root: str | None = None
     synthesis_only: bool = False
     deterministic_pack: dict[str, Any] | None = None

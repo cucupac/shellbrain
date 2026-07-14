@@ -7,7 +7,7 @@ Shellbrain is persistent memory for agent work. The working agent does not brows
 The working-agent interface is:
 
 ```bash
-shellbrain recall
+shellbrain recall "<targeted natural-language question>"
 ```
 
 Recall asks Shellbrain's internal recall agent to inspect relevant memories, concepts, scenarios, and recent episode context, then return a compact brief for the current problem.
@@ -84,7 +84,7 @@ If prior context might help:
 
 `SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
 
-Then call recall with a targeted query and `current_problem`.
+Then call recall with one targeted natural-language query.
 
 If recall would not add information:
 
@@ -92,19 +92,14 @@ If recall would not add information:
 
 Then continue. Do not call recall reflexively.
 
-## Recall Payload
+## Recall Query
 
-`current_problem` is required. It has four required non-empty fields:
-
-- `goal`: what you are trying to accomplish
-- `surface`: the code, subsystem, behavior, or decision area
-- `obstacle`: what is blocking or uncertain
-- `hypothesis`: your current theory, or `"none yet"`
+Pass one self-contained question as a quoted positional argument. Recall receives only this query, so include relevant task context naturally.
 
 Example:
 
 ```bash
-shellbrain recall --json '{"query":"What architectural constraints matter before moving this CLI handler?","current_problem":{"goal":"move CLI handler without breaking clean architecture","surface":"entrypoints, startup, and handler dependency wiring","obstacle":"handler currently imports startup types","hypothesis":"startup should construct dependencies but handler should receive protocols"}}'
+shellbrain recall "What architectural constraints matter before moving this CLI handler?"
 ```
 
 ## Query Guidance
@@ -114,19 +109,19 @@ Good recall queries are concrete. Name the failure mode, subsystem, decision, fi
 Prior attempt query:
 
 ```bash
-shellbrain recall --json '{"query":"Have we seen this migration lock timeout before?","current_problem":{"goal":"fix migration test failure","surface":"database migrations and schema setup","obstacle":"migration blocks waiting on lock","hypothesis":"a previous test leaves a transaction open"}}'
+shellbrain recall "I'm debugging a migration lock timeout. What prior context matters?"
 ```
 
 Constraint query:
 
 ```bash
-shellbrain recall --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","current_problem":{"goal":"refactor auth callback handling","surface":"auth routes and callback tests","obstacle":"unclear existing conventions for redirect behavior","hypothesis":"there is a repo-specific callback invariant"}}'
+shellbrain recall "What repo constraints or user preferences matter for this auth callback refactor?"
 ```
 
 Area-specific query:
 
 ```bash
-shellbrain recall --json '{"query":"What facts or recent changes matter around the payments retry worker?","current_problem":{"goal":"debug retry worker failure","surface":"payments retry worker","obstacle":"retry state diverges after timeout","hypothesis":"recent retry policy change affected idempotency"}}'
+shellbrain recall "What facts or recent changes matter around the payments retry worker timeout?"
 ```
 
 Avoid generic prompts like:

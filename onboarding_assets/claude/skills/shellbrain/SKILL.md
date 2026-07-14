@@ -12,7 +12,7 @@ Shellbrain is a persistent memory system for agent work.
 As the working agent, your interface is:
 
 ```bash
-shellbrain recall
+shellbrain recall "<targeted natural-language question>"
 ```
 
 Recall returns a compact brief synthesized from prior memories, concepts, scenarios, and recent episode context. It is meant to reduce wasted exploration and help you decide where to look next.
@@ -43,7 +43,7 @@ Use this order:
 
 1. If Shellbrain is missing or broken, run `shellbrain admin doctor`.
 2. If doctor says repair is needed, run `shellbrain init`.
-3. Otherwise, use `shellbrain recall` with a targeted query and `current_problem`.
+3. Otherwise, use `shellbrain recall` with one targeted natural-language query.
 
 If `shellbrain` is not found, do a one-time PATH check:
 
@@ -105,14 +105,12 @@ If recall would not add information:
 
 Then continue.
 
-## Recall Payload
+## Recall Query
 
-`current_problem` is required. All four fields must be non-empty strings.
-
-If you do not have a hypothesis yet, use `"none yet"`.
+Pass one self-contained question as a quoted positional argument. Recall receives only this query, so include relevant task context naturally.
 
 ```bash
-shellbrain recall --json '{"query":"Have we seen this failure mode or subsystem before?","current_problem":{"goal":"fix failing architecture guardrail test","surface":"tests/config/test_architecture_boundaries.py and app layer imports","obstacle":"entrypoint handler appears to import startup wiring","hypothesis":"dependency shape should move out of startup"}}'
+shellbrain recall "Have we seen this architecture guardrail failure or subsystem boundary before?"
 ```
 
 ## Teach Payload
@@ -140,15 +138,15 @@ Good recall queries are concrete. Name the failure mode, subsystem, decision, fi
 Good examples:
 
 ```bash
-shellbrain recall --json '{"query":"Have we seen this migration lock timeout before?","current_problem":{"goal":"fix migration test failure","surface":"database migrations and schema setup","obstacle":"migration blocks waiting on lock","hypothesis":"a previous test leaves a transaction open"}}'
+shellbrain recall "I'm debugging a migration lock timeout. What prior context matters?"
 ```
 
 ```bash
-shellbrain recall --json '{"query":"What architectural constraints matter before moving this CLI handler?","current_problem":{"goal":"move CLI handler without breaking clean architecture","surface":"entrypoints, startup, and handler dependency wiring","obstacle":"handler currently imports startup types","hypothesis":"startup should construct dependencies but handler should receive protocols"}}'
+shellbrain recall "What architectural constraints matter before moving this CLI handler?"
 ```
 
 ```bash
-shellbrain recall --json '{"query":"What user preferences matter for this refactor?","current_problem":{"goal":"clean up Shellbrain onboarding assets","surface":"AGENTS.md and shellbrain skill","obstacle":"old guidance teaches internal commands to workers","hypothesis":"worker guidance should only teach recall"}}'
+shellbrain recall "What user preferences matter while simplifying Shellbrain onboarding assets?"
 ```
 
 Avoid vague queries:

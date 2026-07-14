@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Literal
-
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.core.entities.ids import RepoId
@@ -24,28 +22,11 @@ def _normalize_repo_id(value: RepoId) -> RepoId:
     return RepoId(_normalize_required_string(str(value), field_name="repo_id"))
 
 
-class RecallCurrentProblem(_StrictModel):
-    """Required worker problem context for recall synthesis."""
-
-    goal: str = Field(min_length=1)
-    surface: str = Field(min_length=1)
-    obstacle: str = Field(min_length=1)
-    hypothesis: str = Field(min_length=1)
-
-    @field_validator("goal", "surface", "obstacle", "hypothesis")
-    @classmethod
-    def _validate_non_blank(cls, value: str) -> str:
-        return _normalize_required_string(value, field_name="current_problem fields")
-
-
 class MemoryRecallRequest(_StrictModel):
     """Canonical recall request payload."""
 
-    op: Literal["recall"] = "recall"
     repo_id: RepoId
     query: str = Field(min_length=1)
-    limit: int | None = Field(default=None, ge=1, le=100)
-    current_problem: RecallCurrentProblem
 
     @field_validator("repo_id")
     @classmethod

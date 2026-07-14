@@ -82,6 +82,14 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(
         capture_output=True,
         env=os.environ.copy(),
     )
+    recall_help = subprocess.run(
+        [shellbrain_executable, "recall", "--help"],
+        check=True,
+        cwd=external_repo,
+        text=True,
+        capture_output=True,
+        env=os.environ.copy(),
+    )
 
     assert shellbrain_executable.exists()
     assert "Audience lanes" in completed.stdout
@@ -90,6 +98,8 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(
     assert "shellbrain upgrade" in completed.stdout
     assert "read" in completed.stdout
     assert "events" in completed.stdout
+    assert "positional arguments:" in recall_help.stdout
+    assert "Natural-language recall query." in recall_help.stdout
 
 
 def test_editable_install_should_package_onboarding_assets_in_a_clean_room(

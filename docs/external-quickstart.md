@@ -113,8 +113,10 @@ The repo Dockerfile is for packaging and development smoke coverage. It is not t
 Steady-state working-agent usage, once the CLI is visible, should look like:
 
 ```bash
-shellbrain recall --json '{"query":"Have we seen this migration lock timeout before?","current_problem":{"goal":"fix migration test failure","surface":"database migrations and schema setup","obstacle":"migration blocks waiting on lock","hypothesis":"a previous test leaves a transaction open"}}'
+shellbrain recall "I'm debugging a migration lock timeout. What prior context matters?"
 ```
+
+Recall receives only this query, so include relevant task context naturally in the question.
 
 ## Repo Targeting
 
@@ -135,14 +137,14 @@ As the working agent, use Shellbrain through `shellbrain recall` for normal task
 1. Maintain a mental summary of the current subproblem as `goal | surface | obstacle | hypothesis`.
 2. Whenever that tuple changes materially, or you hit a boundary state, pause and say one `SB:` line out loud by actually generating it as output.
 3. Use `SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>` if prior memory might help.
-4. Call `shellbrain recall` with a concrete query and required `current_problem`.
+4. Call `shellbrain recall` with one self-contained natural-language query. Recall receives only this query, so include relevant task context naturally.
 5. Use `SB: skip | same signature | <one-line reason>` when the tuple has not meaningfully changed and there is no new evidence, failure, or uncertainty.
 6. Do not call recall reflexively.
 
 Example:
 
 ```bash
-shellbrain recall --json '{"query":"What repo constraints or user preferences matter for this auth refactor?","current_problem":{"goal":"refactor auth callback handling","surface":"auth routes and callback tests","obstacle":"unclear existing conventions for redirect behavior","hypothesis":"there is a repo-specific callback invariant"}}'
+shellbrain recall "What repo constraints or user preferences matter for this auth callback refactor?"
 ```
 
 If the user explicitly asks you to store or teach Shellbrain something, use `shellbrain teach`:

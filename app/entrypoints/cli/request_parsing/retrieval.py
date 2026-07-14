@@ -9,7 +9,6 @@ from app.entrypoints.cli.request_parsing.payload_validation import (
     validate_internal_read_contract,
     validate_internal_recall_contract,
     validate_read_schema,
-    validate_recall_schema,
 )
 from app.entrypoints.cli.request_parsing.prepared import (
     PreparedOperationRequest,
@@ -67,14 +66,7 @@ def prepare_recall_request(
 ) -> PreparedOperationRequest[MemoryRecallRequest]:
     """Validate and hydrate one raw recall payload."""
 
-    agent_request, errors = validate_recall_schema(payload)
-    if errors:
-        return PreparedOperationRequest(
-            request=None, errors=errors, error_stage="schema_validation"
-        )
-    assert agent_request is not None
-    hydrated = agent_request.model_dump(mode="python", exclude_none=True)
-    hydrated.setdefault("op", "recall")
+    hydrated = dict(payload)
     hydrated.setdefault("repo_id", inferred_repo_id)
     request, contract_errors = validate_internal_recall_contract(hydrated)
     return PreparedOperationRequest(

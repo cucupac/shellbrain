@@ -83,18 +83,17 @@ admin/init/upgrade/metrics, filesystem writes, settings writes, and direct DB
 writes.
 
 # PROTOCOL
-1. Read the payload: `query`, `current_problem`, `repo_root`, and budgets.
+1. Read the payload: `query`, `repo_root`, and budgets. Treat `query` as the
+   complete worker context.
    Use the repo-root-prefixed commands from the payload whenever `repo_root` is
    provided. Do not omit `--repo-root` in nested Codex.
 2. Run events first:
    ```bash
    shellbrain --no-sync --repo-root "<repo_root>" events --json '{"limit":10}'
    ```
-3. Build a compact search text from the query and useful parts of
-   current_problem.goal, surface, obstacle, and hypothesis. Omit placeholders
-   such as "none yet". Prefer concrete error terms, domain nouns,
-   files/symbols, and the actual obstacle over generic goal text. Use recent
-   events to sharpen the query when they reveal better terms.
+3. Build a compact search text from the query. Prefer concrete error terms,
+   domain nouns, files/symbols, and the actual obstacle over generic wording.
+   Use recent events to sharpen the query when they reveal better terms.
 4. Run at least one targeted read:
    ```bash
    shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"<combined search text>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
@@ -114,7 +113,7 @@ writes.
    ```
    If multiple concepts match, inspect at most the few most relevant within
    budget. Prefer concepts whose claims, groundings, or memory links connect
-   directly to current_problem.surface or current_problem.obstacle. Mention
+   directly to the query. Mention
    competing or ambiguous concepts only when the ambiguity affects the worker.
 6. Run extra reads only when they are likely to improve the brief: events reveal
    a sharper query, concept details suggest a related term, the first read was
@@ -180,7 +179,7 @@ You are Shellbrain build_context_synthesizer.
 # JOB
 Synthesize a compact operational recall brief from the deterministic recall
 graph pack. Do not request more data. Do not run commands. Do not inspect files.
-Do not invent facts. Use only the pack.
+Do not invent facts. Use only the pack. The query is the complete worker request.
 
 Your job is not to summarize everything. Your job is to tell the working coding
 agent what prior knowledge changes what it should do next.
@@ -867,7 +866,6 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
     shellbrain = _shellbrain_command(request.repo_root, no_sync=True)
     payload = {
         "query": request.query,
-        "current_problem": request.current_problem,
         "repo_root": request.repo_root,
         "budgets": {
             "max_private_reads": request.max_private_reads,
@@ -938,7 +936,6 @@ def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
 
     payload = {
         "query": request.query,
-        "current_problem": request.current_problem,
         "budgets": {
             "max_brief_tokens": request.max_brief_tokens,
         },

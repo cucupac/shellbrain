@@ -57,8 +57,10 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 
 **Working agents call `shellbrain recall`.** That is the normal interface they have to think about. One command, **one _carefully curated_ compact brief**, with sources cited.
 
+Recall receives only the quoted query, so include the relevant task, failure, subsystem, or decision naturally in the question.
+
 ```bash
-shellbrain recall --json '{"query":"What is ShellBrain and how does it help a working coding agent?","current_problem":{"goal":"understand ShellBrain","surface":"README","obstacle":"new readers do not know the product yet","hypothesis":"a real recall brief should show what agents get back"}}'
+shellbrain recall "What is ShellBrain, and how does it help a working coding agent?"
 ```
 
 Response shape:

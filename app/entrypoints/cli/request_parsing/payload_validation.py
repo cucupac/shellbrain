@@ -84,37 +84,6 @@ class AgentReadRequest(StrictBaseModel):
         return value
 
 
-class AgentRecallCurrentProblem(StrictBaseModel):
-    """Agent-facing current-problem context for recall synthesis."""
-
-    goal: str = Field(min_length=1)
-    surface: str = Field(min_length=1)
-    obstacle: str = Field(min_length=1)
-    hypothesis: str = Field(min_length=1)
-
-    @field_validator("goal", "surface", "obstacle", "hypothesis")
-    @classmethod
-    def _validate_non_blank(cls, value: str) -> str:
-        """Require every problem context field to be explicit."""
-
-        return _normalize_required_string(
-            value, field_name="current_problem fields"
-        )
-
-
-class AgentRecallRequest(StrictBaseModel):
-    """Agent-facing recall payload with worker problem context."""
-
-    query: str = Field(min_length=1)
-    limit: int | None = Field(default=None, ge=1, le=100)
-    current_problem: AgentRecallCurrentProblem
-
-    @field_validator("query")
-    @classmethod
-    def _validate_query(cls, value: str) -> str:
-        return _normalize_required_string(value, field_name="query")
-
-
 class AgentTeachRequest(StrictBaseModel):
     """Worker-facing payload for explicit user teaching."""
 
@@ -278,17 +247,6 @@ def validate_read_schema(
 
     try:
         return AgentReadRequest.model_validate(payload), []
-    except ValidationError as exc:
-        return None, _format_validation_errors(exc)
-
-
-def validate_recall_schema(
-    payload: dict[str, Any],
-) -> tuple[AgentRecallRequest | None, list[ErrorDetail]]:
-    """Validate and parse agent recall payloads into the minimal recall contract."""
-
-    try:
-        return AgentRecallRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 

@@ -239,12 +239,6 @@ def _request(
         timeout_seconds=90,
         max_brief_tokens=1_800,
         query="what matters?",
-        current_problem={
-            "goal": "solve problem",
-            "surface": "tests",
-            "obstacle": "unknown",
-            "hypothesis": "none yet",
-        },
         synthesis_only=synthesis_only,
         deterministic_pack=deterministic_pack,
     )

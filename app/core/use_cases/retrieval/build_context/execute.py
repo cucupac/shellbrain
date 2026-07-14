@@ -160,7 +160,6 @@ def _inner_agent_request(
         max_private_reads=settings.max_private_reads,
         max_brief_tokens=settings.max_brief_tokens,
         query=request.query,
-        current_problem=request.current_problem.model_dump(mode="python"),
         repo_root=repo_root,
         synthesis_only=synthesis_only,
         deterministic_pack=deterministic_pack,

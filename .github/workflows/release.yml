@@ -31,6 +31,7 @@ jobs:
           /tmp/shellbrain-release-smoke/bin/python -m pip install --upgrade pip
           /tmp/shellbrain-release-smoke/bin/python -m pip install --no-deps dist/*.whl
           /tmp/shellbrain-release-smoke/bin/shellbrain --help
+          /tmp/shellbrain-release-smoke/bin/shellbrain recall --help
           /tmp/shellbrain-release-smoke/bin/shellbrain teach --help
           python - <<'PY'
           from pathlib import Path

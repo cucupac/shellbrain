@@ -306,9 +306,8 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "claims become concept orientation" in prompt
     assert "memory_links connect abstract concepts" in prompt
     assert "Run events first" in prompt
+    assert "Treat `query` as the\n   complete worker context" in prompt
     assert "Build a compact search text" in prompt
-    assert 'Omit placeholders\n   such as "none yet"' in prompt
-    assert "current_problem.goal" in prompt
     assert "Run at least one targeted read" in prompt
     assert "expand only the concepts likely to change" in prompt
     assert "Do not rely on\n   detailed concept claims" in prompt
@@ -376,6 +375,7 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "Summary: max two sentences" in prompt
     assert "Lists: max three items" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
+    assert "The query is the complete worker request" in prompt
     assert "do not include read_trace or sources" in prompt
     assert "deterministic source provenance" in prompt
     assert "mem-1" in prompt
@@ -523,12 +523,6 @@ def _request(
         timeout_seconds=90,
         max_brief_tokens=1_800,
         query="what matters?",
-        current_problem={
-            "goal": "solve problem",
-            "surface": "tests",
-            "obstacle": "unknown",
-            "hypothesis": "none yet",
-        },
         repo_root=repo_root,
         synthesis_only=synthesis_only,
         deterministic_pack=deterministic_pack,
