@@ -174,10 +174,7 @@ def _provider_result(
 
     read_trace = _read_trace(inner_agent_result)
     source_items = _source_items_from_read_trace(read_trace)
-    brief = _normalize_provider_brief(
-        inner_agent_result.brief or {},
-        deterministic_sources=_sources_from_source_items(source_items),
-    )
+    brief = _normalize_provider_brief(inner_agent_result.brief or {})
     fallback_reason = (
         "no_candidates"
         if not source_items and _read_trace_no_context_reason(read_trace)
@@ -271,10 +268,7 @@ def _deterministic_graph_result(
     )
     if synthesis_result.status == "ok" and synthesis_result.brief is not None:
         return RecallMemoryResult(
-            brief=_normalize_provider_brief(
-                synthesis_result.brief,
-                deterministic_sources=_sources_from_source_items(source_items),
-            ),
+            brief=_normalize_provider_brief(synthesis_result.brief),
             fallback_reason=None,
             telemetry={
                 "candidate_pack": graph_pack,
@@ -432,16 +426,13 @@ def _no_context_brief() -> dict[str, Any]:
         "conflicts": [],
         "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
         "next_checks": [],
-        "sources": [],
     }
 
 
-def _normalize_provider_brief(
-    brief: dict[str, Any], *, deterministic_sources: list[dict[str, Any]]
-) -> dict[str, Any]:
+def _normalize_provider_brief(brief: dict[str, Any]) -> dict[str, Any]:
     """Ensure provider output keeps the stable worker-facing brief shape."""
 
-    normalized = {
+    return {
         "summary": str(brief.get("summary") or "").strip()
         or "Shellbrain synthesized relevant recall context.",
         "constraints": _string_list(brief.get("constraints")),
@@ -452,9 +443,7 @@ def _normalize_provider_brief(
         "conflicts": _string_list(brief.get("conflicts")),
         "gaps": _string_list(brief.get("gaps")),
         "next_checks": _string_list(brief.get("next_checks")),
-        "sources": deterministic_sources,
     }
-    return normalized
 
 
 def _string_list(value: Any) -> list[str]:
@@ -589,7 +578,6 @@ def _source_items_from_read_trace(read_trace: dict[str, Any]) -> list[dict[str, 
                 "source_kind": source_kind,
                 "source_id": source_id,
                 "input_section": "inner_agent.read_trace",
-                "output_section": "sources",
             }
         )
         ordinal += 1
@@ -604,27 +592,10 @@ def _source_items_from_read_trace(read_trace: dict[str, Any]) -> list[dict[str, 
                 "source_kind": "concept",
                 "source_id": concept_ref,
                 "input_section": "inner_agent.read_trace",
-                "output_section": "sources",
             }
         )
         ordinal += 1
     return items
-
-
-def _sources_from_source_items(
-    source_items: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
-    """Render brief sources from telemetry provenance rows."""
-
-    return [
-        {
-            "kind": item["source_kind"],
-            "id": item["source_id"],
-            "section": item["input_section"],
-        }
-        for item in source_items
-        if item.get("output_section") is not None
-    ]
 
 
 def _read_trace_no_context_reason(read_trace: dict[str, Any]) -> str | None:

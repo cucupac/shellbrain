@@ -154,13 +154,13 @@ context, with empty or minimal arrays and a concrete
 Lead with the answer. Keep only details that change what the worker should do.
 Use plain English. One idea per sentence. Leave sections empty unless useful.
 Summary: max two sentences. Lists: max three items. Items: max one sentence.
-Full provenance belongs in telemetry; keep visible sources and anchors minimal.
+Full provenance belongs in telemetry; keep visible anchors minimal.
 
 # OUTPUT
 Return only valid JSON matching `output_contract`.
 The brief must be compact and action-oriented: summary, constraints,
 known_traps, prior_cases, concept_orientation, anchors, conflicts, gaps,
-next_checks, and sources. Use conflicts for stale, disputed, superseded,
+and next_checks. Use conflicts for stale, disputed, superseded,
 low-confidence, or mutually inconsistent context. Use gaps for missing context
 or unresolved questions. Use next_checks for one to three concrete checks the
 worker should perform because retrieved context makes them high leverage.
@@ -317,9 +317,8 @@ Summary: max two sentences. Lists: max three items. Items: max one sentence.
 Full provenance belongs in telemetry; keep visible anchors minimal.
 
 # OUTPUT
-Return only valid JSON matching `output_contract`. Return a `brief` object only;
-do not include read_trace or sources. Keep each list compact. Shellbrain attaches
-deterministic source provenance after synthesis.
+Return only valid JSON matching `output_contract`. Return a `brief` object only.
+Keep each list compact.
 """
 
 
@@ -903,14 +902,6 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
                 "conflicts": ["string"],
                 "gaps": ["string"],
                 "next_checks": ["string"],
-                "sources": [
-                    {
-                        "kind": "memory|concept|episode_event",
-                        "id": "source id or concept ref",
-                        "facet": "claim|relation|grounding|memory_link|event|memory when applicable",
-                        "used_in": "summary|constraints|known_traps|prior_cases|concept_orientation|anchors|conflicts|gaps|next_checks",
-                    }
-                ],
             },
             "read_trace": {
                 "commands": [

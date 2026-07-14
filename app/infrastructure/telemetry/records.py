@@ -107,7 +107,6 @@ class RecallSourceItemRecord:
     source_kind: str
     source_id: str
     input_section: str
-    output_section: str | None
 
 
 @dataclass(frozen=True)

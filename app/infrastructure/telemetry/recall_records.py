@@ -50,7 +50,6 @@ def build_recall_summary_records(
                 source_kind=str(item["source_kind"]),
                 source_id=str(item["source_id"]),
                 input_section=str(item["input_section"]),
-                output_section=_optional_string(item.get("output_section")),
             )
         )
 

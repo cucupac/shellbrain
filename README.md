@@ -55,7 +55,7 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 
 ### Recall
 
-**Working agents call `shellbrain recall`.** That is the normal interface they have to think about. One command, **one _carefully curated_ compact brief**, with sources cited.
+**Working agents call `shellbrain recall`.** That is the normal interface they have to think about. One command, **one _carefully curated_ compact brief** for the task at hand.
 
 Recall receives only the quoted query, so include the relevant task, failure, subsystem, or decision naturally in the question.
 
@@ -78,14 +78,7 @@ Response shape:
       "anchors": ["`README.md`"],
       "conflicts": ["..."],
       "gaps": ["..."],
-      "next_checks": ["..."],
-      "sources": [
-        {
-          "kind": "memory",
-          "id": "...",
-          "section": "direct"
-        }
-      ]
+      "next_checks": ["..."]
     },
     "fallback_reason": null
   },

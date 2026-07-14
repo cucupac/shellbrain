@@ -220,7 +220,6 @@ def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
             "conflicts": [],
             "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
             "next_checks": [],
-            "sources": [],
         }
     concept_items = concepts + neighbors
     constraints = _brief_memory_texts(
@@ -265,7 +264,6 @@ def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
         ),
         "gaps": [],
         "next_checks": _next_checks(pack),
-        "sources": _sources_from_graph_pack(pack),
     }
 
 
@@ -288,7 +286,6 @@ def source_items_from_graph_pack(pack: dict[str, Any]) -> list[dict[str, Any]]:
                 "source_kind": "memory",
                 "source_id": source_id,
                 "input_section": _source_section_for_memory(memory),
-                "output_section": "sources",
             }
         )
         ordinal += 1
@@ -309,7 +306,6 @@ def source_items_from_graph_pack(pack: dict[str, Any]) -> list[dict[str, Any]]:
                     "source_kind": "concept",
                     "source_id": str(source_id),
                     "input_section": "concept_orientation",
-                    "output_section": "sources",
                 }
             )
             ordinal += 1
@@ -1206,18 +1202,6 @@ def _next_checks(pack: dict[str, Any]) -> list[str]:
         if role in {"implementation", "entrypoint", "test", "configuration"} and locator:
             checks.append(f"Check {role} anchor: {locator}")
     return list(dict.fromkeys(checks))[:3]
-
-
-def _sources_from_graph_pack(pack: dict[str, Any]) -> list[dict[str, str]]:
-    return [
-        {
-            "kind": item["source_kind"],
-            "id": item["source_id"],
-            "section": item["input_section"],
-        }
-        for item in source_items_from_graph_pack(pack)
-        if item.get("output_section") is not None
-    ]
 
 
 def _conflict_summary(item: object) -> str:

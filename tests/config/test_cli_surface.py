@@ -1011,7 +1011,7 @@ def test_main_dispatches_recall_query(monkeypatch, tmp_path: Path) -> None:
         result = {
             "status": "ok",
             "data": {
-                "brief": {"summary": "stub", "sources": []},
+                "brief": {"summary": "stub"},
                 "fallback_reason": None,
             },
         }

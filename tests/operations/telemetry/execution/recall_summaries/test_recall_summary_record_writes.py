@@ -130,7 +130,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert result["status"] == "ok"
     assert "_telemetry" not in result["data"]
     assert result["data"]["fallback_reason"] is None
-    assert len(result["data"]["brief"]["sources"]) == 3
+    assert "sources" not in result["data"]["brief"]
     recall_request = captured["request"]
     assert recall_request.query == "recall telemetry"
 
@@ -165,9 +165,9 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
         for row in source_rows
     ]
     assert source_tuples == [
-        ("memory", "direct-1", "direct", "sources"),
-        ("memory", "explicit-1", "explicit_related", "sources"),
-        ("concept", "concept-1", "concept_orientation", "sources"),
+        ("memory", "direct-1", "direct", None),
+        ("memory", "explicit-1", "explicit_related", None),
+        ("concept", "concept-1", "concept_orientation", None),
     ]
 
     assert fetch_relation_rows("read_invocation_summaries") == []
@@ -231,7 +231,7 @@ def test_no_candidate_recall_should_write_no_candidates_fallback(
 
     assert result["status"] == "ok"
     assert result["data"]["fallback_reason"] == "no_candidates"
-    assert result["data"]["brief"]["sources"] == []
+    assert "sources" not in result["data"]["brief"]
     assert result["data"]["brief"]["gaps"]
 
     summary_rows = fetch_relation_rows("recall_invocation_summaries")
@@ -307,7 +307,6 @@ class _FakeInnerAgentRunner:
                 "concept_orientation": [],
                 "anchors": [],
                 "gaps": [],
-                "sources": [],
             },
             input_tokens=111,
             output_tokens=22,

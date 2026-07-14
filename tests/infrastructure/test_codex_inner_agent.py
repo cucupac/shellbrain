@@ -324,7 +324,8 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "do not provide generic coding" in prompt
     assert "conflicts" in prompt
     assert "next_checks" in prompt
-    assert "used_in" in prompt
+    assert '"sources":' not in prompt
+    assert "used_in" not in prompt
     assert "must list only commands actually run" in prompt
     assert '\\"evidence\\"' in prompt
     assert "knowledge_builder_notes" not in prompt
@@ -376,8 +377,8 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "Lists: max three items" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
     assert "The query is the complete worker request" in prompt
-    assert "do not include read_trace or sources" in prompt
-    assert "deterministic source provenance" in prompt
+    assert '"sources":' not in prompt
+    assert "deterministic source provenance" not in prompt
     assert "mem-1" in prompt
     assert "shellbrain read --json" not in prompt
 

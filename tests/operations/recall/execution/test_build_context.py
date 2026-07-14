@@ -100,7 +100,7 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     assert result.data["brief"]["next_checks"] == [
         "Inspect db/admin migration wiring first."
     ]
-    assert result.data["brief"]["sources"]
+    assert "sources" not in result.data["brief"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
     assert runner.request.query == "migration timeout"
@@ -111,6 +111,9 @@ def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) 
     assert telemetry["capture_quality"] == "estimated"
     assert telemetry["private_read_count"] == 2
     assert telemetry["concept_expansion_count"] == 1
+    source_items = result.data["_telemetry"]["source_items"]
+    assert source_items
+    assert all("output_section" not in item for item in source_items)
 
 
 def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -> None:
@@ -132,10 +135,7 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     )
 
     assert result.data["brief"]["summary"] == "Use the migration timeout precedent."
-    assert result.data["brief"]["sources"] == [
-        {"kind": "memory", "id": "direct-1", "section": "direct"},
-        {"kind": "concept", "id": "concept-1", "section": "concept_orientation"},
-    ]
+    assert "sources" not in result.data["brief"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
     assert runner.request.synthesis_only is True
@@ -181,6 +181,7 @@ def test_build_context_deterministic_only_skips_provider(monkeypatch) -> None:
     assert result.data["brief"]["summary"] == (
         "Shellbrain found 1 memory source(s) and 1 concept source(s) for this recall query."
     )
+    assert "sources" not in result.data["brief"]
     assert result.data["fallback_reason"] is None
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["provider"] == "deterministic"
@@ -266,7 +267,7 @@ def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
     )
 
     assert result.data["fallback_reason"] == "no_candidates"
-    assert result.data["brief"]["sources"] == []
+    assert "sources" not in result.data["brief"]
     assert result.data["brief"]["conflicts"] == []
     assert result.data["brief"]["next_checks"] == []
     assert "no relevant memories" in result.data["brief"]["gaps"][0]
