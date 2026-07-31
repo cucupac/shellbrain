@@ -21,7 +21,7 @@ class InnerAgentProviderConfig(_StrictModel):
     """Provider-specific runtime settings selected by startup."""
 
     command: str = Field(min_length=1)
-    model: str = Field(min_length=1)
+    model_override: str | None = Field(default=None, min_length=1)
 
 
 class InternalAgentsConfig(_StrictModel):
@@ -56,5 +56,10 @@ class InternalAgentsConfig(_StrictModel):
             if agent.provider not in self.providers:
                 raise ValueError(
                     f"internal_agents.{agent_name}.provider is not configured"
+                )
+        for provider_name, provider in self.providers.items():
+            if provider_name != "codex" and provider.model_override is None:
+                raise ValueError(
+                    f"internal_agents.providers.{provider_name}.model_override is required"
                 )
         return self

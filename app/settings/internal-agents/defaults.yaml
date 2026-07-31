@@ -2,7 +2,7 @@
 build_context:
   strategy: deterministic_synthesis
   provider: auto
-  model: gpt-5.4-mini
+  model: gpt-5.6-luna
   reasoning: low
   timeout_seconds: 90
   max_private_reads: 3
@@ -10,7 +10,7 @@ build_context:
 
 build_knowledge:
   provider: auto
-  model: gpt-5.4-mini
+  model: gpt-5.6-luna
   reasoning: xhigh
   timeout_seconds: 600
   max_shellbrain_reads: 8
@@ -43,7 +43,6 @@ wiki_summary:
 providers:
   codex:
     command: codex
-    model: gpt-5.4-mini
   claude:
     command: claude
-    model: sonnet
+    model_override: sonnet

@@ -233,10 +233,15 @@ def test_git_file_install_should_package_internal_agent_settings(
         env=os.environ.copy(),
     )
 
-    assert "build_context:" in completed.stdout
-    assert "model: gpt-5.4-mini" in completed.stdout
-    assert "build_knowledge:\n  provider: auto\n  model: gpt-5.4-mini\n  reasoning: xhigh" in completed.stdout
-    assert "claude:\n    command: claude\n    model: sonnet" in completed.stdout
+    assert (
+        "build_context:\n  strategy: deterministic_synthesis\n  provider: auto\n"
+        "  model: gpt-5.6-luna\n  reasoning: low"
+    ) in completed.stdout
+    assert (
+        "build_knowledge:\n  provider: auto\n  model: gpt-5.6-luna\n"
+        "  reasoning: xhigh"
+    ) in completed.stdout
+    assert "claude:\n    command: claude\n    model_override: sonnet" in completed.stdout
     assert "reasoning: medium" in completed.stdout
 
 

@@ -137,10 +137,11 @@ def _resolve_settings(
     if provider_name is None:
         return settings
     provider = config.providers[provider_name]
+    model = provider.model_override or settings.model
     return settings.model_copy(
         update={
             "provider": provider_name,
-            "model": provider.model,
+            "model": model,
         }
     )
 

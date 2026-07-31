@@ -17,8 +17,11 @@ from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_context_settings,
     get_build_knowledge_inner_agent_runner,
+    get_build_knowledge_settings,
     get_teach_knowledge_inner_agent_runner,
+    get_teach_knowledge_settings,
     get_wiki_summary_inner_agent_runner,
+    get_wiki_summary_settings,
 )
 from app.startup.settings import YamlConfigProvider
 
@@ -50,13 +53,13 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
 
     assert settings["build_context"]["strategy"] == "deterministic_synthesis"
     assert settings["build_context"]["provider"] == "auto"
-    assert settings["build_context"]["model"] == "gpt-5.4-mini"
+    assert settings["build_context"]["model"] == "gpt-5.6-luna"
     assert settings["build_context"]["reasoning"] == "low"
     assert "enabled" not in settings["build_context"]
     assert "fallback" not in settings["build_context"]
     assert "enabled" not in settings["build_knowledge"]
     assert "fallback" not in settings["build_knowledge"]
-    assert settings["build_knowledge"]["model"] == "gpt-5.4-mini"
+    assert settings["build_knowledge"]["model"] == "gpt-5.6-luna"
     assert settings["build_knowledge"]["reasoning"] == "xhigh"
     assert settings["build_knowledge"]["timeout_seconds"] == 600
     assert settings["build_knowledge"]["max_shellbrain_reads"] == 8
@@ -79,9 +82,9 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["wiki_summary"]["startup_batch_limit"] == 20
     assert settings["wiki_summary"]["periodic_batch_limit"] == 5
     assert settings["providers"]["codex"]["command"] == "codex"
-    assert settings["providers"]["codex"]["model"] == "gpt-5.4-mini"
+    assert "model_override" not in settings["providers"]["codex"]
     assert settings["providers"]["claude"]["command"] == "claude"
-    assert settings["providers"]["claude"]["model"] == "sonnet"
+    assert settings["providers"]["claude"]["model_override"] == "sonnet"
     assert "working_directory" not in settings["providers"]["codex"]
     assert "allow_shellbrain_cli" not in settings["providers"]["codex"]
 
@@ -148,12 +151,12 @@ def test_internal_agent_config_rejects_unknown_explicit_provider() -> None:
         InternalAgentsConfig.model_validate(settings)
 
 
-def test_internal_agent_config_requires_provider_model() -> None:
-    """provider models should be explicit, not inferred from agent defaults."""
+def test_internal_agent_config_requires_non_codex_model_override() -> None:
+    """Providers with fixed models should declare their override."""
 
     provider = YamlConfigProvider(Path("app/settings/defaults"))
     settings = provider.get_internal_agents()
-    del settings["providers"]["claude"]["model"]
+    del settings["providers"]["claude"]["model_override"]
 
     with pytest.raises(ValueError):
         InternalAgentsConfig.model_validate(settings)
@@ -296,7 +299,7 @@ def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
 
     assert isinstance(runner, CodexCliInnerAgentRunner)
     assert resolved.provider == "codex"
-    assert resolved.model == "gpt-5.4-mini"
+    assert resolved.model == "gpt-5.6-luna"
 
 
 @pytest.mark.parametrize(
@@ -315,6 +318,27 @@ def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> N
     runner = runner_getter()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)
+
+
+@pytest.mark.parametrize(
+    ("settings_getter", "expected_model"),
+    (
+        (get_build_knowledge_settings, "gpt-5.6-luna"),
+        (get_teach_knowledge_settings, "gpt-5.4-mini"),
+        (get_wiki_summary_settings, "gpt-5.4-mini"),
+    ),
+)
+def test_startup_preserves_codex_workflow_models(
+    monkeypatch, settings_getter, expected_model: str
+) -> None:
+    """Codex workflows should use their configured models."""
+
+    _patch_which(monkeypatch, {"codex", "claude"})
+
+    settings = settings_getter()
+
+    assert settings.provider == "codex"
+    assert settings.model == expected_model
 
 
 def _patch_which(monkeypatch, installed: set[str]) -> None:
