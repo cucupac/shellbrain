@@ -51,6 +51,7 @@ jobs:
               "migrations/versions/20260519_0026_repair_knowledge_build_trigger_constraint.py",
               "migrations/versions/20260519_0027_concept_embeddings.py",
               "migrations/versions/20260520_0028_knowledge_build_lifecycle.py",
+              "migrations/versions/20260815_0038_drop_wiki_summaries.py",
               "onboarding_assets/codex/AGENTS.md",
               "onboarding_assets/codex/shellbrain/SKILL.md",
               "onboarding_assets/claude/skills/shellbrain/SKILL.md",

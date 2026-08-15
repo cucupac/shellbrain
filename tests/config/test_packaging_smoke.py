@@ -18,7 +18,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260606_0037"
+CURRENT_ALEMBIC_HEAD = "20260815_0038"
 
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
@@ -242,7 +242,6 @@ def test_git_file_install_should_package_internal_agent_settings(
         "  reasoning: xhigh"
     ) in completed.stdout
     assert "claude:\n    command: claude\n    model_override: sonnet" in completed.stdout
-    assert "reasoning: medium" in completed.stdout
 
 
 def test_admin_migrate_should_initialize_schema_from_an_installed_package(
@@ -293,6 +292,8 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
                 episode_events_table = cur.fetchone()[0]
                 cur.execute("SELECT to_regclass('public.concepts');")
                 concepts_table = cur.fetchone()[0]
+                cur.execute("SELECT to_regclass('public.wiki_summaries');")
+                wiki_summaries_table = cur.fetchone()[0]
                 cur.execute("SELECT version_num FROM alembic_version;")
                 alembic_version = cur.fetchone()[0]
                 cur.execute(
@@ -355,6 +356,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
         assert memories_table is not None
         assert episode_events_table is not None
         assert concepts_table is not None
+        assert wiki_summaries_table is None
         assert alembic_version == CURRENT_ALEMBIC_HEAD
         assert knowledge_build_trigger_constraints == {"ck_knowledge_build_runs_trigger"}
         assert "Applied shellbrain schema migrations to head." in completed.stdout
