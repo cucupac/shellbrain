@@ -13,8 +13,6 @@ from app.core.ports.host_apps.inner_agents import (
     InnerAgentRunRequest,
     InnerAgentRunResult,
     TeachKnowledgeAgentRequest,
-    WikiSummaryAgentRequest,
-    WikiSummaryAgentResult,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import (
     _build_knowledge_result,
@@ -24,20 +22,17 @@ from app.infrastructure.host_apps.inner_agents.codex_cli import (
     _result,
     _truncate,
     _usage_or_estimate,
-    _wiki_summary_result,
 )
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
     parse_build_knowledge_output,
     parse_inner_agent_response_output,
-    parse_wiki_summary_output,
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_prompt,
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
-    render_wiki_summary_prompt,
 )
 
 
@@ -158,44 +153,6 @@ class ClaudeCliInnerAgentRunner:
             code_trace=parsed["code_trace"],
         )
 
-    def run_wiki_summary(
-        self, request: WikiSummaryAgentRequest
-    ) -> WikiSummaryAgentResult:
-        """Run one Claude Code wiki_summary request."""
-
-        prompt = render_wiki_summary_prompt(request)
-        run = self._run_claude(
-            request,
-            prompt=prompt,
-            mode="wiki_summary",
-            tool_profile="none",
-        )
-        if run["status"] != "ok":
-            return _wiki_error_result(request, run)
-        final_message = str(run["result"])
-        try:
-            body = parse_wiki_summary_output(final_message)
-        except InnerAgentOutputParseError as exc:
-            return _wiki_summary_result(
-                request,
-                status="invalid_output",
-                duration_ms=int(run["duration_ms"]),
-                **_usage_or_estimate(
-                    prompt=prompt, output=final_message, usage=run.get("usage")
-                ),
-                error_code="invalid_output",
-                error_message=str(exc),
-            )
-        return _wiki_summary_result(
-            request,
-            status="ok",
-            body=body,
-            duration_ms=int(run["duration_ms"]),
-            **_usage_or_estimate(
-                prompt=prompt, output=final_message, usage=run.get("usage")
-            ),
-        )
-
     def _run_claude(
         self,
         request,
@@ -304,20 +261,6 @@ def _knowledge_error_result(
     run: dict[str, object],
 ) -> BuildKnowledgeAgentResult:
     return _build_knowledge_result(
-        request,
-        status=str(run["status"]),
-        duration_ms=int(run.get("duration_ms") or 0),
-        input_tokens=run.get("input_tokens"),
-        capture_quality=run.get("capture_quality"),
-        error_code=str(run["error_code"]),
-        error_message=str(run["error_message"]),
-    )
-
-
-def _wiki_error_result(
-    request: WikiSummaryAgentRequest, run: dict[str, object]
-) -> WikiSummaryAgentResult:
-    return _wiki_summary_result(
         request,
         status=str(run["status"]),
         duration_ms=int(run.get("duration_ms") or 0),

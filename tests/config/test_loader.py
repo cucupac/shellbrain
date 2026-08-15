@@ -20,8 +20,6 @@ from app.startup.internal_agents import (
     get_build_knowledge_settings,
     get_teach_knowledge_inner_agent_runner,
     get_teach_knowledge_settings,
-    get_wiki_summary_inner_agent_runner,
-    get_wiki_summary_settings,
 )
 from app.startup.settings import YamlConfigProvider
 
@@ -75,12 +73,6 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["teach"]["max_code_files"] == 5
     assert settings["teach"]["max_write_commands"] == 12
     assert "idle_stable_seconds" not in settings["teach"]
-    assert settings["wiki_summary"]["model"] == "gpt-5.4-mini"
-    assert settings["wiki_summary"]["reasoning"] == "medium"
-    assert settings["wiki_summary"]["timeout_seconds"] == 120
-    assert settings["wiki_summary"]["prompt_version"] == "wiki-summary.v1"
-    assert settings["wiki_summary"]["startup_batch_limit"] == 20
-    assert settings["wiki_summary"]["periodic_batch_limit"] == 5
     assert settings["providers"]["codex"]["command"] == "codex"
     assert "model_override" not in settings["providers"]["codex"]
     assert settings["providers"]["claude"]["command"] == "claude"
@@ -307,7 +299,6 @@ def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
     (
         get_build_knowledge_inner_agent_runner,
         get_teach_knowledge_inner_agent_runner,
-        get_wiki_summary_inner_agent_runner,
     ),
 )
 def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> None:
@@ -325,7 +316,6 @@ def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> N
     (
         (get_build_knowledge_settings, "gpt-5.6-luna"),
         (get_teach_knowledge_settings, "gpt-5.4-mini"),
-        (get_wiki_summary_settings, "gpt-5.4-mini"),
     ),
 )
 def test_startup_preserves_codex_workflow_models(

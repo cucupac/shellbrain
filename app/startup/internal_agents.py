@@ -11,13 +11,11 @@ from app.core.entities.inner_agents import (
     BuildKnowledgeSettings,
     InnerAgentSettings,
     TeachKnowledgeSettings,
-    WikiSummarySettings,
 )
 from app.core.ports.host_apps.inner_agents import (
     IBuildKnowledgeAgentRunner,
     IInnerAgentRunner,
     ITeachKnowledgeAgentRunner,
-    IWikiSummaryAgentRunner,
 )
 from app.infrastructure.host_apps.inner_agents.claude_cli import ClaudeCliInnerAgentRunner
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
@@ -64,13 +62,6 @@ def get_teach_knowledge_settings() -> TeachKnowledgeSettings:
     return _resolve_settings(config, config.teach)
 
 
-def get_wiki_summary_settings() -> WikiSummarySettings:
-    """Return typed settings for generated wiki summaries."""
-
-    config = get_internal_agents_config()
-    return _resolve_settings(config, config.wiki_summary)
-
-
 def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
     """Return the configured build_context provider adapter."""
 
@@ -95,13 +86,6 @@ def get_teach_knowledge_inner_agent_runner() -> ITeachKnowledgeAgentRunner | Non
     return _runner_for(config, config.teach)
 
 
-def get_wiki_summary_inner_agent_runner() -> IWikiSummaryAgentRunner | None:
-    """Return the configured wiki_summary provider adapter."""
-
-    config = get_internal_agents_config()
-    return _runner_for(config, config.wiki_summary)
-
-
 def get_internal_agents_settings() -> dict[str, Any]:
     """Return normalized internal-agent settings for diagnostics and tests."""
 
@@ -115,7 +99,6 @@ def _runner_for(
     IInnerAgentRunner
     | IBuildKnowledgeAgentRunner
     | ITeachKnowledgeAgentRunner
-    | IWikiSummaryAgentRunner
     | None
 ):
     provider_name = _select_provider(config, settings.provider)
