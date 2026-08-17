@@ -11,7 +11,10 @@ from app.core.ports.host_apps.inner_agents import (
     InnerAgentRunRequest,
     TeachKnowledgeAgentRequest,
 )
-from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
+from app.infrastructure.host_apps.inner_agents.codex_cli import (
+    CodexCliInnerAgentRunner,
+    _codex_exec_args,
+)
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     parse_build_knowledge_output,
     parse_inner_agent_brief_output,
@@ -23,6 +26,34 @@ from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
 )
+
+
+def test_codex_exec_uses_fast_service_tier_for_luna() -> None:
+    """Luna inner-agent calls should use Codex Fast mode."""
+
+    args = _codex_exec_args(
+        command_path="/usr/bin/codex",
+        model="gpt-5.6-luna",
+        reasoning="low",
+        workspace="/tmp/workspace",
+        output_path="/tmp/output.json",
+    )
+
+    assert 'service_tier="fast"' in args
+
+
+def test_codex_exec_keeps_standard_service_tier_for_other_models() -> None:
+    """Fast mode should remain limited to Luna inner-agent calls."""
+
+    args = _codex_exec_args(
+        command_path="/usr/bin/codex",
+        model="gpt-5.4-mini",
+        reasoning="low",
+        workspace="/tmp/workspace",
+        output_path="/tmp/output.json",
+    )
+
+    assert not any("service_tier" in arg for arg in args)
 
 
 def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None:
@@ -288,30 +319,31 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "Shellbrain is a repo-scoped memory system" in prompt
     assert "# KNOWLEDGE MODEL" in prompt
     assert "Concepts are sparse orientation nodes, not tags" in prompt
-    assert "claims become concept orientation" in prompt
-    assert "memory_links connect abstract concepts" in prompt
+    assert "Claims become concept orientation" in prompt
+    assert "`memory_links` connect concepts" in prompt
     assert "Run events first" in prompt
-    assert "Treat `query` as the\n   complete worker context" in prompt
-    assert "Build a compact search text" in prompt
+    assert "Treat `query` as the complete worker context" in prompt
+    assert "Build compact search text" in prompt
     assert "Run at least one targeted read" in prompt
-    assert "expand only the concepts likely to change" in prompt
-    assert "Do not rely on\n   detailed concept claims" in prompt
+    assert "expand only concepts that can change the brief" in prompt
+    assert "If a read returns a relevant concept ref" in prompt
+    assert "Inspect detailed claims, relations, groundings" in prompt
     assert "Run extra reads only when" in prompt
     assert "Synthesize for the worker" in prompt
     assert "no_context_reason" in prompt
     assert "reduces worker time and token spend" in prompt
     assert "created_at" in prompt
     assert "updated_at" in prompt
-    assert "Use recency as a tiebreaker" in prompt
+    assert "Use recency only to choose between sources of equal value" in prompt
     assert "Separate sourced facts from inference" in prompt
     assert "Do not inspect repository files directly" in prompt
     assert "A relevant memory does not need a concept home" in prompt
-    assert "do not provide generic coding" in prompt
+    assert "Do not provide generic coding advice" in prompt
     assert "conflicts" in prompt
     assert "next_checks" in prompt
     assert '"sources":' not in prompt
     assert "used_in" not in prompt
-    assert "must list only commands actually run" in prompt
+    assert "List only commands that you ran successfully" in prompt
     assert '\\"evidence\\"' in prompt
     assert "knowledge_builder_notes" not in prompt
     assert "preferred_source_id" not in prompt
@@ -323,7 +355,7 @@ def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
     assert "read --json" in prompt
     assert "concept show --json" in prompt
     assert "shellbrain recall" in prompt
-    assert "memory writes" in prompt
+    assert "Do not write memories" in prompt
     assert "requested_" "expansions" not in prompt
     assert "candidate_" "context" not in prompt
     assert "expansion_" "handles" not in prompt
@@ -362,10 +394,28 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "Lists: max three items" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
     assert "The query is the complete worker request" in prompt
+    assert "facts, preferences, invariants, behavior claims, configuration rules" in prompt
     assert '"sources":' not in prompt
     assert "deterministic source provenance" not in prompt
     assert "mem-1" in prompt
     assert "shellbrain read --json" not in prompt
+
+
+def test_recall_prompts_require_simplified_technical_english() -> None:
+    """Both recall paths should give the same clear writing rules."""
+
+    prompts = (
+        render_build_context_prompt(_request()),
+        render_build_context_synthesis_prompt(
+            _request(synthesis_only=True, deterministic_pack={"memories": []})
+        ),
+    )
+
+    for prompt in prompts:
+        assert "Use active voice." in prompt
+        assert "Use one term for one meaning." in prompt
+        assert "Use common, short words." in prompt
+        assert "Write no more than 20 words in each sentence." in prompt
 
 
 def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
@@ -374,7 +424,7 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     prompt = render_build_knowledge_prompt(_build_knowledge_request())
 
     assert "# IDENTITY" in prompt
-    assert "internal knowledge builder" in prompt
+    assert "internal knowledge-builder agent" in prompt
     assert "# AUTHORITY" in prompt
     assert "# PROTOCOL" in prompt
     assert "# JUDGMENT" in prompt
@@ -383,36 +433,41 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "scenario record" in prompt
     assert "snapshot-backed solution delta" in prompt
     assert "code_delta_context" in prompt
-    assert "sharpen solution/change memories" in prompt
-    assert "Do not dump raw\n  changed-file lists" in prompt
+    assert "sharpen solution memories, change memories" in prompt
+    assert "Do not copy raw changed-file lists" in prompt
     assert "`shellbrain snapshot`" in prompt
-    assert "editing files" in prompt
+    assert "Do not edit files" in prompt
     assert "Run the exact `first_command`" in prompt
-    assert "four record classes, not a strict vertical stack" in prompt
-    assert "Concepts are not\n   tags" in prompt
-    assert "memory_link for concept-to-memory" in prompt
-    assert "grounding for concept-to-anchor" in prompt
-    assert "definition, behavior, invariant" in prompt
-    assert "contains, involves, precedes" in prompt
+    assert "four record classes" in prompt
+    assert "do not form a strict vertical stack" in prompt
+    assert "Concepts are not tags" in prompt
+    assert "Use `memory_link` to connect a concept to a memory" in prompt
+    assert "Use `grounding` to connect a concept to an anchor" in prompt
+    assert "`definition`, `behavior`, `invariant`" in prompt
+    assert "`contains`, `involves`, `precedes`" in prompt
     assert "Use `involves` sparingly" in prompt
-    assert "created_by: use `librarian`" in prompt
-    assert "Segment the episode into memory boundaries" in prompt
+    assert "`created_by`: Use `librarian`" in prompt
+    assert "`line_range`, `api_route`, `db_table`, and `config_key`" in prompt
+    assert "Segment the episode into reusable memory boundaries" in prompt
     assert "Dedupe before every write" in prompt
-    assert "do not create a problem memory without a reusable" in prompt
-    assert "For problem-solving slices" in prompt
+    assert "Do not create a problem memory without a reusable" in prompt
+    assert "For a problem-solving slice" in prompt
     assert "structural_memory_relations" in prompt
     assert "problem_attempts" not in prompt
     assert "links.problem_id" in prompt
     assert "Treat idle-stable episodes as partial" in prompt
     assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
     assert "do not vote on ordinary" in prompt.lower()
-    assert "leave the memory unlinked" in prompt
+    assert "looked relevant enough to affect work" in prompt
+    assert "future ranking should learn" in prompt
+    assert "Leave the memory unlinked" in prompt
     assert "update_lifecycle" in prompt
     assert "final decisive solution" in prompt
-    assert "failed_tactic records that a tactic failed in this episode's context" in prompt
+    assert "`failed_tactic` records that a tactic failed in this episode's context" in prompt
     assert "closed_event_id" in prompt
     assert "terminal_event_id" not in prompt
     assert "event_watermark" in prompt
+    assert "Prefer an available `file_hash`, `symbol_hash`, or other supported source ref" in prompt
     assert '\\"after_seq\\":3' in prompt
     assert '\\"up_to_seq\\":8' in prompt
     assert '\\"limit\\":100' not in prompt
@@ -426,6 +481,17 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "scenario.v1" in prompt
     assert "write_count" in prompt
     assert "memory/concept/scenario" in prompt
+
+
+def test_build_knowledge_prompt_requires_simplified_technical_english() -> None:
+    """Knowledge records should use the same clear writing rules."""
+
+    prompt = render_build_knowledge_prompt(_build_knowledge_request())
+
+    assert "Use active voice." in prompt
+    assert "Use one term for one meaning." in prompt
+    assert "Use common, short words." in prompt
+    assert "Write no more than 20 words in each sentence." in prompt
 
 
 def test_build_knowledge_prompt_targets_repo_root_when_available(tmp_path) -> None:
