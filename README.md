@@ -6,7 +6,7 @@
 
 <p align="center">Long-term Memory for AI Agents.</p>
 
-Agents forget across sessions. They rediscover the same problems, repeat the same mistakes, and relearn what you already taught them. **ShellBrain makes their work compound.**
+ShellBrain gives AI agents memory, so they can store and reuse what they learn over time.
 
 ## Install
 
@@ -14,7 +14,7 @@ Agents forget across sessions. They rediscover the same problems, repeat the sam
 curl -L shellbrain.ai/install | bash
 ```
 
-**Works for Codex, Claude Code, and Cursor.** The installer runs `shellbrain init` for you. Repos register themselves on first use.
+**Works for Codex, Claude Code, and Cursor.**
 
 Requirements.
 - macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
@@ -24,30 +24,25 @@ Requirements.
 ```bash
 shellbrain upgrade
 ```
-
-The install script also works as an upgrade path: `curl -L shellbrain.ai/upgrade | bash`. Manual alternative: `pipx upgrade shellbrain && shellbrain init`.
-
 ---
 
 ## Recall in one command
-Episodic, empirical, conceptual. Three categories, one retrieval surface.
+
+<p align="center">
+  <img src="docs/assets/shellbrain-recall-context-diagram.png" alt="ShellBrain recall uses vector search and BM25 to search your memories. An inner recall agent summarizes the search results." width="720">
+</p>
 
 ---
 
 ## Architecture
 
-**Episodic knowledge** is the _evidence_ layer.
-- What actually happened in the session: your prompts, the agent's steps, tool calls, and outputs.
+ShellBrain builds memory in three grounded layers:
 
-**Empirical knowledge** is the concrete _extracted_ layer.
-- An ontology of problems, solutions, failed tactics, facts, preferences, changes.
-- This is **case-based reasoning** in a semantic graph.
+- **Episodic knowledge records evidence.** It stores prompts, agent steps, tool calls, and outputs from each session.
+- **Empirical knowledge extracts concrete memories.** It organizes problems, solutions, failed tactics, facts, preferences, and changes in a semantic graph for **case-based reasoning**.
+- **Conceptual knowledge abstracts reusable ideas.** Its concept graph connects claims, relations, and implementations to empirical knowledge.
 
-**Conceptual knowledge** is the _abstractive_ layer.
-- A **higher-level concept graph** with claims, relations, and implementations that link back to the concrete layer.
-- **Progressive disclosure.** agents get oriented first, then ask for depth only where tasks require it.
-
-The episodic layer is truth. Empirical memory extracts. Concept memory abstracts. **Each layer is grounded in the one beneath it.**
+Each higher layer links to evidence in the layer below it. Agents receive a compact orientation first, then request more detail when needed.
 
 ---
 
@@ -55,15 +50,15 @@ The episodic layer is truth. Empirical memory extracts. Concept memory abstracts
 
 ### Recall
 
-**Working agents call `shellbrain recall`.** That is the normal interface they have to think about. One command, **one _carefully curated_ compact brief** for the task at hand.
+Working agents run `shellbrain recall` to get one compact brief for the current task.
 
-Recall receives only the quoted query, so include the relevant task, failure, subsystem, or decision naturally in the question.
+Recall receives only the quoted query. Include the relevant task, failure, subsystem, or decision in the question.
 
 ```bash
 shellbrain recall "What is ShellBrain, and how does it help a working coding agent?"
 ```
 
-Response shape:
+**Response format:**
 
 ```json
 {
@@ -86,42 +81,40 @@ Response shape:
 }
 ```
 
-**Working agents focus on only their work.**
+The brief lets the working agent focus on the current task.
 
 ### Teach
 
-**Working agents call `shellbrain teach` for explicit teaching.** You can tell an agent to remember important ideas.
+Run `shellbrain teach` only when you explicitly want ShellBrain to remember something important.
 
 ---
 
-## Principled and Disciplined
+## Memory Discipline
 
-Memory that is grounded in evidence, small in scope, and asked for rather than pushed is memory that compounds. Everything else is noise for working agents.
+ShellBrain keeps memory grounded in evidence and narrow in scope. Agents request memory when they need it.
 
-**A memory layer that cannot justify itself should not persist.**
+**Memory that cannot justify itself should not persist.**
 
 ---
 
-## How to Use ShellBrain
+## Use ShellBrain
 
-Use Shellbrain in your agent of choice. Then, just work normally.
+Use ShellBrain with your preferred agent. Then work as usual.
 
-**Claude Code:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
-
-**Codex:** *Use $shellbrain to remember Shellbrain recall at the right task boundaries.*
-
-**Cursor:** *Use `/shellbrain` to remember Shellbrain recall at the right task boundaries.*
+- **Claude Code:** Use `/shellbrain` to recall context at task boundaries.
+- **Codex:** Use `$shellbrain` to recall context at task boundaries.
+- **Cursor:** Use `/shellbrain` to recall context at task boundaries.
 
 ---
 
 ## Repair
 
-`shellbrain admin doctor` to inspect. `shellbrain init` to repair if doctor flags it. Do not rerun init every session.
+Run `shellbrain admin doctor` to inspect the installation. If it reports a problem, run `shellbrain init`. Do not run init every session.
 
 ---
 
 ## Docs
 
-- [For Humans](https://shellbrain.ai/humans/) — install, upgrade, getting started
-- [For Agents](https://shellbrain.ai/agents/) — agent workflow and write discipline
-- [Technical Docs](https://deepwiki.com/cucupac/shellbrain) — in-depth generated docs and codebase map
+- [For Humans](https://shellbrain.ai/humans/): installation, upgrades, and first steps
+- [For Agents](https://shellbrain.ai/agents/): agent workflow and memory rules
+- [Technical Docs](https://deepwiki.com/cucupac/shellbrain): detailed documentation and code map
