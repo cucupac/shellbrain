@@ -14,7 +14,7 @@ ShellBrain gives AI agents memory, so they can store and reuse what they learn o
 curl -L shellbrain.ai/install | bash
 ```
 
-**Works for Codex, Claude Code, and Cursor.**
+**Works for Codex, Claude Code, and Cursor.** The installer runs `shellbrain init` for you. Repos register themselves on first use.
 
 Requirements.
 - macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
@@ -24,6 +24,9 @@ Requirements.
 ```bash
 shellbrain upgrade
 ```
+
+You can also run `curl -L shellbrain.ai/upgrade | bash`. Manual alternative: `pipx upgrade shellbrain && shellbrain init`.
+
 ---
 
 ## Recall in one command
@@ -99,10 +102,10 @@ ShellBrain keeps memory grounded in evidence and narrow in scope. Agents request
 
 ## Use ShellBrain
 
-Use ShellBrain with your preferred agent. Then work as usual.
+Use Shellbrain with your preferred agent. Then work as usual.
 
 - **Claude Code:** Use `/shellbrain` to recall context at task boundaries.
-- **Codex:** Use `$shellbrain` to recall context at task boundaries.
+- **Codex:** Use $shellbrain to recall context at task boundaries.
 - **Cursor:** Use `/shellbrain` to recall context at task boundaries.
 
 ---
