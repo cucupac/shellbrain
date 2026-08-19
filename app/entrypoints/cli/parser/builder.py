@@ -38,7 +38,6 @@ _TOP_LEVEL_HELP = dedent(
         - Bootstrap or repair with `shellbrain init`.
         - Upgrade with `shellbrain upgrade`.
         - Check health with `shellbrain admin doctor`.
-        - Review usage with `shellbrain metrics`.
 
       Working agents:
         - Use `shellbrain recall` for normal task context.
@@ -68,7 +67,6 @@ _TOP_LEVEL_HELP = dedent(
       Humans:
       shellbrain init
       shellbrain upgrade
-      shellbrain metrics
       shellbrain admin doctor
       shellbrain admin migrate
 
@@ -386,15 +384,6 @@ _BACKFILL_TOKEN_USAGE_HELP = dedent(
     """
 )
 
-_METRICS_HELP = dedent(
-    """\
-    Generate lightweight metrics snapshots, write local artifacts, and open one browser dashboard that switches repos with arrow keys.
-
-    Example:
-      shellbrain metrics
-    """
-)
-
 _INSTALL_CLAUDE_HOOK_HELP = dedent(
     """\
     Install or update the repo-local Claude Code SessionStart hook used as an explicit repo-local override.
@@ -496,14 +485,6 @@ def build_parser() -> argparse.ArgumentParser:
         help="Upgrade Shellbrain and rerun init through the hosted upgrader.",
         description="Upgrade Shellbrain through the hosted upgrade script and rerun init.",
         epilog=_UPGRADE_HELP,
-        formatter_class=_HelpFormatter,
-    )
-
-    subparsers.add_parser(
-        "metrics",
-        help="Browse Shellbrain metrics across repos.",
-        description="Generate local metrics snapshots and open one browser dashboard for all repos.",
-        epilog=_METRICS_HELP,
         formatter_class=_HelpFormatter,
     )
 

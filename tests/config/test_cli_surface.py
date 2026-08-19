@@ -123,7 +123,6 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "shellbrain upgrade" in output
     assert "pipx upgrade shellbrain && shellbrain init" in output
     assert "shellbrain init" in output
-    assert "shellbrain metrics" in output
     assert "--repo-root" in output
     assert "--no-sync" not in output
     assert "read" in output
@@ -234,34 +233,13 @@ def test_upgrade_help_should_include_one_example(
     assert "pipx upgrade shellbrain && shellbrain init" in output
 
 
-def test_metrics_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """metrics help should explain the lightweight dashboard path."""
+def test_metrics_command_should_not_be_registered() -> None:
+    """The retired metrics command should not remain in the public CLI."""
 
     with pytest.raises(SystemExit) as excinfo:
         cli_main.main(["metrics", "--help"])
 
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "browser dashboard" in output
-    assert "shellbrain metrics" in output
-    assert "--days" not in output
-    assert "--no-open" not in output
-
-
-def test_metrics_parser_should_reject_days_and_no_open_flags() -> None:
-    """metrics parser should reject removed legacy flags."""
-
-    parser = cli_parser.build_parser()
-
-    with pytest.raises(SystemExit) as days_exc:
-        parser.parse_args(["metrics", "--days", "14"])
-    assert days_exc.value.code == 2
-
-    with pytest.raises(SystemExit) as no_open_exc:
-        parser.parse_args(["metrics", "--no-open"])
-    assert no_open_exc.value.code == 2
+    assert excinfo.value.code == 2
 
 
 def test_read_help_should_include_one_example(
@@ -1074,7 +1052,7 @@ def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
         "scenario:record",
     ):
         cli_runner._enforce_inner_agent_mode(command)
-    for command in ("recall", "admin", "init", "upgrade", "metrics"):
+    for command in ("recall", "admin", "init", "upgrade"):
         with pytest.raises(ValueError):
             cli_runner._enforce_inner_agent_mode(command)
 
@@ -1104,7 +1082,6 @@ def test_inner_agent_teach_mode_allows_only_teach_writer_routes(
         "admin",
         "init",
         "upgrade",
-        "metrics",
     ):
         with pytest.raises(ValueError):
             cli_runner._enforce_inner_agent_mode(command)

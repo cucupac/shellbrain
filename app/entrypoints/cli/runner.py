@@ -89,15 +89,6 @@ def main(
 
         return run_upgrade_command(run_upgrade_command=runtime.run_upgrade_command)
 
-    if args.command == "metrics":
-        from app.entrypoints.cli.handlers.human.metrics import run_metrics_command
-
-        return run_metrics_command(
-            args,
-            warn_or_fail_on_unsafe_app_role=runtime.warn_or_fail_on_unsafe_app_role,
-            run_metrics_dashboard=runtime.run_metrics_dashboard,
-        )
-
     if args.command == "admin":
         from app.entrypoints.cli.handlers.human.admin import run_admin_command
 

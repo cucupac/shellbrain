@@ -35,5 +35,4 @@ class CliRuntime:
     init_success_presenter_context: Callable[[], dict[str, Any]]
     run_upgrade_command: Callable[[], int]
     warn_or_fail_on_unsafe_app_role: Callable[[], None]
-    run_metrics_dashboard: Callable[..., object]
     admin_dependencies: AdminCommandDependencies

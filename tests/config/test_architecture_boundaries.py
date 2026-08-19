@@ -335,7 +335,6 @@ def test_core_ports_are_grouped_by_adapter_category() -> None:
         "embeddings",
         "host_apps",
         "local_state",
-        "reporting",
         "system",
     }
     categories = {

@@ -77,7 +77,7 @@ shellbrain --no-sync --repo-root "<repo_root>" concept show --help
 
 Do not run `shellbrain recall`.
 Do not write memories, concepts, scenarios, files, settings, or database data.
-Do not run `admin`, `init`, `upgrade`, or `metrics` commands.
+Do not run `admin`, `init`, or `upgrade` commands.
 
 # PROTOCOL
 1. Read `query`, `repo_root`, and the budgets from the payload.
@@ -456,7 +456,7 @@ Do not edit files.
 Do not run a formatter that writes files.
 Do not commit or push.
 Do not run `shellbrain recall` or `shellbrain snapshot`.
-Do not run `admin`, `init`, `upgrade`, or `metrics` commands.
+Do not run `admin`, `init`, or `upgrade` commands.
 Do not write directly to the database.
 Do not use `graph_patches`.
 Do not use a write command that this prompt does not list.
@@ -712,7 +712,7 @@ shellbrain --repo-root "<repo_root>" concept update --help
 ```
 
 Forbidden: `shellbrain events`, `shellbrain scenario record`, `shellbrain
-recall`, `shellbrain snapshot`, admin/init/upgrade/metrics, direct DB writes,
+recall`, `shellbrain snapshot`, admin/init/upgrade, direct DB writes,
 editing files, formatters, commits, pushes, and any write command not listed
 above.
 
@@ -864,7 +864,7 @@ def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
             "shellbrain concept add",
             "shellbrain concept update",
             "shellbrain scenario record",
-            "any admin, init, upgrade, metrics, or durable write command",
+            "any admin, init, upgrade, or durable write command",
         ],
         "output_contract": {
             "brief": {

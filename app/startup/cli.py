@@ -13,7 +13,6 @@ def build_cli_runtime():
 
     from app.startup import create_policy
     from app.startup import episode_sync_launcher
-    from app.startup import metrics as startup_metrics
     from app.startup import operation_dependencies
     from app.startup import read_policy
     from app.startup import repo_context
@@ -63,7 +62,6 @@ def build_cli_runtime():
         init_success_presenter_context=runtime_admin.init_success_presenter_context,
         run_upgrade_command=run_upgrade_command,
         warn_or_fail_on_unsafe_app_role=warn_or_fail_on_unsafe_app_role,
-        run_metrics_dashboard=startup_metrics.run_metrics_dashboard,
         admin_dependencies=build_admin_command_dependencies(),
     )
 
