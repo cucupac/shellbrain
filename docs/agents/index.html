@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ShellBrain | Agents</title>
-  <meta name="description" content="Agent-facing ShellBrain guidance: when to call recall, when to teach, and which internal commands to avoid.">
+  <meta name="description" content="Use ShellBrain recall to load relevant, evidence-backed context for an agent task.">
   <link rel="canonical" href="https://shellbrain.ai/agents/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,9 +35,9 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-inner">
           <div class="eyebrow">For Agents</div>
-          <h1 id="hero-title">Use Recall<span>.</span></h1>
+          <h1 id="hero-title">Recall before you act<span>.</span></h1>
           <p class="hero-lead">
-            ShellBrain is a repo-scoped long-term memory system. It stores problems, solutions, failed tactics, facts, preferences, and changes - all backed by session evidence. You retrieve it with <strong>recall</strong>.
+            ShellBrain stores repo-scoped memories backed by session evidence. Use recall to load relevant context for the current task.
           </p>
         </div>
       </section>
@@ -46,29 +46,29 @@
         <div class="section-inner split">
           <div>
             <div class="section-eyebrow">Your Interface</div>
-            <h2 class="section-title" id="recall-title">Recall</h2>
+            <h2 class="section-title" id="recall-title">Ask one clear question.</h2>
           </div>
           <div>
             <div class="code-block">
               <pre>shellbrain recall "&lt;what you want to know&gt;"</pre>
             </div>
-            <p>Recall receives only this query, so include relevant task context naturally in the question.</p>
+            <p>Recall receives only this query. Include the task, failure, subsystem, or decision in your question.</p>
             <div class="module-grid" style="margin-top: var(--spacing-40);">
               <article class="module">
-                <h3>Call Recall When</h3>
+                <h3>Call recall when</h3>
                 <ul>
                   <li>You start a task</li>
-                  <li>The problem shifts materially</li>
-                  <li>The same approach has failed twice</li>
+                  <li>The task or hypothesis changes</li>
+                  <li>The same approach fails twice</li>
                   <li>You are about to make an evidence-bearing decision</li>
                 </ul>
               </article>
               <article class="module">
-                <h3>The Brief Returns</h3>
+                <h3>The brief returns</h3>
                 <ul>
-                  <li>summary, constraints, known traps</li>
-                  <li>prior cases, concept orientation, anchors</li>
-                  <li>conflicts and gaps</li>
+                  <li>A summary and relevant constraints</li>
+                  <li>Prior cases, known traps, and anchors</li>
+                  <li>Conflicts, gaps, and next checks</li>
                 </ul>
               </article>
             </div>
@@ -79,18 +79,18 @@
       <section class="section" aria-labelledby="teach-title">
         <div class="section-inner split">
           <div>
-            <div class="section-eyebrow">Teaching</div>
-            <h2 class="section-title" id="teach-title">Only When Asked.</h2>
+            <div class="section-eyebrow">Teach</div>
+            <h2 class="section-title" id="teach-title">Only when the user asks.</h2>
           </div>
           <div class="module-grid">
             <article class="module">
-              <h3>Explicit Teach</h3>
+              <h3>Store an explicit fact</h3>
               <div class="code-block"><pre>shellbrain teach --json '{"text":"&lt;statement&gt;","current_problem":{"goal":"&lt;goal&gt;","surface":"&lt;surface&gt;","obstacle":"&lt;obstacle&gt;","hypothesis":"&lt;hypothesis&gt;"}}'</pre></div>
-              <p>The statement is stored and retrievable immediately.</p>
+              <p>The statement becomes available to future recall.</p>
             </article>
             <article class="module">
-              <h3>Boundary</h3>
-              <p><strong>Only call teach when the human explicitly asks.</strong> Normal memory extraction happens automatically when the session closes.</p>
+              <h3>Do not teach automatically</h3>
+              <p>Use teach only when the user explicitly asks ShellBrain to remember something. Memory is built automatically after the session closes.</p>
             </article>
           </div>
         </div>
@@ -100,11 +100,11 @@
         <div class="section-inner split">
           <div>
             <div class="section-eyebrow">Boundaries</div>
-            <h2 class="section-title" id="dont-title">Do Not Manage Internals.</h2>
+            <h2 class="section-title" id="dont-title">Do not manage memory internals.</h2>
           </div>
           <div class="module-grid">
             <article class="module">
-              <h3>Do Not Call</h3>
+              <h3>Do not call during normal agent work</h3>
               <div class="command-list" aria-label="Commands not to call">
                 <div class="command-row"><code>shellbrain read</code></div>
                 <div class="command-row"><code>shellbrain events</code></div>
@@ -118,8 +118,8 @@
               </div>
             </article>
             <article class="module">
-              <h3>Use Instead</h3>
-              <p>For normal task context, use <code>shellbrain recall</code>. For repair only, follow the human's instruction or the installed skill guidance.</p>
+              <h3>Use instead</h3>
+              <p>Use <code>shellbrain recall</code> for task context. For installation or repair, follow the installed skill or the user's instructions.</p>
             </article>
           </div>
         </div>
@@ -128,19 +128,19 @@
       <section class="section" aria-labelledby="install-title">
         <div class="section-inner split">
           <div>
-            <div class="section-eyebrow">Install</div>
-            <h2 class="section-title" id="install-title">If Missing.</h2>
+            <div class="section-eyebrow">If ShellBrain is missing</div>
+            <h2 class="section-title" id="install-title">Install or repair it.</h2>
           </div>
           <div class="module-grid">
             <article class="module">
               <h3>Install</h3>
-              <div class="code-block"><pre>curl -L ShellBrain.ai/install | bash</pre></div>
-              <p>Installs the CLI and injects ShellBrain skills into Claude Code, Codex, and Cursor.</p>
+              <div class="code-block"><pre>curl -L shellbrain.ai/install | bash</pre></div>
+              <p>Installs the CLI and host skills, then runs <code>shellbrain init</code>.</p>
             </article>
             <article class="module">
               <h3>Repair</h3>
               <div class="code-block"><pre>shellbrain admin doctor</pre></div>
-              <p>If doctor flags issues, run <code>shellbrain init</code>. Do not run init every session.</p>
+              <p>If doctor finds a problem, run <code>shellbrain init</code>. Do not run init every session.</p>
             </article>
           </div>
         </div>
@@ -148,8 +148,8 @@
     </main>
 
     <footer class="footer">
-      <div class="footer-brand">ShellBrain</div>
-      <div class="footer-sub">Long-Term Memory for AI</div>
+      <div class="footer-brand">ShellBrain<span>.</span></div>
+      <div class="footer-sub">Long-term memory for AI agents</div>
     </footer>
   </div>
 </body>

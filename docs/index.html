@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ShellBrain | Long-Term Memory for AI Agents</title>
-  <meta name="description" content="ShellBrain gives AI agents repo-scoped long-term memory with evidence-backed recall, local storage, and inner agents that build useful context.">
+  <meta name="description" content="ShellBrain gives AI agents long-term memory, so they can store and reuse what they learn over time.">
   <link rel="canonical" href="https://shellbrain.ai/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -256,10 +256,7 @@
     }
 
     .eyebrow,
-    .section-eyebrow,
-    .metric-label,
-    .badge,
-    .panel-label {
+    .section-eyebrow {
       font-family: var(--font-roboto-mono);
       font-size: var(--text-caption);
       line-height: var(--leading-caption);
@@ -267,9 +264,7 @@
     }
 
     .eyebrow,
-    .section-eyebrow,
-    .metric-label,
-    .panel-label {
+    .section-eyebrow {
       text-transform: none;
     }
 
@@ -398,132 +393,14 @@
       opacity: 0.94;
     }
 
-    .console {
-      position: relative;
-      display: grid;
-      grid-template-rows: auto 1fr auto;
-      border: 1px solid rgba(255, 255, 255, 0.1);
+    .recall-figure {
+      width: min(100%, 720px);
+      justify-self: center;
+      border: 1px solid rgba(255, 255, 255, 0.12);
       border-radius: var(--radius-lg);
-      background:
-        linear-gradient(180deg, rgba(107, 220, 255, 0.035), rgba(107, 220, 255, 0) 30%),
-        rgba(10, 10, 10, 0.78);
-      box-shadow: 0 0 0 1px rgba(10, 10, 10, 0.7), 0 24px 72px rgba(0, 0, 0, 0.46);
+      background: var(--color-pure-white);
+      box-shadow: 0 24px 72px rgba(0, 0, 0, 0.34);
       overflow: hidden;
-    }
-
-    .console::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      background:
-        linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px);
-      background-size: 40px 40px;
-      opacity: 0.28;
-      pointer-events: none;
-    }
-
-    .console::after {
-      content: "";
-      position: absolute;
-      top: 113px;
-      right: 24px;
-      width: 160px;
-      height: 224px;
-      background: url("assets/shellbrain_logo_mark.png") center / contain no-repeat;
-      filter: invert(1) contrast(1.08);
-      opacity: 0.02;
-      pointer-events: none;
-    }
-
-    .console > * {
-      position: relative;
-      z-index: 1;
-    }
-
-    .console-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--spacing-16);
-      min-height: 56px;
-      padding: 0 var(--spacing-24);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .signal {
-      color: var(--color-electric-green);
-      font-family: var(--font-roboto-mono);
-      font-size: var(--text-caption);
-    }
-
-    .scene-list {
-      list-style: none;
-      display: grid;
-      align-content: center;
-      gap: var(--spacing-16);
-      padding: var(--spacing-32);
-    }
-
-    .scene-list li {
-      display: flex;
-      align-items: flex-start;
-      gap: var(--spacing-16);
-      color: var(--color-silver-mist);
-      font-size: var(--text-body-lg);
-      line-height: var(--leading-body-lg);
-    }
-
-    .scene-list li:last-child {
-      color: var(--color-pure-white);
-    }
-
-    .scene-index {
-      width: 22px;
-      height: 22px;
-      margin-top: 3px;
-      flex: 0 0 auto;
-      color: transparent;
-      font-family: var(--font-roboto-mono);
-      font-size: 0;
-      line-height: 0;
-      border: 1px solid rgba(107, 220, 255, 0.55);
-      border-radius: 50%;
-      background: rgba(107, 220, 255, 0.08);
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M4 8.2 6.8 11 12 5' fill='none' stroke='%236bdcff' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: 14px 14px;
-    }
-
-    .metric-strip {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      border-top: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .metric {
-      padding: var(--spacing-24);
-    }
-
-    .metric + .metric {
-      border-left: 1px solid rgba(255, 255, 255, 0.08);
-    }
-
-    .metric-value {
-      font-family: var(--font-roboto-mono);
-      font-size: var(--text-display-sm);
-      line-height: var(--leading-display-sm);
-      color: var(--color-pure-white);
-    }
-
-    .trace-section {
-      padding-top: var(--spacing-72);
-      padding-bottom: var(--spacing-72);
-    }
-
-    .trace-section .console {
-      min-height: 520px;
     }
 
     .section {
@@ -801,6 +678,10 @@
       font-weight: 700;
     }
 
+    .footer-brand span {
+      color: var(--color-electric-green);
+    }
+
     .footer-sub {
       margin-top: var(--spacing-8);
       color: var(--color-silver-mist);
@@ -935,31 +816,12 @@
         margin-top: var(--spacing-32);
       }
 
-      .trace-section .console {
-        min-height: 0;
-      }
-
-      .scene-list {
-        padding: var(--spacing-16);
-      }
-
-      .scene-list li {
-        font-size: var(--text-body);
-        line-height: var(--leading-body);
-      }
-
-      .metric-strip,
       .grid,
       .taxonomy-grid,
       .operation-grid,
       .subconscious-row,
       .callout {
         grid-template-columns: 1fr;
-      }
-
-      .metric + .metric {
-        border-left: 0;
-        border-top: 1px solid rgba(255, 255, 255, 0.08);
       }
 
       .section-title {
@@ -1008,18 +870,18 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-inner">
           <div class="hero-copy">
-            <div class="eyebrow">Long-term Memory for AI</div>
-            <h1 id="hero-title">ShellBrain<span>.</span></h1>
+            <div class="eyebrow">ShellBrain</div>
+            <h1 id="hero-title">Long-term memory for AI agents<span>.</span></h1>
             <p class="hero-lead">
-              Agents forget. ShellBrain gives agents <strong>long-term memory</strong>. Grounded and retrieved exactly when it's needed. Works for Cursor, Claude, and Codex.
+              ShellBrain gives AI agents memory, so they can store and reuse what they learn over time. Works with Codex, Claude Code, and Cursor.
             </p>
             <div class="hero-actions">
               <button class="button button-primary" type="button" data-copy-command>Install</button>
-              <a class="button button-ghost" href="humans/">Read the Docs</a>
+              <a class="button button-ghost" href="humans/">Read the docs</a>
             </div>
             <div class="install-command" aria-label="Install command">
               <span class="prompt">$</span>
-              <code id="install-cmd">curl -L ShellBrain.ai/install | bash</code>
+              <code id="install-cmd">curl -L shellbrain.ai/install | bash</code>
               <button class="copy-inline" type="button" data-copy-command>Copy</button>
             </div>
           </div>
@@ -1030,48 +892,23 @@
         </div>
       </section>
 
-      <section class="section section-muted trace-section" aria-labelledby="trace-title">
+      <section class="section section-muted" aria-labelledby="trace-title">
         <div class="section-inner split">
           <div>
             <div class="section-eyebrow">Recall</div>
-            <h2 class="section-title" id="trace-title">One Command.</h2>
+            <h2 class="section-title" id="trace-title">Recall in one command.</h2>
           </div>
-          <aside class="console" aria-label="ShellBrain recall trace">
-            <div class="console-head">
-              <span class="panel-label">shellbrain recall</span>
-              <span class="signal">Online</span>
-            </div>
-            <ol class="scene-list">
-              <li><span class="scene-index">01</span><span>The working agent describes the current problem.</span></li>
-              <li><span class="scene-index">02</span><span>BM25 and semantic similarity search in parallel.</span></li>
-              <li><span class="scene-index">03</span><span>Graph neighbors expand over prior cases.</span></li>
-              <li><span class="scene-index">04</span><span>Context synthesized for maximal utility.</span></li>
-              <li><span class="scene-index">05</span><span>ShellBrain subconscious stores new memories.</span></li>
-              <li><span class="scene-index">06</span><span>Next session starts with the right context.</span></li>
-            </ol>
-            <div class="metric-strip">
-              <div class="metric">
-                <div class="metric-value">04</div>
-                <div class="metric-label">Memory Types</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">01</div>
-                <div class="metric-label">Operation</div>
-              </div>
-              <div class="metric">
-                <div class="metric-value">00</div>
-                <div class="metric-label">Cloud Calls</div>
-              </div>
-            </div>
-          </aside>
+          <figure class="recall-figure">
+            <img src="assets/shellbrain-recall-context-diagram.png" alt="ShellBrain recall uses vector search and BM25 to search your memories. An inner recall agent summarizes the results.">
+          </figure>
         </div>
       </section>
 
       <section class="section section-muted subconscious-section" aria-labelledby="subconscious-title">
         <div class="section-inner split">
           <div>
-            <div class="section-eyebrow">Inner Agents</div>
-            <h2 class="section-title" id="subconscious-title">Subconscious.</h2>
+            <div class="section-eyebrow">How it works</div>
+            <h2 class="section-title" id="subconscious-title">Two inner agents.</h2>
           </div>
           <div class="subconscious-panel">
             <div class="subconscious-row">
@@ -1079,22 +916,22 @@
                 <div class="subconscious-label">Working Agent</div>
                 <div class="subconscious-role">Visible</div>
               </div>
-              <p class="subconscious-copy">The agent you are using pulls one lever: <code>shellbrain recall</code>. It receives a compact brief and keeps coding; it never has to manage the machinery underneath.</p>
+              <p class="subconscious-copy">Your agent runs <code>shellbrain recall</code>, receives a compact brief, and keeps working.</p>
             </div>
-            <div class="subconscious-boundary">Below the Surface</div>
+            <div class="subconscious-boundary">Inside ShellBrain</div>
             <div class="subconscious-row">
               <div>
                 <div class="subconscious-label">Knowledge Builder</div>
                 <div class="subconscious-role">Inner Agent</div>
               </div>
-              <p class="subconscious-copy">After sessions, it reads the evidence trail and turns useful work into durable memory: problems, solutions, failed tactics, facts, preferences, changes, and concepts.</p>
+              <p class="subconscious-copy">After each session, it turns useful work into durable memories backed by evidence.</p>
             </div>
             <div class="subconscious-row">
               <div>
                 <div class="subconscious-label">Recall Agent</div>
                 <div class="subconscious-role">Inner Agent</div>
               </div>
-              <p class="subconscious-copy">At recall time, it searches, expands graph context, weighs what is current, and synthesizes the small brief the working agent actually needs.</p>
+              <p class="subconscious-copy">It searches those memories and returns only the context the current task needs.</p>
             </div>
           </div>
         </div>
@@ -1104,25 +941,25 @@
         <div class="section-inner">
           <div class="split">
             <div>
-              <div class="section-eyebrow">Epistemology</div>
-              <h2 class="section-title" id="stored-memory-title">A Graph Built for Recall.</h2>
+              <div class="section-eyebrow">What it remembers</div>
+              <h2 class="section-title" id="stored-memory-title">Grounded in evidence.</h2>
             </div>
             <div class="grid">
               <article class="card">
-                <h3>Problems &amp; Solutions</h3>
-                <p>Every problem, solution, and failed tactic linked as a case. The next time a similar problem appears, <strong>the agent knows what to try and what to skip</strong>.</p>
+                <h3>Problems and solutions</h3>
+                <p>ShellBrain stores each problem with the solutions that worked and the tactics that failed.</p>
               </article>
               <article class="card">
-                <h3>Facts &amp; Preferences</h3>
-                <p>Durable knowledge about the repo. Facts are never silently overwritten—when something changes, the revision chain is <strong>immutable</strong>.</p>
+                <h3>Facts and preferences</h3>
+                <p>It records durable facts about the repo and your preferences. Changes create a visible revision history.</p>
               </article>
               <article class="card">
-                <h3>Evidence-Backed</h3>
-                <p>Every memory traces back to the session transcript that produced it. If the evidence is ambiguous, <strong>the write is skipped</strong>.</p>
+                <h3>Evidence</h3>
+                <p>Every memory links to the session evidence that supports it. Ambiguous memories are skipped.</p>
               </article>
               <article class="card">
-                <h3>Current Truth</h3>
-                <p>Records are <code>active</code>, <code>stale</code>, <code>superseded</code>, or <code>wrong</code>. Retrieval respects that. <strong>Truth always stays current.</strong></p>
+                <h3>Current state</h3>
+                <p>Memories can be <code>active</code>, <code>stale</code>, <code>superseded</code>, or <code>wrong</code>. Recall weighs that state before returning context.</p>
               </article>
             </div>
           </div>
@@ -1133,25 +970,25 @@
         <div class="section-inner">
           <div class="callout">
             <div>
-              <div class="section-eyebrow">Ownership</div>
-              <h2 id="ownership-title">Your brain. Your machine. Your knowledge.</h2>
-              <p>ShellBrain runs locally. Nothing leaves your machine. No cloud. No outbound telemetry.</p>
-              <p>Every solution. Every failure. Every pattern. <em>That's the most valuable thing you'll ever build.</em> It belongs to you.</p>
+              <div class="section-eyebrow">Your data</div>
+              <h2 id="ownership-title">Your memory stays yours.</h2>
+              <p>ShellBrain runs locally with no cloud retrieval or outbound telemetry.</p>
+              <p>Store data on your machine or in your own PostgreSQL database.</p>
             </div>
-            <a class="button button-primary" href="humans/">Read Docs</a>
+            <a class="button button-primary" href="humans/">Read the docs</a>
           </div>
         </div>
       </section>
     </main>
 
     <footer class="footer">
-      <div class="footer-brand">ShellBrain</div>
-      <div class="footer-sub">Long-term Memory for AI</div>
+      <div class="footer-brand">ShellBrain<span>.</span></div>
+      <div class="footer-sub">Long-term memory for AI agents</div>
     </footer>
   </div>
 
   <script>
-    const installCommand = "curl -L ShellBrain.ai/install | bash";
+    const installCommand = "curl -L shellbrain.ai/install | bash";
 
     document.addEventListener("click", async (event) => {
       const button = event.target.closest("[data-copy-command]");

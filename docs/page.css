@@ -350,6 +350,22 @@ code,
   background: var(--color-electric-green);
 }
 
+section[aria-labelledby="model-title"] .module {
+  display: flex;
+  flex-direction: column;
+}
+
+section[aria-labelledby="model-title"] .fine-label,
+section[aria-labelledby="model-title"] .pill-row {
+  margin-top: auto;
+  min-height: var(--spacing-72);
+  padding-top: var(--spacing-16);
+}
+
+section[aria-labelledby="model-title"] .pill {
+  padding-block: 0;
+}
+
 .command-list {
   display: grid;
   gap: var(--spacing-8);
@@ -434,6 +450,10 @@ code,
 
 .code-block {
   padding: var(--spacing-24);
+}
+
+.code-block + p {
+  margin-top: var(--spacing-16);
 }
 
 .code-block pre {
@@ -527,6 +547,10 @@ code,
   font-size: var(--text-heading);
   line-height: var(--leading-heading);
   font-weight: 700;
+}
+
+.footer-brand span {
+  color: var(--color-electric-green);
 }
 
 .footer-sub {

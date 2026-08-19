@@ -1,4 +1,4 @@
-const installCommand = "curl -L ShellBrain.ai/install | bash";
+const installCommand = "curl -L shellbrain.ai/install | bash";
 
 document.querySelectorAll("[data-copy-install]").forEach((button) => {
   button.addEventListener("click", async () => {

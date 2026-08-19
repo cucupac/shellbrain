@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>ShellBrain | Humans</title>
-  <meta name="description" content="Install ShellBrain, understand the memory model, and use durable repo-scoped memory with Claude Code, Codex, and Cursor.">
+  <meta name="description" content="Install ShellBrain and give Codex, Claude Code, and Cursor durable, repo-scoped memory.">
   <link rel="canonical" href="https://shellbrain.ai/humans/">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,9 +35,9 @@
       <section class="hero" aria-labelledby="hero-title">
         <div class="hero-inner">
           <div class="eyebrow">For Humans</div>
-          <h1 id="hero-title">Memory That Compounds<span>.</span></h1>
+          <h1 id="hero-title">Give your agents memory<span>.</span></h1>
           <p class="hero-lead">
-            AI agents work in sessions. Each session starts from scratch. Agents re-discover the same bugs, re-learn your preferences, and repeat failed approaches. <strong>ShellBrain gives agents durable memory, scoped to a repo.</strong>
+            AI agents work in sessions. ShellBrain stores what they learn and recalls it in later sessions. Memory stays scoped to each repo.
           </p>
         </div>
       </section>
@@ -45,39 +45,39 @@
       <section class="section" aria-labelledby="what-title">
         <div class="section-inner split">
           <div>
-            <div class="section-eyebrow">What It Does</div>
-            <h2 class="section-title" id="what-title">Evidence-Backed Memory.</h2>
+            <div class="section-eyebrow">What ShellBrain stores</div>
+            <h2 class="section-title" id="what-title">Useful work, backed by evidence.</h2>
           </div>
           <div class="section-copy">
-            <p>After each session, ShellBrain distills what happened into concrete records: problems encountered, solutions that worked, tactics that failed, facts about the codebase, your preferences, and changes worth remembering.</p>
-            <p>When an agent starts a new session and hits a problem, it calls <code>shellbrain recall</code>. ShellBrain returns a compact brief: the relevant history, ranked by relevance to the current problem. Evidence-backed or not included.</p>
+            <p>After each session, ShellBrain records problems, solutions, failed tactics, facts, preferences, and changes worth remembering.</p>
+            <p>When an agent runs <code>shellbrain recall</code>, ShellBrain returns a compact brief for the current task. Every memory links to session evidence.</p>
           </div>
         </div>
       </section>
 
       <section class="section" aria-labelledby="model-title">
         <div class="section-inner">
-          <div class="section-eyebrow">The Memory Model</div>
-          <h2 class="section-title" id="model-title" style="margin-bottom: var(--spacing-40);">Three Layers.</h2>
+          <div class="section-eyebrow">Memory model</div>
+          <h2 class="section-title" id="model-title" style="margin-bottom: var(--spacing-40);">Hierarchical memory.</h2>
           <div class="module-grid-3">
             <article class="module">
               <h3>Episodes</h3>
-              <p>The raw transcript trail. What actually happened, in order. This is the ground truth everything else is distilled from.</p>
-              <p class="fine-label">evidence layer</p>
+              <p>The session trail: prompts, agent steps, tool calls, and outputs.</p>
+              <p class="fine-label">Evidence</p>
             </article>
             <article class="module">
               <h3>Memories</h3>
-              <p>Concrete extracted records: problems, solutions, failed tactics, facts, preferences, and changes. Each one is backed by evidence from the episode trail.</p>
+              <p>Concrete records extracted from episodes: problems, solutions, failed tactics, facts, preferences, and changes.</p>
               <div class="pill-row">
-                <span class="pill">active</span>
-                <span class="pill">stale</span>
-                <span class="pill">superseded</span>
-                <span class="pill">wrong</span>
+                <span class="pill">Active</span>
+                <span class="pill">Stale</span>
+                <span class="pill">Superseded</span>
+                <span class="pill">Wrong</span>
               </div>
             </article>
             <article class="module">
               <h3>Concepts</h3>
-              <p>A sparse graph of durable repo ideas: claims, relations, anchors, and links back to memories. It gives recall an abstract map while keeping every belief grounded in evidence.</p>
+              <p>A graph of reusable ideas linked back to concrete memories and episode evidence.</p>
               <p class="fine-label">Grounded Abstraction</p>
             </article>
           </div>
@@ -88,35 +88,35 @@
         <div class="section-inner split">
           <div>
             <div class="section-eyebrow">Install</div>
-            <h2 class="section-title" id="install-title">One Command.</h2>
+            <h2 class="section-title" id="install-title">Install ShellBrain.</h2>
           </div>
           <div>
             <div class="install-command" aria-label="Install command">
               <span class="prompt">$</span>
-              <code>curl -L ShellBrain.ai/install | bash</code>
+              <code>curl -L shellbrain.ai/install | bash</code>
               <button class="copy-inline" type="button" data-copy-install>Copy</button>
             </div>
             <div class="module-grid" style="margin-top: var(--spacing-40);">
               <article class="module">
-                <h3>Installer Work</h3>
+                <h3>The installer</h3>
                 <ul>
                   <li>Installs the ShellBrain CLI</li>
-                  <li>Sets up PATH for zsh, bash, or fish</li>
-                  <li>Injects skills into Claude Code, Codex, and Cursor</li>
+                  <li>Adds it to your shell PATH</li>
+                  <li>Installs the ShellBrain skill for Codex, Claude Code, and Cursor</li>
                   <li>Runs <code>shellbrain init</code></li>
                 </ul>
               </article>
               <article class="module">
-                <h3>Storage Options</h3>
-                <p>On first init, ShellBrain asks where it should store data.</p>
+                <h3>Choose storage</h3>
+                <p>On first setup, choose where ShellBrain stores data.</p>
                 <div class="option-list">
                   <div class="option-row">
-                    <strong>Managed Local</strong>
-                    <span>Docker, Postgres, pgvector, fully local</span>
+                    <strong>Managed local</strong>
+                    <span>Docker, PostgreSQL, and pgvector on your machine</span>
                   </div>
                   <div class="option-row">
-                    <strong>External</strong>
-                    <span>Your own Postgres with pgvector</span>
+                    <strong>Your database</strong>
+                    <span>An existing PostgreSQL database with pgvector</span>
                   </div>
                 </div>
               </article>
@@ -125,38 +125,11 @@
         </div>
       </section>
 
-      <section class="section" aria-labelledby="agents-title">
-        <div class="section-inner split">
-          <div>
-            <div class="section-eyebrow">Using With Your Agent</div>
-            <h2 class="section-title" id="agents-title">Just Work Normally.</h2>
-          </div>
-          <div>
-            <div class="section-copy">
-              <p>Your agent calls <code>shellbrain recall</code> when it needs context. Memory is written automatically when sessions close.</p>
-            </div>
-            <div class="module-grid-3" style="margin-top: var(--spacing-40);">
-              <article class="module">
-                <h3>Claude Code</h3>
-                <p>Use <code>/shellbrain</code> to activate the recall habit for a session.</p>
-              </article>
-              <article class="module">
-                <h3>Codex</h3>
-                <p>Use <code>$shellbrain</code> to activate the recall habit for a session.</p>
-              </article>
-              <article class="module">
-                <h3>Cursor</h3>
-                <p>Use <code>/shellbrain</code> to activate the recall habit for a session.</p>
-              </article>
-            </div>
-          </div>
-        </div>
-      </section>
     </main>
 
     <footer class="footer">
-      <div class="footer-brand">ShellBrain</div>
-      <div class="footer-sub">Long-Term Memory for AI</div>
+      <div class="footer-brand">ShellBrain<span>.</span></div>
+      <div class="footer-sub">Long-term memory for AI agents</div>
     </footer>
   </div>
   <script src="../page.js"></script>
