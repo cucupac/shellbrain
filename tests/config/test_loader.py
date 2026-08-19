@@ -53,6 +53,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["build_context"]["provider"] == "auto"
     assert settings["build_context"]["model"] == "gpt-5.6-luna"
     assert settings["build_context"]["reasoning"] == "low"
+    assert settings["build_context"]["max_brief_tokens"] == 500
     assert "enabled" not in settings["build_context"]
     assert "fallback" not in settings["build_context"]
     assert "enabled" not in settings["build_knowledge"]

@@ -34,7 +34,7 @@ _DEFAULT_SETTINGS = InnerAgentSettings(
     reasoning="medium",
     timeout_seconds=90,
     max_private_reads=0,
-    max_brief_tokens=1_800,
+    max_brief_tokens=500,
 )
 
 

@@ -6,7 +6,7 @@ build_context:
   reasoning: low
   timeout_seconds: 90
   max_private_reads: 3
-  max_brief_tokens: 1800
+  max_brief_tokens: 500
 
 build_knowledge:
   provider: auto

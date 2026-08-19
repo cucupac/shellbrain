@@ -291,6 +291,11 @@ Leave a section empty when it has no useful content.
 Summary: max two sentences. Lists: max three items. Items: max one sentence.
 Keep visible anchors minimal because full provenance belongs in telemetry.
 
+# OUTPUT BUDGET
+Treat `max_brief_tokens` as the limit for the complete brief.
+Keep every relevant constraint, trap, conflict, and warning before background context.
+Do not fill the budget when a shorter brief is useful.
+
 # OUTPUT
 Return only valid JSON matching `output_contract`. Return a `brief` object only.
 Keep each list compact.

@@ -392,6 +392,8 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "Lead with the answer" in prompt
     assert "Summary: max two sentences" in prompt
     assert "Lists: max three items" in prompt
+    assert "Treat `max_brief_tokens` as the limit for the complete brief" in prompt
+    assert "Keep every relevant constraint, trap, conflict, and warning" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
     assert "The query is the complete worker request" in prompt
     assert "facts, preferences, invariants, behavior claims, configuration rules" in prompt
