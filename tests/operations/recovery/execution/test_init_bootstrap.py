@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import subprocess
 from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
 
 import app.startup.runtime_admin as init_module
+from app.core.entities.admin_errors import InitConflictError, InitDependencyError
 from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,
@@ -16,6 +18,7 @@ from app.core.entities.machine_config import (
     ManagedInstanceState,
 )
 from app.infrastructure.db.admin.provisioning import managed_local as managed_runtime
+from app.infrastructure.db.admin.provisioning import docker_prerequisites
 from app.infrastructure.local_state.repo_registration_store import RepoRegistration
 from app.entrypoints.cli.presenters.init import render_success_lines as render_init_lines
 
@@ -691,7 +694,32 @@ def test_external_init_should_skip_managed_container_setup(
     assert saved[0].runtime_mode == "external_postgres"
 
 
-def test_ensure_managed_runtime_ready_should_start_managed_container_and_wait(
+def test_ensure_managed_runtime_ready_should_skip_docker_when_postgres_is_ready(
+    monkeypatch,
+) -> None:
+    """operation readiness should use an available configured database directly."""
+
+    config = _machine_config(bootstrap_state="ready")
+    calls: list[object] = []
+
+    monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (config, None))
+    monkeypatch.setattr(
+        init_module,
+        "ensure_managed_runtime_available",
+        lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")),
+    )
+    monkeypatch.setattr(
+        init_module,
+        "wait_for_postgres",
+        lambda dsn, timeout_seconds: calls.append((dsn, timeout_seconds)),
+    )
+
+    init_module.ensure_managed_runtime_ready()
+
+    assert calls == [(config.database.admin_dsn, 0)]
+
+
+def test_ensure_managed_runtime_ready_should_start_unavailable_managed_container(
     monkeypatch,
 ) -> None:
     """operation readiness should start the configured managed runtime once."""
@@ -708,19 +736,43 @@ def test_ensure_managed_runtime_ready_should_start_managed_container_and_wait(
         "ensure_existing_managed_container_running",
         lambda received: calls.append(("container", received)) or True,
     )
-    monkeypatch.setattr(
-        init_module,
-        "wait_for_postgres",
-        lambda dsn, timeout_seconds: calls.append(("wait", dsn, timeout_seconds)),
-    )
+
+    def wait(dsn: str, timeout_seconds: int) -> None:
+        calls.append(("wait", dsn, timeout_seconds))
+        if timeout_seconds == 0:
+            raise InitConflictError("not ready")
+
+    monkeypatch.setattr(init_module, "wait_for_postgres", wait)
 
     init_module.ensure_managed_runtime_ready()
 
     assert calls == [
+        ("wait", config.database.admin_dsn, 0),
         "deps",
         ("container", config),
         ("wait", config.database.admin_dsn, 15),
     ]
+
+
+def test_docker_readiness_error_should_include_docker_detail(monkeypatch) -> None:
+    """docker readiness should preserve the failure reported by Docker."""
+
+    monkeypatch.setattr(
+        docker_prerequisites.shutil, "which", lambda name: "/usr/bin/docker"
+    )
+    monkeypatch.setattr(
+        docker_prerequisites.subprocess,
+        "run",
+        lambda *args, **kwargs: subprocess.CompletedProcess(
+            args=["docker", "info"],
+            returncode=1,
+            stdout="",
+            stderr="permission denied while connecting to the Docker socket",
+        ),
+    )
+
+    with pytest.raises(InitDependencyError, match="permission denied"):
+        docker_prerequisites.ensure_docker_runtime_available()
 
 
 @pytest.mark.parametrize(

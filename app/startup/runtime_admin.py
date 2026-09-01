@@ -172,9 +172,21 @@ def ensure_managed_runtime_ready() -> None:
         return
     if config.runtime_mode != RUNTIME_MODE_MANAGED_LOCAL:
         return
+    if _postgres_is_ready(config.database.admin_dsn):
+        return
     ensure_managed_runtime_available()
     managed_runtime.ensure_existing_managed_container_running(config)
     wait_for_postgres(config.database.admin_dsn, timeout_seconds=15)
+
+
+def _postgres_is_ready(admin_dsn: str) -> bool:
+    """Return whether the configured PostgreSQL runtime accepts connections."""
+
+    try:
+        wait_for_postgres(admin_dsn, timeout_seconds=0)
+    except InitConflictError:
+        return False
+    return True
 
 
 def _build_fresh_machine_config() -> MachineConfig:

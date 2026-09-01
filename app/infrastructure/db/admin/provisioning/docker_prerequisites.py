@@ -21,8 +21,12 @@ def ensure_docker_runtime_available() -> None:
         check=False,
     )
     if completed.returncode != 0:
+        detail = completed.stderr.strip() or completed.stdout.strip()
+        if not detail:
+            detail = f"docker info exited with status {completed.returncode}"
         raise InitDependencyError(
-            "Shellbrain init requires the Docker daemon to be running and reachable."
+            "Shellbrain requires a reachable Docker daemon for managed-local runtime operations. "
+            f"docker info failed: {detail}"
         )
 
 
