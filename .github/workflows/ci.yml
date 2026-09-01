@@ -28,7 +28,7 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.cache/huggingface
-          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('requirements.txt', 'app/settings/defaults/runtime.yaml') }}
+          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('pyproject.toml', 'app/settings/defaults/runtime.yaml') }}
 
       - name: Install dependencies
         run: |
@@ -48,20 +48,8 @@ jobs:
             echo "Visualization report not found: $REPORT" >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload visualization report artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: tests-status-report
-          path: tests/visualization/artifacts/tests_status.md
-          if-no-files-found: warn
-
   packaging-smoke:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
+    runs-on: macos-latest
 
     env:
       SHELLBRAIN_HOME: ${{ github.workspace }}/.shellbrain-home

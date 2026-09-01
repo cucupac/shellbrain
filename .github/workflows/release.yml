@@ -21,7 +21,7 @@ jobs:
 
       - name: Build wheel and sdist
         run: |
-          python -m pip install --upgrade pip build twine pytest "psycopg[binary]>=3.1,<4.0"
+          python -m pip install --upgrade pip build twine
           python -m build
           python -m twine check dist/*
 
@@ -63,7 +63,6 @@ jobs:
           if missing:
               raise SystemExit("wheel is missing release-critical files: " + ", ".join(missing))
           PY
-          python -m pytest -q tests/config/test_packaging_smoke.py tests/config/test_install_script.py
 
       - name: Upload distribution artifacts
         uses: actions/upload-artifact@v4

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -184,14 +183,10 @@ def prepare_git_snapshot(tmp_path: Path, repo_root: Path) -> Path:
 def venv_python(venv_dir: Path) -> Path:
     """Resolve the Python executable inside one virtualenv."""
 
-    if os.name == "nt":
-        return venv_dir / "Scripts" / "python.exe"
     return venv_dir / "bin" / "python"
 
 
 def venv_shellbrain(venv_dir: Path) -> Path:
     """Resolve the shellbrain console script inside one virtualenv."""
 
-    if os.name == "nt":
-        return venv_dir / "Scripts" / "app.exe"
     return venv_dir / "bin" / "shellbrain"
