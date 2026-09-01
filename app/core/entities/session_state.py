@@ -3,14 +3,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from enum import Enum
-
-
-class SessionStateResetReason(str, Enum):
-    """Reasons a working session may be reset while preserving caller identity metadata."""
-
-    IDLE_EXPIRED = "idle_expired"
-    CALLER_SWITCHED = "caller_switched"
 
 
 @dataclass(kw_only=True)

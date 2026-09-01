@@ -295,7 +295,7 @@ def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) 
     )
     monkeypatch.setattr(
         "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
-        lambda bucketed_candidates, payload: bucketed_candidates,
+        lambda bucketed_candidates: bucketed_candidates,
     )
 
 

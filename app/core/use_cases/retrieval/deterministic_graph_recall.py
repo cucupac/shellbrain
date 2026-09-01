@@ -49,9 +49,7 @@ from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
 
 _MEMORY_LANE_LIMIT = 12
 _FINAL_MEMORY_TARGET = 24
-_FINAL_MEMORY_HARD_CAP = 32
 _CONCEPT_TARGET = 6
-_CONCEPT_HARD_CAP = 8
 _RELATION_NEIGHBOR_CAP = 4
 _HIGH_SIGNAL_RELATIONS = {"depends_on", "constrains", "precedes", "contains"}
 _HIGH_SIGNAL_CLAIMS = {"invariant", "failure_mode", "usage_note", "behavior"}
@@ -606,12 +604,12 @@ def _select_concepts(
             )
         )
     selected.sort(key=lambda item: (-item[0], item[1]))
-    chosen = [entry for _, _, entry in selected[:_CONCEPT_HARD_CAP]]
-    return chosen[:_CONCEPT_TARGET], {
+    chosen = [entry for _, _, entry in selected[:_CONCEPT_TARGET]]
+    return chosen, {
         "candidate_count": len(concept_candidates),
-        "selected": len(chosen[:_CONCEPT_TARGET]),
+        "selected": len(chosen),
         "rejected": rejected_count + max(0, len(selected) - _CONCEPT_TARGET),
-        "selected_refs": [entry["bundle"]["concept"].slug for entry in chosen[:_CONCEPT_TARGET]],
+        "selected_refs": [entry["bundle"]["concept"].slug for entry in chosen],
     }
 
 
@@ -724,8 +722,6 @@ def _select_final_memories(
 
     def take(predicate, limit: int) -> None:
         for item in ordered:
-            if len(selected) >= _FINAL_MEMORY_HARD_CAP:
-                return
             memory_id = str(item["memory"].id)
             if memory_id in selected_ids or not predicate(item):
                 continue
@@ -766,8 +762,8 @@ def _select_final_memories(
         if memory_id not in selected_ids:
             rejected.append(_rejected_memory(item, "budget_or_role_balance"))
 
-    return selected[:_FINAL_MEMORY_HARD_CAP], {
-        "selected_memory_count": len(selected[:_FINAL_MEMORY_HARD_CAP]),
+    return selected, {
+        "selected_memory_count": len(selected),
         "rejected_memory_count": len(rejected),
         "top_rejected_memory_ids": [item["memory_id"] for item in rejected[:10]],
         "rejected": rejected[:20],

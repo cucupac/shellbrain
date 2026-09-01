@@ -80,7 +80,6 @@ class ShadowGitStore(IShadowGitStore):
                     shadow_commit_sha=parent_commit,
                     parent_shadow_commit_sha=parent_commit,
                     changed_paths=(),
-                    tree_sha=tree_sha,
                 )
 
         commit_sha = _commit_tree(
@@ -99,7 +98,6 @@ class ShadowGitStore(IShadowGitStore):
                 commit_sha=commit_sha,
                 parent_commit=parent_commit,
             ),
-            tree_sha=tree_sha,
         )
 
     def diff_snapshot_pair(

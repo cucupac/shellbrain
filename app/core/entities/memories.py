@@ -34,13 +34,6 @@ class MemoryKind(str, Enum):
 
         return self in {MemoryKind.SOLUTION, MemoryKind.FAILED_TACTIC}
 
-    @property
-    def is_mature(self) -> bool:
-        """Return whether this kind belongs to the durable mature-memory set."""
-
-        return self in MATURE_MEMORY_KINDS
-
-
 MATURE_MEMORY_KINDS: Final[tuple[MemoryKind, ...]] = (
     MemoryKind.PROBLEM,
     MemoryKind.SOLUTION,
@@ -52,15 +45,6 @@ MATURE_MEMORY_KINDS: Final[tuple[MemoryKind, ...]] = (
 MATURE_MEMORY_KIND_VALUES: Final[tuple[str, ...]] = tuple(
     kind.value for kind in MATURE_MEMORY_KINDS
 )
-
-
-def is_mature_memory_kind(kind: MemoryKind | str) -> bool:
-    """Return whether one kind belongs to the mature durable-memory set."""
-
-    normalized_kind = kind if isinstance(kind, MemoryKind) else MemoryKind(kind)
-    return normalized_kind.is_mature
-
-
 class MemoryScope(str, Enum):
     """This enum defines shellbrain visibility scope."""
 

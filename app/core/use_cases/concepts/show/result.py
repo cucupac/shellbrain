@@ -15,6 +15,3 @@ class ConceptShowResult:
     @property
     def data(self) -> dict[str, object]:
         return {"concept": self.concept}
-
-    def to_response_data(self) -> dict[str, object]:
-        return self.data

@@ -67,7 +67,7 @@ def build_context_pack(
         "explicit": expanded_candidates["explicit"],
         "implicit": expanded_candidates["implicit"],
     }
-    scored_candidates = score_candidates(bucketed_candidates, request_data)
+    scored_candidates = score_candidates(bucketed_candidates)
     pack = assemble_context_pack(
         scored_candidates, request_data, read_settings=read_settings
     )

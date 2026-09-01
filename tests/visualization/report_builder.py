@@ -58,9 +58,7 @@ class DiscoveredTest:
 
     key: str
     category_parts: tuple[str, ...]
-    function_name: str
     description: str
-    file_path: str
 
 
 class VisualizationReportPlugin:
@@ -71,12 +69,6 @@ class VisualizationReportPlugin:
         self._discovered = self._discover_tests()
         self._nodeid_to_key: dict[str, str] = {}
         self._status_by_key: dict[str, str] = {}
-
-    @property
-    def discovered(self) -> list[DiscoveredTest]:
-        """Return all discovered tests in stable report order."""
-
-        return self._discovered
 
     def pytest_collection_modifyitems(self, items: list[Any]) -> None:
         """Map collected pytest node IDs to canonical key format."""
@@ -169,9 +161,7 @@ class VisualizationReportPlugin:
                     DiscoveredTest(
                         key=key,
                         category_parts=category_parts,
-                        function_name=node.name,
                         description=_first_docstring_line(ast.get_docstring(node)),
-                        file_path=path.relative_to(self._root_path).as_posix(),
                     )
                 )
         return results

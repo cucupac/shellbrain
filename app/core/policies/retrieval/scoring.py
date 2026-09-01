@@ -4,11 +4,10 @@ from typing import Any
 
 
 def score_candidates(
-    candidates: dict[str, list[dict[str, Any]]], payload: dict[str, Any]
+    candidates: dict[str, list[dict[str, Any]]],
 ) -> dict[str, list[dict[str, Any]]]:
     """This function computes base scores used for bucket ranking and spillover."""
 
-    _ = payload
     return {
         "direct": _score_direct_candidates(candidates.get("direct", [])),
         "explicit": _score_explicit_candidates(candidates.get("explicit", [])),

@@ -7,11 +7,6 @@ from app.core.policies.retrieval.ontology_semantics import why_included_for_expa
 
 
 _BUCKET_ORDER = ("direct", "explicit", "implicit")
-_SECTION_NAMES = {
-    "direct": "direct",
-    "explicit": "explicit_related",
-    "implicit": "implicit_related",
-}
 _BUCKET_PRIORITY = {
     bucket_name: index for index, bucket_name in enumerate(_BUCKET_ORDER)
 }

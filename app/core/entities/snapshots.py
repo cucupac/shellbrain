@@ -174,7 +174,6 @@ class ShadowGitCaptureResult:
     shadow_commit_sha: str | None
     parent_shadow_commit_sha: str | None
     changed_paths: tuple[str, ...]
-    tree_sha: str | None = None
 
 
 @dataclass(frozen=True, kw_only=True)

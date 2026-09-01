@@ -38,39 +38,25 @@ def expand_candidates(
     min_strength = float(expand["min_association_strength"])
     semantic_hops = int(expand["semantic_hops"])
     max_association_depth = int(expand["max_association_depth"])
+    structural_relation_groups = (
+        (expand["include_problem_links"], STRUCTURAL_PROBLEM_RELATION_PREDICATES),
+        (expand["include_fact_update_links"], STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES),
+    )
 
     for direct_candidate in direct_candidates:
         anchor_memory_id = direct_candidate["memory_id"]
         anchor_score = _candidate_anchor_score(direct_candidate)
 
-        if expand["include_problem_links"]:
+        for enabled, predicates in structural_relation_groups:
+            if not enabled:
+                continue
             for neighbor in select_structural_memory_relation_neighbors(
                 read_policy.list_structural_memory_relation_rows(
                     repo_id=repo_id,
                     include_global=include_global,
                     anchor_memory_id=anchor_memory_id,
                     kinds=kinds,
-                    predicates=STRUCTURAL_PROBLEM_RELATION_PREDICATES,
-                ),
-                anchor_memory_id=anchor_memory_id,
-            ):
-                explicit.append(
-                    {
-                        "memory_id": neighbor["memory_id"],
-                        "anchor_memory_id": anchor_memory_id,
-                        "anchor_score": anchor_score,
-                        "depth": 1,
-                        "expansion_type": neighbor["expansion_type"],
-                    }
-                )
-        if expand["include_fact_update_links"]:
-            for neighbor in select_structural_memory_relation_neighbors(
-                read_policy.list_structural_memory_relation_rows(
-                    repo_id=repo_id,
-                    include_global=include_global,
-                    anchor_memory_id=anchor_memory_id,
-                    kinds=kinds,
-                    predicates=STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
+                    predicates=predicates,
                 ),
                 anchor_memory_id=anchor_memory_id,
             ):

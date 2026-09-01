@@ -37,9 +37,7 @@ def test_read_scoring_should_always_preserve_rrf_ordering_for_fused_direct_seeds
         },
     ]
 
-    scored = score_candidates(
-        {"direct": fused, "explicit": [], "implicit": []}, payload={}
-    )
+    scored = score_candidates({"direct": fused, "explicit": [], "implicit": []})
 
     assert _candidate_ids(scored["direct"]) == ["memory-a", "memory-b"]
 
@@ -60,9 +58,7 @@ def test_read_scoring_should_always_rank_a_dual_lane_hit_above_single_lane_hits(
         ],
     )
 
-    scored = score_candidates(
-        {"direct": fused, "explicit": [], "implicit": []}, payload={}
-    )
+    scored = score_candidates({"direct": fused, "explicit": [], "implicit": []})
 
     assert _candidate_ids(scored["direct"]) == [
         "dual-hit",
@@ -81,9 +77,7 @@ def test_read_scoring_should_always_break_equal_rrf_scores_by_memory_identifier(
         [{"memory_id": "memory-a", "score": 1.0}],
     )
 
-    scored = score_candidates(
-        {"direct": fused, "explicit": [], "implicit": []}, payload={}
-    )
+    scored = score_candidates({"direct": fused, "explicit": [], "implicit": []})
 
     assert _candidate_ids(scored["direct"]) == ["memory-a", "memory-b"]
 
@@ -125,8 +119,7 @@ def test_read_scoring_should_reject_direct_candidates_without_rrf_scores() -> No
                 "direct": [{"memory_id": "memory-a"}],
                 "explicit": [],
                 "implicit": [],
-            },
-            payload={},
+            }
         )
 
 
@@ -155,8 +148,7 @@ def test_read_scoring_should_always_rank_shallower_explicit_candidates_above_dee
                 },
             ],
             "implicit": [],
-        },
-        payload={},
+        }
     )
 
     assert _candidate_ids(scored["explicit"]) == ["shallow", "deep"]
@@ -180,8 +172,7 @@ def test_read_scoring_should_reject_explicit_candidates_without_anchor_scores() 
                     }
                 ],
                 "implicit": [],
-            },
-            payload={},
+            }
         )
 
 
@@ -201,8 +192,7 @@ def test_read_scoring_should_reject_explicit_candidates_without_depth() -> None:
                     }
                 ],
                 "implicit": [],
-            },
-            payload={},
+            }
         )
 
 
@@ -233,8 +223,7 @@ def test_read_scoring_should_always_rank_stronger_association_edges_above_weaker
                 },
             ],
             "implicit": [],
-        },
-        payload={},
+        }
     )
 
     assert _candidate_ids(scored["explicit"]) == ["strong", "weak"]
@@ -261,8 +250,7 @@ def test_read_scoring_should_reject_association_candidates_without_relation_stre
                     }
                 ],
                 "implicit": [],
-            },
-            payload={},
+            }
         )
 
 
@@ -293,8 +281,7 @@ def test_read_scoring_should_always_ignore_relation_strength_for_non_association
                 },
             ],
             "implicit": [],
-        },
-        payload={},
+        }
     )
 
     assert _candidate_ids(scored["explicit"]) == ["memory-a", "memory-b"]
@@ -327,8 +314,7 @@ def test_read_scoring_should_always_rank_higher_similarity_implicit_candidates_a
                     "expansion_type": "semantic_neighbor",
                 },
             ],
-        },
-        payload={},
+        }
     )
 
     assert _candidate_ids(scored["implicit"]) == ["high-similarity", "low-similarity"]
@@ -353,8 +339,7 @@ def test_read_scoring_should_reject_implicit_candidates_without_neighbor_similar
                         "expansion_type": "semantic_neighbor",
                     }
                 ],
-            },
-            payload={},
+            }
         )
 
 
@@ -385,8 +370,7 @@ def test_read_scoring_should_always_rank_lower_hop_implicit_candidates_above_hig
                     "expansion_type": "semantic_neighbor",
                 },
             ],
-        },
-        payload={},
+        }
     )
 
     assert _candidate_ids(scored["implicit"]) == ["hop-one", "hop-two"]

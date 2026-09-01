@@ -42,10 +42,6 @@ class ScenarioRecordResult:
     created: bool
     solution_delta: SolutionDeltaRecordResult | None = None
 
-    @property
-    def data(self) -> dict[str, object]:
-        return self.to_response_data()
-
     def to_response_data(self) -> dict[str, object]:
         """Return the stable CLI response payload."""
 

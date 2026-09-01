@@ -216,7 +216,7 @@ def _execute_stubbed_read(
     )
     monkeypatch.setattr(
         "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
-        lambda bucketed_candidates, payload: bucketed_candidates,
+        lambda bucketed_candidates: bucketed_candidates,
     )
 
     with uow_factory() as uow:

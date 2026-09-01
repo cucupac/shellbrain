@@ -16,6 +16,3 @@ class ConceptAddResult:
     @property
     def data(self) -> dict[str, object]:
         return {"added_count": self.added_count, "results": self.results}
-
-    def to_response_data(self) -> dict[str, object]:
-        return self.data

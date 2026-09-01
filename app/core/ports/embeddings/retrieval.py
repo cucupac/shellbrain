@@ -15,11 +15,3 @@ class IVectorSearch(ABC):
     @abstractmethod
     def embed_query(self, text: str) -> Sequence[float]:
         """This method returns an embedding vector for query text."""
-
-
-class IKeywordSearch(ABC):
-    """This interface defines lexical lookup capabilities for query text."""
-
-    @abstractmethod
-    def normalize_query(self, text: str) -> str:
-        """This method normalizes text before lexical retrieval."""

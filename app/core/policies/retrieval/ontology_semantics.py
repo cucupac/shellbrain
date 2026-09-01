@@ -16,9 +16,6 @@ ARCHIVED_STATUS = "archived"
 POSITIVE_LIFECYCLE_STATUSES = frozenset(
     {ACTIVE_STATUS, MAYBE_STALE_STATUS, STALE_STATUS}
 )
-NO_POSITIVE_RETRIEVAL_STATUSES = frozenset(
-    {SUPERSEDED_STATUS, WRONG_STATUS, ARCHIVED_STATUS}
-)
 
 LIFECYCLE_RETRIEVAL_MULTIPLIERS: Mapping[str, float] = {
     ACTIVE_STATUS: 1.0,
@@ -90,14 +87,6 @@ def lifecycle_retrieval_multiplier(status: Any) -> float:
     """Return the default positive retrieval multiplier for one lifecycle status."""
 
     return LIFECYCLE_RETRIEVAL_MULTIPLIERS[normalize_lifecycle_status(status)]
-
-
-def has_positive_lifecycle_signal(status: Any) -> bool:
-    """Return whether a lifecycle status can contribute normal retrieval signal."""
-
-    return normalize_lifecycle_status(status) in POSITIVE_LIFECYCLE_STATUSES
-
-
 def is_active_lifecycle(status: Any) -> bool:
     """Return whether a lifecycle status is active."""
 

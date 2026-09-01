@@ -11,7 +11,6 @@ import sys
 from typing import Any, Sequence
 
 from app.entrypoints.cli.parser import build_parser
-from app.entrypoints.cli.presenters.json import render
 from app.entrypoints.cli.runtime import CliRuntime
 
 
@@ -44,9 +43,27 @@ _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
 def run_operation_command(**kwargs):
     """Lazy operation-command wrapper so CLI help stays dependency-light."""
 
-    from app.entrypoints.cli.operation_command import run_operation_command as run
+    from app.entrypoints.cli.handlers.cli_operation import (
+        CliOperationEffects,
+        run_cli_operation,
+    )
 
-    return run(**kwargs)
+    runtime = kwargs.pop("runtime")
+    return run_cli_operation(
+        **kwargs,
+        effects=CliOperationEffects(
+            new_invocation_id=runtime.new_invocation_id,
+            resolve_caller_identity=runtime.resolve_caller_identity,
+            set_operation_context=runtime.set_operation_context,
+            reset_operation_context=runtime.reset_operation_context,
+            ensure_managed_runtime_ready=runtime.ensure_managed_runtime_ready,
+            warn_or_fail_on_unsafe_app_role=runtime.warn_or_fail_on_unsafe_app_role,
+            ensure_repo_registration=runtime.ensure_repo_registration,
+            ensure_shadow_baseline=runtime.ensure_shadow_baseline,
+            maybe_start_sync=runtime.maybe_start_sync,
+            update_operation_polling_status=runtime.update_operation_polling_status,
+        ),
+    )
 
 
 def main(
@@ -83,11 +100,7 @@ def main(
             return 2
 
     if args.command == "upgrade":
-        from app.entrypoints.cli.handlers.human.upgrade import (
-            run as run_upgrade_command,
-        )
-
-        return run_upgrade_command(run_upgrade_command=runtime.run_upgrade_command)
+        return runtime.run_upgrade_command()
 
     if args.command == "admin":
         from app.entrypoints.cli.handlers.human.admin import run_admin_command
@@ -127,7 +140,7 @@ def main(
                 _dispatch_operation_command(command, payload, context, runtime=runtime)
             ),
         )
-        print(render(result))
+        print(json.dumps(result, separators=(",", ":")))
         if result.get("status") == "error":
             return 1
         return 0

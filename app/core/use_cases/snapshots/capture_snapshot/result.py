@@ -23,10 +23,6 @@ class CaptureSnapshotResult:
     operation_invocation_id: str | None = None
     reason: str | None = None
 
-    @property
-    def data(self) -> dict[str, object]:
-        return self.to_response_data()
-
     def to_response_data(self) -> dict[str, object]:
         """Return the stable CLI response payload."""
 

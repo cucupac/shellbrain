@@ -19,15 +19,6 @@ WHERE m.kind = 'fact'
   );
 """
 
-
-GLOBAL_UTILITY_SQL = """
-CREATE OR REPLACE VIEW global_utility AS
-SELECT memory_id, AVG(vote) AS utility_mean, COUNT(*) AS observations
-FROM utility_observations
-GROUP BY memory_id;
-"""
-
-
 USAGE_COMMAND_DAILY_SQL = """
 CREATE OR REPLACE VIEW usage_command_daily AS
 SELECT
