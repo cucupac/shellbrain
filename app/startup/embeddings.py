@@ -37,27 +37,19 @@ def get_embedding_model_name() -> str:
 def get_embedding_provider() -> IEmbeddingProvider:
     """This function constructs the configured local embedding provider."""
 
-    config = _get_embedding_config()
-    provider = config.get("provider")
-    model = config.get("model")
-    if not isinstance(provider, str) or not provider:
-        raise ValueError("runtime.embeddings.provider must be configured")
-    if not isinstance(model, str) or not model:
-        raise ValueError("runtime.embeddings.model must be configured")
-    if provider == "sentence_transformers":
-        machine_config = load_machine_config()
-        cache_folder = str(get_machine_models_dir())
-        local_files_only = False
-        if machine_config is not None:
-            cache_folder = machine_config.embeddings.cache_path
-            if machine_config.embeddings.readiness_state != "ready":
-                raise RuntimeError(
-                    "Shellbrain embeddings are not ready. Rerun `shellbrain init` to finish model setup."
-                )
-            local_files_only = True
-        return SentenceTransformersEmbeddingProvider(
-            model=model,
-            cache_folder=cache_folder,
-            local_files_only=local_files_only,
-        )
-    raise ValueError(f"Unsupported embedding provider: {provider}")
+    model = get_embedding_model_name()
+    machine_config = load_machine_config()
+    cache_folder = str(get_machine_models_dir())
+    local_files_only = False
+    if machine_config is not None:
+        cache_folder = machine_config.embeddings.cache_path
+        if machine_config.embeddings.readiness_state != "ready":
+            raise RuntimeError(
+                "Shellbrain embeddings are not ready. Rerun `shellbrain init` to finish model setup."
+            )
+        local_files_only = True
+    return SentenceTransformersEmbeddingProvider(
+        model=model,
+        cache_folder=cache_folder,
+        local_files_only=local_files_only,
+    )

@@ -135,11 +135,3 @@ class PlannedEffect:
 
     effect_type: EffectType
     params: EffectParams
-
-
-def make_side_effect(
-    effect_type: EffectType | str, params: EffectParams
-) -> PlannedEffect:
-    """Create a normalized side-effect descriptor object."""
-
-    return PlannedEffect(effect_type=EffectType(effect_type), params=params)

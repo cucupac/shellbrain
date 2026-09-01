@@ -7,14 +7,13 @@ from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from app.core.use_cases.admin.backfill_model_usage.request import (
-    BackfillModelUsageRequest,
     LinkedModelUsageSession,
 )
 from app.core.use_cases.admin.backfill_model_usage.result import BackfillSummary
 
 
 def backfill_model_usage(
-    request: BackfillModelUsageRequest,
+    sessions: tuple[LinkedModelUsageSession, ...],
     *,
     collect_model_usage_records_for_session: Callable[..., Sequence[object]],
     persist_model_usage_records: Callable[[Sequence[object]], None],
@@ -28,7 +27,7 @@ def backfill_model_usage(
     sessions_failed = 0
     records_attempted = 0
 
-    for session in request.sessions:
+    for session in sessions:
         try:
             records = collect_model_usage_records_for_session(
                 repo_id=session.repo_id,
@@ -58,7 +57,7 @@ def backfill_model_usage(
         host_counts[session.host_app] += len(records)
 
     return BackfillSummary(
-        sessions_examined=len(request.sessions),
+        sessions_examined=len(sessions),
         sessions_with_records=sessions_with_records,
         sessions_skipped=sessions_skipped,
         sessions_failed=sessions_failed,

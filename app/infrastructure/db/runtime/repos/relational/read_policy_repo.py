@@ -11,6 +11,7 @@ from app.core.ports.db.retrieval_repositories import IReadPolicyRepo
 from app.infrastructure.db.runtime.models.associations import association_edges
 from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.memories import memories
+from app.infrastructure.db.runtime.repos.memory_visibility import visible_memory_filters
 
 
 class ReadPolicyRepo(IReadPolicyRepo):
@@ -104,7 +105,7 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 association_edges.c.repo_id == repo_id,
                 association_edges.c.from_memory_id == anchor_memory_id,
                 association_edges.c.state != "deprecated",
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id, include_global=include_global, kinds=kinds
                 ),
             )
@@ -126,7 +127,7 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 association_edges.c.repo_id == repo_id,
                 association_edges.c.to_memory_id == anchor_memory_id,
                 association_edges.c.state != "deprecated",
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id, include_global=include_global, kinds=kinds
                 ),
             )
@@ -163,28 +164,9 @@ class ReadPolicyRepo(IReadPolicyRepo):
         rows = self._session.execute(
             select(memories.c.id).where(
                 memories.c.id.in_(unique_memory_ids),
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id, include_global=include_global, kinds=kinds
                 ),
             )
         )
         return {str(row[0]) for row in rows}
-
-    def _visibility_filters(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        kinds: Sequence[str] | None,
-    ) -> list[Any]:
-        """Build the visibility filters used by read-path queries."""
-
-        scope_values = ["repo", "global"] if include_global else ["repo"]
-        filters: list[Any] = [
-            memories.c.repo_id == repo_id,
-            memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
-            memories.c.scope.in_(scope_values),
-        ]
-        if kinds:
-            filters.append(memories.c.kind.in_(list(kinds)))
-        return filters

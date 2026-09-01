@@ -41,7 +41,6 @@ association_edges = Table(
     Column("negative_obs", Integer, nullable=False, default=0),
     Column("salience_sum", Float, nullable=False, default=0.0),
     Column("last_reinforced_at", TIMESTAMP(timezone=True)),
-    Column("last_used_at", TIMESTAMP(timezone=True)),
     Column("created_at", TIMESTAMP(timezone=True), nullable=False),
     Column("updated_at", TIMESTAMP(timezone=True), nullable=False),
     CheckConstraint(

@@ -59,13 +59,7 @@ def run_update_memory_operation(
     error_stage: str | None = None
     planned_side_effects = ()
     try:
-        policy_errors = list(dependencies.update_policy_errors)
-        if policy_errors:
-            error_stage = infer_error_stage_from_errors(
-                dump_errors(policy_errors), default_stage="contract_validation"
-            )
-            result = error_response(policy_errors)
-        elif validation_errors:
+        if validation_errors:
             error_stage = infer_error_stage_from_errors(
                 dump_errors(validation_errors), default_stage=validation_error_stage
             )

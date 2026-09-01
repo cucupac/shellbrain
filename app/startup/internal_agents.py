@@ -86,12 +86,6 @@ def get_teach_knowledge_inner_agent_runner() -> ITeachKnowledgeAgentRunner | Non
     return _runner_for(config, config.teach)
 
 
-def get_internal_agents_settings() -> dict[str, Any]:
-    """Return normalized internal-agent settings for diagnostics and tests."""
-
-    return get_internal_agents_config().model_dump(mode="python")
-
-
 def _runner_for(
     config: InternalAgentsConfig,
     settings: Any,

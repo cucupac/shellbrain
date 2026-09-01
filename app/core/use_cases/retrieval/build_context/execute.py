@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from typing import Any
 
 from app.core.entities.inner_agents import InnerAgentSettings
@@ -19,6 +20,7 @@ from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
 from app.core.use_cases.retrieval.deterministic_graph_recall import (
     build_deterministic_graph_pack,
     deterministic_brief_from_graph_pack,
+    no_context_brief,
     record_synthesis_pack_size,
     source_items_from_graph_pack,
     synthesis_pack_from_graph_pack,
@@ -87,15 +89,17 @@ def execute_build_context(
             }
         )
 
-    return _autonomous_fallback_graph_result_with_uow(
+    return _deterministic_graph_result_with_uow(
         request=request,
         uow=uow,
         uow_factory=uow_factory,
         threshold_settings=threshold_settings,
-        inner_agent_result=inner_agent_result.model_copy(update={"fallback_used": True}),
         settings=settings,
         inner_agent_runner=inner_agent_runner,
         repo_root=repo_root,
+        prior_inner_agent_result=inner_agent_result.model_copy(
+            update={"fallback_used": True}
+        ),
     )
 
 
@@ -204,7 +208,7 @@ def _provider_no_context_result(
         update={"status": "no_context"}
     )
     return RecallMemoryResult(
-        brief=_no_context_brief(),
+        brief=no_context_brief(),
         fallback_reason="no_candidates",
         telemetry={
             "candidate_pack": {"read_trace": read_trace},
@@ -235,15 +239,15 @@ def _deterministic_graph_result(
     )
     source_items = source_items_from_graph_pack(graph_pack)
     fallback_reason = None if source_items else "no_candidates"
-    if fallback_reason == "no_candidates" or settings.strategy == "deterministic_only":
-        inner_agent_result = prior_inner_agent_result or _deterministic_strategy_result(
-            settings=settings,
-            graph_pack=graph_pack,
-            fallback_used=False,
-        )
+
+    def _graph_result(
+        brief: dict[str, Any],
+        reason: str | None,
+        inner_agent_result: InnerAgentRunResult,
+    ) -> RecallMemoryResult:
         return RecallMemoryResult(
-            brief=deterministic_brief_from_graph_pack(graph_pack),
-            fallback_reason=fallback_reason,
+            brief=brief,
+            fallback_reason=reason,
             telemetry={
                 "candidate_pack": graph_pack,
                 "source_items": source_items,
@@ -251,6 +255,14 @@ def _deterministic_graph_result(
                     inner_agent_result, graph_pack=graph_pack
                 ).model_dump(mode="python"),
             },
+        )
+
+    if fallback_reason == "no_candidates" or settings.strategy == "deterministic_only":
+        return _graph_result(
+            deterministic_brief_from_graph_pack(graph_pack),
+            fallback_reason,
+            prior_inner_agent_result
+            or _deterministic_strategy_result(settings=settings, graph_pack=graph_pack),
         )
 
     synthesis_pack = synthesis_pack_from_graph_pack(graph_pack)
@@ -267,31 +279,13 @@ def _deterministic_graph_result(
         deterministic_pack=synthesis_pack,
     )
     if synthesis_result.status == "ok" and synthesis_result.brief is not None:
-        return RecallMemoryResult(
-            brief=_normalize_provider_brief(synthesis_result.brief),
-            fallback_reason=None,
-            telemetry={
-                "candidate_pack": graph_pack,
-                "source_items": source_items,
-                "inner_agent": _with_graph_counts(
-                    synthesis_result, graph_pack=graph_pack
-                ).model_dump(mode="python"),
-            },
+        return _graph_result(
+            _normalize_provider_brief(synthesis_result.brief), None, synthesis_result
         )
-
-    fallback_result = synthesis_result.model_copy(
-        update={"fallback_used": True}
-    )
-    return RecallMemoryResult(
-        brief=deterministic_brief_from_graph_pack(graph_pack),
-        fallback_reason=fallback_reason,
-        telemetry={
-            "candidate_pack": graph_pack,
-            "source_items": source_items,
-            "inner_agent": _with_graph_counts(
-                fallback_result, graph_pack=graph_pack
-            ).model_dump(mode="python"),
-        },
+    return _graph_result(
+        deterministic_brief_from_graph_pack(graph_pack),
+        fallback_reason,
+        synthesis_result.model_copy(update={"fallback_used": True}),
     )
 
 
@@ -308,19 +302,9 @@ def _deterministic_graph_result_with_uow(
 ) -> RecallMemoryResult:
     """Open a DB transaction for graph-first recall when needed."""
 
-    if uow is not None:
-        return _deterministic_graph_result(
-            request=request,
-            uow=uow,
-            threshold_settings=threshold_settings,
-            settings=settings,
-            inner_agent_runner=inner_agent_runner,
-            repo_root=repo_root,
-            prior_inner_agent_result=prior_inner_agent_result,
-        )
-    if uow_factory is None:
+    if uow is None and uow_factory is None:
         raise ValueError("uow or uow_factory is required for deterministic recall")
-    with uow_factory() as graph_uow:
+    with (nullcontext(uow) if uow is not None else uow_factory()) as graph_uow:
         return _deterministic_graph_result(
             request=request,
             uow=graph_uow,
@@ -330,31 +314,6 @@ def _deterministic_graph_result_with_uow(
             repo_root=repo_root,
             prior_inner_agent_result=prior_inner_agent_result,
         )
-
-
-def _autonomous_fallback_graph_result_with_uow(
-    *,
-    request: MemoryRecallRequest,
-    uow: IUnitOfWork | None,
-    uow_factory: Callable[[], IUnitOfWork] | None,
-    threshold_settings: ThresholdSettings,
-    inner_agent_result: InnerAgentRunResult,
-    settings: InnerAgentSettings,
-    inner_agent_runner: IInnerAgentRunner | None,
-    repo_root: str | None,
-) -> RecallMemoryResult:
-    """Build graph-first fallback after an autonomous provider fails validation."""
-
-    return _deterministic_graph_result_with_uow(
-        request=request,
-        uow=uow,
-        uow_factory=uow_factory,
-        threshold_settings=threshold_settings,
-        settings=settings,
-        inner_agent_runner=inner_agent_runner,
-        repo_root=repo_root,
-        prior_inner_agent_result=inner_agent_result,
-    )
 
 
 def _inner_agent_result(
@@ -380,7 +339,7 @@ def _inner_agent_result(
 
 
 def _deterministic_strategy_result(
-    *, settings: InnerAgentSettings, graph_pack: dict[str, Any], fallback_used: bool
+    *, settings: InnerAgentSettings, graph_pack: dict[str, Any]
 ) -> InnerAgentRunResult:
     """Return telemetry for deterministic-only recall paths."""
 
@@ -389,7 +348,7 @@ def _deterministic_strategy_result(
         provider="deterministic",
         model="none",
         reasoning="none",
-        fallback_used=fallback_used,
+        fallback_used=False,
         timeout_seconds=settings.timeout_seconds,
         duration_ms=int(
             graph_pack.get("pack_trace", {}).get("duration_ms", 0)
@@ -411,22 +370,6 @@ def _with_graph_counts(
             "concept_expansion_count": concept_count,
         }
     )
-
-
-def _no_context_brief() -> dict[str, Any]:
-    """Return the truthful no-context brief shape."""
-
-    return {
-        "summary": "No stored Shellbrain context matched this recall query.",
-        "constraints": [],
-        "known_traps": [],
-        "prior_cases": [],
-        "concept_orientation": [],
-        "anchors": [],
-        "conflicts": [],
-        "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
-        "next_checks": [],
-    }
 
 
 def _normalize_provider_brief(brief: dict[str, Any]) -> dict[str, Any]:

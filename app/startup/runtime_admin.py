@@ -12,9 +12,9 @@ from app.infrastructure.db.admin.provisioning import (
     external_postgres as external_runtime,
     managed_local as managed_runtime,
 )
-from app.infrastructure.db.admin.provisioning.init_effects import (
-    ensure_managed_runtime_available,
-    recover_managed_machine_config,
+from app.infrastructure.db.admin.provisioning.docker_prerequisites import (
+    ensure_docker_runtime_available,
+    recover_managed_machine_config_from_docker,
 )
 from app.infrastructure.db.admin.connection import wait_for_postgres
 from app.infrastructure.db.admin.backups.destructive_guard import (
@@ -161,7 +161,7 @@ def _ensure_shellbrain_home() -> Path:
 def _ensure_managed_dependencies() -> None:
     """Verify managed-local runtime prerequisites before mutation."""
 
-    ensure_managed_runtime_available()
+    ensure_docker_runtime_available()
 
 
 def ensure_managed_runtime_ready() -> None:
@@ -174,7 +174,7 @@ def ensure_managed_runtime_ready() -> None:
         return
     if _postgres_is_ready(config.database.admin_dsn):
         return
-    ensure_managed_runtime_available()
+    ensure_docker_runtime_available()
     managed_runtime.ensure_existing_managed_container_running(config)
     wait_for_postgres(config.database.admin_dsn, timeout_seconds=15)
 
@@ -200,15 +200,10 @@ def _build_fresh_machine_config() -> MachineConfig:
 def _build_external_machine_config(*, admin_dsn: str) -> MachineConfig:
     """Construct a fresh external-Postgres machine config."""
 
-    try:
-        return external_runtime.build_fresh_machine_config(
-            admin_dsn=admin_dsn,
-            embeddings=_runtime_embeddings_config(),
-        )
-    except TypeError as exc:
-        if "unexpected keyword argument" not in str(exc):
-            raise
-        return external_runtime.build_fresh_machine_config(admin_dsn)
+    return external_runtime.build_fresh_machine_config(
+        admin_dsn=admin_dsn,
+        embeddings=_runtime_embeddings_config(),
+    )
 
 
 def _migrate_machine_config(config: MachineConfig) -> MachineConfig:
@@ -309,25 +304,6 @@ def _register_repo(
     )
 
 
-def _determine_outcome(
-    *,
-    mutated_machine: bool,
-    mutated_repo: bool,
-    existing_registration: RepoRegistration | None,
-    repair_performed: bool,
-    config_corruption_recovered: bool,
-) -> str:
-    """Resolve the final init outcome class."""
-
-    if config_corruption_recovered or repair_performed:
-        return INIT_OUTCOME_REPAIRED
-    if existing_registration is None and mutated_repo:
-        return INIT_OUTCOME_INITIALIZED
-    if mutated_machine or mutated_repo:
-        return INIT_OUTCOME_INITIALIZED
-    return INIT_OUTCOME_NOOP
-
-
 def _mark_repair_needed(message: str) -> None:
     """Best-effort mark of the machine state after an unexpected init failure."""
 
@@ -348,7 +324,9 @@ def _mark_repair_needed(message: str) -> None:
 def _recover_machine_config() -> MachineConfig | None:
     """Attempt to recover one unique managed instance for the current home root."""
 
-    return recover_managed_machine_config(embeddings=_runtime_embeddings_config())
+    return recover_managed_machine_config_from_docker(
+        embeddings=_runtime_embeddings_config()
+    )
 
 
 def _runtime_embeddings_config() -> dict[str, object]:

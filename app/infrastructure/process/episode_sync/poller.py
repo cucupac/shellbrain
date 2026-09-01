@@ -104,7 +104,7 @@ def run_episode_poller(
         IDLE_EXIT_SECONDS if idle_stable_seconds is None else idle_stable_seconds
     )
     try:
-        _write_pid_artifact(repo_root=repo_root)
+        write_poller_pid_artifact(repo_root=repo_root)
         while True:
             saw_change = False
             for host_app in SUPPORTED_HOSTS:
@@ -299,15 +299,13 @@ def _run_stable_builds_best_effort(
 
 def _run_build_knowledge_plan_best_effort(
     *,
-    run_build_knowledge: Callable[..., object] | None,
+    run_build_knowledge: Callable[..., object],
     repo_id: str,
     repo_root: Path,
-    plan: KnowledgeBuildPlan | None,
+    plan: KnowledgeBuildPlan,
 ) -> None:
     """Run the lifecycle builder without disrupting transcript sync."""
 
-    if run_build_knowledge is None or plan is None:
-        return
     try:
         kwargs = {
             "repo_id": repo_id,
@@ -347,12 +345,6 @@ def _record_missing_source(
             last_successful_sync_at=None,
             last_error=str(exc),
         )
-
-
-def _write_pid_artifact(*, repo_root: Path) -> None:
-    """Persist the compatibility pid artifact for the current poller process."""
-
-    write_poller_pid_artifact(repo_root=repo_root)
 
 
 def _utc_now() -> datetime:

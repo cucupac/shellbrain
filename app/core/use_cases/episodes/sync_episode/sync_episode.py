@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from collections.abc import Sequence
 from datetime import datetime, timezone
-from typing import Any
+import json
 
 from app.core.entities.episodes import (
     Episode,
     EpisodeEvent,
     EpisodeEventSource,
     EpisodeStatus,
-)
-from app.core.policies.episodes.event_content import (
-    serialize_normalized_episode_event,
 )
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.ports.system.clock import IClock
@@ -34,7 +32,12 @@ def sync_episode(
 ) -> SyncEpisodeResult:
     """Import one already-normalized host transcript into episodes and events."""
 
-    counts = _count_normalized_events(request.normalized_events)
+    source_counts = Counter(event.source for event in request.normalized_events)
+    tool_type_counts = Counter(
+        str(event.model_dump(mode="python").get("tool_name") or "unknown_tool")
+        for event in request.normalized_events
+        if event.source == "tool"
+    )
     now = clock.now()
     uow.episodes.acquire_thread_sync_guard(
         repo_id=request.repo_id, thread_id=request.thread_id
@@ -65,7 +68,12 @@ def sync_episode(
                 seq=next_seq,
                 host_event_key=normalized_event.host_event_key,
                 source=source,
-                content=serialize_normalized_episode_event(normalized_event),
+                content=json.dumps(
+                    normalized_event.model_dump(mode="python"),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=False,
+                ),
                 created_at=created_at,
             )
         )
@@ -79,12 +87,12 @@ def sync_episode(
         thread_id=request.thread_id,
         imported_event_count=imported_count,
         transcript_path=request.transcript_path,
-        total_event_count=int(counts["total_event_count"]),
-        user_event_count=int(counts["user_event_count"]),
-        assistant_event_count=int(counts["assistant_event_count"]),
-        tool_event_count=int(counts["tool_event_count"]),
-        system_event_count=int(counts["system_event_count"]),
-        tool_type_counts=dict(counts["tool_type_counts"]),
+        total_event_count=len(request.normalized_events),
+        user_event_count=source_counts["user"],
+        assistant_event_count=source_counts["assistant"],
+        tool_event_count=source_counts["tool"],
+        system_event_count=source_counts["system"],
+        tool_type_counts=dict(tool_type_counts),
     )
 
 
@@ -112,31 +120,3 @@ def _earliest_event_timestamp(
     if not timestamps:
         return None
     return min(timestamps)
-
-
-def _count_normalized_events(
-    events: Sequence[NormalizedEpisodeEvent],
-) -> dict[str, Any]:
-    """Compute telemetry-friendly source and tool-type counts from normalized events."""
-
-    tool_type_counts: dict[str, int] = {}
-    counts = {
-        "total_event_count": len(events),
-        "user_event_count": 0,
-        "assistant_event_count": 0,
-        "tool_event_count": 0,
-        "system_event_count": 0,
-        "tool_type_counts": tool_type_counts,
-    }
-    for event in events:
-        if event.source == "user":
-            counts["user_event_count"] += 1
-        elif event.source == "assistant":
-            counts["assistant_event_count"] += 1
-        elif event.source == "tool":
-            counts["tool_event_count"] += 1
-            tool_name = str(event.to_content_dict().get("tool_name") or "unknown_tool")
-            tool_type_counts[tool_name] = tool_type_counts.get(tool_name, 0) + 1
-        elif event.source == "system":
-            counts["system_event_count"] += 1
-    return counts

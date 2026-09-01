@@ -26,16 +26,10 @@ class PollerLockInspection:
     owner: dict[str, object] | None
 
     @property
-    def active(self) -> bool:
-        """Return whether the lock currently belongs to a live owner."""
-
-        return self.status in {"active", "foreign_active"}
-
-    @property
     def blocks_acquisition(self) -> bool:
         """Return whether a new poller must not attempt to take this lock."""
 
-        return self.active or self.status == "corrupt"
+        return self.status in {"active", "foreign_active", "corrupt"}
 
 
 @dataclass
@@ -53,7 +47,13 @@ class PollerLockHandle:
 
         if self.released:
             return
-        release_poller_lock(self)
+        inspection = inspect_poller_lock(repo_root=self.repo_root)
+        if inspection.status != "unlocked" and inspection.owner == self.owner:
+            try:
+                self.owner_path.unlink(missing_ok=True)
+                self.lock_root.rmdir()
+            except OSError:
+                pass
         self.released = True
 
 
@@ -139,25 +139,6 @@ def acquire_poller_lock(*, repo_id: str, repo_root: Path) -> PollerLockHandle | 
         )
 
     return None
-
-
-def release_poller_lock(handle: PollerLockHandle) -> None:
-    """Release the singleton lock when the on-disk owner still matches this handle."""
-
-    inspection = inspect_poller_lock(repo_root=handle.repo_root)
-    if inspection.status == "unlocked":
-        return
-    if inspection.owner != handle.owner:
-        return
-
-    try:
-        handle.owner_path.unlink(missing_ok=True)
-    except OSError:
-        return
-    try:
-        handle.lock_root.rmdir()
-    except OSError:
-        return
 
 
 def write_poller_pid_artifact(*, repo_root: Path) -> Path:

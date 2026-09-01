@@ -63,22 +63,6 @@ function getCopyEventName(selector) {
   }
 }
 
-// ── Shared favicon ───────────────────────────
-(function () {
-  if (document.querySelector('link[rel="icon"]')) return;
-
-  var script = document.currentScript;
-  var base = script && script.src ? script.src : location.href;
-  var href = new URL("assets/shellbrain_logo.png", base).href;
-  var icon = document.createElement("link");
-
-  icon.rel = "icon";
-  icon.type = "image/png";
-  icon.href = href;
-
-  document.head.appendChild(icon);
-})();
-
 // ── Active nav link ──────────────────────────
 // Works both on deployed site (paths like /agents/) and local file opens
 // (paths like /Users/.../docs/agents/index.html).
@@ -157,35 +141,6 @@ document.addEventListener("click", async (event) => {
     button.textContent = button.getAttribute("data-copy-failed") || "copy failed";
     window.setTimeout(() => {
       button.textContent = button.getAttribute("data-copy-label") || "copy";
-    }, 1600);
-  }
-});
-
-document.addEventListener("click", async (event) => {
-  const button = event.target.closest("[data-copy-page]");
-  if (!button) return;
-
-  const main = document.querySelector("main");
-  if (!main) return;
-
-  const text = main.innerText;
-  if (!text) return;
-
-  try {
-    await navigator.clipboard.writeText(text);
-    trackSiteEvent("page_copy");
-
-    const previous = button.textContent;
-    button.textContent = "copied";
-    button.classList.add("is-copied");
-    window.setTimeout(() => {
-      button.textContent = previous;
-      button.classList.remove("is-copied");
-    }, 1600);
-  } catch {
-    button.textContent = "failed";
-    window.setTimeout(() => {
-      button.textContent = "copy page";
     }, 1600);
   }
 });

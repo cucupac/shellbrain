@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from datetime import datetime, timezone
 from typing import Any
 
@@ -170,11 +171,9 @@ def _lifecycle_payload(lifecycle: ConceptLifecycle) -> dict[str, Any]:
 
 
 def _evidence_counts(evidence_items: list[ConceptEvidence]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for item in evidence_items:
-        key = f"{item.target_type.value}:{item.target_id}"
-        counts[key] = counts.get(key, 0) + 1
-    return counts
+    return dict(
+        Counter(f"{item.target_type.value}:{item.target_id}" for item in evidence_items)
+    )
 
 
 def _included_lifecycle_targets(
@@ -226,12 +225,13 @@ def _lifecycle_event_payloads(
 
 
 def _status_rollup(*record_groups: list[dict[str, Any]]) -> dict[str, int]:
-    counts: dict[str, int] = {}
-    for group in record_groups:
-        for item in group:
-            status = str(item.get("status") or "unknown")
-            counts[status] = counts.get(status, 0) + 1
-    return counts
+    return dict(
+        Counter(
+            str(item.get("status") or "unknown")
+            for group in record_groups
+            for item in group
+        )
+    )
 
 
 def _preview_concept(

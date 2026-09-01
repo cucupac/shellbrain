@@ -152,11 +152,10 @@ def execute_build_knowledge(
         event_watermark=event_watermark,
         previous_watermark=previous_watermark,
     )
-    status = _run_status(provider_result.status)
     with uow_factory() as uow:
         uow.knowledge_build_runs.complete(
             run_id=run_id,
-            status=status,
+            status=provider_result.status,
             write_count=provider_result.write_count,
             skipped_item_count=provider_result.skipped_item_count,
             input_tokens=provider_result.input_tokens,
@@ -174,7 +173,7 @@ def execute_build_knowledge(
             finished_at=clock.now(),
         )
     return BuildKnowledgeResult(
-        status=status,
+        status=provider_result.status,
         run_id=run_id,
         event_watermark=event_watermark,
         previous_event_watermark=previous_watermark,
@@ -246,14 +245,6 @@ def _run_provider(
             error_code="runner_exception",
             error_message=str(exc),
         )
-
-
-def _run_status(value: object) -> KnowledgeBuildRunStatus:
-    """Coerce provider status into the durable run status enum."""
-
-    if isinstance(value, KnowledgeBuildRunStatus):
-        return value
-    return KnowledgeBuildRunStatus(str(value))
 
 
 def _fresh_running_run(

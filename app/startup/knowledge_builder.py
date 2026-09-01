@@ -15,7 +15,7 @@ from app.startup.internal_agents import (
     get_build_knowledge_inner_agent_runner,
     get_build_knowledge_settings,
 )
-from app.startup.use_cases import get_uow_factory
+from app.startup.repos import get_uow
 
 
 def run_build_knowledge(
@@ -37,7 +37,7 @@ def run_build_knowledge(
     )
     result = execute_build_knowledge(
         request,
-        uow_factory=get_uow_factory(),
+        uow_factory=get_uow,
         clock=SystemClock(),
         id_generator=UuidGenerator(),
         settings=get_build_knowledge_settings(),

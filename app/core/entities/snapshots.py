@@ -32,13 +32,6 @@ class ShadowGitPathChangeStatus(str, Enum):
     RENAMED = "renamed"
 
 
-class CodeDeltaContextStatus(str, Enum):
-    """Public availability states for code-delta context."""
-
-    AVAILABLE = "available"
-    UNAVAILABLE = "unavailable"
-
-
 class CodeDeltaUnavailableReason(str, Enum):
     """Expected reasons an event window cannot expose code-delta context."""
 
@@ -211,13 +204,10 @@ class AvailableCodeDeltaContext:
     final_shadow_commit_sha: str
     patch_sha: str
     path_changes: tuple[ShadowGitPathChange, ...]
-    status: CodeDeltaContextStatus = CodeDeltaContextStatus.AVAILABLE
 
     def __post_init__(self) -> None:
         """Reject invalid available-context states."""
 
-        if self.status is not CodeDeltaContextStatus.AVAILABLE:
-            raise ValueError("available code delta context requires available status")
         for field_name in (
             "base_snapshot_id",
             "final_snapshot_id",
@@ -248,7 +238,7 @@ class AvailableCodeDeltaContext:
         """Return the stable JSON payload for bounded events."""
 
         return {
-            "status": self.status.value,
+            "status": "available",
             "base_snapshot_id": self.base_snapshot_id,
             "final_snapshot_id": self.final_snapshot_id,
             "base_shadow_commit_sha": self.base_shadow_commit_sha,
@@ -266,22 +256,17 @@ class UnavailableCodeDeltaContext:
     """Expected absence of code-delta evidence for one event window."""
 
     reason: CodeDeltaUnavailableReason
-    status: CodeDeltaContextStatus = CodeDeltaContextStatus.UNAVAILABLE
 
     def __post_init__(self) -> None:
         """Reject unavailable-context states without a typed reason."""
 
-        if self.status is not CodeDeltaContextStatus.UNAVAILABLE:
-            raise ValueError(
-                "unavailable code delta context requires unavailable status"
-            )
         if not isinstance(self.reason, CodeDeltaUnavailableReason):
             raise ValueError("reason must be a CodeDeltaUnavailableReason")
 
     def to_response_data(self) -> dict[str, str]:
         """Return the stable JSON payload for bounded events."""
 
-        return {"status": self.status.value, "reason": self.reason.value}
+        return {"status": "unavailable", "reason": self.reason.value}
 
 
 CodeDeltaContext = AvailableCodeDeltaContext | UnavailableCodeDeltaContext

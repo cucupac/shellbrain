@@ -3,7 +3,6 @@
 from typing import Any
 
 from app.startup.config import get_config_provider
-from app.core.errors import ErrorCode, ErrorDetail
 from app.core.entities.settings import UpdatePolicySettings
 
 
@@ -29,19 +28,3 @@ def get_update_policy_settings() -> dict[str, Any]:
     """Return normalized update-policy settings from YAML config."""
 
     return get_typed_update_policy_settings().to_dict()
-
-
-def validate_update_policy_settings() -> list[ErrorDetail]:
-    """Return structured config errors for unsupported update-policy settings."""
-
-    try:
-        get_typed_update_policy_settings()
-    except ValueError as exc:
-        return [
-            ErrorDetail(
-                code=ErrorCode.INTERNAL_ERROR,
-                message=str(exc),
-                field="update_policy.gates",
-            )
-        ]
-    return []

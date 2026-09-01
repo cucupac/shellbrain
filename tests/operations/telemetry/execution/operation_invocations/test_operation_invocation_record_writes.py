@@ -17,6 +17,7 @@ from tests.operations._shared.handler_calls import (
     handle_read,
     handle_update,
 )
+from tests.operations._shared.read_pipeline_stubs import stub_read_pipeline
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -30,7 +31,7 @@ def test_read_should_always_append_one_operation_invocation_row_with_command_rep
 ) -> None:
     """read should always append one operation invocation row with command, repo_id, outcome, and latency fields."""
 
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
 
     result = handle_read(
         {
@@ -200,8 +201,8 @@ def test_operational_invocations_should_always_record_whether_no_sync_was_used(
 
     repo_root = tmp_path / "telemetry-no-sync-repo"
     repo_root.mkdir()
-    _stub_read_pipeline(monkeypatch, zero_results=False)
-    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+    stub_read_pipeline(monkeypatch, zero_results=False)
+    monkeypatch.setattr("app.startup.repos.get_uow", uow_factory)
 
     exit_code = cli_main.main(
         [
@@ -241,10 +242,10 @@ def test_build_knowledge_inner_agent_invocations_should_record_parent_build_run_
     repo_root = tmp_path / "builder-provenance-repo"
     repo_root.mkdir()
     _seed_knowledge_build_run(integration_engine)
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
     monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_knowledge")
     monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
-    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.startup.repos.get_uow", uow_factory)
 
     exit_code = cli_main.main(
         [
@@ -282,10 +283,10 @@ def test_teach_inner_agent_invocations_should_record_parent_build_run_id(
     repo_root = tmp_path / "teach-provenance-repo"
     repo_root.mkdir()
     _seed_knowledge_build_run(integration_engine)
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
     monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "teach")
     monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
-    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.startup.repos.get_uow", uow_factory)
 
     exit_code = cli_main.main(
         [
@@ -321,10 +322,10 @@ def test_non_builder_inner_agent_invocations_should_not_record_build_run_id(
 
     repo_root = tmp_path / "context-provenance-repo"
     repo_root.mkdir()
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
     monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "build_context")
     monkeypatch.setenv("SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID", "run-1")
-    monkeypatch.setattr("app.startup.use_cases.get_uow_factory", lambda: uow_factory)
+    monkeypatch.setattr("app.startup.repos.get_uow", uow_factory)
 
     exit_code = cli_main.main(
         [
@@ -386,61 +387,6 @@ def test_repo_matching_multi_session_discovery_should_always_record_candidate_co
     assert len(rows) == 1
     assert rows[0]["matching_candidate_count"] == 2
     assert rows[0]["selection_ambiguous"] is True
-
-
-def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) -> None:
-    """Patch the read pipeline to return deterministic candidate sets."""
-
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
-        lambda payload, **kwargs: {"semantic": [], "keyword": []},
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword, **kwargs: (
-            []
-            if zero_results
-            else [
-                {
-                    "memory_id": "direct-1",
-                    "rrf_score": 0.99,
-                    "score": 0.99,
-                    "kind": "problem",
-                    "text": "Primary direct memory.",
-                    "created_at": "2024-01-01T00:00:00+00:00",
-                    "status": "active",
-                    "why_included": "direct_match",
-                }
-            ]
-        ),
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
-        lambda direct_candidates, payload, **kwargs: (
-            {"explicit": [], "implicit": []}
-            if zero_results
-            else {
-                "explicit": [
-                    {
-                        "memory_id": "explicit-1",
-                        "score": 0.88,
-                        "kind": "solution",
-                        "text": "Linked association memory.",
-                        "created_at": "2024-01-01T00:00:00+00:00",
-                        "status": "active",
-                        "why_included": "association_link",
-                        "anchor_memory_id": "direct-1",
-                        "relation_type": "depends_on",
-                    }
-                ],
-                "implicit": [],
-            }
-        ),
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
-        lambda bucketed_candidates: bucketed_candidates,
-    )
 
 
 def _seed_knowledge_build_run(integration_engine) -> None:

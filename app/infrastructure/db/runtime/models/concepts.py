@@ -40,9 +40,6 @@ _MEMORY_LINK_ROLES = (
 )
 _SOURCE_KINDS = "'commit', 'file_hash', 'symbol_hash', 'memory', 'transcript_event', 'manual', 'doc', 'runtime_trace'"
 _CREATED_BY_VALUES = "'worker', 'librarian', 'manual', 'import'"
-_PATCH_STATUSES = "'pending', 'applied', 'rejected'"
-
-
 concepts = Table(
     "concepts",
     metadata,
@@ -477,31 +474,6 @@ concept_lifecycle_events = Table(
     ),
     CheckConstraint(
         "btrim(rationale) <> ''", name="ck_concept_lifecycle_events_rationale"
-    ),
-)
-
-graph_patches = Table(
-    "graph_patches",
-    metadata,
-    Column("id", String, primary_key=True),
-    Column("repo_id", String, nullable=False),
-    Column("schema_version", String, nullable=False),
-    Column("status", String, nullable=False, server_default=text("'pending'")),
-    Column("proposed_by", String, nullable=False, server_default=text("'manual'")),
-    Column(
-        "operations_json", JSONB, nullable=False, server_default=text("'[]'::jsonb")
-    ),
-    Column("evidence_summary", Text),
-    Column(
-        "created_at",
-        TIMESTAMP(timezone=True),
-        nullable=False,
-        server_default=text("NOW()"),
-    ),
-    Column("applied_at", TIMESTAMP(timezone=True)),
-    CheckConstraint(f"status IN ({_PATCH_STATUSES})", name="ck_graph_patches_status"),
-    CheckConstraint(
-        f"proposed_by IN ({_CREATED_BY_VALUES})", name="ck_graph_patches_proposed_by"
     ),
 )
 

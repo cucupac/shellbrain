@@ -25,13 +25,6 @@ class UpdateMemoryResult:
     memory_id: str
     planned_effects: list[PlannedEffect]
 
-    @property
-    def data(self) -> dict[str, object]:
-        return {
-            "memory_id": self.memory_id,
-            "planned_side_effects": self.planned_effects,
-        }
-
     def to_response_data(self) -> dict[str, object]:
         return {"memory_id": self.memory_id}
 
@@ -44,15 +37,6 @@ class BatchUpdateMemoryResult:
     updated_memory_ids: list[str]
     applied_count: int
     planned_effects: list[PlannedEffect]
-
-    @property
-    def data(self) -> dict[str, object]:
-        return {
-            "problem_id": self.problem_id,
-            "updated_memory_ids": self.updated_memory_ids,
-            "applied_count": self.applied_count,
-            "planned_side_effects": self.planned_effects,
-        }
 
     def to_response_data(self) -> dict[str, object]:
         return {

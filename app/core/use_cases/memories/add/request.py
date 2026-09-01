@@ -66,7 +66,6 @@ class MemoryAddLinks(_StrictModel):
     """Optional link payloads on memory-add requests."""
 
     problem_id: MemoryId | None = None
-    related_memory_ids: list[MemoryId] = Field(default_factory=list)
     associations: list[MemoryAddAssociationLink] = Field(default_factory=list)
 
     @field_validator("problem_id")
@@ -75,19 +74,6 @@ class MemoryAddLinks(_StrictModel):
         if value is None:
             return value
         return _normalize_memory_id(value, field_name="problem_id")
-
-    @field_validator("related_memory_ids")
-    @classmethod
-    def _validate_related_unsupported(cls, value: list[MemoryId]) -> list[MemoryId]:
-        normalized = [
-            _normalize_memory_id(memory_id, field_name="related_memory_ids")
-            for memory_id in value
-        ]
-        if normalized:
-            raise ValueError(
-                "related_memory_ids is not supported; use associations instead"
-            )
-        return normalized
 
 
 class MemoryAddBody(_StrictModel):

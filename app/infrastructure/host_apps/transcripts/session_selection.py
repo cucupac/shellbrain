@@ -36,7 +36,7 @@ def discover_events_candidate(
 
     discovered: list[tuple[str, dict[str, Any], list[Path]]] = []
     for host_app in SUPPORTED_HOSTS:
-        search_roots = _search_roots_for_host(
+        search_roots = search_roots_for_host(
             repo_root=repo_root,
             host_app=host_app,
             search_roots_by_host=search_roots_by_host,
@@ -134,7 +134,7 @@ def summarize_runtime_selection(
     return replace(summary, selected_episode_id=episode.id)
 
 
-def _search_roots_for_host(
+def search_roots_for_host(
     *,
     repo_root: Path,
     host_app: str,

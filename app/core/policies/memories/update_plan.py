@@ -3,13 +3,13 @@
 from typing import Any
 
 from app.core.use_cases.memories.effect_plan import (
+    EffectType,
     AssociationUpsertAndObserveEffectParams,
     EvidenceSourceEffectParams,
     StructuralFactChangeEffectParams,
     MemoryLifecycleUpdateEffectParams,
     PlannedEffect,
     UtilityObservationAppendEffectParams,
-    make_side_effect,
 )
 from app.core.use_cases.memories.update.result import UpdatePlanIds
 from app.core.entities.associations import AssociationSourceMode, AssociationState
@@ -33,8 +33,8 @@ def build_update_plan(
 
     if update_type == "update_lifecycle":
         return [
-            make_side_effect(
-                "memory.lifecycle_update",
+            PlannedEffect(
+                EffectType.MEMORY_LIFECYCLE_UPDATE,
                 MemoryLifecycleUpdateEffectParams(
                     event_id=_required(
                         plan_ids.memory_lifecycle_event_id,
@@ -67,8 +67,8 @@ def build_update_plan(
     if update_type == "utility_vote":
         evidence_refs = EvidenceRefs.optional(update.get("evidence_refs", [])).values
         return [
-            make_side_effect(
-                "utility_observation.append",
+            PlannedEffect(
+                EffectType.UTILITY_OBSERVATION_APPEND,
                 UtilityObservationAppendEffectParams(
                     id=_required(
                         plan_ids.utility_observation_id, "utility_observation_id"
@@ -86,8 +86,8 @@ def build_update_plan(
     if update_type == "fact_update_link":
         evidence_refs = EvidenceRefs.optional(update.get("evidence_refs", [])).values
         return [
-            make_side_effect(
-                "structural_fact_change.create",
+            PlannedEffect(
+                EffectType.STRUCTURAL_FACT_CHANGE_CREATE,
                 StructuralFactChangeEffectParams(
                     repo_id=repo_id,
                     old_fact_id=update["old_fact_id"],
@@ -106,8 +106,8 @@ def build_update_plan(
         salience = SalienceValue(update["salience"]).value
         evidence_refs = EvidenceRefs.required(update["evidence_refs"]).values
         return [
-            make_side_effect(
-                "association.upsert_and_observe",
+            PlannedEffect(
+                EffectType.ASSOCIATION_UPSERT_AND_OBSERVE,
                 AssociationUpsertAndObserveEffectParams(
                     repo_id=repo_id,
                     edge_id=_required(

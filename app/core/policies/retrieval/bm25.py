@@ -36,9 +36,6 @@ class BM25ScoredDocument:
 def score_documents(
     query_terms: Sequence[str],
     documents: Sequence[BM25Document],
-    *,
-    k1: float = _K1,
-    b: float = _B,
 ) -> list[BM25ScoredDocument]:
     """Return BM25 scores and weighted query coverage for partially matching documents."""
 
@@ -81,12 +78,12 @@ def score_documents(
         score = 0.0
         matched_query_weight = 0.0
         document_length = len(document.terms)
-        normalization = k1 * (1 - b + b * document_length / average_length)
+        normalization = _K1 * (1 - _B + _B * document_length / average_length)
         for term in matched_terms:
             inverse_document_frequency = inverse_document_frequencies[term]
             term_frequency = frequencies[term]
             score += inverse_document_frequency * (
-                (term_frequency * (k1 + 1)) / (term_frequency + normalization)
+                (term_frequency * (_K1 + 1)) / (term_frequency + normalization)
             )
             matched_query_weight += inverse_document_frequency
 

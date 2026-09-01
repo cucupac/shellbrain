@@ -108,8 +108,6 @@ python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))
 
 If that directory contains `shellbrain`, call it directly or add that directory to the login profile PATH and retry. If it does not, reinstall the Shellbrain CLI.
 
-The repo Dockerfile is for packaging and development smoke coverage. It is not the end-user runtime path.
-
 Steady-state working-agent usage, once the CLI is visible, should look like:
 
 ```bash

@@ -12,7 +12,6 @@ import time
 from uuid import uuid4
 
 import psycopg
-import pytest
 
 from app.core.entities.episodes import (
     Episode,
@@ -81,8 +80,6 @@ def test_local_postgres_migration_requires_identity_bound_confirmation(
     )
 
 
-@pytest.mark.docker
-@pytest.mark.persistence
 def test_local_postgres_migration_to_shellbrain_preserves_existing_data(
     tmp_path: Path,
 ) -> None:

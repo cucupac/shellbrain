@@ -12,14 +12,15 @@ def build_cli_runtime():
     """Build the concrete dependency set for the CLI runner."""
 
     from app.startup import create_policy
+    from app.startup import embeddings
     from app.startup import episode_sync_launcher
     from app.startup import operation_dependencies
     from app.startup import read_policy
     from app.startup import repo_context
+    from app.startup import repos
     from app.startup import runtime_admin
     from app.startup import runtime_context as startup_runtime_context
     from app.startup import snapshot_baseline
-    from app.startup import use_cases
     from app.infrastructure.local_state import operation_registration
     from app.infrastructure.process.episode_sync import autostart as episode_autostart
     from app.infrastructure.telemetry import operation_polling
@@ -29,9 +30,9 @@ def build_cli_runtime():
         build_operation_dependencies=operation_dependencies.build_operation_dependencies,
         get_create_hydration_defaults=create_policy.get_create_hydration_defaults,
         get_read_hydration_defaults=read_policy.get_read_hydration_defaults,
-        get_uow_factory=use_cases.get_uow_factory,
-        get_embedding_provider_factory=use_cases.get_embedding_provider_factory,
-        get_embedding_model=use_cases.get_embedding_model,
+        get_uow_factory=lambda: repos.get_uow,
+        get_embedding_provider_factory=lambda: embeddings.get_embedding_provider,
+        get_embedding_model=embeddings.get_embedding_model_name,
         get_operation_telemetry_context=(
             startup_runtime_context.get_operation_telemetry_context
         ),
@@ -52,7 +53,7 @@ def build_cli_runtime():
         ),
         update_operation_polling_status=lambda **kwargs: (
             operation_polling.update_operation_polling_status(
-                uow_factory=use_cases.get_uow_factory(), **kwargs
+                uow_factory=repos.get_uow, **kwargs
             )
         ),
         should_register_repo_during_init=(
@@ -88,9 +89,7 @@ def build_admin_command_dependencies():
         get_engine_instance=startup_db.get_engine_instance,
         get_backup_dir=admin_db.get_backup_dir,
         get_backup_mirror_dir=admin_db.get_backup_mirror_dir,
-        managed_backup_kwargs=lambda _machine_config, _machine_error: (
-            startup_admin.managed_backup_kwargs()
-        ),
+        managed_backup_kwargs=startup_admin.managed_backup_kwargs,
         managed_restore_kwargs=startup_admin.managed_restore_kwargs,
         create_backup=startup_backup.create_backup,
         list_backups=startup_backup.list_backups,

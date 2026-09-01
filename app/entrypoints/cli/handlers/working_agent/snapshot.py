@@ -129,7 +129,7 @@ def _sync_active_episode(
         )
         with uow_factory() as uow:
             sync_result = sync_episode(
-                SyncEpisodeRequest.from_raw_events(
+                SyncEpisodeRequest(
                     repo_id=repo_id,
                     host_app=str(source.host_app),
                     host_session_key=str(source.host_session_key),

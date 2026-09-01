@@ -67,7 +67,7 @@ def retrieve_seeds(
                 include_global=include_global,
                 kinds=kinds,
                 query_terms=lexical_query.terms,
-                candidate_limit=_keyword_candidate_limit(limit),
+                candidate_limit=max(limit * 25, 200),
             ),
             lexical_query=lexical_query,
             mode=request_data["mode"],
@@ -117,9 +117,3 @@ def _required_status(row: dict[str, Any]) -> str:
     if "status" not in row:
         raise ValueError(f"Keyword corpus row {row.get('memory_id')} is missing status")
     return str(row["status"])
-
-
-def _keyword_candidate_limit(limit: int) -> int:
-    """Return the bounded lexical candidate pool size used before pure BM25 ranking."""
-
-    return max(limit * 25, 200)

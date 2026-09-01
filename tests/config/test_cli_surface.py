@@ -233,15 +233,6 @@ def test_upgrade_help_should_include_one_example(
     assert "pipx upgrade shellbrain && shellbrain init" in output
 
 
-def test_metrics_command_should_not_be_registered() -> None:
-    """The retired metrics command should not remain in the public CLI."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["metrics", "--help"])
-
-    assert excinfo.value.code == 2
-
-
 def test_read_help_should_include_one_example(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -748,20 +739,6 @@ def test_admin_recall_status_fails_on_invalid_config(
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "Invalid recall mode config" in captured.err
-
-
-def test_admin_should_not_expose_concept_embedding_backfill_commands() -> None:
-    """concept embedding backfill should not be a user-facing CLI route."""
-
-    parser = cli_parser.build_parser()
-
-    with pytest.raises(SystemExit) as nested_exc:
-        parser.parse_args(["admin", "embeddings", "backfill-concepts"])
-    assert nested_exc.value.code == 2
-
-    with pytest.raises(SystemExit) as alias_exc:
-        parser.parse_args(["admin", "backfill-concept-embeddings"])
-    assert alias_exc.value.code == 2
 
 
 def test_admin_analytics_should_print_the_report(

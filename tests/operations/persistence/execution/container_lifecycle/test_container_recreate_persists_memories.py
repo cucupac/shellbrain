@@ -1,10 +1,7 @@
 """Durability contracts for DB container deletion and recreation."""
 
-import pytest
 
 
-@pytest.mark.docker
-@pytest.mark.persistence
 def test_container_recreate_persists_memories(isolated_db_factory) -> None:
     """persistence should preserve sentinel shellbrain data across DB container deletion and recreation."""
 

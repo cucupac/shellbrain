@@ -26,7 +26,6 @@ class GuidanceDecision:
     problem_id: str | None = None
     memory_ids: list[str] = field(default_factory=list)
     vote_scale_hint: dict[str, float] | None = None
-    setup_hint: str | None = None
 
     def to_payload(self) -> dict[str, Any]:
         """Serialize one guidance decision into the public response shape."""
@@ -42,6 +41,4 @@ class GuidanceDecision:
             payload["memory_ids"] = list(self.memory_ids)
         if self.vote_scale_hint is not None:
             payload["vote_scale_hint"] = dict(self.vote_scale_hint)
-        if self.setup_hint is not None:
-            payload["setup_hint"] = self.setup_hint
         return payload

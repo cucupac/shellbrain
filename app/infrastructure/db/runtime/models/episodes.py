@@ -22,8 +22,6 @@ episodes = Table(
     Column("repo_id", String, nullable=False),
     Column("host_app", String, nullable=False),
     Column("thread_id", String),
-    Column("title", String),
-    Column("objective", String),
     Column("status", String, nullable=False),
     Column("started_at", TIMESTAMP(timezone=True), nullable=False),
     Column("ended_at", TIMESTAMP(timezone=True)),
@@ -54,45 +52,5 @@ episode_events = Table(
     UniqueConstraint("episode_id", "seq", name="uq_episode_events_seq"),
     UniqueConstraint(
         "episode_id", "host_event_key", name="uq_episode_events_host_event_key"
-    ),
-)
-
-session_transfers = Table(
-    "session_transfers",
-    metadata,
-    Column("id", String, primary_key=True),
-    Column("repo_id", String, nullable=False),
-    Column(
-        "from_episode_id",
-        String,
-        ForeignKey("episodes.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "to_episode_id",
-        String,
-        ForeignKey("episodes.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column(
-        "event_id",
-        String,
-        ForeignKey("episode_events.id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("transfer_kind", String, nullable=False),
-    Column("rationale", Text),
-    Column("transferred_by", String),
-    Column("created_at", TIMESTAMP(timezone=True), nullable=False),
-    CheckConstraint(
-        "from_episode_id <> to_episode_id",
-        name="ck_session_transfers_distinct_episodes",
-    ),
-    UniqueConstraint(
-        "from_episode_id",
-        "to_episode_id",
-        "event_id",
-        "transfer_kind",
-        name="uq_session_transfers_transfer",
     ),
 )

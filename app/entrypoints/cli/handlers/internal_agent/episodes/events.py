@@ -106,7 +106,7 @@ def run_read_events_operation(
                 )
                 with uow_factory() as uow:
                     sync_result = sync_episode(
-                        SyncEpisodeRequest.from_raw_events(
+                        SyncEpisodeRequest(
                             repo_id=request.repo_id,
                             host_app=str(source.host_app),
                             host_session_key=str(source.host_session_key),

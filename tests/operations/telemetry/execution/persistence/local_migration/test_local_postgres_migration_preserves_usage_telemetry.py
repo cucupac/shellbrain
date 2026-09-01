@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
 
 from tests.operations._shared.telemetry_db_fixtures import (
     assert_usage_telemetry_dataset_via_dsn,
@@ -28,8 +27,6 @@ from tests.operations.persistence.execution.local_migration.test_local_postgres_
 )
 
 
-@pytest.mark.docker
-@pytest.mark.persistence
 def test_local_migration_should_preserve_sentinel_usage_telemetry_while_promoting_the_cluster_to_shellbrain_naming(
     tmp_path: Path,
 ) -> None:

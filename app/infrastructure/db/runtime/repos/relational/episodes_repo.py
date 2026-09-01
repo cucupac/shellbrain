@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import Sequence
 
-from sqlalchemy import func, select, text, update
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.core.entities.episodes import (
@@ -12,20 +12,15 @@ from app.core.entities.episodes import (
     EpisodeEvent,
     EpisodeEventSource,
     EpisodeStatus,
-    SessionTransfer,
 )
 from app.core.entities.knowledge_builder import KnowledgeBuildRunStatus
 from app.infrastructure.db.runtime.models.knowledge_builder import knowledge_build_runs
 from app.core.ports.db.episode_repositories import IEpisodesRepo
-from app.infrastructure.db.runtime.models.episodes import (
-    episode_events,
-    episodes,
-    session_transfers,
-)
+from app.infrastructure.db.runtime.models.episodes import episode_events, episodes
 
 
 class EpisodesRepo(IEpisodesRepo):
-    """This class provides persistence operations for episodes, events, and transfers."""
+    """This class provides persistence operations for episodes and events."""
 
     def __init__(self, session) -> None:
         """This method stores the active DB session for repository operations."""
@@ -41,8 +36,6 @@ class EpisodesRepo(IEpisodesRepo):
                 repo_id=episode.repo_id,
                 host_app=episode.host_app,
                 thread_id=episode.thread_id,
-                title=episode.title,
-                objective=episode.objective,
                 status=episode.status.value,
                 started_at=episode.started_at or datetime.now(timezone.utc),
                 ended_at=episode.ended_at,
@@ -72,8 +65,6 @@ class EpisodesRepo(IEpisodesRepo):
                 repo_id=episode.repo_id,
                 host_app=episode.host_app,
                 thread_id=episode.thread_id,
-                title=episode.title,
-                objective=episode.objective,
                 status=episode.status.value,
                 started_at=episode.started_at or datetime.now(timezone.utc),
                 ended_at=episode.ended_at,
@@ -108,18 +99,7 @@ class EpisodesRepo(IEpisodesRepo):
         )
         if row is None:
             return None
-        return Episode(
-            id=row["id"],
-            repo_id=row["repo_id"],
-            host_app=row["host_app"],
-            thread_id=row["thread_id"],
-            title=row["title"],
-            objective=row["objective"],
-            status=EpisodeStatus(row["status"]),
-            started_at=row["started_at"],
-            ended_at=row["ended_at"],
-            created_at=row["created_at"],
-        )
+        return _to_episode(row)
 
     def get_episode(
         self,
@@ -141,18 +121,7 @@ class EpisodesRepo(IEpisodesRepo):
         )
         if row is None:
             return None
-        return Episode(
-            id=row["id"],
-            repo_id=row["repo_id"],
-            host_app=row["host_app"],
-            thread_id=row["thread_id"],
-            title=row["title"],
-            objective=row["objective"],
-            status=EpisodeStatus(row["status"]),
-            started_at=row["started_at"],
-            ended_at=row["ended_at"],
-            created_at=row["created_at"],
-        )
+        return _to_episode(row)
 
     def get_event(
         self,
@@ -182,25 +151,7 @@ class EpisodesRepo(IEpisodesRepo):
         )
         if row is None:
             return None
-        return EpisodeEvent(
-            id=row["id"],
-            episode_id=row["episode_id"],
-            seq=row["seq"],
-            host_event_key=row["host_event_key"],
-            source=EpisodeEventSource(row["source"]),
-            content=row["content"],
-            created_at=row["created_at"],
-        )
-
-    def list_event_keys(self, *, episode_id: str) -> list[str]:
-        """This method returns already-imported upstream event keys for one episode."""
-
-        rows = self._session.execute(
-            select(episode_events.c.host_event_key).where(
-                episode_events.c.episode_id == episode_id
-            )
-        ).scalars()
-        return [str(value) for value in rows]
+        return _to_event(row)
 
     def next_event_seq(self, *, episode_id: str) -> int:
         """This method returns the next append sequence number for one episode."""
@@ -245,32 +196,6 @@ class EpisodesRepo(IEpisodesRepo):
             .returning(episode_events.c.id)
         ).scalar_one_or_none()
         return inserted_id is not None
-
-    def close_episode(self, *, episode_id: str, ended_at: datetime) -> None:
-        """This method marks an active episode closed."""
-
-        self._session.execute(
-            update(episodes)
-            .where(episodes.c.id == episode_id)
-            .values(status="closed", ended_at=ended_at)
-        )
-
-    def append_transfer(self, transfer: SessionTransfer) -> None:
-        """This method appends a session transfer row."""
-
-        self._session.execute(
-            session_transfers.insert().values(
-                id=transfer.id,
-                repo_id=transfer.repo_id,
-                from_episode_id=transfer.from_episode_id,
-                to_episode_id=transfer.to_episode_id,
-                event_id=transfer.event_id,
-                transfer_kind=transfer.transfer_kind,
-                rationale=transfer.rationale,
-                transferred_by=transfer.transferred_by,
-                created_at=transfer.created_at or datetime.now(timezone.utc),
-            )
-        )
 
     def list_existing_event_ids(self, *, event_ids: Sequence[str]) -> list[str]:
         """This method returns stored event ids regardless of repo visibility."""
@@ -330,18 +255,7 @@ class EpisodesRepo(IEpisodesRepo):
             .mappings()
             .all()
         )
-        return [
-            EpisodeEvent(
-                id=row["id"],
-                episode_id=row["episode_id"],
-                seq=row["seq"],
-                host_event_key=row["host_event_key"],
-                source=EpisodeEventSource(row["source"]),
-                content=row["content"],
-                created_at=row["created_at"],
-            )
-            for row in rows
-        ]
+        return [_to_event(row) for row in rows]
 
     def list_events_range(
         self,
@@ -372,18 +286,7 @@ class EpisodesRepo(IEpisodesRepo):
             .mappings()
             .all()
         )
-        return [
-            EpisodeEvent(
-                id=row["id"],
-                episode_id=row["episode_id"],
-                seq=row["seq"],
-                host_event_key=row["host_event_key"],
-                source=EpisodeEventSource(row["source"]),
-                content=row["content"],
-                created_at=row["created_at"],
-            )
-            for row in rows
-        ]
+        return [_to_event(row) for row in rows]
 
     def event_watermark(self, *, repo_id: str, episode_id: str) -> int:
         """Return the highest imported event sequence for one repo-visible episode."""
@@ -479,3 +382,28 @@ class EpisodesRepo(IEpisodesRepo):
             )
             for row in rows
         ]
+
+
+def _to_episode(row) -> Episode:
+    return Episode(
+        id=row["id"],
+        repo_id=row["repo_id"],
+        host_app=row["host_app"],
+        thread_id=row["thread_id"],
+        status=EpisodeStatus(row["status"]),
+        started_at=row["started_at"],
+        ended_at=row["ended_at"],
+        created_at=row["created_at"],
+    )
+
+
+def _to_event(row) -> EpisodeEvent:
+    return EpisodeEvent(
+        id=row["id"],
+        episode_id=row["episode_id"],
+        seq=row["seq"],
+        host_event_key=row["host_event_key"],
+        source=EpisodeEventSource(row["source"]),
+        content=row["content"],
+        created_at=row["created_at"],
+    )

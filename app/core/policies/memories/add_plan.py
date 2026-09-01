@@ -4,13 +4,13 @@ from typing import Any
 
 from app.core.use_cases.memories.add.result import CreatePlanIds
 from app.core.use_cases.memories.effect_plan import (
+    EffectType,
     AssociationUpsertAndObserveEffectParams,
     MemoryAddEffectParams,
     MemoryEmbeddingUpsertEffectParams,
     EvidenceAttachEffectParams,
     PlannedEffect,
     StructuralProblemLinkEffectParams,
-    make_side_effect,
 )
 from app.core.entities.associations import AssociationSourceMode, AssociationState
 from app.core.entities.memories import (
@@ -34,8 +34,8 @@ def build_create_plan(
     memory_id = plan_ids.memory_id
     evidence_refs = EvidenceRefs.required(memory["evidence_refs"]).values
     plan: list[PlannedEffect] = [
-        make_side_effect(
-            "memory.create",
+        PlannedEffect(
+            EffectType.MEMORY_CREATE,
             MemoryAddEffectParams(
                 memory_id=memory_id,
                 repo_id=repo_id,
@@ -44,16 +44,16 @@ def build_create_plan(
                 text=memory["text"],
             ),
         ),
-        make_side_effect(
-            "memory_embedding.upsert",
+        PlannedEffect(
+            EffectType.MEMORY_EMBEDDING_UPSERT,
             MemoryEmbeddingUpsertEffectParams(
                 memory_id=memory_id,
                 model=embedding_model,
                 text=memory["text"],
             ),
         ),
-        make_side_effect(
-            "evidence.attach",
+        PlannedEffect(
+            EffectType.EVIDENCE_ATTACH,
             EvidenceAttachEffectParams(
                 memory_id=memory_id,
                 repo_id=repo_id,
@@ -66,8 +66,8 @@ def build_create_plan(
     if MemoryKind(memory["kind"]).requires_problem_link and problem_id:
         relation_id = _required_structural_relation_id(plan_ids, 0)
         plan.append(
-            make_side_effect(
-                "structural_problem_link.create",
+            PlannedEffect(
+                EffectType.STRUCTURAL_PROBLEM_LINK_CREATE,
                 StructuralProblemLinkEffectParams(
                     relation_id=relation_id,
                     repo_id=repo_id,
@@ -89,8 +89,8 @@ def build_create_plan(
         confidence = ConfidenceValue(association["confidence"]).value
         salience = SalienceValue(association["salience"]).value
         plan.append(
-            make_side_effect(
-                "association.upsert_and_observe",
+            PlannedEffect(
+                EffectType.ASSOCIATION_UPSERT_AND_OBSERVE,
                 AssociationUpsertAndObserveEffectParams(
                     repo_id=repo_id,
                     edge_id=plan_ids.association_edge_ids[index],

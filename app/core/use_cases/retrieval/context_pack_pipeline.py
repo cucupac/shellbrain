@@ -22,6 +22,7 @@ from app.core.policies.retrieval.scoring import score_candidates
 from app.core.use_cases.retrieval.expansion import expand_candidates
 from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
 
+_DISPLAY_FIELDS = ("kind", "text", "created_at", "status")
 
 def build_context_pack(
     request_data: dict[str, Any],
@@ -84,12 +85,7 @@ def _hydrate_pack_items(
     for section_name in ("direct", "explicit_related", "implicit_related"):
         for item in pack[section_name]:
             memory_id = str(item["memory_id"])
-            if (
-                "kind" not in item
-                or "text" not in item
-                or "created_at" not in item
-                or "status" not in item
-            ) and memory_id not in seen_memory_ids:
+            if not _has_display_fields(item) and memory_id not in seen_memory_ids:
                 seen_memory_ids.add(memory_id)
                 missing_memory_ids.append(memory_id)
 
@@ -99,12 +95,7 @@ def _hydrate_pack_items(
         }
         for section_name in ("direct", "explicit_related", "implicit_related"):
             for item in pack[section_name]:
-                if (
-                    "kind" in item
-                    and "text" in item
-                    and "created_at" in item
-                    and "status" in item
-                ):
+                if _has_display_fields(item):
                     continue
                 memory_id = str(item["memory_id"])
                 memory = hydrated_memories.get(memory_id)
@@ -116,17 +107,12 @@ def _hydrate_pack_items(
                 item.setdefault("text", memory.text)
                 item.setdefault("created_at", _iso(memory.created_at))
                 item.setdefault("status", memory.status.value)
-                if (
-                    "kind" not in item
-                    or "text" not in item
-                    or "created_at" not in item
-                    or "status" not in item
-                ):
-                    raise ValueError(
-                        f"Incomplete hydrated memory for context-pack item: {memory_id}"
-                    )
 
     return pack
+
+
+def _has_display_fields(item: dict[str, Any]) -> bool:
+    return all(field in item for field in _DISPLAY_FIELDS)
 
 
 def _iso(value: datetime | None) -> str | None:

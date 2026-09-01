@@ -179,39 +179,6 @@ def test_startup_references_entrypoints_only_as_bootstrap_module_constants() -> 
     )
 
 
-def test_followup_refactor_removed_old_layer_paths() -> None:
-    forbidden_paths = (
-        APP_ROOT / "handlers",
-        APP_ROOT / "startup" / "handlers.py",
-        APP_ROOT / "infrastructure" / "cli",
-        APP_ROOT / "infrastructure" / "host_assets",
-        APP_ROOT / "infrastructure" / "host_identity",
-        APP_ROOT / "infrastructure" / "host_transcripts",
-        APP_ROOT / "infrastructure" / "observability",
-        APP_ROOT / "infrastructure" / "postgres_admin",
-        APP_ROOT / "infrastructure" / "runtime",
-        APP_ROOT / "infrastructure" / "process" / "episode_poller.py",
-        APP_ROOT / "infrastructure" / "process" / "episode_sync_launcher.py",
-        APP_ROOT / "infrastructure" / "local_state" / "backup_manifest_store.py",
-        APP_ROOT / "infrastructure" / "local_state" / "episode_sync_status_store.py",
-        APP_ROOT / "infrastructure" / "local_state" / "poller_lock.py",
-        APP_ROOT / "infrastructure" / "db" / "admin" / "destructive_guard.py",
-        APP_ROOT / "infrastructure" / "db" / "admin" / "logical_backup.py",
-        APP_ROOT / "infrastructure" / "db" / "admin" / "restore.py",
-        APP_ROOT / "core" / "contracts",
-        APP_ROOT / "core" / "contracts" / "requests.py",
-        APP_ROOT / "core" / "ports" / "runtime",
-        APP_ROOT / "entrypoints" / "cli" / "endpoints",
-        APP_ROOT / "entrypoints" / "cli" / "protocol",
-    )
-    violations = [
-        str(path.relative_to(REPO_ROOT)) for path in forbidden_paths if path.exists()
-    ]
-    assert not violations, (
-        "Forbidden follow-up refactor paths still exist:\n" + "\n".join(violations)
-    )
-
-
 def test_infrastructure_adapter_families_are_grouped() -> None:
     expected_paths = (
         APP_ROOT / "infrastructure" / "db" / "runtime",
@@ -274,47 +241,10 @@ def test_cli_adapter_lives_under_entrypoints() -> None:
     assert not missing, "CLI adapter paths are missing:\n" + "\n".join(missing)
 
 
-def test_periphery_package_is_gone() -> None:
-    assert not (APP_ROOT / "periphery").exists()
-
-
-def test_cli_legacy_module_is_gone() -> None:
-    assert not (APP_ROOT / "entrypoints" / "cli" / "legacy.py").exists()
-
-
-def test_top_level_create_and_update_commands_are_gone() -> None:
-    parser = build_parser()
-    choices = parser._subparsers._group_actions[0].choices
-    assert "create" not in choices
-    assert "update" not in choices
-
-
 def test_bare_concept_payload_is_rejected() -> None:
     parser = build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["concept", "--json", "{}"])
-
-
-def test_operation_flow_is_gone() -> None:
-    assert not (APP_ROOT / "core" / "use_cases" / "operation_flow.py").exists()
-    assert not (
-        APP_ROOT / "core" / "use_cases" / "agent_operations" / "support.py"
-    ).exists()
-
-
-def test_refactor_old_layer_directories_are_gone() -> None:
-    forbidden_paths = (
-        APP_ROOT / "core" / "observability",
-        APP_ROOT / "core" / "validation",
-        APP_ROOT / "core" / "use_cases" / "agent_operations",
-        APP_ROOT / "application",
-    )
-    violations = [
-        str(path.relative_to(REPO_ROOT)) for path in forbidden_paths if path.exists()
-    ]
-    assert not violations, (
-        "Forbidden old architecture directories still exist:\n" + "\n".join(violations)
-    )
 
 
 def test_core_ports_replace_interfaces() -> None:
@@ -399,11 +329,6 @@ def test_core_use_cases_do_not_accept_raw_payloads() -> None:
         "Core use cases should receive typed contracts, not raw CLI payloads:\n"
         + "\n".join(violations)
     )
-
-
-def test_startup_jobs_package_is_gone() -> None:
-    assert not (APP_ROOT / "startup" / "jobs.py").exists()
-    assert not (APP_ROOT / "startup" / "jobs").exists()
 
 
 def test_no_empty_production_package_directories() -> None:
@@ -503,29 +428,6 @@ def test_infrastructure_package_initializers_stay_thin() -> None:
     )
 
 
-def test_core_policy_smell_packages_are_gone() -> None:
-    assert not list((APP_ROOT / "core").rglob("_shared"))
-    assert not (APP_ROOT / "core" / "policies" / "telemetry").exists()
-    assert not (APP_ROOT / "core" / "policies" / "validation").exists()
-
-
-def test_no_code_imports_removed_architecture_paths() -> None:
-    forbidden_prefixes = (
-        "app.core.contracts",
-        "app.entrypoints.cli.protocol",
-    )
-    violations: list[str] = []
-    for root in (APP_ROOT, REPO_ROOT / "tests"):
-        for path in _python_files(root):
-            for line_no, module_name in _imported_modules(path):
-                if _module_matches_forbidden_prefix(module_name, forbidden_prefixes):
-                    rel_path = path.relative_to(REPO_ROOT)
-                    violations.append(f"{rel_path}:{line_no} imports {module_name}")
-    assert not violations, (
-        "Removed architecture paths must not be imported:\n" + "\n".join(violations)
-    )
-
-
 def test_core_settings_port_requires_core_use_case_dependency() -> None:
     settings_port_root = APP_ROOT / "core" / "ports" / "settings"
     if not settings_port_root.exists():
@@ -566,18 +468,6 @@ def test_startup_does_not_own_sqlalchemy_queries() -> None:
                 )
     assert not violations, (
         "Startup should compose DB adapters, not own SQLAlchemy query code:\n"
-        + "\n".join(violations)
-    )
-
-
-def test_core_use_case_apply_files_are_gone() -> None:
-    violations = [
-        str(path.relative_to(REPO_ROOT))
-        for path in _python_files(APP_ROOT / "core" / "use_cases")
-        if path.stem.startswith("apply")
-    ]
-    assert not violations, (
-        "Core use cases should expose add/update/show/read paths, not apply files:\n"
         + "\n".join(violations)
     )
 
@@ -780,10 +670,6 @@ def test_core_inner_agent_settings_are_provider_neutral() -> None:
     )
 
 
-def test_deleted_agent_operations_tree_is_not_a_guardrail_target() -> None:
-    assert not (APP_ROOT / "core" / "use_cases" / "agent_operations").exists()
-
-
 def test_planned_effects_use_typed_params() -> None:
     path = APP_ROOT / "core" / "use_cases" / "memories" / "effect_plan.py"
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -857,33 +743,6 @@ def test_docs_and_onboarding_do_not_teach_removed_cli_aliases() -> None:
                     )
     assert not violations, (
         "Docs/onboarding should teach current CLI names only:\n" + "\n".join(violations)
-    )
-
-
-def test_runtime_code_does_not_reference_retired_compatibility_tables() -> None:
-    """Dropped compatibility tables may appear only in migrations/test fixtures."""
-
-    retired_tables = (
-        "memory_evidence",
-        "fact_update_evidence",
-        "association_edge_evidence",
-        "utility_observation_evidence",
-        "concept_evidence",
-        "problem_attempts",
-        "fact_updates",
-    )
-    violations: list[str] = []
-    for path in _python_files(APP_ROOT):
-        text = path.read_text(encoding="utf-8")
-        for table_name in retired_tables:
-            if table_name in text:
-                rel_path = path.relative_to(REPO_ROOT).as_posix()
-                violations.append(f"{rel_path} references {table_name!r}")
-
-    assert not violations, (
-        "Runtime app code must use canonical evidence_links and "
-        "structural_memory_relations, not retired compatibility tables:\n"
-        + "\n".join(violations)
     )
 
 

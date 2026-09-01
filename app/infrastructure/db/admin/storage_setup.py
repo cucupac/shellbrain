@@ -45,7 +45,7 @@ def resolve_storage_selection(
     """Resolve one storage selection from flags, config, or an interactive prompt."""
 
     normalized_flag = _normalize_storage_flag(storage_flag)
-    normalized_admin_dsn = _normalize_admin_dsn(admin_dsn_flag)
+    normalized_admin_dsn = (admin_dsn_flag or "").strip() or None
 
     if existing_config is not None:
         if (
@@ -88,15 +88,6 @@ def _normalize_storage_flag(storage_flag: str | None) -> str | None:
     if normalized == STORAGE_FLAG_EXTERNAL:
         return RUNTIME_MODE_EXTERNAL_POSTGRES
     raise InitDependencyError(f"Unsupported storage mode: {storage_flag!r}")
-
-
-def _normalize_admin_dsn(admin_dsn: str | None) -> str | None:
-    """Return a trimmed admin DSN when present."""
-
-    if admin_dsn is None:
-        return None
-    normalized = admin_dsn.strip()
-    return normalized or None
 
 
 def _prompt_for_storage_mode() -> str:

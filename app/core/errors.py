@@ -16,12 +16,9 @@ class ErrorCode(str, Enum):
     NOT_FOUND = "not_found"
     CONFLICT = "conflict"
     INTERNAL_ERROR = "internal_error"
-    HOST_IDENTITY_UNAVAILABLE = "host_identity_unavailable"
     HOST_IDENTITY_UNSUPPORTED = "host_identity_unsupported"
     HOST_IDENTITY_DRIFTED = "host_identity_drifted"
     HOST_HOOK_MISSING = "host_hook_missing"
-    TRANSCRIPT_SOURCE_NOT_FOUND = "transcript_source_not_found"
-    INNER_AGENT_ERROR = "inner_agent_error"
 
 
 class ErrorDetail(BaseModel):

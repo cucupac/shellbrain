@@ -81,40 +81,10 @@ def hydrate_update_payload(
     return merged
 
 
-def hydrate_concept_add_payload(
+def hydrate_repo_id(
     payload: dict[str, Any], *, inferred_repo_id: str
 ) -> dict[str, Any]:
-    """Hydrate concept-add payloads with inferred repo defaults."""
-
-    merged = dict(payload)
-    merged.setdefault("repo_id", inferred_repo_id)
-    return merged
-
-
-def hydrate_concept_update_payload(
-    payload: dict[str, Any], *, inferred_repo_id: str
-) -> dict[str, Any]:
-    """Hydrate concept-update payloads with inferred repo defaults."""
-
-    merged = dict(payload)
-    merged.setdefault("repo_id", inferred_repo_id)
-    return merged
-
-
-def hydrate_concept_show_payload(
-    payload: dict[str, Any], *, inferred_repo_id: str
-) -> dict[str, Any]:
-    """Hydrate concept-show payloads with inferred repo defaults."""
-
-    merged = dict(payload)
-    merged.setdefault("repo_id", inferred_repo_id)
-    return merged
-
-
-def hydrate_scenario_record_payload(
-    payload: dict[str, Any], *, inferred_repo_id: str
-) -> dict[str, Any]:
-    """Hydrate scenario-record payloads with inferred repo defaults."""
+    """Default `repo_id` to the inferred repo when the payload omits it."""
 
     merged = dict(payload)
     merged.setdefault("repo_id", inferred_repo_id)

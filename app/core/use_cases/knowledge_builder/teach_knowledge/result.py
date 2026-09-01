@@ -34,10 +34,6 @@ class TeachKnowledgeResult:
     error_code: str | None = None
     error_message: str | None = None
 
-    @property
-    def data(self) -> dict[str, object]:
-        return self.to_response_data()
-
     def to_response_data(self) -> dict[str, object]:
         """Return the stable CLI response data shape."""
 

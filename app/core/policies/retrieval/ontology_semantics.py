@@ -5,25 +5,23 @@ from __future__ import annotations
 from collections import Counter
 from typing import Any, Iterable, Mapping
 
-
-ACTIVE_STATUS = "active"
-MAYBE_STALE_STATUS = "maybe_stale"
-STALE_STATUS = "stale"
-SUPERSEDED_STATUS = "superseded"
-WRONG_STATUS = "wrong"
-ARCHIVED_STATUS = "archived"
-
-POSITIVE_LIFECYCLE_STATUSES = frozenset(
-    {ACTIVE_STATUS, MAYBE_STALE_STATUS, STALE_STATUS}
+from app.core.entities.memories import (
+    DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES,
+    MemoryLifecycleStatus,
 )
 
+
+ACTIVE_STATUS = MemoryLifecycleStatus.ACTIVE.value
+MAYBE_STALE_STATUS = MemoryLifecycleStatus.MAYBE_STALE.value
+STALE_STATUS = MemoryLifecycleStatus.STALE.value
+SUPERSEDED_STATUS = MemoryLifecycleStatus.SUPERSEDED.value
+WRONG_STATUS = MemoryLifecycleStatus.WRONG.value
+ARCHIVED_STATUS = MemoryLifecycleStatus.ARCHIVED.value
+
+POSITIVE_LIFECYCLE_STATUSES = frozenset(DEFAULT_RETRIEVABLE_MEMORY_STATUS_VALUES)
+
 LIFECYCLE_RETRIEVAL_MULTIPLIERS: Mapping[str, float] = {
-    ACTIVE_STATUS: 1.0,
-    MAYBE_STALE_STATUS: 0.65,
-    STALE_STATUS: 0.25,
-    SUPERSEDED_STATUS: 0.0,
-    WRONG_STATUS: 0.0,
-    ARCHIVED_STATUS: 0.0,
+    status.value: status.retrieval_multiplier for status in MemoryLifecycleStatus
 }
 
 BUNDLE_FRESHNESS_MULTIPLIERS: Mapping[str, float] = {
@@ -125,6 +123,16 @@ def concept_bundle_retrieval_multiplier(statuses: Iterable[Any]) -> float:
     """Return the freshness multiplier for an aggregate concept bundle."""
 
     return BUNDLE_FRESHNESS_MULTIPLIERS[dominant_lifecycle_status(statuses)]
+
+
+def bundle_lifecycle_statuses(bundle: Mapping[str, Any]) -> tuple[str, ...]:
+    """Return lifecycle status values across every truth-bearing concept facet."""
+
+    return tuple(
+        record.lifecycle.status.value
+        for key in ("claims", "relations", "groundings", "memory_links")
+        for record in bundle[key]
+    )
 
 
 def aggregate_currentness_payload(

@@ -92,7 +92,7 @@ def _keyword_concept_candidates(
         concept_keyword_retrieval.list_concept_keyword_corpus(
             repo_id=str(request_data["repo_id"]),
             query_terms=lexical_query.terms,
-            candidate_limit=_concept_keyword_candidate_limit(limit),
+            candidate_limit=max(limit * 10, 100),
         ),
         lexical_query=lexical_query,
         mode=str(request_data["mode"]),
@@ -130,7 +130,3 @@ def _rank_concept_keyword_candidates(
         output_id_key="concept_id",
         coverage_threshold=0.25,
     )[:limit]
-
-
-def _concept_keyword_candidate_limit(limit: int) -> int:
-    return max(limit * 10, 100)

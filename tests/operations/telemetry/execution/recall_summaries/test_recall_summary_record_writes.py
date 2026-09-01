@@ -160,14 +160,13 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
             row["source_kind"],
             row["source_id"],
             row["input_section"],
-            row["output_section"],
         )
         for row in source_rows
     ]
     assert source_tuples == [
-        ("memory", "direct-1", "direct", None),
-        ("memory", "explicit-1", "explicit_related", None),
-        ("concept", "concept-1", "concept_orientation", None),
+        ("memory", "direct-1", "direct"),
+        ("memory", "explicit-1", "explicit_related"),
+        ("concept", "concept-1", "concept_orientation"),
     ]
 
     assert fetch_relation_rows("read_invocation_summaries") == []

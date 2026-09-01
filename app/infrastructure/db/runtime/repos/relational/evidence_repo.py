@@ -198,19 +198,23 @@ class EvidenceRepo(IEvidenceRepo):
             )
 
 
+_SINGLE_TABLE_TARGETS = {
+    EvidenceTargetType.ASSOCIATION_EDGE: "association_edges",
+    EvidenceTargetType.CONCEPT_CLAIM: "concept_claims",
+    EvidenceTargetType.CONCEPT_RELATION: "concept_relations",
+    EvidenceTargetType.CONCEPT_GROUNDING: "concept_groundings",
+    EvidenceTargetType.CONCEPT_MEMORY_LINK: "concept_memory_links",
+    EvidenceTargetType.CONCEPT_LIFECYCLE_EVENT: "concept_lifecycle_events",
+    EvidenceTargetType.MEMORY_LIFECYCLE_EVENT: "memory_lifecycle_events",
+    EvidenceTargetType.STRUCTURAL_MEMORY_RELATION: "structural_memory_relations",
+}
+
 _TARGET_VALIDATION_QUERIES = {
     EvidenceTargetType.MEMORY: """
         SELECT 1
         FROM memories
         WHERE id = :target_id
           AND (repo_id = :repo_id OR scope = 'global')
-        LIMIT 1
-    """,
-    EvidenceTargetType.ASSOCIATION_EDGE: """
-        SELECT 1
-        FROM association_edges
-        WHERE id = :target_id
-          AND repo_id = :repo_id
         LIMIT 1
     """,
     EvidenceTargetType.UTILITY_OBSERVATION: """
@@ -223,55 +227,16 @@ _TARGET_VALIDATION_QUERIES = {
           AND problem.repo_id = :repo_id
         LIMIT 1
     """,
-    EvidenceTargetType.CONCEPT_CLAIM: """
+    **{
+        target_type: f"""
         SELECT 1
-        FROM concept_claims
+        FROM {table_name}
         WHERE id = :target_id
           AND repo_id = :repo_id
         LIMIT 1
-    """,
-    EvidenceTargetType.CONCEPT_RELATION: """
-        SELECT 1
-        FROM concept_relations
-        WHERE id = :target_id
-          AND repo_id = :repo_id
-        LIMIT 1
-    """,
-    EvidenceTargetType.CONCEPT_GROUNDING: """
-        SELECT 1
-        FROM concept_groundings
-        WHERE id = :target_id
-          AND repo_id = :repo_id
-        LIMIT 1
-    """,
-    EvidenceTargetType.CONCEPT_MEMORY_LINK: """
-        SELECT 1
-        FROM concept_memory_links
-        WHERE id = :target_id
-          AND repo_id = :repo_id
-        LIMIT 1
-    """,
-    EvidenceTargetType.CONCEPT_LIFECYCLE_EVENT: """
-        SELECT 1
-        FROM concept_lifecycle_events
-        WHERE id = :target_id
-          AND repo_id = :repo_id
-        LIMIT 1
-    """,
-    EvidenceTargetType.MEMORY_LIFECYCLE_EVENT: """
-        SELECT 1
-        FROM memory_lifecycle_events
-        WHERE id = :target_id
-          AND repo_id = :repo_id
-        LIMIT 1
-    """,
-    EvidenceTargetType.STRUCTURAL_MEMORY_RELATION: """
-        SELECT 1
-        FROM structural_memory_relations
-        WHERE id = :target_id
-          AND repo_id = :repo_id
-        LIMIT 1
-    """,
+    """
+        for target_type, table_name in _SINGLE_TABLE_TARGETS.items()
+    },
 }
 
 

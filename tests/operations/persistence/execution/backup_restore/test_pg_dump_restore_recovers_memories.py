@@ -2,11 +2,8 @@
 
 from pathlib import Path
 
-import pytest
 
 
-@pytest.mark.docker
-@pytest.mark.persistence
 def test_pg_dump_restore_recovers_memories(isolated_db_factory) -> None:
     """persistence should recover sentinel shellbrain data through pg_dump and restore into a fresh database."""
 

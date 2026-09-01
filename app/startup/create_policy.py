@@ -3,7 +3,6 @@
 from typing import Any
 
 from app.startup.config import get_config_provider
-from app.core.errors import ErrorCode, ErrorDetail
 from app.core.entities.settings import CreatePolicySettings
 
 
@@ -32,29 +31,7 @@ def get_typed_create_policy_settings() -> CreatePolicySettings:
     return CreatePolicySettings(gates=tuple(gates), defaults={"scope": scope})
 
 
-def get_create_policy_settings() -> dict[str, Any]:
-    """Return normalized create-policy settings from YAML config."""
-
-    return get_typed_create_policy_settings().to_dict()
-
-
 def get_create_hydration_defaults() -> dict[str, Any]:
     """Return normalized create defaults used by CLI hydration."""
 
     return get_typed_create_policy_settings().hydration_defaults()
-
-
-def validate_create_policy_settings() -> list[ErrorDetail]:
-    """Return structured config errors for unsupported create-policy settings."""
-
-    try:
-        get_typed_create_policy_settings()
-    except ValueError as exc:
-        return [
-            ErrorDetail(
-                code=ErrorCode.INTERNAL_ERROR,
-                message=str(exc),
-                field="create_policy.gates",
-            )
-        ]
-    return []

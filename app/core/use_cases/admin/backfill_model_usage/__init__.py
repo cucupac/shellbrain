@@ -5,13 +5,11 @@ from app.core.use_cases.admin.backfill_model_usage.backfill_model_usage import (
     linked_session_from_mapping,
 )
 from app.core.use_cases.admin.backfill_model_usage.request import (
-    BackfillModelUsageRequest,
     LinkedModelUsageSession,
 )
 from app.core.use_cases.admin.backfill_model_usage.result import BackfillSummary
 
 __all__ = [
-    "BackfillModelUsageRequest",
     "BackfillSummary",
     "LinkedModelUsageSession",
     "backfill_model_usage",

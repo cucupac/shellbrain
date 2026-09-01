@@ -38,7 +38,7 @@ def sync_discovered_host_session(
         transcript_path=transcript_path,
     )
     sync_result = sync_episode(
-        SyncEpisodeRequest.from_raw_events(
+        SyncEpisodeRequest(
             repo_id=repo_id,
             host_app=host_app,
             host_session_key=host_session_key,

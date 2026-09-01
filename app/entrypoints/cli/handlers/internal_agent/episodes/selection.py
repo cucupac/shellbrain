@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.core.errors import ErrorCode, ErrorDetail
-from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
+from app.core.entities.identity import IdentityTrustLevel
 from app.core.entities.runtime_context import (
     OperationDispatchTelemetryContext,
     SessionSelectionSummary,
@@ -70,37 +70,4 @@ def selection_summary_from_events_source(source) -> SessionSelectionSummary:
         selected_thread_id=source.canonical_thread_id,
         matching_candidate_count=source.matching_candidate_count,
         selection_ambiguous=source.selection_ambiguous,
-    )
-
-
-def selection_summary_from_runtime_context(
-    *,
-    dependencies: OperationDependencies,
-    caller_identity: CallerIdentity | None,
-    repo_id: str,
-    repo_root: Path,
-    uow,
-) -> SessionSelectionSummary:
-    """Build lightweight non-events selection summary from trusted caller identity when present."""
-
-    if (
-        caller_identity is None
-        or caller_identity.trust_level != IdentityTrustLevel.TRUSTED
-    ):
-        return dependencies.summarize_runtime_selection(
-            repo_root=repo_root, repo_id=repo_id, uow=uow
-        )
-    selected_episode_id = None
-    episode = uow.episodes.get_episode_by_thread(
-        repo_id=repo_id, thread_id=caller_identity.canonical_id or ""
-    )
-    if episode is not None:
-        selected_episode_id = episode.id
-    return SessionSelectionSummary(
-        selected_host_app=caller_identity.host_app,
-        selected_host_session_key=caller_identity.host_session_key,
-        selected_thread_id=caller_identity.canonical_id,
-        selected_episode_id=selected_episode_id,
-        matching_candidate_count=1,
-        selection_ambiguous=False,
     )

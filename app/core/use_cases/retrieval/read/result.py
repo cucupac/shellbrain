@@ -15,6 +15,3 @@ class ReadMemoryResult:
     @property
     def data(self) -> dict[str, object]:
         return {"pack": self.pack}
-
-    def to_response_data(self) -> dict[str, object]:
-        return {"pack": self.pack}

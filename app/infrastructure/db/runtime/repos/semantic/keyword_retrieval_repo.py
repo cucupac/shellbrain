@@ -7,8 +7,8 @@ from typing import Any, Sequence
 from sqlalchemy import desc, func, literal_column, select
 
 from app.core.ports.db.retrieval_repositories import IKeywordRetrievalRepo
-from app.core.policies.retrieval.ontology_semantics import POSITIVE_LIFECYCLE_STATUSES
 from app.infrastructure.db.runtime.models.memories import memories
+from app.infrastructure.db.runtime.repos.memory_visibility import visible_memory_filters
 
 
 _ENGLISH_REGCONFIG = literal_column("'english'")
@@ -74,7 +74,7 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
                 memories.c.status,
             )
             .where(
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id,
                     include_global=include_global,
                     kinds=kinds,
@@ -97,7 +97,6 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
     ) -> list[dict[str, Any]]:
         """Return the full visible corpus when indexed prefiltering cannot narrow it."""
 
-        scope_values = ["repo", "global"] if include_global else ["repo"]
         stmt = (
             select(
                 memories.c.id.label("memory_id"),
@@ -105,35 +104,16 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
                 memories.c.status,
             )
             .where(
-                memories.c.repo_id == repo_id,
-                memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
-                memories.c.scope.in_(scope_values),
+                *visible_memory_filters(
+                    repo_id=repo_id,
+                    include_global=include_global,
+                    kinds=kinds,
+                )
             )
             .order_by(memories.c.id.asc())
         )
-        if kinds:
-            stmt = stmt.where(memories.c.kind.in_(list(kinds)))
 
         return _rows_to_corpus(self._session.execute(stmt).mappings().all())
-
-    def _visibility_filters(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        kinds: Sequence[str] | None,
-    ) -> list[Any]:
-        """Build the visibility filters used by keyword retrieval queries."""
-
-        scope_values = ["repo", "global"] if include_global else ["repo"]
-        filters: list[Any] = [
-            memories.c.repo_id == repo_id,
-            memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
-            memories.c.scope.in_(scope_values),
-        ]
-        if kinds:
-            filters.append(memories.c.kind.in_(list(kinds)))
-        return filters
 
 
 def _rows_to_corpus(rows: Sequence[Any]) -> list[dict[str, Any]]:

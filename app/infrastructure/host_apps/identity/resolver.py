@@ -8,10 +8,6 @@ from pathlib import Path
 
 from app.core.errors import ErrorDetail
 from app.core.entities.identity import CallerIdentity, IdentityTrustLevel
-from app.infrastructure.host_apps.transcripts.source_discovery import (
-    SUPPORTED_HOSTS,
-    default_search_roots,
-)
 from app.infrastructure.host_apps.identity.claude_runtime import (
     detect_claude_runtime_without_hook,
     resolve_trusted_claude_caller_identity,
@@ -27,6 +23,7 @@ from app.infrastructure.host_apps.identity.compatibility import (
     host_identity_unsupported_error,
 )
 from app.infrastructure.host_apps.transcripts.session_selection import (
+    search_roots_for_host,
     discover_events_candidate,
 )
 
@@ -119,7 +116,7 @@ def resolve_trusted_events_source(
 ) -> ResolvedEventsSource:
     """Resolve the exact transcript source for one trusted caller."""
 
-    search_roots = _search_roots_for_host(
+    search_roots = search_roots_for_host(
         repo_root=repo_root,
         host_app=caller_identity.host_app,
         search_roots_by_host=search_roots_by_host,
@@ -193,18 +190,3 @@ def discover_untrusted_events_candidate(
         selection_ambiguous=discovery.summary.selection_ambiguous,
         trusted=False,
     )
-
-
-def _search_roots_for_host(
-    *,
-    repo_root: Path,
-    host_app: str,
-    search_roots_by_host: dict[str, list[Path]] | None,
-) -> list[Path]:
-    """Resolve bounded search roots for one host with optional test overrides."""
-
-    if search_roots_by_host is not None:
-        return [Path(path) for path in search_roots_by_host.get(host_app, [])]
-    if host_app not in SUPPORTED_HOSTS:
-        return [repo_root]
-    return default_search_roots(repo_root=repo_root, host_app=host_app)

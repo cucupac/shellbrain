@@ -26,6 +26,13 @@ def wait_for_postgres(admin_dsn: str, *, timeout_seconds: int = 45) -> None:
             time.sleep(1)
 
 
+def replace_database(dsn: str, db_name: str) -> str:
+    """Replace the database path portion of one DSN string."""
+
+    prefix, _, _ = dsn.rpartition("/")
+    return f"{prefix}/{db_name}"
+
+
 def fetch_schema_revision(dsn: str) -> str | None:
     """Best-effort read of the current alembic revision."""
 

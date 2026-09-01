@@ -11,9 +11,7 @@ from app.core.entities.structural_memory_relations import (
     StructuralMemoryRelationPredicate,
 )
 from app.infrastructure.db.runtime.models.episodes import (
-    episode_events,
     episodes,
-    session_transfers,
 )
 from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.memories import memories
@@ -146,64 +144,10 @@ def test_episode_rows_reject_end_times_before_start_times(
                     repo_id="repo-a",
                     host_app="codex",
                     thread_id="thread-1",
-                    title="Episode",
-                    objective="Objective",
                     status="active",
                     started_at=started_at,
                     ended_at=ended_at,
                     created_at=started_at,
-                )
-            )
-            session.commit()
-        session.rollback()
-
-
-def test_session_transfer_rows_reject_self_transfers(
-    integration_session_factory: sessionmaker,
-) -> None:
-    """session_transfer rows should always reject identical from_episode_id and to_episode_id values."""
-
-    with integration_session_factory() as session:
-        now = datetime.now(timezone.utc)
-        session.execute(
-            episodes.insert().values(
-                id="episode-1",
-                repo_id="repo-a",
-                host_app="codex",
-                thread_id="thread-1",
-                title="Episode",
-                objective="Objective",
-                status="active",
-                started_at=now,
-                ended_at=None,
-                created_at=now,
-            )
-        )
-        session.execute(
-            episode_events.insert().values(
-                id="event-1",
-                episode_id="episode-1",
-                seq=1,
-                host_event_key="event-1",
-                source="assistant",
-                content="event",
-                created_at=now,
-            )
-        )
-        session.commit()
-
-        with pytest.raises(IntegrityError):
-            session.execute(
-                session_transfers.insert().values(
-                    id="transfer-1",
-                    repo_id="repo-a",
-                    from_episode_id="episode-1",
-                    to_episode_id="episode-1",
-                    event_id="event-1",
-                    transfer_kind="message_handoff",
-                    rationale="handoff",
-                    transferred_by="assistant",
-                    created_at=now,
                 )
             )
             session.commit()

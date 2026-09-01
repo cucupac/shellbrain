@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import sys
 from typing import Any
 from urllib.parse import unquote, urlparse
 
@@ -33,7 +34,7 @@ def default_cursor_user_roots() -> list[Path]:
     appdata = os.getenv("APPDATA")
     if os.name == "nt" and appdata:
         return [Path(appdata).expanduser().resolve() / "Cursor" / "User"]
-    if sys_platform_linux():
+    if sys.platform.startswith("linux"):
         return [(home / ".config" / "Cursor" / "User").resolve()]
     return [(home / "Library" / "Application Support" / "Cursor" / "User").resolve()]
 
@@ -808,9 +809,3 @@ def _provider_from_model_id(model_id: str | None) -> str | None:
     if lowered.startswith("gemini"):
         return "google"
     return None
-
-
-def sys_platform_linux() -> bool:
-    """Return whether the current platform uses the Linux-style Cursor home."""
-
-    return os.name != "nt" and "linux" in os.sys.platform

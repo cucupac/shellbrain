@@ -12,7 +12,6 @@ from app.core.entities.concepts import (
     ConceptLifecycleTargetType,
     ConceptMemoryLink,
     ConceptRelation,
-    GraphPatch,
 )
 
 
@@ -83,10 +82,6 @@ class IConceptsRepo(ABC):
         self, event: ConceptLifecycleEvent
     ) -> ConceptLifecycleEvent:
         """This method appends one auditable concept lifecycle transition."""
-
-    @abstractmethod
-    def create_graph_patch(self, patch: GraphPatch) -> GraphPatch:
-        """This method stores one future graph-patch proposal record."""
 
     @abstractmethod
     def get_concept_bundle(

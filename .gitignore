@@ -59,7 +59,6 @@ wheelhouse/
 .env.*
 *.env
 *.env.*
-!.env.example
 *.local
 *.secret
 *.secrets

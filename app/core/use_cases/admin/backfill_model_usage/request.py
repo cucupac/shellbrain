@@ -15,10 +15,3 @@ class LinkedModelUsageSession:
     thread_id: str | None
     episode_id: str | None
     transcript_path: str
-
-
-@dataclass(frozen=True)
-class BackfillModelUsageRequest:
-    """Canonical model-usage backfill request."""
-
-    sessions: tuple[LinkedModelUsageSession, ...]

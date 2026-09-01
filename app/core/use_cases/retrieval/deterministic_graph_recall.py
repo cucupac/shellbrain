@@ -35,6 +35,7 @@ from app.core.policies.retrieval.ontology_semantics import (
     STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
     STRUCTURAL_PROBLEM_RELATION_PREDICATES,
     aggregate_currentness_payload,
+    bundle_lifecycle_statuses,
     concept_bundle_retrieval_multiplier,
     is_active_lifecycle,
     lifecycle_currentness_payload,
@@ -169,15 +170,20 @@ def build_deterministic_graph_pack(
     return pack
 
 
-def synthesis_pack_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
-    """Project a full graph pack into the evidence pack sent to synthesis.
+def no_context_brief() -> dict[str, Any]:
+    """Return the truthful no-context brief shape."""
 
-    The deterministic traversal/ranking step decides what evidence the synthesizer
-    needs. This projection keeps that evidence intact and removes diagnostic-only
-    traversal details that are useful for telemetry, not synthesis.
-    """
-
-    return _project_synthesis_pack(pack=pack)
+    return {
+        "summary": "No stored Shellbrain context matched this recall query.",
+        "constraints": [],
+        "known_traps": [],
+        "prior_cases": [],
+        "concept_orientation": [],
+        "anchors": [],
+        "conflicts": [],
+        "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
+        "next_checks": [],
+    }
 
 
 def record_synthesis_pack_size(
@@ -208,17 +214,7 @@ def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
         item for item in pack.get("relation_neighbors", []) if isinstance(item, dict)
     ]
     if not memories and not concepts and not neighbors:
-        return {
-            "summary": "No stored Shellbrain context matched this recall query.",
-            "constraints": [],
-            "known_traps": [],
-            "prior_cases": [],
-            "concept_orientation": [],
-            "anchors": [],
-            "conflicts": [],
-            "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
-            "next_checks": [],
-        }
+        return no_context_brief()
     concept_items = concepts + neighbors
     constraints = _brief_memory_texts(
         memories,
@@ -365,6 +361,18 @@ def _should_add_broad_lane(
     return any(result["zero_result"] for result in lane_results)
 
 
+def _new_candidate(memory: Memory) -> dict[str, Any]:
+    return {
+        "memory": memory,
+        "score": 0.0,
+        "matched_lanes": [],
+        "lane_ranks": {},
+        "concept_refs": set(),
+        "link_roles": set(),
+        "why": set(),
+    }
+
+
 def _run_memory_lane(
     *,
     lane: _QueryLane,
@@ -394,18 +402,7 @@ def _run_memory_lane(
         memory = hydrated.get(memory_id)
         if memory is None:
             continue
-        entry = memory_candidates.setdefault(
-            memory_id,
-            {
-                "memory": memory,
-                "score": 0.0,
-                "matched_lanes": [],
-                "lane_ranks": {},
-                "concept_refs": set(),
-                "link_roles": set(),
-                "why": set(),
-            },
-        )
+        entry = memory_candidates.setdefault(memory_id, _new_candidate(memory))
         entry["score"] = max(float(entry["score"]), float(candidate["rrf_score"]))
         entry["matched_lanes"].append(lane.name)
         entry["lane_ranks"][lane.name] = rank
@@ -477,18 +474,7 @@ def _expand_structural_memory_relations(
             continue
         relation_types[item["relation_type"]] += 1
         expanded_ids.add(memory_id)
-        candidate = memory_candidates.setdefault(
-            memory_id,
-            {
-                "memory": memory,
-                "score": 0.0,
-                "matched_lanes": [],
-                "lane_ranks": {},
-                "concept_refs": set(),
-                "link_roles": set(),
-                "why": set(),
-            },
-        )
+        candidate = memory_candidates.setdefault(memory_id, _new_candidate(memory))
         candidate["score"] = max(
             float(candidate["score"]), float(item["anchor_score"]) * 0.75
         )
@@ -588,7 +574,7 @@ def _select_concepts(
             query_terms=_tokenize(request.query),
             identifiers=_extract_identifiers(request.query),
         )
-        score *= _concept_freshness_multiplier(bundle)
+        score *= concept_bundle_retrieval_multiplier(bundle_lifecycle_statuses(bundle))
         if score <= 0:
             rejected_count += 1
             continue
@@ -630,7 +616,7 @@ def _traverse_selected_concepts(
         counts["relations_loaded"] += len(bundle["relations"])
         counts["memory_links_loaded"] += len(bundle["memory_links"])
         for link in bundle["memory_links"]:
-            if not _active(link.lifecycle.status):
+            if not is_active_lifecycle(link.lifecycle.status):
                 continue
             role = link.role.value
             if role not in CONCEPT_MEMORY_HIGH_SIGNAL_ROLES:
@@ -638,7 +624,7 @@ def _traverse_selected_concepts(
             linked_memory_ids.append(link.memory_id)
         concept_id = bundle["concept"].id
         for relation in bundle["relations"]:
-            if not _active(relation.lifecycle.status):
+            if not is_active_lifecycle(relation.lifecycle.status):
                 continue
             if relation.predicate.value not in _HIGH_SIGNAL_RELATIONS:
                 continue
@@ -663,18 +649,7 @@ def _traverse_selected_concepts(
                 link_role_by_memory[link.memory_id].add(link.role.value)
                 concept_ref_by_memory[link.memory_id].add(concept.slug)
     for memory_id, memory in linked_memories.items():
-        candidate = memory_candidates.setdefault(
-            memory_id,
-            {
-                "memory": memory,
-                "score": 0.0,
-                "matched_lanes": [],
-                "lane_ranks": {},
-                "concept_refs": set(),
-                "link_roles": set(),
-                "why": set(),
-            },
-        )
+        candidate = memory_candidates.setdefault(memory_id, _new_candidate(memory))
         candidate["score"] = max(float(candidate["score"]), 1.0)
         candidate["concept_refs"].update(concept_ref_by_memory[memory_id])
         candidate["link_roles"].update(link_role_by_memory[memory_id])
@@ -809,18 +784,18 @@ def _bundle_signal_score(
     query_set = {term.lower() for term in query_terms}
     identifiers_lower = [item.lower() for item in identifiers]
     for claim in bundle["claims"]:
-        if claim.claim_type.value in _HIGH_SIGNAL_CLAIMS and _active(
+        if claim.claim_type.value in _HIGH_SIGNAL_CLAIMS and is_active_lifecycle(
             claim.lifecycle.status
         ):
             if any(term in claim.text.lower() for term in query_set):
                 score += 4.0
     for link in bundle["memory_links"]:
-        if link.role.value in CONCEPT_MEMORY_HIGH_SIGNAL_ROLES and _active(
+        if link.role.value in CONCEPT_MEMORY_HIGH_SIGNAL_ROLES and is_active_lifecycle(
             link.lifecycle.status
         ):
             score += 5.0 * max(float(link.lifecycle.confidence), 0.1)
     for relation in bundle["relations"]:
-        if relation.predicate.value in _HIGH_SIGNAL_RELATIONS and _active(
+        if relation.predicate.value in _HIGH_SIGNAL_RELATIONS and is_active_lifecycle(
             relation.lifecycle.status
         ):
             score += 2.0
@@ -831,16 +806,14 @@ def _bundle_signal_score(
     return score
 
 
-def _concept_freshness_multiplier(bundle: dict[str, Any]) -> float:
-    return concept_bundle_retrieval_multiplier(_bundle_lifecycle_statuses(bundle))
-
-
 def _compact_concept_payload(
     bundle: dict[str, Any], *, why_selected: list[dict[str, Any]]
 ) -> dict[str, Any]:
     concept: Concept = bundle["concept"]
     claims = _claim_payloads(bundle["claims"], limit=6)
-    temporal = _concept_currentness_payload(bundle)
+    temporal = aggregate_currentness_payload(
+        bundle_lifecycle_statuses(bundle), record_label="concept facets"
+    )
     return {
         "id": concept.id,
         "ref": concept.slug,
@@ -854,7 +827,7 @@ def _compact_concept_payload(
         "relations": _relation_payloads(bundle["relations"], concept_id=concept.id),
         "groundings": _grounding_payloads(bundle),
         "memory_links": _memory_link_payloads(bundle["memory_links"]),
-        "freshness": _freshness_payload(bundle),
+        "freshness": lifecycle_status_counts(bundle_lifecycle_statuses(bundle)),
     }
 
 
@@ -983,10 +956,6 @@ def _memory_link_payloads(
     ]
 
 
-def _freshness_payload(bundle: dict[str, Any]) -> dict[str, int]:
-    return lifecycle_status_counts(_bundle_lifecycle_statuses(bundle))
-
-
 def _memory_payload(candidate: dict[str, Any]) -> dict[str, Any]:
     memory: Memory = candidate["memory"]
     return {
@@ -994,7 +963,11 @@ def _memory_payload(candidate: dict[str, Any]) -> dict[str, Any]:
         "kind": memory.kind.value,
         "text": memory.text,
         "created_at": _iso(memory.created_at),
-        **_memory_currentness_payload(candidate),
+        **memory_currentness_payload(
+            status=memory.status,
+            kind=memory.kind,
+            link_roles=candidate["link_roles"],
+        ),
         "score": round(_memory_candidate_score(candidate), 6),
         "matched_lanes": list(dict.fromkeys(candidate["matched_lanes"])),
         "concept_refs": sorted(str(value) for value in candidate["concept_refs"]),
@@ -1138,10 +1111,14 @@ def _pack_budget(
     }
 
 
-def _project_synthesis_pack(
-    *,
-    pack: dict[str, Any],
-) -> dict[str, Any]:
+def synthesis_pack_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
+    """Project a full graph pack into the evidence pack sent to synthesis.
+
+    The deterministic traversal/ranking step decides what evidence the synthesizer
+    needs. This projection keeps that evidence intact and removes diagnostic-only
+    traversal details that are useful for telemetry, not synthesis.
+    """
+
     return {
         "strategy": pack.get("strategy"),
         "request": pack.get("request") if isinstance(pack.get("request"), dict) else {},
@@ -1232,29 +1209,6 @@ def _memory_candidate_score(candidate: dict[str, Any]) -> float:
     return base
 
 
-def _memory_currentness_payload(candidate: dict[str, Any]) -> dict[str, str]:
-    memory: Memory = candidate["memory"]
-    return memory_currentness_payload(
-        status=memory.status,
-        kind=memory.kind,
-        link_roles=candidate["link_roles"],
-    )
-
-
-def _concept_currentness_payload(bundle: dict[str, Any]) -> dict[str, str]:
-    return aggregate_currentness_payload(
-        _bundle_lifecycle_statuses(bundle), record_label="concept facets"
-    )
-
-
-def _bundle_lifecycle_statuses(bundle: dict[str, Any]) -> tuple[str, ...]:
-    return tuple(
-        record.lifecycle.status.value
-        for key in ("claims", "relations", "groundings", "memory_links")
-        for record in bundle[key]
-    )
-
-
 def _is_trap_memory(candidate: dict[str, Any]) -> bool:
     memory: Memory = candidate["memory"]
     return memory.kind.value == "failed_tactic" or bool(
@@ -1294,7 +1248,7 @@ def _orientation(concept: Concept, claims: Sequence[ConceptClaim]) -> str:
         (
             claim.text
             for claim in claims
-            if claim.claim_type.value == "definition" and _active(claim.lifecycle.status)
+            if claim.claim_type.value == "definition" and is_active_lifecycle(claim.lifecycle.status)
         ),
         None,
     )
@@ -1368,10 +1322,6 @@ def _dedupe_reasons(reasons: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
         seen.add(key)
         deduped.append(reason)
     return deduped
-
-
-def _active(status: ConceptLifecycleStatus) -> bool:
-    return is_active_lifecycle(status)
 
 
 def _active_concept(concept: Concept) -> bool:

@@ -20,7 +20,7 @@ class AdminCommandDependencies:
     get_engine_instance: Callable[[], Any]
     get_backup_dir: Callable[[], Path]
     get_backup_mirror_dir: Callable[[], Path | None]
-    managed_backup_kwargs: Callable[[object, str | None], dict[str, Any]]
+    managed_backup_kwargs: Callable[[], dict[str, Any]]
     managed_restore_kwargs: Callable[[dict[str, Any]], dict[str, Any]]
     create_backup: Callable[..., Any]
     list_backups: Callable[..., list[Any]]

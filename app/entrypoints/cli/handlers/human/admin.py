@@ -32,7 +32,7 @@ def run_admin_command(
         admin_dsn = dependencies.get_admin_db_dsn()
         backup_root = dependencies.get_backup_dir()
         mirror_root = dependencies.get_backup_mirror_dir()
-        backup_kwargs = dependencies.managed_backup_kwargs(None, None)
+        backup_kwargs = dependencies.managed_backup_kwargs()
         subcommand = getattr(args, "backup_command", None)
         if subcommand == "create":
             manifest = dependencies.create_backup(

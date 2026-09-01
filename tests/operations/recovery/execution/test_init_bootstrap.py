@@ -647,7 +647,7 @@ def test_external_init_should_skip_managed_container_setup(
     monkeypatch.setattr(
         init_module.external_runtime,
         "build_fresh_machine_config",
-        lambda admin_dsn: initial_config,
+        lambda **kwargs: initial_config,
     )
     monkeypatch.setattr(
         init_module, "save_machine_config", lambda config: saved.append(config)
@@ -705,7 +705,7 @@ def test_ensure_managed_runtime_ready_should_skip_docker_when_postgres_is_ready(
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (config, None))
     monkeypatch.setattr(
         init_module,
-        "ensure_managed_runtime_available",
+        "ensure_docker_runtime_available",
         lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")),
     )
     monkeypatch.setattr(
@@ -729,7 +729,7 @@ def test_ensure_managed_runtime_ready_should_start_unavailable_managed_container
 
     monkeypatch.setattr(init_module, "try_load_machine_config", lambda: (config, None))
     monkeypatch.setattr(
-        init_module, "ensure_managed_runtime_available", lambda: calls.append("deps")
+        init_module, "ensure_docker_runtime_available", lambda: calls.append("deps")
     )
     monkeypatch.setattr(
         init_module.managed_runtime,
@@ -791,7 +791,7 @@ def test_ensure_managed_runtime_ready_should_skip_without_managed_config(
     monkeypatch.setattr(init_module, "try_load_machine_config", loaded_factory)
     monkeypatch.setattr(
         init_module,
-        "ensure_managed_runtime_available",
+        "ensure_docker_runtime_available",
         lambda: (_ for _ in ()).throw(AssertionError("unexpected docker check")),
     )
 

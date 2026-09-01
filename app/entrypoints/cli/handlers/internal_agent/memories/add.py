@@ -54,13 +54,7 @@ def run_create_memory_operation(
     planned_side_effects = ()
 
     try:
-        policy_errors = list(dependencies.create_policy_errors)
-        if policy_errors:
-            error_stage = infer_error_stage_from_errors(
-                dump_errors(policy_errors), default_stage="contract_validation"
-            )
-            result = error_response(policy_errors)
-        elif validation_errors:
+        if validation_errors:
             error_stage = infer_error_stage_from_errors(
                 dump_errors(validation_errors), default_stage=validation_error_stage
             )

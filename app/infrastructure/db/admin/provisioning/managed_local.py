@@ -21,6 +21,7 @@ from app.infrastructure.db.admin.backups.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 from app.core.entities.admin_errors import InitConflictError
+from app.infrastructure.db.admin.connection import replace_database
 from app.infrastructure.db.admin.instance_guard import (
     dsn_fingerprint,
     ensure_instance_metadata,
@@ -157,7 +158,7 @@ def reconcile_database(config: MachineConfig) -> bool:
         )
     changed = False
     raw_admin_dsn = config.database.admin_dsn.replace("+psycopg", "")
-    postgres_dsn = _replace_database(raw_admin_dsn, "postgres")
+    postgres_dsn = replace_database(raw_admin_dsn, "postgres")
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -431,13 +432,6 @@ def _select_managed_port() -> int:
     )
 
 
-def _replace_database(dsn: str, db_name: str) -> str:
-    """Replace the database path component of a DSN."""
-
-    prefix, _, _ = dsn.rpartition("/")
-    return f"{prefix}/{db_name}"
-
-
 def _home_hash() -> str:
     """Return a stable short hash for the active Shellbrain home root."""
 
@@ -481,26 +475,19 @@ def _container_host_ports(info: dict[str, object]) -> set[int]:
 
     ports: set[int] = set()
     host_config = info.get("HostConfig", {}) or {}
-    port_bindings = host_config.get("PortBindings", {}) or {}
-    for bindings in port_bindings.values():
-        if not isinstance(bindings, list):
-            continue
-        for binding in bindings:
-            if not isinstance(binding, dict):
-                continue
-            host_port = binding.get("HostPort")
-            if isinstance(host_port, str) and host_port.isdigit():
-                ports.add(int(host_port))
-
     network_settings = info.get("NetworkSettings", {}) or {}
-    active_ports = network_settings.get("Ports", {}) or {}
-    for bindings in active_ports.values():
-        if not isinstance(bindings, list):
-            continue
-        for binding in bindings:
-            if not isinstance(binding, dict):
+    port_maps = (
+        host_config.get("PortBindings", {}) or {},
+        network_settings.get("Ports", {}) or {},
+    )
+    for port_map in port_maps:
+        for bindings in port_map.values():
+            if not isinstance(bindings, list):
                 continue
-            host_port = binding.get("HostPort")
-            if isinstance(host_port, str) and host_port.isdigit():
-                ports.add(int(host_port))
+            for binding in bindings:
+                if not isinstance(binding, dict):
+                    continue
+                host_port = binding.get("HostPort")
+                if isinstance(host_port, str) and host_port.isdigit():
+                    ports.add(int(host_port))
     return ports

@@ -12,7 +12,6 @@ from app.core.ports.local_state.session_state_store import ISessionStateStore
 
 
 IDLE_EXPIRY = timedelta(hours=24)
-GC_EXPIRY = timedelta(days=7)
 
 
 class SessionStateManager:
@@ -115,17 +114,6 @@ class SessionStateManager:
         state.last_seen_at = now_iso
         self._store.save(repo_root=repo_root, state=state)
         return state
-
-    def clear_for_caller(self, *, repo_root, caller_id: str) -> None:
-        """Delete one caller state."""
-
-        self._store.delete(repo_root=repo_root, caller_id=caller_id)
-
-    def garbage_collect(self, *, repo_root) -> list[str]:
-        """Delete states older than the configured GC threshold."""
-
-        cutoff_iso = (self._now() - GC_EXPIRY).isoformat()
-        return self._store.gc(repo_root=repo_root, older_than_iso=cutoff_iso)
 
     @staticmethod
     def reset_if_idle(state: SessionState, *, now_iso: str) -> SessionState:

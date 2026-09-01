@@ -7,4 +7,4 @@ from sqlalchemy.engine import Engine
 def get_engine(dsn: str) -> Engine:
     """This function creates a SQLAlchemy engine for the provided PostgreSQL DSN."""
 
-    return create_engine(dsn, future=True)
+    return create_engine(dsn)

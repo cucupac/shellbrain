@@ -9,7 +9,7 @@ from app.infrastructure.process.episode_sync.poller import (
 )
 from app.startup.internal_agents import get_build_knowledge_settings
 from app.startup.knowledge_builder import run_build_knowledge
-from app.startup.use_cases import get_uow_factory
+from app.startup.repos import get_uow
 
 
 def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
@@ -18,7 +18,7 @@ def run_episode_poller(*, repo_id: str, repo_root: Path) -> None:
     run_infrastructure_episode_poller(
         repo_id=repo_id,
         repo_root=repo_root,
-        uow_factory=get_uow_factory(),
+        uow_factory=get_uow,
         run_build_knowledge=run_build_knowledge,
         idle_stable_seconds=get_build_knowledge_settings().idle_stable_seconds,
     )

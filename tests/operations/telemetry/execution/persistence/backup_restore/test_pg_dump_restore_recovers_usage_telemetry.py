@@ -1,6 +1,5 @@
 """Durability contracts for telemetry backup and restore."""
 
-import pytest
 
 from tests.operations._shared.telemetry_db_fixtures import (
     assert_usage_telemetry_dataset_via_dsn,
@@ -8,8 +7,6 @@ from tests.operations._shared.telemetry_db_fixtures import (
 )
 
 
-@pytest.mark.docker
-@pytest.mark.persistence
 def test_pg_dump_restore_recovers_usage_telemetry(isolated_db_factory) -> None:
     """persistence should recover sentinel usage telemetry rows through pg_dump and restore into a fresh database."""
 

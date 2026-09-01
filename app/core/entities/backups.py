@@ -31,15 +31,5 @@ class BackupManifest:
     compression: str
 
 
-@dataclass(frozen=True)
-class BackupVerificationResult:
-    """Stable result for a verified backup artifact."""
-
-    backup_id: BackupId
-    artifact_sha256: str
-    artifact_size_bytes: int
-    verified: bool
-
-
 class BackupPolicyError(RuntimeError):
     """Raised when a backup or restore request violates core safety policy."""

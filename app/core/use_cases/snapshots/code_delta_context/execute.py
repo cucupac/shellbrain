@@ -32,7 +32,7 @@ def build_code_delta_context_for_event_window(
         event_seq=request.after_seq,
     )
     if base_snapshot is None:
-        return _unavailable(CodeDeltaUnavailableReason.MISSING_BASE_SNAPSHOT)
+        return UnavailableCodeDeltaContext(reason=CodeDeltaUnavailableReason.MISSING_BASE_SNAPSHOT)
 
     final_snapshot = uow.snapshots.latest_snapshot_in_event_window(
         repo_id=request.repo_id,
@@ -42,7 +42,7 @@ def build_code_delta_context_for_event_window(
         closed_event_seq=request.up_to_seq,
     )
     if final_snapshot is None:
-        return _unavailable(CodeDeltaUnavailableReason.MISSING_FINAL_SNAPSHOT)
+        return UnavailableCodeDeltaContext(reason=CodeDeltaUnavailableReason.MISSING_FINAL_SNAPSHOT)
 
     return build_code_delta_context_from_snapshots(
         repo_root=request.repo_root,
@@ -64,14 +64,14 @@ def build_code_delta_context_from_snapshots(
     """Return compact code-delta context for an already-selected snapshot pair."""
 
     if base_snapshot.id == final_snapshot.id:
-        return _unavailable(CodeDeltaUnavailableReason.BASE_AND_FINAL_SNAPSHOT_MATCH)
+        return UnavailableCodeDeltaContext(reason=CodeDeltaUnavailableReason.BASE_AND_FINAL_SNAPSHOT_MATCH)
     if final_snapshot.reason is ShadowSnapshotReason.BASELINE_ONLY:
-        return _unavailable(CodeDeltaUnavailableReason.BASELINE_ONLY_FINAL_SNAPSHOT)
+        return UnavailableCodeDeltaContext(reason=CodeDeltaUnavailableReason.BASELINE_ONLY_FINAL_SNAPSHOT)
     if not _baseline_only_base_predates_window(
         base_snapshot=base_snapshot,
         event_seq=baseline_only_base_event_seq,
     ):
-        return _unavailable(CodeDeltaUnavailableReason.BASELINE_ONLY_BASE_SNAPSHOT)
+        return UnavailableCodeDeltaContext(reason=CodeDeltaUnavailableReason.BASELINE_ONLY_BASE_SNAPSHOT)
 
     patch = shadow_git_store.diff_snapshot_pair(
         repo_root=repo_root,
@@ -79,7 +79,7 @@ def build_code_delta_context_from_snapshots(
         final_commit_sha=final_snapshot.shadow_commit_sha,
     )
     if not patch.path_changes:
-        return _unavailable(CodeDeltaUnavailableReason.EMPTY_DELTA)
+        return UnavailableCodeDeltaContext(reason=CodeDeltaUnavailableReason.EMPTY_DELTA)
     return AvailableCodeDeltaContext(
         base_snapshot_id=base_snapshot.id,
         final_snapshot_id=final_snapshot.id,
@@ -101,7 +101,3 @@ def _baseline_only_base_predates_window(
         base_snapshot.captured_after_event_seq is not None
         and base_snapshot.captured_after_event_seq <= event_seq
     )
-
-
-def _unavailable(reason: CodeDeltaUnavailableReason) -> UnavailableCodeDeltaContext:
-    return UnavailableCodeDeltaContext(reason=reason)

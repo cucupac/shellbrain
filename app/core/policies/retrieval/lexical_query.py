@@ -43,8 +43,6 @@ _STOPWORDS = frozenset(
 class LexicalQuery:
     """Normalized lexical query terms used by the keyword retrieval lane."""
 
-    raw_terms: tuple[str, ...]
-    informative_terms: tuple[str, ...]
     terms: tuple[str, ...]
     uses_stopword_fallback: bool
 
@@ -68,14 +66,11 @@ def build_lexical_query(query_text: str) -> LexicalQuery:
     """Build a normalized lexical query with strict informative-term semantics."""
 
     normalized = normalize_lexical_text(query_text)
-    raw_terms = _unique_terms(normalized.raw_terms)
-    informative_terms = _unique_terms(normalized.informative_terms)
+    raw_terms = tuple(dict.fromkeys(normalized.raw_terms))
+    informative_terms = tuple(dict.fromkeys(normalized.informative_terms))
     uses_stopword_fallback = not informative_terms and bool(raw_terms)
-    terms = raw_terms if uses_stopword_fallback else informative_terms
     return LexicalQuery(
-        raw_terms=raw_terms,
-        informative_terms=informative_terms,
-        terms=terms,
+        terms=raw_terms if uses_stopword_fallback else informative_terms,
         uses_stopword_fallback=uses_stopword_fallback,
     )
 
@@ -88,16 +83,3 @@ def normalize_lexical_text(text: str) -> NormalizedLexicalText:
     return NormalizedLexicalText(
         raw_terms=raw_terms, informative_terms=informative_terms
     )
-
-
-def _unique_terms(terms: tuple[str, ...]) -> tuple[str, ...]:
-    """Deduplicate terms while preserving original order."""
-
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for term in terms:
-        if term in seen:
-            continue
-        seen.add(term)
-        ordered.append(term)
-    return tuple(ordered)

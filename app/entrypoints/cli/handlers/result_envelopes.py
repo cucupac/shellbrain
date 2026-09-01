@@ -20,10 +20,12 @@ class ReturnHandledError(Exception):
     """Control-flow exception for already-materialized operation responses."""
 
 
-def error_response(errors: list[ErrorDetail]) -> dict:
+def error_response(errors: list[ErrorDetail] | tuple[ErrorDetail, ...]) -> dict:
     """Build a standardized error response envelope."""
 
-    return error_envelope(errors)
+    return OperationResult(status="error", errors=list(errors)).model_dump(
+        mode="python"
+    )
 
 
 def ok_envelope(result: Any = None) -> dict:
@@ -35,42 +37,9 @@ def ok_envelope(result: Any = None) -> dict:
         data = dict(result)
     elif hasattr(result, "to_response_data"):
         data = dict(result.to_response_data())
-    elif hasattr(result, "data") and isinstance(result.data, dict):
-        data = dict(result.data)
-    elif isinstance(result, BaseModel):
-        data = result.model_dump(mode="python")
     else:
-        data = {"result": result}
+        data = dict(result.data)
     return OperationResult(status="ok", data=data).model_dump(mode="python")
-
-
-class error_envelope:
-    """Callable error envelope constructor with typed-exception support."""
-
-    def __new__(
-        cls,
-        errors: list[ErrorDetail] | tuple[ErrorDetail, ...],
-        *,
-        stage: str | None = None,
-    ) -> dict:
-        del stage
-        return OperationResult(status="error", errors=list(errors)).model_dump(
-            mode="python"
-        )
-
-    @classmethod
-    def from_exception(cls, exc: Exception) -> dict:
-        errors = getattr(exc, "errors", None)
-        if isinstance(errors, list) and all(
-            isinstance(error, ErrorDetail) for error in errors
-        ):
-            return OperationResult(status="error", errors=errors).model_dump(
-                mode="python"
-            )
-        return OperationResult(
-            status="error",
-            errors=[ErrorDetail(code=ErrorCode.INTERNAL_ERROR, message=str(exc))],
-        ).model_dump(mode="python")
 
 
 def dump_errors(errors: list[ErrorDetail]) -> list[dict]:

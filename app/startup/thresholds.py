@@ -22,9 +22,3 @@ def get_typed_threshold_settings() -> ThresholdSettings:
         semantic_threshold=float(semantic_threshold),
         keyword_threshold=float(keyword_threshold),
     )
-
-
-def get_threshold_settings() -> dict[str, float]:
-    """Return normalized retrieval thresholds from YAML config."""
-
-    return get_typed_threshold_settings().to_dict()

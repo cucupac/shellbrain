@@ -17,17 +17,6 @@ class IdentityTrustLevel(str, Enum):
 SUPPORTED_HOST_APPS = frozenset({"codex", "claude_code", "cursor"})
 
 
-def build_canonical_caller_id(
-    *, host_app: str, host_session_key: str, agent_key: str | None = None
-) -> str:
-    """Build the canonical caller identifier from one host session and optional agent key."""
-
-    canonical = f"{host_app}:{host_session_key}"
-    if agent_key:
-        canonical = f"{canonical}:agent:{agent_key}"
-    return canonical
-
-
 @dataclass(frozen=True, kw_only=True)
 class CallerIdentity:
     """Canonical caller identity used to scope episodes, session state, and guidance."""
@@ -57,11 +46,9 @@ class CallerIdentity:
             object.__setattr__(
                 self, "trust_level", IdentityTrustLevel(str(self.trust_level))
             )
-        canonical_id = build_canonical_caller_id(
-            host_app=host_app,
-            host_session_key=host_session_key,
-            agent_key=self.agent_key,
-        )
+        canonical_id = f"{host_app}:{host_session_key}"
+        if self.agent_key:
+            canonical_id = f"{canonical_id}:agent:{self.agent_key}"
         if self.canonical_id is not None and self.canonical_id != canonical_id:
             raise ValueError(
                 "canonical_id must match host_app, host_session_key, and agent_key"

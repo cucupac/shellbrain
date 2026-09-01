@@ -458,7 +458,6 @@ Do not commit or push.
 Do not run `shellbrain recall` or `shellbrain snapshot`.
 Do not run `admin`, `init`, or `upgrade` commands.
 Do not write directly to the database.
-Do not use `graph_patches`.
 Do not use a write command that this prompt does not list.
 
 # PROTOCOL

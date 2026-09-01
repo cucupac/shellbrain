@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from app.core.use_cases.retrieval.recall import execute_recall_memory
+from app.core.use_cases.retrieval.build_context import execute_build_context
 from app.core.use_cases.retrieval.recall.result import RecallMemoryResult
 from app.core.use_cases.retrieval.read import execute_read_memory
 from app.core.use_cases.retrieval.read.result import ReadMemoryResult
@@ -32,7 +32,7 @@ def execute_recall_memory_with_dependencies(
 ) -> RecallMemoryResult:
     """Execute recall with handler-injected retrieval settings."""
 
-    return execute_recall_memory(
+    return execute_build_context(
         request,
         uow,
         uow_factory=uow_factory,

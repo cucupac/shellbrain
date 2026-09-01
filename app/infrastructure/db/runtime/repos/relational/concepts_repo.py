@@ -33,7 +33,6 @@ from app.core.entities.concepts import (
     ConceptRelationPredicate,
     ConceptSourceKind,
     ConceptStatus,
-    GraphPatch,
 )
 from app.core.ports.db.concept_repositories import IConceptsRepo
 from app.infrastructure.db.runtime.models.concepts import (
@@ -46,7 +45,6 @@ from app.infrastructure.db.runtime.models.concepts import (
     concept_memory_links,
     concept_relations,
     concepts,
-    graph_patches,
 )
 from app.infrastructure.db.runtime.models.evidence import evidence_links, evidence_refs
 
@@ -432,24 +430,6 @@ class ConceptsRepo(IConceptsRepo):
             )
         )
         return event
-
-    def create_graph_patch(self, patch: GraphPatch) -> GraphPatch:
-        """Store one graph patch proposal record."""
-
-        self._session.execute(
-            graph_patches.insert().values(
-                id=patch.id,
-                repo_id=patch.repo_id,
-                schema_version=patch.schema_version,
-                status=patch.status.value,
-                proposed_by=patch.proposed_by.value,
-                operations_json=patch.operations_json,
-                evidence_summary=patch.evidence_summary,
-                created_at=datetime.now(timezone.utc),
-                applied_at=patch.applied_at,
-            )
-        )
-        return patch
 
     def get_concept_bundle(
         self,
@@ -851,13 +831,12 @@ def _unified_evidence_to_concept_row(row) -> dict[str, Any]:
     """Convert unified evidence storage rows into concept evidence view rows."""
 
     source_kind = str(row["kind"])
-    evidence_kind = _CONCEPT_EVIDENCE_KIND_BY_SOURCE_KIND[source_kind]
     values: dict[str, Any] = {
         "id": row["id"],
         "repo_id": row["repo_id"],
         "target_type": _CONCEPT_TARGET_TYPE_BY_UNIFIED[str(row["target_type"])],
         "target_id": row["target_id"],
-        "evidence_kind": evidence_kind,
+        "evidence_kind": "transcript" if source_kind == "episode_event" else source_kind,
         "anchor_id": row["anchor_id"],
         "memory_id": row["memory_id"],
         "commit_ref": row["commit_ref"],
@@ -866,7 +845,6 @@ def _unified_evidence_to_concept_row(row) -> dict[str, Any]:
         "created_at": row["created_at"],
     }
     if source_kind == "episode_event":
-        values["evidence_kind"] = "transcript"
         values["transcript_ref"] = row["episode_event_id"] or row["ref"]
     return values
 
@@ -918,15 +896,6 @@ _CONCEPT_TARGET_TYPE_BY_UNIFIED = {
     "concept_grounding": "grounding",
     "concept_memory_link": "memory_link",
     "concept_lifecycle_event": "lifecycle_event",
-}
-_CONCEPT_EVIDENCE_KIND_BY_SOURCE_KIND = {
-    "anchor": "anchor",
-    "memory": "memory",
-    "commit": "commit",
-    "transcript": "transcript",
-    "test": "test",
-    "manual": "manual",
-    "episode_event": "transcript",
 }
 
 

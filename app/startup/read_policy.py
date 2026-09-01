@@ -160,22 +160,6 @@ def get_retrieval_defaults() -> dict[str, float]:
     return _coerce_read_policy_settings(get_read_settings()).retrieval_defaults()
 
 
-def resolve_read_limit(*, mode: str, explicit_limit: int | None) -> int:
-    """Resolve the effective read limit from explicit payload or mode-based config."""
-
-    if explicit_limit is not None:
-        return int(explicit_limit)
-    return _coerce_read_policy_settings(get_read_settings()).resolve_limit(
-        mode=mode, explicit_limit=explicit_limit
-    )
-
-
-def resolve_read_quotas(*, mode: str) -> dict[str, int]:
-    """Resolve the configured context-pack quotas for one read mode."""
-
-    return _coerce_read_policy_settings(get_read_settings()).resolve_quotas(mode=mode)
-
-
 def resolve_read_payload_defaults(payload: dict[str, Any]) -> dict[str, Any]:
     """Resolve effective read payload defaults from YAML-backed settings."""
 

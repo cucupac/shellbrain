@@ -1,15 +1,9 @@
 """Repository ports for episode persistence."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime
 from typing import Sequence
 
-from app.core.entities.episodes import (
-    Episode,
-    EpisodeBuildSnapshot,
-    EpisodeEvent,
-    SessionTransfer,
-)
+from app.core.entities.episodes import Episode, EpisodeBuildSnapshot, EpisodeEvent
 
 
 class IEpisodesRepo(ABC):
@@ -56,10 +50,6 @@ class IEpisodesRepo(ABC):
         """This method fetches one repo-visible event by id inside an episode."""
 
     @abstractmethod
-    def list_event_keys(self, *, episode_id: str) -> Sequence[str]:
-        """This method returns already-imported upstream event keys for one episode."""
-
-    @abstractmethod
     def next_event_seq(self, *, episode_id: str) -> int:
         """This method returns the next append sequence number for one episode."""
 
@@ -70,14 +60,6 @@ class IEpisodesRepo(ABC):
     @abstractmethod
     def append_event_if_new(self, event: EpisodeEvent) -> bool:
         """This method appends an event only when its host_event_key is not already present."""
-
-    @abstractmethod
-    def close_episode(self, *, episode_id: str, ended_at: datetime) -> None:
-        """This method marks an active episode closed."""
-
-    @abstractmethod
-    def append_transfer(self, transfer: SessionTransfer) -> None:
-        """This method appends a cross-session transfer row."""
 
     @abstractmethod
     def list_existing_event_ids(self, *, event_ids: Sequence[str]) -> Sequence[str]:

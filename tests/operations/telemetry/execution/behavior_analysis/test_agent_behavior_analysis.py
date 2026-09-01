@@ -369,8 +369,6 @@ def _episode_row(
         "repo_id": repo_id,
         "host_app": host_app,
         "thread_id": thread_id,
-        "title": None,
-        "objective": None,
         "status": EpisodeStatus.CLOSED.value,
         "started_at": started_at,
         "ended_at": started_at + timedelta(minutes=45),

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.core.errors import DomainValidationError, ErrorCode, ErrorDetail
 from app.core.entities.concepts import Concept, ConceptKind, ConceptStatus
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.core.ports.system.idgen import IIdGenerator
@@ -25,22 +24,10 @@ def add_concepts(
 ) -> ConceptAddResult:
     """Create concept containers, failing when any target concept already exists."""
 
-    normalized_slugs: list[str] = []
-    seen_slugs: set[str] = set()
-    for action in request.actions:
-        normalized_slug = require_missing_concept(request.repo_id, action.slug, uow)
-        if normalized_slug in seen_slugs:
-            raise DomainValidationError(
-                [
-                    ErrorDetail(
-                        code=ErrorCode.SEMANTIC_ERROR,
-                        message=f"Concept add request contains duplicate slug: {normalized_slug}",
-                        field="actions.slug",
-                    )
-                ]
-            )
-        normalized_slugs.append(normalized_slug)
-        seen_slugs.add(normalized_slug)
+    normalized_slugs = [
+        require_missing_concept(request.repo_id, action.slug, uow)
+        for action in request.actions
+    ]
 
     results: list[dict[str, Any]] = []
     concept_ids: list[str] = []

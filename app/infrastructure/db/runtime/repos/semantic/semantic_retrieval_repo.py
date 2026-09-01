@@ -8,10 +8,10 @@ from app.core.ports.db.retrieval_repositories import ISemanticRetrievalRepo
 from app.core.policies.retrieval.ontology_semantics import (
     LIFECYCLE_RETRIEVAL_MULTIPLIERS,
     MAYBE_STALE_STATUS,
-    POSITIVE_LIFECYCLE_STATUSES,
     STALE_STATUS,
 )
 from app.infrastructure.db.runtime.models.memories import memories, memory_embeddings
+from app.infrastructure.db.runtime.repos.memory_visibility import visible_memory_filters
 
 
 class SemanticRetrievalRepo(ISemanticRetrievalRepo):
@@ -62,7 +62,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 )
             )
             .where(
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id,
                     include_global=include_global,
                     kinds=kinds,
@@ -126,7 +126,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 )
             )
             .where(
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id,
                     include_global=include_global,
                     kinds=kinds,
@@ -169,7 +169,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 )
             )
             .where(
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id,
                     include_global=include_global,
                     kinds=kinds,
@@ -217,7 +217,7 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
                 )
             )
             .where(
-                *self._visibility_filters(
+                *visible_memory_filters(
                     repo_id=repo_id,
                     include_global=include_global,
                     kinds=kinds,
@@ -241,25 +241,6 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
             expected_model=expected_model,
             reference_label=reference_label,
         )
-
-    def _visibility_filters(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        kinds: Sequence[str] | None,
-    ) -> list[Any]:
-        """Build the visibility filters used by semantic retrieval queries."""
-
-        scope_values = ["repo", "global"] if include_global else ["repo"]
-        filters: list[Any] = [
-            memories.c.repo_id == repo_id,
-            memories.c.status.in_(list(POSITIVE_LIFECYCLE_STATUSES)),
-            memories.c.scope.in_(scope_values),
-        ]
-        if kinds:
-            filters.append(memories.c.kind.in_(list(kinds)))
-        return filters
 
 
 def _validate_embedding_row(row: dict[str, Any]) -> None:

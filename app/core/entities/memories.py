@@ -34,17 +34,11 @@ class MemoryKind(str, Enum):
 
         return self in {MemoryKind.SOLUTION, MemoryKind.FAILED_TACTIC}
 
-MATURE_MEMORY_KINDS: Final[tuple[MemoryKind, ...]] = (
-    MemoryKind.PROBLEM,
-    MemoryKind.SOLUTION,
-    MemoryKind.FAILED_TACTIC,
-    MemoryKind.FACT,
-    MemoryKind.PREFERENCE,
-    MemoryKind.CHANGE,
-)
 MATURE_MEMORY_KIND_VALUES: Final[tuple[str, ...]] = tuple(
-    kind.value for kind in MATURE_MEMORY_KINDS
+    kind.value for kind in MemoryKind
 )
+
+
 class MemoryScope(str, Enum):
     """This enum defines shellbrain visibility scope."""
 

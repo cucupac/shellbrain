@@ -3,16 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from app.core.errors import ErrorDetail
 from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.entities.inner_agents import TeachKnowledgeSettings
-from app.core.entities.runtime_context import (
-    OperationDispatchTelemetryContext,
-    SessionSelectionSummary,
-)
+from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import (
     CreatePolicySettings,
     ReadPolicySettings,
@@ -84,10 +80,7 @@ class OperationDependencies:
     discover_untrusted_events_candidate: Callable[..., object | None]
     normalize_host_transcript: Callable[..., list[dict]]
     collect_model_usage_records_for_session: Callable[..., Iterable[object]]
-    summarize_runtime_selection: Callable[..., SessionSelectionSummary]
     telemetry_sink: Any
-    create_policy_errors: tuple[ErrorDetail, ...] = field(default_factory=tuple)
-    update_policy_errors: tuple[ErrorDetail, ...] = field(default_factory=tuple)
 
 
 def build_operation_dependencies() -> OperationDependencies:
@@ -115,7 +108,6 @@ def build_operation_dependencies() -> OperationDependencies:
         discover_untrusted_events_candidate=discover_untrusted_events_candidate,
         normalize_host_transcript=normalize_host_transcript,
         collect_model_usage_records_for_session=collect_model_usage_records_for_session,
-        summarize_runtime_selection=summarize_runtime_selection,
         telemetry_sink=TelemetrySink(
             clock=clock, summarize_runtime_selection=summarize_runtime_selection
         ),

@@ -159,14 +159,6 @@ class ConceptCreatedBy(str, Enum):
     IMPORT = "import"
 
 
-class GraphPatchStatus(str, Enum):
-    """Allowed graph patch lifecycle states."""
-
-    PENDING = "pending"
-    APPLIED = "applied"
-    REJECTED = "rejected"
-
-
 @dataclass(frozen=True, kw_only=True)
 class Concept:
     """One durable concept container."""
@@ -311,18 +303,3 @@ class ConceptEvidence:
     transcript_ref: str | None = None
     note: str | None = None
     created_at: datetime | None = None
-
-
-@dataclass(frozen=True, kw_only=True)
-class GraphPatch:
-    """Minimal reserved future graph-patch proposal record."""
-
-    id: str
-    repo_id: str
-    schema_version: str
-    status: GraphPatchStatus
-    proposed_by: ConceptCreatedBy
-    operations_json: list[dict[str, Any]]
-    evidence_summary: str | None = None
-    created_at: datetime | None = None
-    applied_at: datetime | None = None

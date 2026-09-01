@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import asdict
 from datetime import datetime, timezone
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Table, delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.core.entities.guidance import PendingUtilityCandidate
@@ -60,24 +61,7 @@ class TelemetryRepo(IPendingUtilityCandidatesRepo):
     ) -> None:
         """Replace one read summary row and its ordered result items."""
 
-        invocation_id = summary.invocation_id
-        self._session.execute(
-            delete(read_result_items).where(
-                read_result_items.c.invocation_id == invocation_id
-            )
-        )
-        self._session.execute(
-            delete(read_invocation_summaries).where(
-                read_invocation_summaries.c.invocation_id == invocation_id
-            )
-        )
-        self._session.execute(
-            read_invocation_summaries.insert().values(**asdict(summary))
-        )
-        if items:
-            self._session.execute(
-                read_result_items.insert(), [asdict(item) for item in items]
-            )
+        self._replace_summary(read_invocation_summaries, read_result_items, summary, items)
 
     def insert_recall_summary(
         self,
@@ -86,24 +70,7 @@ class TelemetryRepo(IPendingUtilityCandidatesRepo):
     ) -> None:
         """Replace one recall summary row and its ordered source items."""
 
-        invocation_id = summary.invocation_id
-        self._session.execute(
-            delete(recall_source_items).where(
-                recall_source_items.c.invocation_id == invocation_id
-            )
-        )
-        self._session.execute(
-            delete(recall_invocation_summaries).where(
-                recall_invocation_summaries.c.invocation_id == invocation_id
-            )
-        )
-        self._session.execute(
-            recall_invocation_summaries.insert().values(**asdict(summary))
-        )
-        if items:
-            self._session.execute(
-                recall_source_items.insert(), [asdict(item) for item in items]
-            )
+        self._replace_summary(recall_invocation_summaries, recall_source_items, summary, items)
 
     def insert_inner_agent_invocations(
         self,
@@ -132,24 +99,27 @@ class TelemetryRepo(IPendingUtilityCandidatesRepo):
     ) -> None:
         """Replace one write summary row and its ordered effect items."""
 
+        self._replace_summary(write_invocation_summaries, write_effect_items, summary, items)
+
+    def _replace_summary(
+        self,
+        summary_table: Table,
+        items_table: Table,
+        summary: ReadSummaryRecord | RecallSummaryRecord | WriteSummaryRecord,
+        items: Sequence[object],
+    ) -> None:
+        """Replace one invocation summary row and its ordered item rows."""
+
         invocation_id = summary.invocation_id
         self._session.execute(
-            delete(write_effect_items).where(
-                write_effect_items.c.invocation_id == invocation_id
-            )
+            delete(items_table).where(items_table.c.invocation_id == invocation_id)
         )
         self._session.execute(
-            delete(write_invocation_summaries).where(
-                write_invocation_summaries.c.invocation_id == invocation_id
-            )
+            delete(summary_table).where(summary_table.c.invocation_id == invocation_id)
         )
-        self._session.execute(
-            write_invocation_summaries.insert().values(**asdict(summary))
-        )
+        self._session.execute(summary_table.insert().values(**asdict(summary)))
         if items:
-            self._session.execute(
-                write_effect_items.insert(), [asdict(item) for item in items]
-            )
+            self._session.execute(items_table.insert(), [asdict(item) for item in items])
 
     def insert_episode_sync_run(
         self,

@@ -180,7 +180,6 @@ recall_source_items = Table(
     Column("source_kind", String, nullable=False),
     Column("source_id", String, nullable=False),
     Column("input_section", String, nullable=False),
-    Column("output_section", String),
     CheckConstraint("ordinal > 0", name="ck_recall_source_items_ordinal_positive"),
     CheckConstraint(
         "source_kind IN ('memory', 'concept')",
@@ -189,10 +188,6 @@ recall_source_items = Table(
     CheckConstraint(
         "input_section IN ('direct', 'explicit_related', 'implicit_related', 'concept_orientation', 'inner_agent.read_trace')",
         name="ck_recall_source_items_input_section",
-    ),
-    CheckConstraint(
-        "output_section IS NULL OR output_section IN ('summary', 'sources')",
-        name="ck_recall_source_items_output_section",
     ),
 )
 

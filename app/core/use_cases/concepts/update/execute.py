@@ -52,8 +52,10 @@ from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.use_cases.concepts.embeddings import upsert_concept_embeddings
-from app.core.policies.concepts.relation_rules import validate_relation_shape
-from app.core.use_cases.concepts.containment_checks import validate_contains_relation
+from app.core.policies.concepts.relation_rules import (
+    validate_no_contains_cycle,
+    validate_relation_shape,
+)
 from app.core.use_cases.concepts.reference_checks import (
     normalize_text,
     require_anchor,
@@ -214,13 +216,12 @@ def _add_relation(
     validate_relation_shape(
         subject=subject, predicate=predicate, object_concept=object_concept
     )
-    validate_contains_relation(
-        repo_id=repo_id,
-        predicate=predicate,
-        subject_id=subject.id,
-        object_id=object_concept.id,
-        uow=uow,
-    )
+    if predicate == ConceptRelationPredicate.CONTAINS:
+        validate_no_contains_cycle(
+            contains_edges=uow.concepts.list_contains_edges(repo_id=repo_id),
+            subject_id=subject.id,
+            object_id=object_concept.id,
+        )
     relation = uow.concepts.add_relation(
         ConceptRelation(
             id=id_generator.new_id(),

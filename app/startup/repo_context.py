@@ -23,7 +23,7 @@ class RepoContext:
 def infer_repo_id(repo_root: Path) -> str:
     """This function infers repo_id from one resolved repository root."""
 
-    registration = _load_registration_for_root(repo_root)
+    registration = load_repo_registration_for_target(repo_root)
     if registration is not None:
         return registration.repo_id
     identity = resolve_repo_identity(repo_root=repo_root)
@@ -69,9 +69,3 @@ def determine_registration_root(
     if explicit_repo_root or explicit_repo_id:
         return target
     return None
-
-
-def _load_registration_for_root(repo_root: Path):
-    """Return a repo registration from the target root or its git root."""
-
-    return load_repo_registration_for_target(repo_root)

@@ -22,7 +22,7 @@ def test_backfill_model_usage_should_import_rows_for_linked_historical_sessions(
     """backfill-token-usage should always import model_usage rows from linked host transcripts."""
 
     monkeypatch.setattr(
-        "app.startup.model_usage_backfill.get_uow_factory", lambda: uow_factory
+        "app.startup.model_usage_backfill.get_uow", uow_factory
     )
     with integration_engine.begin() as conn:
         conn.execute(

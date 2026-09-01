@@ -24,6 +24,7 @@ from app.core.ports.db.retrieval_repositories import (
     IConceptSemanticRetrievalRepo,
 )
 from app.core.policies.retrieval.ontology_semantics import (
+    bundle_lifecycle_statuses,
     concept_bundle_retrieval_multiplier,
     dominant_lifecycle_status,
     is_active_lifecycle,
@@ -36,7 +37,6 @@ from app.core.use_cases.retrieval.concept_seed_retrieval import retrieve_concept
 AVAILABLE_FACETS = ("claims", "relations", "groundings", "memory_links", "evidence")
 MAX_KEY_CLAIMS = 3
 MAX_ORIENTATION_CHARS = 600
-MAX_EXPAND_HANDLES = 5
 
 
 def append_concepts_to_pack(
@@ -53,7 +53,9 @@ def append_concepts_to_pack(
 ) -> dict[str, Any]:
     """Append the stable concept-context section to one read pack."""
 
-    concept_expand = _concept_expand(request)
+    concept_expand = (
+        ReadConceptsExpandRequest() if request.expand is None else request.expand.concepts
+    )
     if concept_expand.mode == "none":
         pack["concepts"] = {
             "mode": "none",
@@ -97,14 +99,6 @@ def append_concepts_to_pack(
         "guidance": _guidance_for_items(items),
     }
     return pack
-
-
-def _concept_expand(request: MemoryReadRequest) -> ReadConceptsExpandRequest:
-    """Resolve concept expansion controls from a validated read request."""
-
-    if request.expand is None:
-        return ReadConceptsExpandRequest()
-    return request.expand.concepts
 
 
 def _auto_concept_items(
@@ -154,7 +148,9 @@ def _auto_concept_items(
         )
         if bundle is None:
             continue
-        score = float(candidate["score"]) * _freshness_multiplier(bundle)
+        score = float(candidate["score"]) * concept_bundle_retrieval_multiplier(
+            bundle_lifecycle_statuses(bundle)
+        )
         if score <= 0:
             continue
         ranked.append(
@@ -347,12 +343,8 @@ def _required_float(record: dict[str, Any], field: str, record_type: str) -> flo
     return float(record[field])
 
 
-def _freshness_multiplier(bundle: dict[str, Any]) -> float:
-    return concept_bundle_retrieval_multiplier(_bundle_lifecycle_statuses(bundle))
-
-
 def _freshness(bundle: dict[str, Any]) -> dict[str, Any]:
-    statuses = _bundle_lifecycle_statuses(bundle)
+    statuses = bundle_lifecycle_statuses(bundle)
     counts = lifecycle_status_counts(statuses)
     maybe_stale = counts.get(ConceptLifecycleStatus.MAYBE_STALE.value, 0)
     stale = counts.get(ConceptLifecycleStatus.STALE.value, 0)
@@ -368,14 +360,6 @@ def _freshness(bundle: dict[str, Any]) -> dict[str, Any]:
         "wrong_records": wrong,
         "archived_records": archived,
     }
-
-
-def _bundle_lifecycle_statuses(bundle: dict[str, Any]) -> tuple[str, ...]:
-    return tuple(
-        record.lifecycle.status.value
-        for key in ("relations", "claims", "groundings", "memory_links")
-        for record in bundle[key]
-    )
 
 
 def _orientation(concept: Concept, claims: list[ConceptClaim]) -> str:
@@ -600,7 +584,7 @@ def _expand_handles(*, concept: Concept, query: str) -> list[dict[str, Any]]:
         "evidence": "Show evidence metadata behind this concept.",
     }
     handles = []
-    for facet in AVAILABLE_FACETS[:MAX_EXPAND_HANDLES]:
+    for facet in AVAILABLE_FACETS:
         handles.append(
             {
                 "facet": facet,

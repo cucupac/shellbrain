@@ -9,6 +9,7 @@ import pytest
 
 from app.core.use_cases.retrieval.read.result import ReadMemoryResult
 from tests.operations._shared.handler_calls import handle_read
+from tests.operations._shared.read_pipeline_stubs import stub_read_pipeline
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 pytestmark = pytest.mark.usefixtures("telemetry_db_reset")
@@ -22,7 +23,7 @@ def test_read_should_always_append_one_read_summary_row_with_effective_request_m
 ) -> None:
     """read should always append one read summary row with effective request metadata."""
 
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
 
     result = handle_read(
         {
@@ -74,7 +75,7 @@ def test_read_should_always_append_one_read_result_item_row_per_returned_memory_
 ) -> None:
     """read should always append one read result item row per returned memory in display order."""
 
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
 
     result = handle_read(
         {"query": "display order telemetry", "mode": "targeted"},
@@ -105,7 +106,7 @@ def test_read_should_always_record_kind_section_priority_why_included_and_anchor
 ) -> None:
     """read should always record kind, section, priority, why-included, and anchor metadata for each returned item."""
 
-    _stub_read_pipeline(monkeypatch, zero_results=False)
+    stub_read_pipeline(monkeypatch, zero_results=False)
 
     result = handle_read(
         {"query": "item metadata telemetry", "mode": "targeted"},
@@ -146,7 +147,7 @@ def test_read_should_always_record_zero_results_true_when_the_context_pack_is_em
 ) -> None:
     """read should always record zero-results true when the context pack is empty."""
 
-    _stub_read_pipeline(monkeypatch, zero_results=True)
+    stub_read_pipeline(monkeypatch, zero_results=True)
 
     result = handle_read(
         {"query": "zero results telemetry", "mode": "targeted"},
@@ -231,72 +232,6 @@ def test_read_summary_should_record_concept_context_telemetry(
     assert rows[0]["concept_token_estimate"] > 0
     assert _normalize_jsonish(rows[0]["concept_refs_returned"]) == ["deposit-addresses"]
     assert _normalize_jsonish(rows[0]["concept_facets_returned"]) == ["groundings"]
-
-
-def _stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) -> None:
-    """Patch the read pipeline to return deterministic summary rows."""
-
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
-        lambda payload, **kwargs: {"semantic": [], "keyword": []},
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword, **kwargs: (
-            []
-            if zero_results
-            else [
-                {
-                    "memory_id": "direct-1",
-                    "rrf_score": 0.99,
-                    "score": 0.99,
-                    "kind": "problem",
-                    "text": "Primary direct memory.",
-                    "created_at": "2024-01-01T00:00:00+00:00",
-                    "status": "active",
-                    "why_included": "direct_match",
-                }
-            ]
-        ),
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
-        lambda direct_candidates, payload, **kwargs: (
-            {"explicit": [], "implicit": []}
-            if zero_results
-            else {
-                "explicit": [
-                    {
-                        "memory_id": "explicit-1",
-                        "score": 0.88,
-                        "kind": "solution",
-                        "text": "Linked association memory.",
-                        "created_at": "2024-01-01T00:00:00+00:00",
-                        "status": "active",
-                        "why_included": "association_link",
-                        "anchor_memory_id": "direct-1",
-                        "relation_type": "depends_on",
-                    }
-                ],
-                "implicit": [
-                    {
-                        "memory_id": "implicit-1",
-                        "score": 0.77,
-                        "kind": "fact",
-                        "text": "Nearby semantic memory.",
-                        "created_at": "2024-01-01T00:00:00+00:00",
-                        "status": "active",
-                        "why_included": "semantic_neighbor",
-                        "anchor_memory_id": "direct-1",
-                    }
-                ],
-            }
-        ),
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
-        lambda bucketed_candidates: bucketed_candidates,
-    )
 
 
 def _normalize_jsonish(value: object) -> object:

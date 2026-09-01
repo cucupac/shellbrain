@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict
 from datetime import datetime, timezone
 import gzip
 import hashlib
+import json
 import os
 from pathlib import Path
 import re
@@ -16,10 +17,7 @@ from uuid import uuid4
 import psycopg
 
 from app.core.entities.backups import BackupManifest
-from app.infrastructure.db.admin.backups.manifest_store import (
-    list_backup_manifests,
-    write_backup_manifest,
-)
+from app.infrastructure.db.admin.connection import replace_database
 from app.infrastructure.db.admin.instance_guard import (
     PROTECTED_DB_NAMES,
     fetch_instance_metadata,
@@ -32,14 +30,6 @@ _UNSUPPORTED_SET_LINE_RE = re.compile(r"^SET\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*=")
 _UNSUPPORTED_SET_CONFIG_RE = re.compile(
     r"^SELECT\s+pg_catalog\.set_config\('([a-zA-Z_][a-zA-Z0-9_]*)'"
 )
-
-
-@dataclass(frozen=True)
-class _ResolvedInstanceMetadata:
-    """Minimal metadata used to bucket and label backup artifacts."""
-
-    instance_id: str
-    instance_mode: str
 
 
 def create_backup(
@@ -56,11 +46,11 @@ def create_backup(
 
     if container_name is None and shutil.which("pg_dump") is None:
         raise RuntimeError("pg_dump is required to create Shellbrain backups.")
-    metadata = _resolve_instance_metadata(admin_dsn)
+    instance_id, instance_mode = _resolve_instance_metadata(admin_dsn)
     schema_revision = _fetch_schema_revision(admin_dsn)
     created_at = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     backup_id = uuid4().hex
-    instance_dir = backup_root / metadata.instance_id
+    instance_dir = backup_root / instance_id
     instance_dir.mkdir(parents=True, exist_ok=True)
     artifact_path = instance_dir / f"{created_at}-{backup_id}.sql.gz"
     manifest_path = instance_dir / f"{created_at}-{backup_id}.manifest.json"
@@ -92,8 +82,8 @@ def create_backup(
 
     manifest = BackupManifest(
         backup_id=backup_id,
-        instance_id=metadata.instance_id,
-        instance_mode=metadata.instance_mode,
+        instance_id=instance_id,
+        instance_mode=instance_mode,
         source=fingerprint_summary(admin_dsn),
         schema_revision=schema_revision,
         created_at=datetime.now(timezone.utc).isoformat(),
@@ -102,10 +92,10 @@ def create_backup(
         artifact_size_bytes=artifact_path.stat().st_size,
         compression="gzip",
     )
-    write_backup_manifest(path=manifest_path, manifest=manifest)
+    _write_backup_manifest(path=manifest_path, manifest=manifest)
 
     if mirror_root is not None:
-        mirror_dir = mirror_root / metadata.instance_id
+        mirror_dir = mirror_root / instance_id
         mirror_dir.mkdir(parents=True, exist_ok=True)
         shutil.copy2(artifact_path, mirror_dir / artifact_path.name)
         shutil.copy2(manifest_path, mirror_dir / manifest_path.name)
@@ -115,7 +105,15 @@ def create_backup(
 def list_backups(*, backup_root: Path) -> list[BackupManifest]:
     """Return every parseable backup manifest under the configured backup root."""
 
-    return list_backup_manifests(backup_root=backup_root)
+    if not backup_root.exists():
+        return []
+    manifests: list[BackupManifest] = []
+    for path in sorted(backup_root.rglob("*.manifest.json")):
+        try:
+            manifests.append(_read_backup_manifest(path=path))
+        except (FileNotFoundError, json.JSONDecodeError, TypeError):
+            continue
+    return sorted(manifests, key=lambda item: item.created_at, reverse=True)
 
 
 def verify_backup(*, backup_root: Path, backup_id: str | None = None) -> BackupManifest:
@@ -170,7 +168,7 @@ def restore_backup(
     artifact_path = backup_root / manifest.instance_id / manifest.artifact_filename
     raw_admin_dsn = admin_dsn.replace("+psycopg", "")
     _create_empty_database(admin_dsn=admin_dsn, target_db=target_db)
-    target_dsn = _replace_database(raw_admin_dsn, target_db)
+    target_dsn = replace_database(raw_admin_dsn, target_db)
     with gzip.open(artifact_path, "rb") as handle:
         restored_sql = _sanitize_restore_sql(handle.read())
     run_kwargs = {
@@ -199,7 +197,7 @@ def restore_backup(
         ensure_instance_metadata,
     )
 
-    target_admin_dsn = _replace_database(admin_dsn, target_db)
+    target_admin_dsn = replace_database(admin_dsn, target_db)
     ensure_instance_metadata(
         target_admin_dsn,
         instance_mode="scratch",
@@ -211,27 +209,36 @@ def restore_backup(
             reconcile_app_role_privileges,
         )
 
-        target_app_dsn = _replace_database(app_dsn, target_db)
+        target_app_dsn = replace_database(app_dsn, target_db)
         reconcile_app_role_privileges(
             admin_dsn=target_admin_dsn, app_dsn=target_app_dsn
         )
     return manifest
 
 
-def _resolve_instance_metadata(admin_dsn: str) -> _ResolvedInstanceMetadata:
-    """Resolve stored instance metadata, or synthesize a stable fallback label."""
+def _resolve_instance_metadata(admin_dsn: str) -> tuple[str, str]:
+    """Return (instance_id, instance_mode), synthesizing a stable fallback label."""
 
     metadata = fetch_instance_metadata(admin_dsn)
     if metadata is not None:
-        return _ResolvedInstanceMetadata(
-            instance_id=metadata.instance_id,
-            instance_mode=metadata.instance_mode,
-        )
-    source = fingerprint_summary(admin_dsn)
-    return _ResolvedInstanceMetadata(
-        instance_id=source["fingerprint"],
-        instance_mode="unknown",
+        return metadata.instance_id, metadata.instance_mode
+    return fingerprint_summary(admin_dsn)["fingerprint"], "unknown"
+
+
+def _write_backup_manifest(*, path: Path, manifest: BackupManifest) -> None:
+    """Write one backup manifest JSON file."""
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps(asdict(manifest), indent=2, sort_keys=True), encoding="utf-8"
     )
+
+
+def _read_backup_manifest(*, path: Path) -> BackupManifest:
+    """Read one backup manifest JSON file."""
+
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    return BackupManifest(**payload)
 
 
 def _backup_command(
@@ -312,7 +319,7 @@ def _create_empty_database(*, admin_dsn: str, target_db: str) -> None:
     """Create one empty restore target database, failing if it already exists."""
 
     raw_admin_dsn = admin_dsn.replace("+psycopg", "")
-    postgres_dsn = _replace_database(raw_admin_dsn, "postgres")
+    postgres_dsn = replace_database(raw_admin_dsn, "postgres")
     with psycopg.connect(postgres_dsn, autocommit=True) as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT 1 FROM pg_database WHERE datname = %s", (target_db,))
@@ -329,13 +336,6 @@ def _fetch_schema_revision(admin_dsn: str) -> str:
         with conn.cursor() as cur:
             cur.execute("SELECT version_num FROM alembic_version")
             return str(cur.fetchone()[0])
-
-
-def _replace_database(dsn: str, db_name: str) -> str:
-    """Replace the database path portion of one DSN string."""
-
-    prefix, _, _ = dsn.rpartition("/")
-    return f"{prefix}/{db_name}"
 
 
 def _sha256(path: Path) -> str:
