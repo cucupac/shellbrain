@@ -75,7 +75,6 @@ def test_create_validation_failures_should_always_append_one_failed_operation_in
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"

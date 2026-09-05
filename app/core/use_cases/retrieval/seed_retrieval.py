@@ -26,7 +26,6 @@ def retrieve_seeds(
     *,
     semantic_retrieval: ISemanticRetrievalRepo,
     keyword_retrieval: IKeywordRetrievalRepo,
-    vector_search: IVectorSearch | None,
     query_vector: Sequence[float] | None = None,
     query_model: str | None = None,
     thresholds: ThresholdSettings | None = None,
@@ -39,21 +38,14 @@ def retrieve_seeds(
     limit = int(request_data["limit"])
     query_text = request_data["query"]
     lexical_query = build_lexical_query(query_text)
-    resolved_query_vector = list(query_vector) if query_vector is not None else []
-    resolved_query_model = query_model
-    if query_vector is None and vector_search is not None:
-        resolved_query_vector = list(vector_search.embed_query(query_text))
-        if not resolved_query_vector:
-            raise ValueError("Query embedding provider returned an empty vector")
-        resolved_query_model = vector_search.model_name
     thresholds = thresholds or default_threshold_settings()
     semantic = [
         candidate
         for candidate in semantic_retrieval.query_semantic(
             repo_id=repo_id,
             include_global=include_global,
-            query_vector=resolved_query_vector,
-            query_model=resolved_query_model,
+            query_vector=list(query_vector) if query_vector is not None else [],
+            query_model=query_model,
             kinds=kinds,
             limit=limit,
         )
@@ -117,3 +109,16 @@ def _required_status(row: dict[str, Any]) -> str:
     if "status" not in row:
         raise ValueError(f"Keyword corpus row {row.get('memory_id')} is missing status")
     return str(row["status"])
+
+
+def resolve_query_embedding(
+    *, query: str, vector_search: IVectorSearch | None
+) -> tuple[list[float], str | None]:
+    """Resolve one query vector for memory and concept searches."""
+
+    if vector_search is None:
+        return [], None
+    vector = list(vector_search.embed_query(query))
+    if not vector:
+        raise ValueError("Query embedding provider returned an empty vector")
+    return vector, vector_search.model_name

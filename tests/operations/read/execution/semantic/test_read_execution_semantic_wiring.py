@@ -148,7 +148,7 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
         raise RuntimeError("query embedding failed")
 
     monkeypatch.setattr(
-        "app.core.use_cases.retrieval.read.build_context_pack",
+        "app.core.use_cases.retrieval.context_pack_pipeline.build_context_pack",
         _build_context_pack_raising,
     )
 

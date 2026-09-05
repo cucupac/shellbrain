@@ -51,7 +51,7 @@ def run_create_memory_operation(
     )
     result: dict | None = None
     error_stage: str | None = None
-    planned_side_effects = ()
+    completed_writes = ()
 
     try:
         if validation_errors:
@@ -78,9 +78,8 @@ def run_create_memory_operation(
                     embedding_provider=embedding_provider,
                     embedding_model=embedding_model,
                     id_generator=dependencies.id_generator,
-                    policy_settings=dependencies.create_policy,
                 )
-                planned_side_effects = core_result.planned_effects
+                completed_writes = core_result.writes
                 result = ok_envelope(core_result)
                 if result.get("status") == "ok":
                     session_state = session_manager.load_active_state(
@@ -143,7 +142,7 @@ def run_create_memory_operation(
         result=result,
         error_stage=error_stage,
         request=request,
-        planned_side_effects=planned_side_effects,
+        completed_writes=completed_writes,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result

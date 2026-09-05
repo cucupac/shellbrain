@@ -326,7 +326,6 @@ def _dispatch_operation_command(
         prepared = prepare_memory_add_request(
             payload,
             inferred_repo_id=repo_id,
-            defaults=runtime.get_create_hydration_defaults(),
         )
         return run_create_memory_operation(
             prepared.request,

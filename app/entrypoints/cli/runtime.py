@@ -11,7 +11,6 @@ class CliRuntime(Protocol):
 
     resolve_repo_context: Callable[..., Any]
     build_operation_dependencies: Callable[[], Any]
-    get_create_hydration_defaults: Callable[[], dict[str, Any]]
     get_read_hydration_defaults: Callable[[], dict[str, Any]]
     get_uow_factory: Callable[[], Any]
     get_embedding_provider_factory: Callable[[], Any]

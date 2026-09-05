@@ -57,7 +57,7 @@ def run_update_memory_operation(
     )
     result: dict | None = None
     error_stage: str | None = None
-    planned_side_effects = ()
+    completed_writes = ()
     try:
         if validation_errors:
             error_stage = infer_error_stage_from_errors(
@@ -95,9 +95,8 @@ def run_update_memory_operation(
                     uow,
                     id_generator=dependencies.id_generator,
                     clock=dependencies.clock,
-                    policy_settings=dependencies.update_policy,
                 )
-                planned_side_effects = core_result.planned_effects
+                completed_writes = core_result.writes
                 result = ok_envelope(core_result)
                 guidance = build_guidance_payloads(
                     uow_factory=uow_factory,
@@ -140,7 +139,7 @@ def run_update_memory_operation(
         result=result,
         error_stage=error_stage,
         request=request,
-        planned_side_effects=planned_side_effects,
+        completed_writes=completed_writes,
         total_latency_ms=int((perf_counter() - started_at) * 1000),
     )
     return result

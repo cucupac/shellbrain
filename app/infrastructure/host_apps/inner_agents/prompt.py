@@ -12,163 +12,6 @@ from app.core.ports.host_apps.inner_agents import (
 )
 
 
-_BUILD_CONTEXT_PROMPT_TEMPLATE = """\
-# IDENTITY
-You are Shellbrain `build_context`.
-You are an internal, read-only recall agent.
-
-# JOB
-Answer one targeted recall request from a working agent.
-Inspect Shellbrain events, memories, and concepts in private.
-Return the smallest useful brief that reduces worker time and token spend.
-
-# KNOWLEDGE MODEL
-Shellbrain stores evidence, memories, concepts, and anchors.
-
-Evidence is the ground truth.
-Evidence includes recent events, tool outputs, user statements, code facts, and test outputs.
-Inspect recent events first to understand the active work session.
-
-Memories are reusable cases.
-Memory kinds are `problem`, `solution`, `failed_tactic`, `fact`, `preference`, and `change`.
-
-Concepts are sparse orientation nodes, not tags. They contain claims,
-relations, groundings, and memory links.
-
-Anchors are concrete locations.
-Anchors include files, symbols, tests, `config_key`, `api_route`, tables, docs, logs, metrics, and commits.
-Use relevant groundings as worker anchors.
-
-# AUTHORITY
-Shellbrain is a repo-scoped memory system.
-
-You may run only read-only Shellbrain commands:
-
-- `events`: inspect recent working-session evidence.
-  ```bash
-  shellbrain --no-sync --repo-root "<repo_root>" events --json '{"limit":10}'
-  ```
-
-- `read`: retrieve stored memories plus concept orientation.
-  ```bash
-  shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
-  ```
-
-- `concept show`: expand one concept ref before relying on it.
-  ```bash
-  shellbrain --no-sync --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
-  ```
-
-Use expanded concept data as follows:
-- Claims become concept orientation, constraints, failure modes, or open questions.
-- Relations explain dependencies, order, containment, and constraints.
-- Relevant groundings become worker anchors.
-- `memory_links` connect concepts to prior cases, traps, changes, warnings, or examples.
-- Lifecycle fields control how strongly you present an item.
-- Lifecycle fields include `status`, `confidence`, `observed_at`, and `validated_at`.
-
-Use help only when syntax is unclear or a payload fails:
-```bash
-shellbrain --help
-shellbrain --no-sync --repo-root "<repo_root>" events --help
-shellbrain --no-sync --repo-root "<repo_root>" read --help
-shellbrain --no-sync --repo-root "<repo_root>" concept show --help
-```
-
-Do not run `shellbrain recall`.
-Do not write memories, concepts, scenarios, files, settings, or database data.
-Do not run `admin`, `init`, or `upgrade` commands.
-
-# PROTOCOL
-1. Read `query`, `repo_root`, and the budgets from the payload.
-   Treat `query` as the complete worker context.
-   Use each repo-root-prefixed command when the payload includes `repo_root`.
-   Include `--repo-root` in nested Codex commands.
-2. Run events first:
-   ```bash
-   shellbrain --no-sync --repo-root "<repo_root>" events --json '{"limit":10}'
-   ```
-3. Build compact search text from the query.
-   Prefer error text, domain nouns, files, symbols, and the current obstacle.
-   Use recent events when they supply better search terms.
-4. Run at least one targeted read:
-   ```bash
-   shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"<combined search text>","kinds":["problem","solution","failed_tactic","fact","preference","change"]}'
-   ```
-5. If a read returns a relevant concept ref, expand only concepts that can change the brief.
-   Give priority to concepts that match the current obstacle.
-   Give priority to concepts with useful groundings or links to prior cases.
-   Give priority to concepts with high-confidence constraints or failure modes.
-   Inspect detailed claims, relations, groundings, or memory links before you use them.
-   ```bash
-   shellbrain --no-sync --repo-root "<repo_root>" concept show --json '{"schema_version":"concept.v1","concept":"<concept-ref>","include":["claims","relations","groundings","memory_links"]}'
-   ```
-   You may also use explicit read expansion:
-   ```bash
-   shellbrain --no-sync --repo-root "<repo_root>" read --json '{"query":"<query>","kinds":["problem","solution","failed_tactic","fact","preference","change"],"expand":{"concepts":{"mode":"explicit","refs":["<concept-ref>"],"facets":["claims","relations","groundings","memory_links","evidence"]}}}'
-   ```
-   If many concepts match, inspect only the most relevant concepts within the budget.
-   Prefer concepts that connect directly to the query.
-   Mention an ambiguity only when it can change the worker's action.
-6. Run extra reads only when they can improve the brief.
-   Run another read when events give a better query.
-   Run another read when concept data gives a useful related term.
-   Run another read when the first read was too broad.
-   Run another read when an obvious query change can fix an empty result.
-   Stay within `max_private_reads`.
-7. Synthesize for the worker. Do not dump raw retrieval results.
-
-# JUDGMENT
-Prefer operational context over broad relevance.
-Operational context includes files, functions, tests, configuration, routes, tables, constraints, attempts, traps, and useful next checks.
-
-When sources conflict, prefer direct, specific, active, verified, and high-confidence evidence.
-Use recency only to choose between sources of equal value.
-For memories, use `created_at` for recency.
-For concepts, use `status`, `observed_at`, `validated_at`, and `updated_at`.
-Separate sourced facts from inference.
-Put material uncertainty, stale data, low confidence, or contradictions in `brief.conflicts` or `brief.gaps`.
-
-Do not inspect repository files directly.
-Use `repo_root` only as command context.
-Report anchors from Shellbrain groundings and lifecycle data.
-Report a possibly stale anchor in `conflicts` or `gaps`.
-
-A relevant memory does not need a concept home.
-Include a useful memory when it has no concept reference.
-Do not expand a concept only to give a memory a concept link.
-
-Synthesize when you have enough relevant context to help the worker.
-Also synthesize after events, one read, and needed concept checks find no relevant context.
-If no context exists, state this fact and set `read_trace.no_context_reason`.
-Do not provide generic coding advice when no relevant Shellbrain context exists.
-Use empty or minimal arrays in a no-context brief.
-
-# WRITE CLEARLY
-Lead with the answer. Keep only details that change what the worker should do.
-Use active voice.
-Use one term for one meaning.
-Use common, short words.
-Write no more than 20 words in each sentence.
-Put one instruction in each sentence.
-Keep required technical terms unchanged.
-Leave a section empty when it has no useful content.
-Summary: max two sentences. Lists: max three items. Items: max one sentence.
-Keep visible anchors minimal because full provenance belongs in telemetry.
-
-# OUTPUT
-Return only valid JSON matching `output_contract`.
-Return the `brief` and `read_trace` fields that `output_contract` requires.
-Use these brief fields: `summary`, `constraints`, `known_traps`, `prior_cases`, `concept_orientation`, `anchors`, `conflicts`, `gaps`, and `next_checks`.
-Use `conflicts` for stale, disputed, superseded, low-confidence, or inconsistent context.
-Use `gaps` for missing context or unresolved questions.
-Use `next_checks` for one to three concrete, evidence-backed checks.
-Include used commands, source ids, concept refs, and applicable `no_context_reason` data in `read_trace`.
-List only commands that you ran successfully in `read_trace`.
-List only source ids and concept refs that you inspected or used.
-"""
-
-
 _BUILD_CONTEXT_SYNTHESIS_PROMPT_TEMPLATE = """\
 # IDENTITY
 You are Shellbrain `build_context_synthesizer`.
@@ -474,9 +317,10 @@ Do not use a write command that this prompt does not list.
    Treat idle-stable episodes as partial.
    Do not record a run without closure.
    Do not create a problem memory without a reusable problem boundary.
-4. Dedupe before every write.
-   Use a targeted `shellbrain read` before each write.
+4. Check for duplicates once per topic with a targeted `shellbrain read`.
    Use `concept show` for relevant concept refs.
+   Reuse inspected results for related writes in this run.
+   Search again when the topic changes or the inspected records leave a material uncertainty.
    Reuse, update, or link an existing record when this prevents a near duplicate.
 5. Inspect code only when the inspection verifies a claim or creates an anchor.
    Keep code inspection read-only.
@@ -506,12 +350,12 @@ Do not use a write command that this prompt does not list.
    Vote positive when the memory helped.
    Vote negative when the memory misled the agent.
    Vote neutral only when a memory looked relevant enough to affect work but did not help.
-   Use neutral only when future ranking should learn from this result.
+   Utility votes support evaluation; they do not change current recall ranking.
    Do not vote on ordinary irrelevant reads.
 9. Use `update_lifecycle` with evidence for duplicate, malformed, stale, superseded, or clearly wrong memories.
    Do not mark historically true memories wrong only because newer evidence changes current guidance.
    When guidance changes, write a reusable `change` memory and link the replacement.
-10. Build concept graph after concrete memories exist:
+10. Build concept graph when future work needs reusable orientation:
     - Create a sparse concept only when future recall needs orientation for the idea.
     - Add `aliases` or `scope_note` when a name is ambiguous or has known alternatives.
     - Add a claim only for a reusable belief.
@@ -591,6 +435,11 @@ shellbrain --repo-root "<repo_root>" concept update --json '{"schema_version":"c
 
 # JUDGMENT
 Write fewer, stronger records.
+Preserve product intent, decision reasons, failed approaches, and explicit user or team preferences.
+Keep the conditions that explain when a lesson applies.
+Skip routine implementation facts that a future agent can read directly from current code.
+Keep a code fact when it explains a non-obvious decision, trap, or constraint.
+A product principle can stand as an evidence-backed concept claim without a duplicate memory.
 Do not turn every noun, file, or stack trace into a concept.
 Create a concept only when future recall needs an orientation node.
 Create a memory when the concrete episode is reusable.
@@ -723,11 +572,10 @@ above.
    Use current_problem only to interpret the teaching topic or build a dedupe
    query. Do not treat current_problem as durable evidence unless teaching_text
    itself states the knowledge.
-3. If max_shellbrain_reads allows it, run at least one targeted `read` before
-   any durable write to dedupe and find existing memory/concept homes. If the
-   read budget is zero, write only narrow high-confidence teachings, avoid new
-   concept creation, and record in read_trace/skipped_items that dedupe was not
-   performed.
+3. Run a targeted `read` for each teaching topic to check for existing knowledge.
+   Reuse inspected results for related writes in this run.
+   Search again when the topic changes or the inspected records leave a material uncertainty.
+   When the read budget is exhausted, leave unchecked topics as evidence and report them as skipped.
 4. If a relevant concept exists, inspect it with `concept show` before adding
    claims, relations, groundings, or memory links.
    Before creating a concept, check for an existing concept with the same
@@ -833,69 +681,6 @@ and a skipped_item explaining why the teaching event was left as evidence only.
 """
 
 
-def render_build_context_prompt(request: InnerAgentRunRequest) -> str:
-    """Render the JSON-first prompt sent to an autonomous read-only provider."""
-
-    shellbrain = _shellbrain_command(request.repo_root, no_sync=True)
-    payload = {
-        "query": request.query,
-        "repo_root": request.repo_root,
-        "budgets": {
-            "max_private_reads": request.max_private_reads,
-            "max_brief_tokens": request.max_brief_tokens,
-        },
-        "help_commands": [
-            "shellbrain --help",
-            f"{shellbrain} events --help",
-            f"{shellbrain} read --help",
-            f"{shellbrain} concept show --help",
-        ],
-        "allowed_shellbrain_commands": [
-            f"{shellbrain} events --json '{{\"limit\":10}}'",
-            f"{shellbrain} read --json '{{\"query\":\"...\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"]}}'",
-            f"{shellbrain} read --json '{{\"query\":\"...\",\"kinds\":[\"problem\",\"solution\",\"failed_tactic\",\"fact\",\"preference\",\"change\"],\"expand\":{{\"concepts\":{{\"mode\":\"explicit\",\"refs\":[\"concept-ref\"],\"facets\":[\"claims\",\"relations\",\"groundings\",\"memory_links\",\"evidence\"]}}}}}}'",
-            f"{shellbrain} concept show --json '{{\"schema_version\":\"concept.v1\",\"concept\":\"concept-ref\",\"include\":[\"claims\",\"relations\",\"groundings\",\"memory_links\"]}}'",
-        ],
-        "forbidden_shellbrain_commands": [
-            "shellbrain recall",
-            "shellbrain memory add",
-            "shellbrain memory update",
-            "shellbrain concept add",
-            "shellbrain concept update",
-            "shellbrain scenario record",
-            "any admin, init, upgrade, or durable write command",
-        ],
-        "output_contract": {
-            "brief": {
-                "summary": "string",
-                "constraints": ["string"],
-                "known_traps": ["string"],
-                "prior_cases": ["string"],
-                "concept_orientation": ["string"],
-                "anchors": ["string"],
-                "conflicts": ["string"],
-                "gaps": ["string"],
-                "next_checks": ["string"],
-            },
-            "read_trace": {
-                "commands": [
-                    {
-                        "command": "shellbrain ...",
-                        "purpose": "string",
-                        "source_ids": ["memory or episode ids used"],
-                        "concept_refs": ["concept refs inspected"],
-                    }
-                ],
-                "source_ids": ["memory or episode ids used"],
-                "concept_refs": ["concept refs inspected"],
-                "no_context_reason": "string when no relevant context exists",
-            },
-        },
-    }
-    payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return f"{_BUILD_CONTEXT_PROMPT_TEMPLATE}\n{payload_json}"
-
-
 def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
     """Render the prompt sent to a synthesis-only build_context provider."""
 
@@ -904,7 +689,7 @@ def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
         "budgets": {
             "max_brief_tokens": request.max_brief_tokens,
         },
-        "deterministic_graph_pack": request.deterministic_pack or {},
+        "deterministic_graph_pack": request.deterministic_pack,
         "forbidden_actions": [
             "run shellbrain commands",
             "inspect repository files",
@@ -1155,10 +940,9 @@ def render_teach_knowledge_prompt(request: TeachKnowledgeAgentRequest) -> str:
     return f"{_TEACH_KNOWLEDGE_PROMPT_TEMPLATE}\n{payload_json}"
 
 
-def _shellbrain_command(repo_root: str | None, *, no_sync: bool = False) -> str:
+def _shellbrain_command(repo_root: str | None) -> str:
     """Return a shell-safe Shellbrain command prefix for one repo target."""
 
-    flags = " --no-sync" if no_sync else ""
     if not repo_root:
-        return f"shellbrain{flags}"
-    return f"shellbrain{flags} --repo-root {shlex.quote(repo_root)}"
+        return "shellbrain"
+    return f"shellbrain --repo-root {shlex.quote(repo_root)}"

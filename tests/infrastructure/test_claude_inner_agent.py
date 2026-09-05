@@ -25,7 +25,7 @@ def test_claude_runner_parses_envelope_and_restricts_tools(monkeypatch) -> None:
 
     def _fake_run(args, *, input, text, capture_output, timeout, check, env):
         del input, text, capture_output, timeout, check
-        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context"
+        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context_synthesis"
         assert args[:2] == ["/usr/bin/claude", "-p"]
         assert _arg_value(args, "--output-format") == "json"
         assert "--no-session-persistence" in args
@@ -33,8 +33,8 @@ def test_claude_runner_parses_envelope_and_restricts_tools(monkeypatch) -> None:
         assert _arg_value(args, "--model") == "sonnet"
         assert "--fallback-model" not in args
         assert _arg_value(args, "--effort") == "medium"
-        assert _arg_value(args, "--tools") == "Bash"
-        assert "Bash(shellbrain *)" in args
+        assert _arg_value(args, "--tools") == ""
+        assert "--allowedTools" not in args
         assert "--strict-mcp-config" in args
         assert _arg_value(args, "--disallowedTools") == "mcp__*"
         settings = json.loads(_arg_value(args, "--settings"))
@@ -80,7 +80,6 @@ def test_claude_runner_parses_envelope_and_restricts_tools(monkeypatch) -> None:
     assert result.provider == "claude"
     assert result.model == "sonnet"
     assert result.brief == {"summary": "Claude synthesis"}
-    assert result.read_trace == {"source_ids": ["mem-1"]}
     assert result.input_tokens == 13
     assert result.output_tokens == 8
     assert result.reasoning_output_tokens == 2
@@ -108,7 +107,6 @@ def test_claude_synthesis_only_disables_tools(monkeypatch) -> None:
 
     result = runner.run(
         _request(
-            synthesis_only=True,
             deterministic_pack={"memories": [{"id": "mem-1", "text": "Fact"}]},
         )
     )
@@ -228,7 +226,6 @@ def test_claude_runner_rejects_disallowed_reported_model(monkeypatch) -> None:
 
 def _request(
     *,
-    synthesis_only: bool = False,
     deterministic_pack: dict | None = None,
 ) -> InnerAgentRunRequest:
     return InnerAgentRunRequest(
@@ -239,8 +236,9 @@ def _request(
         timeout_seconds=90,
         max_brief_tokens=1_800,
         query="what matters?",
-        synthesis_only=synthesis_only,
-        deterministic_pack=deterministic_pack,
+        deterministic_pack=deterministic_pack
+        if deterministic_pack is not None
+        else {"memories": []},
     )
 
 

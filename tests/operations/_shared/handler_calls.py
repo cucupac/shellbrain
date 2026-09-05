@@ -33,7 +33,6 @@ from app.entrypoints.cli.handlers.working_agent.recall import run_recall_memory_
 from app.entrypoints.cli.handlers.internal_agent.concepts.add import run_concept_add_operation
 from app.entrypoints.cli.handlers.internal_agent.concepts.update import run_concept_update_operation
 from app.startup import operation_dependencies as startup_handlers
-from app.startup.create_policy import get_create_hydration_defaults
 from app.startup.read_policy import get_read_hydration_defaults
 
 
@@ -44,12 +43,11 @@ def handle_memory_add(
     embedding_provider_factory,
     embedding_model: str,
     inferred_repo_id: str,
-    defaults: dict[str, Any] | None = None,
     id_generator: IIdGenerator | None = None,
     repo_root: Path | None = None,
     **_: Any,
 ) -> dict[str, Any]:
-    prepared = _prepare_create(request, inferred_repo_id=inferred_repo_id, defaults=defaults)
+    prepared = _prepare_create(request, inferred_repo_id=inferred_repo_id)
     dependencies = startup_handlers.build_operation_dependencies()
     if id_generator is not None:
         dependencies = replace(dependencies, id_generator=id_generator)
@@ -176,14 +174,12 @@ def _prepare_create(
     request: MemoryAddRequest | dict[str, Any] | None,
     *,
     inferred_repo_id: str,
-    defaults: dict[str, Any] | None,
 ) -> PreparedOperationRequest[MemoryAddRequest]:
     if isinstance(request, MemoryAddRequest) or request is None:
         return PreparedOperationRequest(request=request, errors=())
     return prepare_memory_add_request(
         request,
         inferred_repo_id=inferred_repo_id,
-        defaults=defaults or get_create_hydration_defaults(),
     )
 
 

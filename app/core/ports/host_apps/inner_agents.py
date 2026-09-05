@@ -31,12 +31,10 @@ class InnerAgentRunRequest(_StrictModel):
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=600)
-    max_private_reads: int = Field(default=0, ge=0, le=10)
     max_brief_tokens: int | None = Field(default=None, ge=1, le=100_000)
     query: str = Field(min_length=1)
     repo_root: str | None = None
-    synthesis_only: bool = False
-    deterministic_pack: dict[str, Any] | None = None
+    deterministic_pack: dict[str, Any]
 
 
 class InnerAgentRunResult(_StrictModel):
@@ -61,7 +59,6 @@ class InnerAgentRunResult(_StrictModel):
     concept_expansion_count: int = Field(default=0, ge=0)
     error_code: str | None = None
     error_message: str | None = None
-    read_trace: dict[str, Any] = Field(default_factory=dict)
 
 
 class BuildKnowledgeAgentRequest(_StrictModel):

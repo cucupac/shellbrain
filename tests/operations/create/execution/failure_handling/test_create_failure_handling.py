@@ -42,7 +42,6 @@ def test_validation_failure_writes_nothing(
         embedding_model="stub-v1",
         id_generator=SequenceIdGenerator(),
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -73,7 +72,6 @@ def test_embedding_failure_writes_nothing(
         embedding_model="failing-v1",
         id_generator=SequenceIdGenerator(),
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"

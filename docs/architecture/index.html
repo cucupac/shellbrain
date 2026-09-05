@@ -46,17 +46,17 @@
         <div class="section-inner split">
           <div>
             <div class="section-eyebrow">Memory flow</div>
-            <h2 class="section-title" id="shape-title">Each layer links to its evidence.</h2>
+            <h2 class="section-title" id="shape-title">Keep lessons that future code inspection cannot recover.</h2>
           </div>
           <div>
             <div class="code-block">
               <pre>session transcript
-  -> episodes      # what happened
-    -> memories    # what was learned
-      -> concepts  # how it's organized
-        -> recall  # what's retrieved</pre>
+  -> episodes          # what happened
+    -> memories        # concrete lessons
+    -> concept claims  # reusable principles
+      -> recall        # relevant context</pre>
             </div>
-            <p class="section-copy" style="margin-top: var(--spacing-24);">Concepts link to memories. Memories link to episode events. Episode events preserve the session trail.</p>
+            <p class="section-copy" style="margin-top: var(--spacing-24);">Memories and concept claims link to supporting evidence. Store decision reasons, failed approaches, product direction, and preferences. Verify current implementation details in the code.</p>
           </div>
         </div>
       </section>
@@ -142,7 +142,7 @@
           </div>
           <div class="section-copy">
             <p>The working agent calls <code>recall</code>, receives a brief, and continues its task.</p>
-            <p>A knowledge builder turns session evidence into memories. A recall agent searches those memories and returns useful context.</p>
+            <p>A knowledge builder turns session evidence into reusable knowledge. Recall selects relevant records in code, then asks an agent to summarize the selected evidence.</p>
           </div>
         </div>
       </section>

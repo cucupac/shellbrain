@@ -4,26 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from app.core.use_cases.memories.effect_plan import PlannedEffect
-
-
-@dataclass(frozen=True)
-class UpdatePlanIds:
-    """IDs preallocated by the update use case before pure planning."""
-
-    utility_observation_id: str | None = None
-    structural_relation_ids: tuple[str, ...] = ()
-    association_edge_id: str | None = None
-    association_observation_id: str | None = None
-    memory_lifecycle_event_id: str | None = None
+from app.core.use_cases.memories.writes import MemoryWrite
 
 
 @dataclass(frozen=True)
 class UpdateMemoryResult:
-    """Typed single-memory update result with internal effect metadata."""
+    """Typed single-memory update result with completed write metadata."""
 
     memory_id: str
-    planned_effects: list[PlannedEffect]
+    writes: list[MemoryWrite]
 
     def to_response_data(self) -> dict[str, object]:
         return {"memory_id": self.memory_id}
@@ -31,12 +20,12 @@ class UpdateMemoryResult:
 
 @dataclass(frozen=True)
 class BatchUpdateMemoryResult:
-    """Typed batch memory update result with internal effect metadata."""
+    """Typed batch memory update result with completed write metadata."""
 
     problem_id: str
     updated_memory_ids: list[str]
     applied_count: int
-    planned_effects: list[PlannedEffect]
+    writes: list[MemoryWrite]
 
     def to_response_data(self) -> dict[str, object]:
         return {

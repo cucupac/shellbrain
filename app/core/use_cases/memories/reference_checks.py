@@ -28,34 +28,22 @@ def validate_create_request(
     request: MemoryAddRequest,
     *,
     uow: IUnitOfWork,
-    gates: list[str] | tuple[str, ...],
 ) -> list[ErrorDetail]:
     """Run core semantic and repository-backed create validations."""
 
-    if "semantic" in gates:
-        semantic_errors = validate_create_semantics(request)
-        if semantic_errors:
-            return semantic_errors
-    if "integrity" in gates:
-        return validate_create_integrity(request, uow)
-    return []
+    semantic_errors = validate_create_semantics(request)
+    return semantic_errors or validate_create_integrity(request, uow)
 
 
 def validate_update_request(
     request: MemoryUpdateRequest | MemoryBatchUpdateRequest,
     *,
     uow: IUnitOfWork,
-    gates: list[str] | tuple[str, ...],
 ) -> list[ErrorDetail]:
     """Run core semantic and repository-backed update validations."""
 
-    if "semantic" in gates:
-        semantic_errors = validate_update_semantics(request)
-        if semantic_errors:
-            return semantic_errors
-    if "integrity" in gates:
-        return validate_update_integrity(request, uow)
-    return []
+    semantic_errors = validate_update_semantics(request)
+    return semantic_errors or validate_update_integrity(request, uow)
 
 
 def _require_memory(

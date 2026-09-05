@@ -84,7 +84,6 @@ def test_create_should_always_append_one_operation_invocation_row_with_command_r
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "ok"

@@ -28,9 +28,7 @@ LEGACY_CLAUDE_SKILL_NAMES = ("shellbrain-session-start",)
 CLAUDE_STARTUP_MARKER = "shellbrain-managed:claude-startup"
 
 
-def install_claude_assets(
-    *, force: bool, render_install_status, session_start_module: str | None = None
-) -> list[str]:
+def install_claude_assets(*, force: bool, render_install_status) -> list[str]:
     """Install the packaged Claude startup guidance, skills, and global hook."""
 
     claude_root = default_claude_root()
@@ -67,11 +65,6 @@ def install_claude_assets(
         )
     settings_path = install_claude_hook(
         settings_path=default_global_claude_settings_path(),
-        **(
-            {}
-            if session_start_module is None
-            else {"session_start_module": session_start_module}
-        ),
     )
     lines.append(f"Claude global hook: installed at {settings_path}")
     return lines

@@ -29,7 +29,6 @@ def test_create_rejects_missing_problem_reference(
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -66,7 +65,6 @@ def test_create_rejects_invisible_problem_reference(
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -103,7 +101,6 @@ def test_create_rejects_non_problem_reference(
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -149,7 +146,6 @@ def test_create_rejects_invisible_association_target(
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -196,7 +192,6 @@ def test_create_accepts_supported_association_target(
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "ok"
@@ -222,7 +217,6 @@ def test_create_rejects_missing_episode_event_evidence(
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"
@@ -267,7 +261,6 @@ def test_create_rejects_episode_event_evidence_from_another_repo(
         embedding_provider_factory=lambda: None,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "error"

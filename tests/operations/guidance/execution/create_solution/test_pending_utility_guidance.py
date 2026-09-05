@@ -53,7 +53,6 @@ def test_create_solution_should_emit_pending_utility_votes_guidance_when_session
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-under-test",
-        defaults={"scope": "repo"},
         repo_root=repo_with_shellbrain_state,
     )
     read_result = handle_read(
@@ -77,7 +76,6 @@ def test_create_solution_should_emit_pending_utility_votes_guidance_when_session
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-under-test",
-        defaults={"scope": "repo"},
         repo_root=repo_with_shellbrain_state,
     )
 

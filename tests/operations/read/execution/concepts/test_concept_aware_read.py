@@ -585,7 +585,7 @@ def _stub_pack(monkeypatch, *, direct_memory_ids: list[str]) -> None:
         "implicit_related": [],
     }
     monkeypatch.setattr(
-        "app.core.use_cases.retrieval.read.build_context_pack",
+        "app.core.use_cases.retrieval.context_pack_pipeline.build_context_pack",
         lambda *args, **kwargs: pack,
     )
 

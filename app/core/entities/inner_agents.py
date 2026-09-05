@@ -15,7 +15,7 @@ InnerAgentName = Literal["build_context", "build_knowledge", "teach"]
 InnerAgentProviderName = str
 InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
 BuildContextStrategy = Literal[
-    "deterministic_synthesis", "deterministic_only", "autonomous"
+    "deterministic_synthesis", "deterministic_only"
 ]
 TokenCaptureQuality = Literal["exact", "estimated"]
 InnerAgentRunStatus = Literal[
@@ -36,7 +36,6 @@ class BuildContextSettings(_StrictModel):
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=600)
-    max_private_reads: int = Field(default=0, ge=0, le=10)
     max_brief_tokens: int | None = Field(default=None, ge=1, le=100_000)
 
 
