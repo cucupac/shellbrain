@@ -12,6 +12,7 @@ ConceptShowIncludeValue = Literal[
     "relations",
     "groundings",
     "memory_links",
+    "evidence",
     "lifecycle_events",
     "preview_concept",
 ]

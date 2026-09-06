@@ -50,6 +50,7 @@ def test_concept_show_should_return_dynamic_preview_concept(
                         "groundings",
                         "memory_links",
                         "preview_concept",
+                        "evidence",
                     ],
                 }
             ),
@@ -64,9 +65,35 @@ def test_concept_show_should_return_dynamic_preview_concept(
     assert payload["claims"][0]["observed_at"]
     assert payload["relations"][0]["created_at"]
     assert payload["relations"][0]["observed_at"]
+    assert payload["relations"][0]["subject"]["ref"] == "deposit-addresses"
+    assert payload["relations"][0]["object"]["name"] == "Deposit Lifecycle"
+    assert {item["target_type"] for item in payload["evidence"]} == {
+        "claim",
+        "relation",
+    }
+    assert all(item["note"] == "Seeded from planning." for item in payload["evidence"])
+    assert all(item["created_at"] for item in payload["evidence"])
     assert payload["preview_concept"]["name"] == "Deposit Addresses"
     assert payload["preview_concept"]["claim_count"] == 1
     assert payload["status_rollup"]["active"] == 2
+
+    with uow_factory() as uow:
+        grounded = show_concept(
+            ConceptShowRequest(
+                schema_version="concept.v1",
+                repo_id="repo-a",
+                concept="deposit-lifecycle",
+                include=["groundings", "evidence"],
+            ),
+            uow,
+        ).data["concept"]
+    grounding = grounded["groundings"][0]
+    assert grounding["anchor"]["locator"] == {"path": "app/deposit_addresses.py"}
+    assert grounding["anchor"]["created_at"]
+    assert grounding["observed_at"]
+    assert any(item["target_id"] == grounding["id"] for item in grounded["evidence"])
+    assert "relations" not in grounded
+    assert "memory_links" not in grounded
 
 
 def test_concept_show_should_include_lifecycle_events_for_included_records(
@@ -183,8 +210,14 @@ def test_concept_show_should_surface_current_memory_link_roles(
             uow,
         )
 
-    roles = {link["role"] for link in show.data["concept"]["memory_links"]}
-    assert roles == {"warns_about"}
+    link = show.data["concept"]["memory_links"][0]
+    assert link["role"] == "warns_about"
+    assert link["memory_id"] == "deposit-warning-memory"
+    assert link["kind"] == "fact"
+    assert link["text"] == "Deposit address cache misses can mislead retries."
+    assert link["memory_status"] == "active"
+    assert link["memory_created_at"]
+    assert "evidence" not in show.data["concept"]
 
 
 def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:

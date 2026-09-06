@@ -79,6 +79,7 @@ When guidance conflicts, prefer:
 7. maybe_stale or low-confidence context
 8. stale/superseded/wrong context only as warning/history
 
+Judge each record by its own lifecycle. An old record does not invalidate other records on the same concept.
 Use `currentness`, `temporal_reason`, `conflicts_with`, `supersedes`, and `superseded_by` as primary interpretation data.
 Do not infer missing details from handles or ids.
 A handle is not evidence.
@@ -240,8 +241,7 @@ Use `concept update` with `update_lifecycle` to change a record's lifecycle stat
 Lifecycle states are `active`, `maybe_stale`, `stale`, `superseded`, `wrong`, and `archived`.
 Give a reason and evidence for each lifecycle update.
 For `superseded`, give the replacement record id of the same type.
-`concept show` does not give evidence details.
-Use explicit `read` concept expansion when you need evidence details.
+Use `concept show` with `include: ["evidence"]` for the sources behind concept records.
 
 # AUTHORITY
 Shellbrain is a repo-scoped memory system.

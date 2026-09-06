@@ -48,7 +48,6 @@ def test_read_context_pack_should_always_include_stable_concepts_section(
     assert result.data["pack"]["concepts"] == {
         "mode": "auto",
         "items": [],
-        "missing_refs": [],
         "guidance": "No strong concept match found.",
     }
 

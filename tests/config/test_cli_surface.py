@@ -243,9 +243,9 @@ def test_read_help_should_include_one_example(
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "Internal recall-agent endpoint" in output
-    assert "retrieval substrate for `build_context`" in output
-    assert "working agents should call `recall`" in output
+    assert "Internal knowledge-builder endpoint" in output
+    assert "Use `concept show` for details and evidence" in output
+    assert "Working agents should call `recall`" in output
     assert "shellbrain read --json" in output
     assert "Avoid generic prompts" in output
     assert "explicit_related" in output

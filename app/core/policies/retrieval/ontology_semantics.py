@@ -24,15 +24,6 @@ LIFECYCLE_RETRIEVAL_MULTIPLIERS: Mapping[str, float] = {
     status.value: status.retrieval_multiplier for status in MemoryLifecycleStatus
 }
 
-BUNDLE_FRESHNESS_MULTIPLIERS: Mapping[str, float] = {
-    ACTIVE_STATUS: 1.0,
-    MAYBE_STALE_STATUS: 0.75,
-    STALE_STATUS: 0.45,
-    SUPERSEDED_STATUS: 0.0,
-    WRONG_STATUS: 0.0,
-    ARCHIVED_STATUS: 0.0,
-}
-
 CONCEPT_MEMORY_HIGH_SIGNAL_ROLES = frozenset(
     {
         "solution_for",
@@ -52,13 +43,6 @@ STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES = (
 
 REVERSIBLE_ASSOCIATION_RELATION_TYPES = frozenset({"associated_with"})
 
-_STATUS_PRECEDENCE = (
-    WRONG_STATUS,
-    ARCHIVED_STATUS,
-    SUPERSEDED_STATUS,
-    STALE_STATUS,
-    MAYBE_STALE_STATUS,
-)
 _STRUCTURAL_EXPANSION_BY_PREDICATE = {
     "solved_by": "problem_attempt",
     "failed_with": "problem_attempt",
@@ -85,6 +69,8 @@ def lifecycle_retrieval_multiplier(status: Any) -> float:
     """Return the default positive retrieval multiplier for one lifecycle status."""
 
     return LIFECYCLE_RETRIEVAL_MULTIPLIERS[normalize_lifecycle_status(status)]
+
+
 def is_active_lifecycle(status: Any) -> bool:
     """Return whether a lifecycle status is active."""
 
@@ -109,22 +95,6 @@ def lifecycle_status_counts(statuses: Iterable[Any]) -> dict[str, int]:
     }
 
 
-def dominant_lifecycle_status(statuses: Iterable[Any]) -> str:
-    """Return the status that should dominate currentness interpretation."""
-
-    normalized = tuple(normalize_lifecycle_status(status) for status in statuses)
-    for status in _STATUS_PRECEDENCE:
-        if status in normalized:
-            return status
-    return ACTIVE_STATUS
-
-
-def concept_bundle_retrieval_multiplier(statuses: Iterable[Any]) -> float:
-    """Return the freshness multiplier for an aggregate concept bundle."""
-
-    return BUNDLE_FRESHNESS_MULTIPLIERS[dominant_lifecycle_status(statuses)]
-
-
 def bundle_lifecycle_statuses(bundle: Mapping[str, Any]) -> tuple[str, ...]:
     """Return lifecycle status values across every truth-bearing concept facet."""
 
@@ -133,23 +103,6 @@ def bundle_lifecycle_statuses(bundle: Mapping[str, Any]) -> tuple[str, ...]:
         for key in ("claims", "relations", "groundings", "memory_links")
         for record in bundle[key]
     )
-
-
-def aggregate_currentness_payload(
-    statuses: Iterable[Any], *, record_label: str
-) -> dict[str, str]:
-    """Return currentness text for a group of truth-bearing records."""
-
-    status = dominant_lifecycle_status(statuses)
-    if status == ACTIVE_STATUS:
-        return {
-            "currentness": "current",
-            "temporal_reason": f"all included {record_label} are active",
-        }
-    return {
-        "currentness": status,
-        "temporal_reason": f"one or more {record_label} are marked {status}",
-    }
 
 
 def lifecycle_currentness_payload(
@@ -211,7 +164,9 @@ def structural_relation_expansion_type(predicate: Any) -> str:
     try:
         return _STRUCTURAL_EXPANSION_BY_PREDICATE[value]
     except KeyError as exc:
-        raise ValueError(f"unsupported structural memory relation predicate: {value}") from exc
+        raise ValueError(
+            f"unsupported structural memory relation predicate: {value}"
+        ) from exc
 
 
 def why_included_for_expansion(expansion_type: str) -> str:

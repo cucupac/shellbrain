@@ -201,18 +201,22 @@ def test_read_summary_should_record_concept_context_telemetry(
                 "explicit_related": [],
                 "implicit_related": [],
                 "concepts": {
-                    "mode": "explicit",
+                    "mode": "auto",
                     "items": [
                         {
                             "ref": "deposit-addresses",
                             "name": "Deposit Addresses",
                             "kind": "domain",
                             "orientation": "Deposit address orientation.",
-                            "groundings": [{"role": "implementation"}],
+                            "key_claims": [
+                                {
+                                    "type": "definition",
+                                    "text": "Deposit address orientation.",
+                                }
+                            ],
                         }
                     ],
-                    "missing_refs": [],
-                    "guidance": "Use expand payloads.",
+                    "guidance": "Use concept show for details.",
                 },
             },
         ),
@@ -231,7 +235,7 @@ def test_read_summary_should_record_concept_context_telemetry(
     assert rows[0]["concept_count"] == 1
     assert rows[0]["concept_token_estimate"] > 0
     assert _normalize_jsonish(rows[0]["concept_refs_returned"]) == ["deposit-addresses"]
-    assert _normalize_jsonish(rows[0]["concept_facets_returned"]) == ["groundings"]
+    assert _normalize_jsonish(rows[0]["concept_facets_returned"]) == []
 
 
 def _normalize_jsonish(value: object) -> object:
