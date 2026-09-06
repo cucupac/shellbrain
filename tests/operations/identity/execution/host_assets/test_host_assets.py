@@ -96,10 +96,10 @@ def test_install_host_assets_auto_should_install_the_default_codex_claude_and_cu
     )
 
 
-def test_install_host_assets_should_remove_legacy_managed_session_start_skills(
+def test_install_host_assets_should_remove_legacy_managed_skills(
     monkeypatch, tmp_path: Path
 ) -> None:
-    """install should remove old managed shellbrain-session-start skills after the rename."""
+    """Install should remove retired Shellbrain skills, including the commit audit skills."""
 
     home_root = tmp_path / "home"
     codex_home = home_root / ".codex"
@@ -110,6 +110,8 @@ def test_install_host_assets_should_remove_legacy_managed_session_start_skills(
 
     legacy_roots = [
         (codex_home / "skills" / "shellbrain-session-start", "codex_skill"),
+        (codex_home / "skills" / "clean-architecture", "codex_skill"),
+        (codex_home / "skills" / "clean-code", "codex_skill"),
         (
             home_root / ".claude" / "skills" / "shellbrain-session-start",
             "claude_skill",
@@ -132,11 +134,7 @@ def test_install_host_assets_should_remove_legacy_managed_session_start_skills(
 
     install_host_assets(host_mode="auto", force=False)
 
-    assert not (codex_home / "skills" / "shellbrain-session-start").exists()
-    assert not (
-        home_root / ".claude" / "skills" / "shellbrain-session-start"
-    ).exists()
-    assert not (cursor_home / "skills" / "shellbrain-session-start").exists()
+    assert all(not root.exists() for root, _ in legacy_roots)
     assert (codex_home / "skills" / "shellbrain" / "SKILL.md").exists()
     assert (home_root / ".claude" / "skills" / "shellbrain" / "SKILL.md").exists()
     assert (cursor_home / "skills" / "shellbrain" / "SKILL.md").exists()
@@ -357,4 +355,24 @@ def test_install_host_assets_should_update_managed_claude_startup_guidance_witho
     assert any(
         line == f"Claude startup guidance: updated at {startup_path}"
         for line in result.lines
+    )
+
+
+def test_install_codex_assets_preserves_unmanaged_retired_skills(
+    monkeypatch, tmp_path: Path
+) -> None:
+    codex_home = tmp_path / "codex"
+    monkeypatch.setenv("CODEX_HOME", str(codex_home))
+    skill_files = []
+    for name in ("clean-code", "clean-architecture"):
+        skill_file = codex_home / "skills" / name / "SKILL.md"
+        skill_file.parent.mkdir(parents=True)
+        skill_file.write_text("User-owned guidance.", encoding="utf-8")
+        skill_files.append(skill_file)
+
+    install_host_assets(host_mode="codex", force=False)
+
+    assert all(
+        path.read_text(encoding="utf-8") == "User-owned guidance."
+        for path in skill_files
     )
