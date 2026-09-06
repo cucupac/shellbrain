@@ -419,15 +419,18 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "memory/concept/scenario" in prompt
 
 
-def test_build_knowledge_prompt_requires_simplified_technical_english() -> None:
-    """Knowledge records should use the same clear writing rules."""
+def test_knowledge_prompts_require_clear_targeted_writing() -> None:
+    """Automatic learning and explicit teaching should receive the same writing rules."""
 
-    prompt = render_build_knowledge_prompt(_build_knowledge_request())
-
-    assert "Use active voice." in prompt
-    assert "Use one term for one meaning." in prompt
-    assert "Use common, short words." in prompt
-    assert "Write no more than 20 words in each sentence." in prompt
+    for prompt in (
+        render_build_knowledge_prompt(_build_knowledge_request()),
+        render_teach_knowledge_prompt(_teach_knowledge_request()),
+    ):
+        assert "Write one focused lesson per memory." in prompt
+        assert "Use active voice." in prompt
+        assert "Use one term for one meaning." in prompt
+        assert "Use common, short words." in prompt
+        assert "Write no more than 20 words in each sentence." in prompt
 
 
 def test_build_knowledge_prompt_targets_repo_root_when_available(tmp_path) -> None:

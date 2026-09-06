@@ -145,6 +145,26 @@ Keep each list compact.
 """
 
 
+_KNOWLEDGE_WRITING_GUIDANCE = """\
+# WRITE CLEARLY
+Write one focused lesson per memory.
+Apply these writing rules to concept claims as well.
+Start with the decision, finding, or action a future agent needs.
+Name the subject and state when the lesson applies.
+Keep supporting reasons with the lesson when they help future decisions.
+Describe observed failures within their actual conditions.
+Preserve uncertainty and important exceptions.
+Remove progress reports, repeated explanations, and details that do not help future decisions.
+Use active voice.
+Use one term for one meaning.
+Use common, short words.
+Write no more than 20 words in each sentence.
+Put one instruction in each sentence.
+Keep required technical terms unchanged.
+Before writing, check: Can another agent understand when to use this record without reopening the conversation?
+"""
+
+
 _BUILD_KNOWLEDGE_PROMPT_TEMPLATE = """\
 # IDENTITY
 You are Shellbrain `build_knowledge`.
@@ -463,15 +483,6 @@ Link both cases to the relevant concept.
 Do not write speculation, low-confidence interpretation, duplicates, or unsupported abstractions.
 Skip an item when it is unclear, duplicate, unsupported, ambiguous, too local, or unavailable through current commands.
 Explain each skipped item in `skipped_items`.
-
-# WRITE CLEARLY
-Use active voice.
-Use one term for one meaning.
-Use common, short words.
-Write no more than 20 words in each sentence.
-Put one instruction in each sentence.
-Keep required technical terms unchanged.
-Write each memory so a future agent can act on it without extra context.
 
 # OUTPUT
 Return only valid JSON matching `output_contract`.
@@ -819,7 +830,7 @@ def render_build_knowledge_prompt(request: BuildKnowledgeAgentRequest) -> str:
         },
     }
     payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return f"{_BUILD_KNOWLEDGE_PROMPT_TEMPLATE}\n{payload_json}"
+    return f"{_BUILD_KNOWLEDGE_PROMPT_TEMPLATE}\n{_KNOWLEDGE_WRITING_GUIDANCE}\n{payload_json}"
 
 
 def render_teach_knowledge_prompt(request: TeachKnowledgeAgentRequest) -> str:
@@ -937,7 +948,7 @@ def render_teach_knowledge_prompt(request: TeachKnowledgeAgentRequest) -> str:
         },
     }
     payload_json = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return f"{_TEACH_KNOWLEDGE_PROMPT_TEMPLATE}\n{payload_json}"
+    return f"{_TEACH_KNOWLEDGE_PROMPT_TEMPLATE}\n{_KNOWLEDGE_WRITING_GUIDANCE}\n{payload_json}"
 
 
 def _shellbrain_command(repo_root: str | None) -> str:
