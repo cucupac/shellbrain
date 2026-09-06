@@ -42,7 +42,9 @@ def test_query_lanes_extract_identifiers_from_natural_language_query() -> None:
     assert "v1.2" in lane_queries["identifiers"]
 
 
-def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_context() -> None:
+def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_context() -> (
+    None
+):
     """concept retrieval should feed graph traversal even without memory fanout links."""
 
     uow = _FakeUow()
@@ -67,7 +69,9 @@ def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_cont
     assert memory_by_id["mem-change"]["currentness"] == "current"
     assert memory_by_id["mem-change-context"]["currentness"] == "current"
     assert neighbor_refs == {"postgres-migrations"}
-    assert any(anchor["locator"] == "app/core/settings.py" for anchor in pack["anchors"])
+    assert any(
+        anchor["locator"] == "app/core/settings.py" for anchor in pack["anchors"]
+    )
     assert pack["concepts"][0]["currentness"] == "stale"
     assert any(
         claim["currentness"] == "stale" for claim in pack["concepts"][0]["claims"]
@@ -412,3 +416,20 @@ class _FakeUow:
         self.concept_keyword_retrieval = _FakeConceptKeywordRetrieval()
         self.read_policy = _EmptyFakeReadPolicy()
         self.vector_search = _FakeVectorSearch()
+
+
+def test_memory_and_concept_search_share_each_lane_embedding() -> None:
+    uow = _FakeUow()
+    queries = []
+
+    class CountingVectorSearch(_FakeVectorSearch):
+        def embed_query(self, query: str) -> list[float]:
+            queries.append(query)
+            return super().embed_query(query)
+
+    uow.vector_search = CountingVectorSearch()
+    pack = build_deterministic_graph_pack(
+        request=_request(query="TimeoutError in app/core/settings.py"),
+        uow=uow,
+    )
+    assert queries == [lane["query"] for lane in pack["query_lanes"]]

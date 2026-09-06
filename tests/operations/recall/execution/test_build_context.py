@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.ports.host_apps.inner_agents import InnerAgentRunResult
@@ -27,7 +26,9 @@ class _FakeRunner:
                 "summary": "Use the migration timeout precedent.",
                 "constraints": ["Keep startup wiring out of core."],
                 "known_traps": ["Do not make Docker calls from startup."],
-                "prior_cases": ["A prior migration hang was caused by missing timeout."],
+                "prior_cases": [
+                    "A prior migration hang was caused by missing timeout."
+                ],
                 "concept_orientation": ["DB admin work belongs under infrastructure."],
                 "anchors": ["app/infrastructure/db/admin"],
                 "conflicts": [
@@ -39,21 +40,6 @@ class _FakeRunner:
             input_tokens=100,
             output_tokens=40,
             capture_quality="estimated",
-            read_trace={
-                "commands": [
-                    {
-                        "command": "shellbrain read --json '{\"query\":\"migration timeout\"}'",
-                        "source_ids": ["direct-1"],
-                        "concept_refs": ["db-admin"],
-                    },
-                    {
-                        "command": "shellbrain concept show --json '{\"schema_version\":\"concept.v1\",\"concept\":\"db-admin\"}'",
-                        "concept_refs": ["db-admin"],
-                    },
-                ],
-                "source_ids": ["direct-1"],
-                "concept_refs": ["db-admin"],
-            },
         )
 
 
@@ -70,50 +56,6 @@ class _ErrorRunner:
             error_code="invalid_output",
             error_message="bad JSON",
         )
-
-
-def test_build_context_uses_fake_provider_for_structured_synthesis(monkeypatch) -> None:
-    """build_context should accept provider synthesis through a core port."""
-
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.build_context.execute.build_deterministic_graph_pack",
-        lambda *args, **kwargs: pytest.fail("provider path must not build fallback pack"),
-    )
-    runner = _FakeRunner()
-
-    result = execute_build_context(
-        MemoryRecallRequest.model_validate(
-            {
-                "repo_id": "repo-a",
-                "query": "migration timeout",
-            }
-        ),
-        None,
-        inner_agent_runner=runner,
-        build_context_settings=_autonomous_build_context_settings(),
-    )
-
-    assert result.data["brief"]["summary"] == "Use the migration timeout precedent."
-    assert result.data["brief"]["conflicts"] == [
-        "Older guidance about startup-owned DB admin wiring is stale."
-    ]
-    assert result.data["brief"]["next_checks"] == [
-        "Inspect db/admin migration wiring first."
-    ]
-    assert "sources" not in result.data["brief"]
-    assert result.data["fallback_reason"] is None
-    assert runner.request is not None
-    assert runner.request.query == "migration timeout"
-    assert not hasattr(runner.request, "candidate_" "context")
-    telemetry = result.data["_telemetry"]["inner_agent"]
-    assert telemetry["input_tokens"] == 100
-    assert telemetry["output_tokens"] == 40
-    assert telemetry["capture_quality"] == "estimated"
-    assert telemetry["private_read_count"] == 2
-    assert telemetry["concept_expansion_count"] == 1
-    source_items = result.data["_telemetry"]["source_items"]
-    assert source_items
-    assert all("output_section" not in item for item in source_items)
 
 
 def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -> None:
@@ -138,7 +80,6 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     assert "sources" not in result.data["brief"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
-    assert runner.request.synthesis_only is True
     synthesis_pack = runner.request.deterministic_pack
     assert synthesis_pack is not None
     assert synthesis_pack["memories"] == graph_pack["memories"]
@@ -147,9 +88,7 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     assert "pack_trace" not in synthesis_pack
     assert "synthesis_trace" not in synthesis_pack
     assert (
-        graph_pack["pack_trace"]["pack_budget"][
-            "synthesis_candidate_tokens_estimated"
-        ]
+        graph_pack["pack_trace"]["pack_budget"]["synthesis_candidate_tokens_estimated"]
         > 0
     )
     telemetry = result.data["_telemetry"]["inner_agent"]
@@ -191,7 +130,7 @@ def test_build_context_deterministic_only_skips_provider(monkeypatch) -> None:
 def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
     monkeypatch,
 ) -> None:
-    """autonomous build_context should use graph fallback when no runner exists."""
+    """build_context should use graph fallback when no runner exists."""
 
     _stub_graph_pack(monkeypatch, pack=_graph_pack())
 
@@ -203,7 +142,6 @@ def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
             }
         ),
         object(),
-        build_context_settings=_autonomous_build_context_settings(),
     )
 
     assert result.data["brief"]["summary"] == (
@@ -218,12 +156,13 @@ def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
     assert telemetry["fallback_used"] is True
 
 
-def test_build_context_lazy_fallback_opens_uow_only_for_internal_read(
+def test_build_context_closes_owned_uow_before_synthesis(
     monkeypatch,
 ) -> None:
-    """default deterministic recall should open a DB transaction only when needed."""
+    """Recall closes its owned read transaction before running the provider."""
 
     opened = 0
+    closed = False
 
     class _FakeUow:
         def __enter__(self):
@@ -232,7 +171,13 @@ def test_build_context_lazy_fallback_opens_uow_only_for_internal_read(
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-            return None
+            nonlocal closed
+            closed = True
+
+    class _RunnerAfterRead(_FakeRunner):
+        def run(self, request):
+            assert closed
+            return super().run(request)
 
     _stub_graph_pack(monkeypatch, pack=_graph_pack())
 
@@ -245,6 +190,7 @@ def test_build_context_lazy_fallback_opens_uow_only_for_internal_read(
         ),
         None,
         uow_factory=_FakeUow,
+        inner_agent_runner=_RunnerAfterRead(),
     )
 
     assert opened == 1
@@ -289,7 +235,6 @@ def test_build_context_provider_error_uses_deterministic_fallback(
         ),
         object(),
         inner_agent_runner=_ErrorRunner(),
-        build_context_settings=_autonomous_build_context_settings(),
     )
 
     assert result.data["fallback_reason"] is None
@@ -315,20 +260,6 @@ def _stub_graph_pack(monkeypatch, *, pack: dict) -> None:
     )
 
 
-def _autonomous_build_context_settings() -> InnerAgentSettings:
-    """Return autonomous build_context settings for legacy provider-path tests."""
-
-    return InnerAgentSettings(
-        strategy="autonomous",
-        provider="codex",
-        model="gpt-5.4-mini",
-        reasoning="medium",
-        timeout_seconds=90,
-        max_private_reads=3,
-        max_brief_tokens=1_800,
-    )
-
-
 def _deterministic_only_settings() -> InnerAgentSettings:
     """Return deterministic-only build_context settings."""
 
@@ -338,7 +269,6 @@ def _deterministic_only_settings() -> InnerAgentSettings:
         model="gpt-5.4-mini",
         reasoning="medium",
         timeout_seconds=90,
-        max_private_reads=0,
         max_brief_tokens=1_800,
     )
 
@@ -398,7 +328,6 @@ def _graph_pack() -> dict:
             "pack_budget": {},
         },
     }
-
 
 
 def _empty_graph_pack() -> dict:

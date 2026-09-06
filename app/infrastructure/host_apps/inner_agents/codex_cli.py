@@ -19,10 +19,9 @@ from app.core.ports.host_apps.inner_agents import (
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
     parse_build_knowledge_output,
-    parse_inner_agent_response_output,
+    parse_inner_agent_brief_output,
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
-    render_build_context_prompt,
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
@@ -68,11 +67,7 @@ class CodexCliInnerAgentRunner:
                 error_message=f"Codex command not found: {self._command}",
             )
 
-        prompt = (
-            render_build_context_synthesis_prompt(request)
-            if request.synthesis_only
-            else render_build_context_prompt(request)
-        )
+        prompt = render_build_context_synthesis_prompt(request)
         started = perf_counter()
         try:
             with (
@@ -94,11 +89,7 @@ class CodexCliInnerAgentRunner:
                     capture_output=True,
                     timeout=request.timeout_seconds,
                     check=False,
-                    env=_inner_agent_env(
-                        mode="build_context_synthesis"
-                        if request.synthesis_only
-                        else "build_context"
-                    ),
+                    env=_inner_agent_env(mode="build_context_synthesis"),
                 )
                 output_file.seek(0)
                 final_message = output_file.read()
@@ -127,7 +118,7 @@ class CodexCliInnerAgentRunner:
                 error_message=_truncate(completed.stderr or completed.stdout, 500),
             )
         try:
-            brief, read_trace = parse_inner_agent_response_output(final_message)
+            brief = parse_inner_agent_brief_output(final_message)
         except InnerAgentOutputParseError as exc:
             return _result(
                 request,
@@ -144,102 +135,33 @@ class CodexCliInnerAgentRunner:
             brief=brief,
             duration_ms=duration_ms,
             **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
-            read_trace=read_trace,
         )
 
     def run_build_knowledge(
         self, request: BuildKnowledgeAgentRequest
     ) -> BuildKnowledgeAgentResult:
-        """Run one Codex CLI build_knowledge request."""
-
-        command_path = shutil.which(self._command)
-        if command_path is None:
-            return _build_knowledge_result(
-                request,
-                status="provider_unavailable",
-                error_code="command_not_found",
-                error_message=f"Codex command not found: {self._command}",
-            )
-
-        prompt = render_build_knowledge_prompt(request)
-        started = perf_counter()
-        try:
-            with (
-                tempfile.TemporaryDirectory(
-                    prefix="shellbrain-inner-agent-"
-                ) as workspace,
-                tempfile.NamedTemporaryFile("w+", encoding="utf-8") as output_file,
-            ):
-                completed = subprocess.run(
-                    _codex_exec_args(
-                        command_path=command_path,
-                        model=request.model,
-                        reasoning=request.reasoning,
-                        workspace=workspace,
-                        output_path=output_file.name,
-                    ),
-                    input=prompt,
-                    text=True,
-                    capture_output=True,
-                    timeout=request.timeout_seconds,
-                    check=False,
-                    env=_inner_agent_env(
-                        mode="build_knowledge",
-                        knowledge_build_run_id=request.run_id,
-                    ),
-                )
-                output_file.seek(0)
-                final_message = output_file.read()
-        except subprocess.TimeoutExpired:
-            return _build_knowledge_result(
-                request,
-                status="timeout",
-                duration_ms=_duration_ms(started),
-                input_tokens=_estimate_tokens(prompt),
-                capture_quality="estimated",
-                error_code="timeout",
-                error_message="Codex CLI timed out",
-            )
-
-        duration_ms = _duration_ms(started)
-        usage = _usage_from_jsonl(completed.stdout)
-        if completed.returncode != 0:
-            return _build_knowledge_result(
-                request,
-                status="error",
-                duration_ms=duration_ms,
-                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
-                error_code="codex_nonzero_exit",
-                error_message=_truncate(completed.stderr or completed.stdout, 500),
-            )
-        try:
-            parsed = parse_build_knowledge_output(final_message)
-        except InnerAgentOutputParseError as exc:
-            return _build_knowledge_result(
-                request,
-                status="invalid_output",
-                duration_ms=duration_ms,
-                **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
-                error_code="invalid_output",
-                error_message=str(exc),
-            )
-        return _build_knowledge_result(
+        return self._run_knowledge(
             request,
-            status=parsed["status"],
-            duration_ms=duration_ms,
-            **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
-            write_count=int(parsed["write_count"]),
-            skipped_item_count=int(parsed["skipped_item_count"]),
-            run_summary=parsed["run_summary"],
-            read_trace=parsed["read_trace"],
-            code_trace=parsed["code_trace"],
+            prompt=render_build_knowledge_prompt(request),
+            mode="build_knowledge",
         )
 
     def run_teach_knowledge(
         self, request: TeachKnowledgeAgentRequest
     ) -> BuildKnowledgeAgentResult:
-        """Run one Codex CLI teach_knowledge request."""
+        return self._run_knowledge(
+            request,
+            prompt=render_teach_knowledge_prompt(request),
+            mode="teach",
+        )
 
+    def _run_knowledge(
+        self,
+        request: BuildKnowledgeAgentRequest | TeachKnowledgeAgentRequest,
+        *,
+        prompt: str,
+        mode: str,
+    ) -> BuildKnowledgeAgentResult:
         command_path = shutil.which(self._command)
         if command_path is None:
             return _build_knowledge_result(
@@ -249,7 +171,6 @@ class CodexCliInnerAgentRunner:
                 error_message=f"Codex command not found: {self._command}",
             )
 
-        prompt = render_teach_knowledge_prompt(request)
         started = perf_counter()
         try:
             with (
@@ -272,7 +193,7 @@ class CodexCliInnerAgentRunner:
                     timeout=request.timeout_seconds,
                     check=False,
                     env=_inner_agent_env(
-                        mode="teach",
+                        mode=mode,
                         knowledge_build_run_id=request.run_id,
                     ),
                 )
@@ -322,6 +243,7 @@ class CodexCliInnerAgentRunner:
             read_trace=parsed["read_trace"],
             code_trace=parsed["code_trace"],
         )
+
 
 def _codex_exec_args(
     *,
@@ -380,7 +302,6 @@ def _result(
     capture_quality: str | None = None,
     error_code: str | None = None,
     error_message: str | None = None,
-    read_trace: dict | None = None,
 ) -> InnerAgentRunResult:
     """Build one provider-neutral result."""
 
@@ -400,7 +321,6 @@ def _result(
         capture_quality=capture_quality,
         error_code=error_code,
         error_message=error_message,
-        read_trace=read_trace or {},
     )
 
 

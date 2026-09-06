@@ -10,18 +10,18 @@ import sys
 from app.infrastructure.host_apps.assets.paths import default_cursor_home
 
 CURSOR_STATUSLINE_MARKER = "shellbrain-managed:cursor-statusline"
-DEFAULT_CURSOR_STATUSLINE_MODULE = "app.infrastructure.host_apps.identity.cursor_statusline"
+DEFAULT_CURSOR_STATUSLINE_MODULE = (
+    "app.infrastructure.host_apps.identity.cursor_statusline"
+)
 
 
-def install_cursor_statusline(
-    *, force: bool, statusline_module: str = DEFAULT_CURSOR_STATUSLINE_MODULE
-) -> tuple[str, Path, str | None]:
+def install_cursor_statusline(*, force: bool) -> tuple[str, Path, str | None]:
     """Install or update the Shellbrain-managed Cursor CLI statusline command."""
 
     config_path = default_cursor_home() / "cli-config.json"
     statusline_payload = {
         "type": "command",
-        "command": cursor_statusline_command(statusline_module=statusline_module),
+        "command": cursor_statusline_command(),
         "padding": 2,
         "updateIntervalMs": 300,
         "timeoutMs": 2000,
@@ -105,12 +105,12 @@ def inspect_cursor_statusline() -> dict[str, object]:
     }
 
 
-def cursor_statusline_command(
-    *, statusline_module: str = DEFAULT_CURSOR_STATUSLINE_MODULE
-) -> str:
+def cursor_statusline_command() -> str:
     """Return the managed Cursor CLI statusline command."""
 
-    command = shlex.join([str(Path(sys.executable).resolve()), "-m", statusline_module])
+    command = shlex.join(
+        [str(Path(sys.executable).resolve()), "-m", DEFAULT_CURSOR_STATUSLINE_MODULE]
+    )
     return f"{command} # {CURSOR_STATUSLINE_MARKER}"
 
 

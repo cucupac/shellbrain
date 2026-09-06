@@ -44,7 +44,6 @@ def test_seed_retrieval_should_always_apply_configured_semantic_and_keyword_thre
         },
         semantic_retrieval=_StubSemanticRetrieval(),
         keyword_retrieval=_StubKeywordRetrieval(),
-        vector_search=None,
         thresholds=ThresholdSettings(semantic_threshold=0.5, keyword_threshold=0.5),
     )
 

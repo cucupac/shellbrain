@@ -10,10 +10,8 @@ from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import (
-    CreatePolicySettings,
     ReadPolicySettings,
     ThresholdSettings,
-    UpdatePolicySettings,
 )
 from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
 from app.core.ports.local_state.session_state_store import ISessionStateStore
@@ -33,9 +31,7 @@ class OperationDependencies(Protocol):
     """Ports and settings consumed by operation handlers."""
 
     session_state_store: ISessionStateStore
-    create_policy: CreatePolicySettings
     read_settings: ReadPolicySettings
-    update_policy: UpdatePolicySettings
     threshold_settings: ThresholdSettings
     clock: IClock
     id_generator: IIdGenerator

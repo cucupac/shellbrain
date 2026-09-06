@@ -10,10 +10,8 @@ from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import (
-    CreatePolicySettings,
     ReadPolicySettings,
     ThresholdSettings,
-    UpdatePolicySettings,
 )
 from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
 from app.core.ports.local_state.session_state_store import ISessionStateStore
@@ -39,9 +37,6 @@ from app.infrastructure.local_state.shadow_git_store import ShadowGitStore
 from app.infrastructure.system.clock import SystemClock
 from app.infrastructure.system.id_generator import UuidGenerator
 from app.infrastructure.telemetry.sink import TelemetrySink
-from app.startup.create_policy import (
-    get_typed_create_policy_settings,
-)
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_context_settings,
@@ -51,9 +46,6 @@ from app.startup.internal_agents import (
 from app.startup.read_policy import get_read_policy_settings
 from app.startup.runtime_context import get_operation_telemetry_context
 from app.startup.thresholds import get_typed_threshold_settings
-from app.startup.update_policy import (
-    get_typed_update_policy_settings,
-)
 
 
 @dataclass(frozen=True)
@@ -61,9 +53,7 @@ class OperationDependencies:
     """Ports and settings injected by startup into operation workflows."""
 
     session_state_store: ISessionStateStore
-    create_policy: CreatePolicySettings
     read_settings: ReadPolicySettings
-    update_policy: UpdatePolicySettings
     threshold_settings: ThresholdSettings
     clock: IClock
     id_generator: IIdGenerator
@@ -87,13 +77,9 @@ def build_operation_dependencies() -> OperationDependencies:
     """Wire concrete runtime ports into core operation orchestration."""
 
     clock = SystemClock()
-    create_policy = get_typed_create_policy_settings()
-    update_policy = get_typed_update_policy_settings()
     return OperationDependencies(
         session_state_store=FileSessionStateStore(),
-        create_policy=create_policy,
         read_settings=get_read_policy_settings(),
-        update_policy=update_policy,
         threshold_settings=get_typed_threshold_settings(),
         clock=clock,
         id_generator=UuidGenerator(),

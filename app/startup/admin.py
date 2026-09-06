@@ -13,10 +13,6 @@ from app.infrastructure.local_state import (
     session_state_file_store,
 )
 from app.startup import admin_db, analytics, db as startup_db
-from app.startup.host_hooks import (
-    CLAUDE_SESSION_START_ENTRYPOINT_MODULE,
-    CURSOR_STATUSLINE_ENTRYPOINT_MODULE,
-)
 
 
 def managed_backup_kwargs() -> dict[str, object]:
@@ -64,7 +60,6 @@ def install_repo_claude_hook(*, repo_root: Path) -> Path:
 
     return claude_hook_install.install_claude_hook(
         repo_root=repo_root,
-        session_start_module=CLAUDE_SESSION_START_ENTRYPOINT_MODULE,
     )
 
 
@@ -74,8 +69,6 @@ def install_managed_host_assets(*, host_mode: str, force: bool):
     return host_assets.install_host_assets(
         host_mode=host_mode,
         force=force,
-        claude_session_start_module=CLAUDE_SESSION_START_ENTRYPOINT_MODULE,
-        cursor_statusline_module=CURSOR_STATUSLINE_ENTRYPOINT_MODULE,
     )
 
 

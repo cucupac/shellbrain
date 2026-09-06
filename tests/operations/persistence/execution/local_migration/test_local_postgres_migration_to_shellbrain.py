@@ -382,7 +382,6 @@ def _seed_sentinel_dataset(dsn: str) -> dict[str, str]:
         embedding_provider_factory=_StubEmbeddingProvider,
         embedding_model="stub-v1",
         inferred_repo_id="migration-repo",
-        defaults={"scope": "repo"},
     )
     engine.dispose()
 

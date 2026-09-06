@@ -5,6 +5,7 @@ from __future__ import annotations
 import subprocess
 
 import pytest
+from pydantic import ValidationError
 
 from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
@@ -16,12 +17,11 @@ from app.infrastructure.host_apps.inner_agents.codex_cli import (
     _codex_exec_args,
 )
 from app.infrastructure.host_apps.inner_agents.output_parser import (
+    InnerAgentOutputParseError,
     parse_build_knowledge_output,
     parse_inner_agent_brief_output,
-    parse_inner_agent_response_output,
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
-    render_build_context_prompt,
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
@@ -65,7 +65,7 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
 
     def _fake_run(args, *, input, text, capture_output, timeout, check, env):
         del input, text, capture_output, timeout, check
-        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context"
+        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context_synthesis"
         assert env["SHELLBRAIN_PARENT_HOST_APP"] == "codex"
         assert env["SHELLBRAIN_PARENT_HOST_SESSION_KEY"] == "outer-thread"
         output_path = args[args.index("--output-last-message") + 1]
@@ -110,7 +110,6 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         "summary": "Stub synthesis",
         "constraints": ["Keep core clean"],
     }
-    assert result.read_trace["source_ids"] == ["mem-1"]
     assert result.input_tokens == 11
     assert result.output_tokens == 7
     assert result.reasoning_output_tokens == 2
@@ -149,14 +148,12 @@ def test_codex_runner_synthesis_only_uses_synthesis_mode(monkeypatch, tmp_path) 
     result = runner.run(
         _request(
             repo_root=str(tmp_path),
-            synthesis_only=True,
             deterministic_pack={"memories": [{"id": "mem-1", "text": "Fact"}]},
         )
     )
 
     assert result.status == "ok"
     assert result.brief == {"summary": "Synthesized from pack"}
-    assert result.read_trace == {}
 
 
 def test_inner_agent_output_parser_accepts_json_fenced_brief() -> None:
@@ -169,18 +166,9 @@ def test_inner_agent_output_parser_accepts_json_fenced_brief() -> None:
     assert brief["summary"] == "Context found"
 
 
-def test_inner_agent_output_parser_accepts_read_trace() -> None:
-    """Output parser should accept provider read trace metadata."""
-
-    brief, read_trace = parse_inner_agent_response_output(
-        '{"brief":{"summary":"Context found"},"read_trace":{"source_ids":["mem-1"]}}'
-    )
-
-    assert brief == {"summary": "Context found"}
-    assert read_trace == {"source_ids": ["mem-1"]}
-
-
-def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path) -> None:
+def test_build_knowledge_runner_uses_build_knowledge_mode(
+    monkeypatch, tmp_path
+) -> None:
     """Codex build_knowledge runs with the writer-scoped inner-agent mode."""
 
     def _fake_which(command: str) -> str:
@@ -220,7 +208,9 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(monkeypatch, tmp_path)
     )
     runner = CodexCliInnerAgentRunner(command="codex")
 
-    result = runner.run_build_knowledge(_build_knowledge_request(repo_root=str(tmp_path)))
+    result = runner.run_build_knowledge(
+        _build_knowledge_request(repo_root=str(tmp_path))
+    )
 
     assert result.status == "ok"
     assert result.write_count == 2
@@ -267,7 +257,9 @@ def test_teach_knowledge_runner_uses_teach_mode(monkeypatch, tmp_path) -> None:
     )
     runner = CodexCliInnerAgentRunner(command="codex")
 
-    result = runner.run_teach_knowledge(_teach_knowledge_request(repo_root=str(tmp_path)))
+    result = runner.run_teach_knowledge(
+        _teach_knowledge_request(repo_root=str(tmp_path))
+    )
 
     assert result.status == "ok"
     assert result.write_count == 1
@@ -290,6 +282,18 @@ def test_build_knowledge_output_parser_accepts_no_write_skips() -> None:
     assert parsed["skipped_item_count"] == 1
 
 
+def test_recall_provider_requires_an_evidence_pack_and_brief_envelope() -> None:
+    """Reject obsolete request and output shapes before treating synthesis as valid."""
+
+    payload = _request().model_dump(exclude={"deterministic_pack"})
+    with pytest.raises(ValidationError, match="deterministic_pack"):
+        InnerAgentRunRequest.model_validate(payload)
+    with pytest.raises(ValidationError, match="deterministic_pack"):
+        InnerAgentRunRequest.model_validate({**payload, "deterministic_pack": None})
+    with pytest.raises(InnerAgentOutputParseError, match="object brief"):
+        parse_inner_agent_brief_output('{"summary":"Missing the brief envelope"}')
+
+
 def test_build_knowledge_output_parser_counts_scenario_writes() -> None:
     """Parser should include scenario writes in derived write counts."""
 
@@ -302,81 +306,11 @@ def test_build_knowledge_output_parser_counts_scenario_writes() -> None:
     assert parsed["write_count"] == 1
 
 
-def test_build_context_prompt_allows_read_only_shellbrain_commands() -> None:
-    """Prompt should instruct Codex to query Shellbrain directly without expansion loops."""
-
-    prompt = render_build_context_prompt(_request())
-
-    assert "IDENTITY\n" in prompt
-    assert "AUTHORITY\n" in prompt
-    assert "PROTOCOL\n" in prompt
-    assert "JUDGMENT\n" in prompt
-    assert "WRITE CLEARLY\n" in prompt
-    assert "Lead with the answer" in prompt
-    assert "Summary: max two sentences" in prompt
-    assert "Lists: max three items" in prompt
-    assert prompt.index("events --json") < prompt.index("read --json")
-    assert "Shellbrain is a repo-scoped memory system" in prompt
-    assert "# KNOWLEDGE MODEL" in prompt
-    assert "Concepts are sparse orientation nodes, not tags" in prompt
-    assert "Claims become concept orientation" in prompt
-    assert "`memory_links` connect concepts" in prompt
-    assert "Run events first" in prompt
-    assert "Treat `query` as the complete worker context" in prompt
-    assert "Build compact search text" in prompt
-    assert "Run at least one targeted read" in prompt
-    assert "expand only concepts that can change the brief" in prompt
-    assert "If a read returns a relevant concept ref" in prompt
-    assert "Inspect detailed claims, relations, groundings" in prompt
-    assert "Run extra reads only when" in prompt
-    assert "Synthesize for the worker" in prompt
-    assert "no_context_reason" in prompt
-    assert "reduces worker time and token spend" in prompt
-    assert "created_at" in prompt
-    assert "updated_at" in prompt
-    assert "Use recency only to choose between sources of equal value" in prompt
-    assert "Separate sourced facts from inference" in prompt
-    assert "Do not inspect repository files directly" in prompt
-    assert "A relevant memory does not need a concept home" in prompt
-    assert "Do not provide generic coding advice" in prompt
-    assert "conflicts" in prompt
-    assert "next_checks" in prompt
-    assert '"sources":' not in prompt
-    assert "used_in" not in prompt
-    assert "List only commands that you ran successfully" in prompt
-    assert '\\"evidence\\"' in prompt
-    assert "knowledge_builder_notes" not in prompt
-    assert "preferred_source_id" not in prompt
-    assert "shellbrain --help" in prompt
-    assert "read --help" in prompt
-    assert "events --help" in prompt
-    assert "concept show --help" in prompt
-    assert "events --json" in prompt
-    assert "read --json" in prompt
-    assert "concept show --json" in prompt
-    assert "shellbrain recall" in prompt
-    assert "Do not write memories" in prompt
-    assert "requested_" "expansions" not in prompt
-    assert "candidate_" "context" not in prompt
-    assert "expansion_" "handles" not in prompt
-
-
-def test_build_context_prompt_targets_repo_root_when_available(tmp_path) -> None:
-    """Inner-agent prompt should make nested Codex target the parent repo explicitly."""
-
-    prompt = render_build_context_prompt(_request(repo_root=str(tmp_path)))
-
-    assert f"shellbrain --no-sync --repo-root {tmp_path}" in prompt
-    assert f"shellbrain --no-sync --repo-root {tmp_path} events --json" in prompt
-    assert f"shellbrain --no-sync --repo-root {tmp_path} read --json" in prompt
-
-
 def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     """synthesis prompt should explain graph semantics without Shellbrain commands."""
 
     prompt = render_build_context_synthesis_prompt(
         _request(
-            synthesis_only=True,
             deterministic_pack={"memories": [{"id": "mem-1", "text": "Fact"}]},
         )
     )
@@ -396,28 +330,13 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
     assert "Keep every relevant constraint, trap, conflict, and warning" in prompt
     assert "Use only the text and metadata present in the pack" in prompt
     assert "The query is the complete worker request" in prompt
-    assert "facts, preferences, invariants, behavior claims, configuration rules" in prompt
+    assert (
+        "facts, preferences, invariants, behavior claims, configuration rules" in prompt
+    )
     assert '"sources":' not in prompt
     assert "deterministic source provenance" not in prompt
     assert "mem-1" in prompt
     assert "shellbrain read --json" not in prompt
-
-
-def test_recall_prompts_require_simplified_technical_english() -> None:
-    """Both recall paths should give the same clear writing rules."""
-
-    prompts = (
-        render_build_context_prompt(_request()),
-        render_build_context_synthesis_prompt(
-            _request(synthesis_only=True, deterministic_pack={"memories": []})
-        ),
-    )
-
-    for prompt in prompts:
-        assert "Use active voice." in prompt
-        assert "Use one term for one meaning." in prompt
-        assert "Use common, short words." in prompt
-        assert "Write no more than 20 words in each sentence." in prompt
 
 
 def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
@@ -451,7 +370,7 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "`created_by`: Use `librarian`" in prompt
     assert "`line_range`, `api_route`, `db_table`, and `config_key`" in prompt
     assert "Segment the episode into reusable memory boundaries" in prompt
-    assert "Dedupe before every write" in prompt
+    assert "Check for duplicates once per topic" in prompt
     assert "Do not create a problem memory without a reusable" in prompt
     assert "For a problem-solving slice" in prompt
     assert "structural_memory_relations" in prompt
@@ -461,23 +380,38 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
     assert "do not vote on ordinary" in prompt.lower()
     assert "looked relevant enough to affect work" in prompt
-    assert "future ranking should learn" in prompt
+    assert (
+        "Utility votes support evaluation; they do not change current recall ranking"
+        in prompt
+    )
     assert "Leave the memory unlinked" in prompt
     assert "update_lifecycle" in prompt
     assert "final decisive solution" in prompt
-    assert "`failed_tactic` records that a tactic failed in this episode's context" in prompt
+    assert (
+        "`failed_tactic` records that a tactic failed in this episode's context"
+        in prompt
+    )
     assert "closed_event_id" in prompt
     assert "terminal_event_id" not in prompt
     assert "event_watermark" in prompt
-    assert "Prefer an available `file_hash`, `symbol_hash`, or other supported source ref" in prompt
+    assert (
+        "Prefer an available `file_hash`, `symbol_hash`, or other supported source ref"
+        in prompt
+    )
     assert '\\"after_seq\\":3' in prompt
     assert '\\"up_to_seq\\":8' in prompt
     assert '\\"limit\\":100' not in prompt
     assert "shellbrain --help" in prompt
     assert "memory add --help" in prompt
     assert "scenario record --help" in prompt
-    assert "snapshot" not in prompt.split('"help_commands"')[1].split('"command_lexicon"')[0]
+    assert (
+        "snapshot"
+        not in prompt.split('"help_commands"')[1].split('"command_lexicon"')[0]
+    )
     assert "Write fewer, stronger records" in prompt
+    assert "Preserve product intent, decision reasons, failed approaches" in prompt
+    assert "Skip routine implementation facts" in prompt
+    assert "Reuse inspected results for related writes" in prompt
     assert "solved" in prompt
     assert "abandoned" in prompt
     assert "scenario.v1" in prompt
@@ -485,15 +419,18 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
     assert "memory/concept/scenario" in prompt
 
 
-def test_build_knowledge_prompt_requires_simplified_technical_english() -> None:
-    """Knowledge records should use the same clear writing rules."""
+def test_knowledge_prompts_require_clear_targeted_writing() -> None:
+    """Automatic learning and explicit teaching should receive the same writing rules."""
 
-    prompt = render_build_knowledge_prompt(_build_knowledge_request())
-
-    assert "Use active voice." in prompt
-    assert "Use one term for one meaning." in prompt
-    assert "Use common, short words." in prompt
-    assert "Write no more than 20 words in each sentence." in prompt
+    for prompt in (
+        render_build_knowledge_prompt(_build_knowledge_request()),
+        render_teach_knowledge_prompt(_teach_knowledge_request()),
+    ):
+        assert "Write one focused lesson per memory." in prompt
+        assert "Use active voice." in prompt
+        assert "Use one term for one meaning." in prompt
+        assert "Use common, short words." in prompt
+        assert "Write no more than 20 words in each sentence." in prompt
 
 
 def test_build_knowledge_prompt_targets_repo_root_when_available(tmp_path) -> None:
@@ -536,26 +473,33 @@ def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
     assert "Use memory links for concept-to-memory bridges" in prompt
     assert "created_by `manual`" in prompt
     assert "Use current_problem only to interpret" in prompt
-    assert "If max_shellbrain_reads allows it" in prompt
-    assert "read budget is zero" in prompt
+    assert "Run a targeted `read` for each teaching topic" in prompt
+    assert "leave unchecked topics as evidence" in prompt
     assert "Prefer updating aliases or scope_note" in prompt
-    assert "source_kind\":\"transcript_event" in prompt
+    assert 'source_kind":"transcript_event' in prompt
     assert "memory update` sparingly" in prompt
     assert "stale or disputed item is a concept claim" in prompt
     assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
     assert "You may write Shellbrain only through:" in prompt
     assert "`shellbrain memory add`" in prompt
     assert "`shellbrain concept update`" in prompt
-    assert "Before `add_relation`, ensure both subject and object concepts exist" in prompt
+    assert (
+        "Before `add_relation`, ensure both subject and object concepts exist" in prompt
+    )
     assert "not framed as a revision" in prompt
-    assert "Write both a memory and a concept claim only when each has independent future" in prompt
+    assert (
+        "Write both a memory and a concept claim only when each has independent future"
+        in prompt
+    )
     assert "multiple independent durable instructions" in prompt
     assert "Prefer pytest-style tests" in prompt
     assert "Failed deposit address lookups must not be cached" in prompt
     assert "Concept container with scope and alias" in prompt
     assert '"type":"add_concept"' in prompt
     assert '"aliases":["deposit lookup","depository lookup"]' in prompt
-    assert "Concept relation when the teaching explicitly relates two concepts" in prompt
+    assert (
+        "Concept relation when the teaching explicitly relates two concepts" in prompt
+    )
     assert '"type":"add_relation"' in prompt
     assert "Grounding after narrow verification of a named anchor" in prompt
     assert '"type":"add_grounding"' in prompt
@@ -566,7 +510,6 @@ def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
 def _request(
     *,
     repo_root: str | None = None,
-    synthesis_only: bool = False,
     deterministic_pack: dict | None = None,
 ) -> InnerAgentRunRequest:
     return InnerAgentRunRequest(
@@ -578,8 +521,9 @@ def _request(
         max_brief_tokens=1_800,
         query="what matters?",
         repo_root=repo_root,
-        synthesis_only=synthesis_only,
-        deterministic_pack=deterministic_pack,
+        deterministic_pack=deterministic_pack
+        if deterministic_pack is not None
+        else {"memories": []},
     )
 
 
@@ -604,7 +548,9 @@ def _build_knowledge_request(
     )
 
 
-def _teach_knowledge_request(*, repo_root: str = "/tmp/repo") -> TeachKnowledgeAgentRequest:
+def _teach_knowledge_request(
+    *, repo_root: str = "/tmp/repo"
+) -> TeachKnowledgeAgentRequest:
     return TeachKnowledgeAgentRequest(
         run_id="run-1",
         provider="codex",

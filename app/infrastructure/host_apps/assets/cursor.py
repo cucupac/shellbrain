@@ -19,9 +19,7 @@ CURSOR_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
 LEGACY_CURSOR_SKILL_NAMES = ("shellbrain-session-start",)
 
 
-def install_cursor_assets(
-    *, force: bool, render_install_status, statusline_module: str | None = None
-) -> list[str]:
+def install_cursor_assets(*, force: bool, render_install_status) -> list[str]:
     """Install the packaged Cursor skills into the default Cursor home."""
 
     cursor_root = default_cursor_home()
@@ -50,11 +48,6 @@ def install_cursor_assets(
             "Cursor statusline",
             install_cursor_statusline(
                 force=force,
-                **(
-                    {}
-                    if statusline_module is None
-                    else {"statusline_module": statusline_module}
-                ),
             ),
         )
     )

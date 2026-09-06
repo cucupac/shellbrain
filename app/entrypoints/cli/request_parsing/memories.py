@@ -27,7 +27,6 @@ def prepare_memory_add_request(
     payload: dict,
     *,
     inferred_repo_id: str,
-    defaults: dict,
 ) -> PreparedOperationRequest[MemoryAddRequest]:
     """Validate and hydrate one raw memory-add payload."""
 
@@ -41,7 +40,6 @@ def prepare_memory_add_request(
         lambda: hydrate_memory_add_payload(
             agent_request.model_dump(mode="python", exclude_none=True),
             inferred_repo_id=inferred_repo_id,
-            defaults=defaults,
         )
     )
     if hydration_error is not None:

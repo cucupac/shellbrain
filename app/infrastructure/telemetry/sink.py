@@ -51,7 +51,7 @@ class TelemetrySink:
         selection_summary: SessionSelectionSummary | None = None,
         sync_run_payload: dict[str, Any] | None = None,
         model_usage_records: Iterable[object] = (),
-        planned_side_effects: Iterable[object] = (),
+        completed_writes: Iterable[object] = (),
         recall_telemetry: dict | None = None,
         total_latency_ms: int | None = None,
     ) -> None:
@@ -136,13 +136,13 @@ class TelemetrySink:
                     and command in {"create", "update"}
                     and request is not None
                 ):
-                    effect_plan = list(planned_side_effects)
-                    if effect_plan:
+                    writes = list(completed_writes)
+                    if writes:
                         write_summary, write_items = build_write_summary_records(
                             invocation_id=telemetry_context.invocation_id,
                             command=command,
                             request=request,
-                            planned_side_effects=effect_plan,
+                            completed_writes=writes,
                             created_at=created_at,
                         )
 

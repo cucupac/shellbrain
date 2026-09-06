@@ -37,7 +37,6 @@ def install_claude_hook(
     *,
     repo_root: Path | None = None,
     settings_path: Path | None = None,
-    session_start_module: str = _DEFAULT_SESSION_START_MODULE,
 ) -> Path:
     """Install or update one Claude settings file with the Shellbrain hook."""
 
@@ -46,9 +45,7 @@ def install_claude_hook(
     )
     resolved_settings_path.parent.mkdir(parents=True, exist_ok=True)
     settings, _backup_path = _load_settings_payload(resolved_settings_path)
-    settings["hooks"] = _merged_hooks(
-        settings.get("hooks"), session_start_module=session_start_module
-    )
+    settings["hooks"] = _merged_hooks(settings.get("hooks"))
     resolved_settings_path.write_text(
         json.dumps(settings, indent=2, sort_keys=True), encoding="utf-8"
     )
@@ -104,12 +101,12 @@ def inspect_claude_hook(*, settings_path: Path | None = None) -> ClaudeHookStatu
     )
 
 
-def _managed_command(*, session_start_module: str) -> str:
+def _managed_command() -> str:
     """Return the Shellbrain-managed Claude SessionStart hook command."""
 
     executable = str(Path(sys.executable).resolve())
     return (
-        f"{shlex.quote(executable)} -m {shlex.quote(session_start_module)} session-start "
+        f"{shlex.quote(executable)} -m {shlex.quote(_DEFAULT_SESSION_START_MODULE)} session-start "
         f"# {_MANAGED_MARKER} uses CLAUDE_ENV_FILE to export SHELLBRAIN_HOST_APP=claude_code "
         "and related Shellbrain identity variables"
     )
@@ -159,7 +156,7 @@ def _backup_invalid_settings_file(settings_path: Path) -> Path:
         counter += 1
 
 
-def _merged_hooks(hooks: object, *, session_start_module: str) -> dict[str, object]:
+def _merged_hooks(hooks: object) -> dict[str, object]:
     """Return hooks with one managed SessionStart entry merged in place."""
 
     if not isinstance(hooks, dict):
@@ -173,7 +170,7 @@ def _merged_hooks(hooks: object, *, session_start_module: str) -> dict[str, obje
         "hooks": [
             {
                 "type": "command",
-                "command": _managed_command(session_start_module=session_start_module),
+                "command": _managed_command(),
             }
         ],
     }

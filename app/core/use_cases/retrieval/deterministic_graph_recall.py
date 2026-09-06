@@ -45,7 +45,10 @@ from app.core.policies.retrieval.ontology_semantics import (
 )
 from app.core.use_cases.retrieval.concept_seed_retrieval import retrieve_concept_seeds
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
-from app.core.use_cases.retrieval.seed_retrieval import retrieve_seeds
+from app.core.use_cases.retrieval.seed_retrieval import (
+    retrieve_seeds,
+    resolve_query_embedding,
+)
 
 
 _MEMORY_LANE_LIMIT = 12
@@ -74,11 +77,18 @@ def build_deterministic_graph_pack(
     thresholds = threshold_settings or default_threshold_settings()
     started = perf_counter()
     lanes = _build_query_lanes(request)
+    embeddings = {
+        lane.name: resolve_query_embedding(
+            query=lane.query, vector_search=uow.vector_search
+        )
+        for lane in lanes
+    }
     memory_candidates: dict[str, dict[str, Any]] = {}
     lane_results: list[dict[str, Any]] = []
     for lane in lanes:
         lane_result = _run_memory_lane(
             lane=lane,
+            query_embedding=embeddings[lane.name],
             request=request,
             uow=uow,
             thresholds=thresholds,
@@ -90,9 +100,14 @@ def build_deterministic_graph_pack(
         broad_lane = _broad_domain_lane(request)
         if broad_lane is not None:
             lanes.append(broad_lane)
+            embeddings[broad_lane.name] = resolve_query_embedding(
+                query=broad_lane.query,
+                vector_search=uow.vector_search,
+            )
             lane_results.append(
                 _run_memory_lane(
                     lane=broad_lane,
+                    query_embedding=embeddings[broad_lane.name],
                     request=request,
                     uow=uow,
                     thresholds=thresholds,
@@ -108,6 +123,7 @@ def build_deterministic_graph_pack(
     concept_candidates = _discover_concepts(
         request=request,
         lanes=lanes,
+        embeddings=embeddings,
         memory_candidates=memory_candidates,
         uow=uow,
         thresholds=thresholds,
@@ -376,6 +392,7 @@ def _new_candidate(memory: Memory) -> dict[str, Any]:
 def _run_memory_lane(
     *,
     lane: _QueryLane,
+    query_embedding: tuple[list[float], str | None],
     request: MemoryRecallRequest,
     uow: IUnitOfWork,
     thresholds: ThresholdSettings,
@@ -387,7 +404,8 @@ def _run_memory_lane(
         request_data,
         semantic_retrieval=uow.semantic_retrieval,
         keyword_retrieval=uow.keyword_retrieval,
-        vector_search=uow.vector_search,
+        query_vector=query_embedding[0],
+        query_model=query_embedding[1],
         thresholds=thresholds,
     )
     fused = fuse_with_rrf(seeds["semantic"], seeds["keyword"])
@@ -491,6 +509,7 @@ def _discover_concepts(
     *,
     request: MemoryRecallRequest,
     lanes: Sequence[_QueryLane],
+    embeddings: dict[str, tuple[list[float], str | None]],
     memory_candidates: dict[str, dict[str, Any]],
     uow: IUnitOfWork,
     thresholds: ThresholdSettings,
@@ -510,7 +529,11 @@ def _discover_concepts(
             continue
         candidate["score"] += 10.0 * lifecycle_multiplier * max(confidence, 0.1)
         candidate["why"].append(
-            {"reason": "linked_memory", "role": role, "memory_id": str(link["memory_id"])}
+            {
+                "reason": "linked_memory",
+                "role": role,
+                "memory_id": str(link["memory_id"]),
+            }
         )
         memory_entry = memory_candidates.get(str(link["memory_id"]))
         if memory_entry is not None:
@@ -518,7 +541,7 @@ def _discover_concepts(
             memory_entry["link_roles"].add(role)
 
     for lane in lanes:
-        query_vector, query_model = _query_embedding(uow, lane.query)
+        query_vector, query_model = embeddings[lane.name]
         seeds = retrieve_concept_seeds(
             _lane_request_data(request=request, query=lane.query),
             concept_keyword_retrieval=uow.concept_keyword_retrieval,
@@ -767,16 +790,6 @@ def _visible_memories_by_id(
     }
 
 
-def _query_embedding(uow: IUnitOfWork, query: str) -> tuple[list[float], str | None]:
-    vector_search = getattr(uow, "vector_search", None)
-    if vector_search is None:
-        return [], None
-    vector = list(vector_search.embed_query(query))
-    if not vector:
-        raise ValueError("Query embedding provider returned an empty vector")
-    return vector, vector_search.model_name
-
-
 def _bundle_signal_score(
     *, bundle: dict[str, Any], query_terms: Sequence[str], identifiers: Sequence[str]
 ) -> float:
@@ -801,7 +814,9 @@ def _bundle_signal_score(
             score += 2.0
     for locator in _bundle_anchor_locators(bundle):
         lower_locator = locator.lower()
-        if identifiers_lower and any(item in lower_locator for item in identifiers_lower):
+        if identifiers_lower and any(
+            item in lower_locator for item in identifiers_lower
+        ):
             score += 9.0
     return score
 
@@ -831,7 +846,9 @@ def _compact_concept_payload(
     }
 
 
-def _claim_payloads(claims: Sequence[ConceptClaim], *, limit: int) -> list[dict[str, Any]]:
+def _claim_payloads(
+    claims: Sequence[ConceptClaim], *, limit: int
+) -> list[dict[str, Any]]:
     sorted_claims = sorted(
         claims,
         key=lambda item: (
@@ -1037,9 +1054,7 @@ def _conflicts_from_concepts(
                 add(
                     {
                         "id": (
-                            f"claim:{claim_id}"
-                            if claim_id
-                            else f"claim:{ref}:{status}"
+                            f"claim:{claim_id}" if claim_id else f"claim:{ref}:{status}"
                         ),
                         "type": f"{status}_claim",
                         "items": [claim_id] if claim_id else [],
@@ -1163,7 +1178,9 @@ def _claim_texts(
         ref = concept.get("ref") or concept.get("id")
         for claim in concept.get("claims", []):
             if claim.get("type") in claim_types and claim.get("status") == "active":
-                rendered.append(_truncate(f"{ref} {claim.get('type')}: {claim.get('text')}", 300))
+                rendered.append(
+                    _truncate(f"{ref} {claim.get('type')}: {claim.get('text')}", 300)
+                )
     return rendered
 
 
@@ -1172,7 +1189,10 @@ def _next_checks(pack: dict[str, Any]) -> list[str]:
     for anchor in pack.get("anchors", []):
         role = anchor.get("role")
         locator = anchor.get("locator")
-        if role in {"implementation", "entrypoint", "test", "configuration"} and locator:
+        if (
+            role in {"implementation", "entrypoint", "test", "configuration"}
+            and locator
+        ):
             checks.append(f"Check {role} anchor: {locator}")
     return list(dict.fromkeys(checks))[:3]
 
@@ -1192,7 +1212,9 @@ def _source_section_for_memory(memory: dict[str, Any]) -> str:
     return "implicit_related"
 
 
-def _summary(*, memories: Sequence[dict[str, Any]], concepts: Sequence[dict[str, Any]]) -> str:
+def _summary(
+    *, memories: Sequence[dict[str, Any]], concepts: Sequence[dict[str, Any]]
+) -> str:
     return (
         f"Shellbrain found {len(memories)} memory source(s) and "
         f"{len(concepts)} concept source(s) for this recall query."
@@ -1232,7 +1254,9 @@ def _problem_or_solution(candidate: dict[str, Any]) -> bool:
 
 def _is_prior_case_query(query: str) -> bool:
     lowered = query.lower()
-    return any(term in lowered for term in ("prior", "case", "before", "seen", "similar"))
+    return any(
+        term in lowered for term in ("prior", "case", "before", "seen", "similar")
+    )
 
 
 def _rejected_memory(candidate: dict[str, Any], reason: str) -> dict[str, Any]:
@@ -1248,11 +1272,14 @@ def _orientation(concept: Concept, claims: Sequence[ConceptClaim]) -> str:
         (
             claim.text
             for claim in claims
-            if claim.claim_type.value == "definition" and is_active_lifecycle(claim.lifecycle.status)
+            if claim.claim_type.value == "definition"
+            and is_active_lifecycle(claim.lifecycle.status)
         ),
         None,
     )
-    return _truncate(definition or f"{concept.name} is a {concept.kind.value} concept.", 600)
+    return _truncate(
+        definition or f"{concept.name} is a {concept.kind.value} concept.", 600
+    )
 
 
 def _bundle_anchor_locators(bundle: dict[str, Any]) -> tuple[str, ...]:
@@ -1302,7 +1329,11 @@ def _extract_identifiers(text: str) -> tuple[str, ...]:
     matches: list[str] = []
     for pattern in patterns:
         for match in re.findall(pattern, text):
-            value = match if isinstance(match, str) else next((part for part in match if part), "")
+            value = (
+                match
+                if isinstance(match, str)
+                else next((part for part in match if part), "")
+            )
             if value and value not in matches:
                 matches.append(value)
     return tuple(matches)

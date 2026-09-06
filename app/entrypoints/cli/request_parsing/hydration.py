@@ -44,17 +44,13 @@ def hydrate_read_payload(
 
 
 def hydrate_memory_add_payload(
-    payload: dict[str, Any], *, inferred_repo_id: str, defaults: dict[str, Any]
+    payload: dict[str, Any], *, inferred_repo_id: str
 ) -> dict[str, Any]:
-    """Hydrate create payloads with inferred scope defaults."""
+    """Hydrate create payloads with the repository identity."""
 
-    if "scope" not in defaults:
-        raise ValueError("create hydration defaults must include scope")
     merged = dict(payload)
     merged.setdefault("op", "create")
     merged.setdefault("repo_id", inferred_repo_id)
-    if isinstance(merged.get("memory"), dict):
-        merged["memory"].setdefault("scope", defaults["scope"])
     return merged
 
 

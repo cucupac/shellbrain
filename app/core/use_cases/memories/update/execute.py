@@ -1,25 +1,46 @@
-"""This module defines the update-shellbrain use-case orchestration entry point."""
+"""Validate and persist memory updates in the caller's transaction."""
 
-from datetime import datetime
+from dataclasses import replace
 
 from app.core.errors import DomainValidationError
-from app.core.entities.settings import UpdatePolicySettings
+from app.core.entities.evidence import (
+    EvidenceRole,
+    EvidenceSource,
+    EvidenceSourceKind,
+    EvidenceTarget,
+    EvidenceTargetType,
+)
+from app.core.entities.memories import (
+    MemoryLifecycleActor,
+    MemoryLifecycleEvent,
+    MemoryLifecycleStatus,
+)
+from app.core.entities.structural_memory_relations import (
+    StructuralMemoryRelation,
+    StructuralMemoryRelationPredicate,
+)
+from app.core.entities.utility import UtilityObservation
 from app.core.ports.system.clock import IClock
 from app.core.ports.system.idgen import IIdGenerator
 from app.core.ports.db.unit_of_work import IUnitOfWork
-from app.core.policies.memories.update_plan import build_update_plan
-from app.core.use_cases.memories.effect_plan import PlannedEffect
 from app.core.use_cases.memories.update.request import (
+    AssociationLinkUpdate,
+    FactUpdateLinkUpdate,
     MemoryBatchUpdateRequest,
+    MemoryLifecycleUpdate,
     MemoryUpdateRequest,
+    UtilityVoteUpdate,
 )
 from app.core.use_cases.memories.update.result import (
     BatchUpdateMemoryResult,
     UpdateMemoryResult,
-    UpdatePlanIds,
 )
 from app.core.use_cases.memories.reference_checks import validate_update_request
-from app.core.use_cases.plan_execution import apply_side_effects
+from app.core.use_cases.memories.writes import (
+    MemoryWrite,
+    attach_episode_evidence,
+    write_association,
+)
 
 
 def execute_update_memory(
@@ -28,83 +49,219 @@ def execute_update_memory(
     *,
     id_generator: IIdGenerator,
     clock: IClock | None = None,
-    policy_settings: UpdatePolicySettings | None = None,
 ) -> UpdateMemoryResult | BatchUpdateMemoryResult:
-    """Orchestrate memory update validation, planning, and side-effect execution."""
+    """Validate the entire request before writing any member of a batch."""
 
-    policy_settings = policy_settings or UpdatePolicySettings(
-        gates=("schema", "semantic", "integrity")
-    )
-    validation_errors = validate_update_request(
-        request, uow=uow, gates=policy_settings.gates
-    )
-    if validation_errors:
-        raise DomainValidationError(validation_errors)
+    errors = validate_update_request(request, uow=uow)
+    if errors:
+        raise DomainValidationError(errors)
     if isinstance(request, MemoryBatchUpdateRequest):
-        plan: list[PlannedEffect] = []
-        updated_memory_ids: list[str] = []
-        for item in request.updates:
-            item_payload = {
-                "repo_id": request.repo_id,
-                "memory_id": item.memory_id,
-                "update": item.update.model_dump(mode="python"),
-            }
-            plan.extend(
-                build_update_plan(
-                    item_payload,
-                    plan_ids=_build_update_plan_ids(
-                        item_payload["update"], id_generator=id_generator
-                    ),
-                )
+        writes = [
+            _write_utility(
+                uow,
+                repo_id=request.repo_id,
+                memory_id=item.memory_id,
+                update=item.update,
+                id_generator=id_generator,
             )
-            updated_memory_ids.append(item.memory_id)
-        apply_side_effects(plan, uow, now=_required_clock_now(plan, clock=clock))
-        problem_id = request.updates[0].update.problem_id
+            for item in request.updates
+        ]
         return BatchUpdateMemoryResult(
-            problem_id=problem_id,
-            updated_memory_ids=updated_memory_ids,
+            problem_id=request.updates[0].update.problem_id,
+            updated_memory_ids=[item.memory_id for item in request.updates],
             applied_count=len(request.updates),
-            planned_effects=plan,
+            writes=writes,
         )
+    update = request.update
+    if isinstance(update, UtilityVoteUpdate):
+        write = _write_utility(
+            uow,
+            repo_id=request.repo_id,
+            memory_id=request.memory_id,
+            update=update,
+            id_generator=id_generator,
+        )
+    elif isinstance(update, AssociationLinkUpdate):
+        write = write_association(
+            uow,
+            repo_id=request.repo_id,
+            memory_id=request.memory_id,
+            link=update,
+            evidence_refs=update.evidence_refs,
+            id_generator=id_generator,
+        )
+    elif isinstance(update, FactUpdateLinkUpdate):
+        write = _write_fact_change(
+            request, uow, update=update, id_generator=id_generator
+        )
+    else:
+        write = _write_lifecycle(
+            request, uow, update=update, id_generator=id_generator, clock=clock
+        )
+    return UpdateMemoryResult(memory_id=request.memory_id, writes=[write])
 
-    payload = request.model_dump(mode="python")
-    plan = build_update_plan(
-        payload,
-        plan_ids=_build_update_plan_ids(payload["update"], id_generator=id_generator),
+
+def _write_utility(
+    uow: IUnitOfWork,
+    *,
+    repo_id: str,
+    memory_id: str,
+    update: UtilityVoteUpdate,
+    id_generator: IIdGenerator,
+) -> MemoryWrite:
+    observation_id = id_generator.new_id()
+    uow.utility.append_observation(
+        UtilityObservation(
+            id=observation_id,
+            memory_id=memory_id,
+            problem_id=update.problem_id,
+            vote=update.vote,
+            rationale=update.rationale,
+        )
     )
-    apply_side_effects(plan, uow, now=_required_clock_now(plan, clock=clock))
-    return UpdateMemoryResult(memory_id=request.memory_id, planned_effects=plan)
+    attach_episode_evidence(
+        uow,
+        repo_id=repo_id,
+        target_type=EvidenceTargetType.UTILITY_OBSERVATION,
+        target_id=observation_id,
+        refs=update.evidence_refs,
+    )
+    return MemoryWrite(
+        "utility_observation.append",
+        {
+            "id": observation_id,
+            "repo_id": repo_id,
+            "memory_id": memory_id,
+            **update.model_dump(exclude={"type"}),
+        },
+    )
 
 
-def _build_update_plan_ids(
-    update: dict[str, object], *, id_generator: IIdGenerator
-) -> UpdatePlanIds:
-    """Preallocate IDs needed by one update side-effect plan."""
-
-    update_type = update["type"]
-    if update_type == "utility_vote":
-        return UpdatePlanIds(utility_observation_id=id_generator.new_id())
-    if update_type == "fact_update_link":
-        return UpdatePlanIds(
-            structural_relation_ids=tuple(id_generator.new_id() for _ in range(3)),
+def _write_fact_change(
+    request: MemoryUpdateRequest,
+    uow: IUnitOfWork,
+    *,
+    update: FactUpdateLinkUpdate,
+    id_generator: IIdGenerator,
+) -> MemoryWrite:
+    relation_ids = []
+    for subject, predicate, target in (
+        (
+            update.old_fact_id,
+            StructuralMemoryRelationPredicate.SUPERSEDED_BY,
+            update.new_fact_id,
+        ),
+        (
+            update.old_fact_id,
+            StructuralMemoryRelationPredicate.EXPLAINED_BY_CHANGE,
+            request.memory_id,
+        ),
+        (
+            update.new_fact_id,
+            StructuralMemoryRelationPredicate.EXPLAINED_BY_CHANGE,
+            request.memory_id,
+        ),
+    ):
+        relation = uow.experiences.upsert_structural_memory_relation(
+            StructuralMemoryRelation(
+                id=id_generator.new_id(),
+                repo_id=request.repo_id,
+                subject_memory_id=subject,
+                predicate=predicate,
+                object_memory_id=target,
+            )
         )
-    if update_type == "association_link":
-        return UpdatePlanIds(
-            association_edge_id=id_generator.new_id(),
-            association_observation_id=id_generator.new_id(),
+        relation_ids.append(relation.id)
+        attach_episode_evidence(
+            uow,
+            repo_id=request.repo_id,
+            target_type=EvidenceTargetType.STRUCTURAL_MEMORY_RELATION,
+            target_id=relation.id,
+            refs=update.evidence_refs,
         )
-    if update_type == "update_lifecycle":
-        return UpdatePlanIds(memory_lifecycle_event_id=id_generator.new_id())
-    return UpdatePlanIds()
+    return MemoryWrite(
+        "structural_fact_change.create",
+        {
+            "repo_id": request.repo_id,
+            "change_id": request.memory_id,
+            "structural_relation_ids": tuple(relation_ids),
+            **update.model_dump(exclude={"type", "rationale"}),
+        },
+    )
 
 
-def _required_clock_now(
-    plan: list[PlannedEffect], *, clock: IClock | None
-) -> datetime | None:
-    """Return the timestamp needed by lifecycle side effects, or None when unused."""
-
-    if not any(effect.effect_type.value == "memory.lifecycle_update" for effect in plan):
-        return None
+def _write_lifecycle(
+    request: MemoryUpdateRequest,
+    uow: IUnitOfWork,
+    *,
+    update: MemoryLifecycleUpdate,
+    id_generator: IIdGenerator,
+    clock: IClock | None,
+) -> MemoryWrite:
     if clock is None:
         raise ValueError("memory lifecycle updates require a clock")
-    return clock.now()
+    now = clock.now()
+    memory = uow.memories.get(request.memory_id)
+    if memory is None:
+        raise LookupError(
+            f"Target shellbrain not found for lifecycle update: {request.memory_id}"
+        )
+    status = MemoryLifecycleStatus(update.status)
+    actor = MemoryLifecycleActor(update.actor)
+    updated = replace(
+        memory,
+        status=status,
+        updated_by=actor,
+        validated_at=update.validated_at
+        or (now if status is MemoryLifecycleStatus.ACTIVE else memory.validated_at),
+        invalidated_at=(memory.invalidated_at or now)
+        if status
+        in {
+            MemoryLifecycleStatus.STALE,
+            MemoryLifecycleStatus.SUPERSEDED,
+            MemoryLifecycleStatus.WRONG,
+        }
+        else None,
+        superseded_by_id=update.superseded_by_id,
+    )
+    if not uow.memories.update_lifecycle(updated):
+        raise LookupError(
+            f"Target shellbrain not found for lifecycle update: {request.memory_id}"
+        )
+    event_id = id_generator.new_id()
+    uow.memories.add_lifecycle_event(
+        MemoryLifecycleEvent(
+            id=event_id,
+            repo_id=request.repo_id,
+            memory_id=request.memory_id,
+            from_status=memory.status,
+            to_status=status,
+            rationale=update.rationale,
+            actor=actor,
+            superseded_by_id=update.superseded_by_id,
+            created_at=now,
+        )
+    )
+    uow.evidence.attach_evidence(
+        repo_id=request.repo_id,
+        target=EvidenceTarget(
+            target_type=EvidenceTargetType.MEMORY_LIFECYCLE_EVENT, target_id=event_id
+        ),
+        sources=tuple(
+            EvidenceSource(
+                source_kind=EvidenceSourceKind(item.kind),
+                **item.model_dump(exclude={"kind"}),
+            )
+            for item in update.evidence
+        ),
+        role=EvidenceRole.SUPPORTS,
+    )
+    return MemoryWrite(
+        "memory.lifecycle_update",
+        {
+            "event_id": event_id,
+            "repo_id": request.repo_id,
+            "memory_id": request.memory_id,
+            **update.model_dump(exclude={"type"}),
+        },
+    )

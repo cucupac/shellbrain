@@ -10,7 +10,6 @@ from app.core.entities.settings import (
     default_threshold_settings,
 )
 from app.core.ports.db.memory_repositories import IMemoriesRepo
-from app.core.ports.embeddings.retrieval import IVectorSearch
 from app.core.ports.db.retrieval_repositories import (
     IKeywordRetrievalRepo,
     IReadPolicyRepo,
@@ -31,7 +30,6 @@ def build_context_pack(
     memories: IMemoriesRepo,
     semantic_retrieval: ISemanticRetrievalRepo,
     read_policy: IReadPolicyRepo,
-    vector_search: IVectorSearch | None,
     read_settings: ReadPolicySettings | None = None,
     threshold_settings: ThresholdSettings | None = None,
     query_vector: list[float] | None = None,
@@ -46,7 +44,6 @@ def build_context_pack(
         request_data,
         semantic_retrieval=semantic_retrieval,
         keyword_retrieval=keyword_retrieval,
-        vector_search=vector_search,
         query_vector=query_vector,
         query_model=query_model,
         thresholds=threshold_settings,

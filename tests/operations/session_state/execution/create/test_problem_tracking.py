@@ -41,7 +41,6 @@ def test_create_problem_should_set_current_problem_id_in_trusted_session_state(
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-under-test",
-        defaults={"scope": "repo"},
         repo_root=repo_with_shellbrain_state,
     )
 

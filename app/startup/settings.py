@@ -16,8 +16,6 @@ class YamlConfigProvider:
         self._defaults_dir = defaults_dir
         self._settings_dir = defaults_dir.parent
         self._read_policy = self._load_yaml("read_policy.yaml")
-        self._create_policy = self._load_yaml("create_policy.yaml")
-        self._update_policy = self._load_yaml("update_policy.yaml")
         self._thresholds = self._load_yaml("thresholds.yaml")
         self._runtime = self._load_yaml("runtime.yaml")
         self._internal_agents = self._load_yaml_from(
@@ -43,16 +41,6 @@ class YamlConfigProvider:
         """This method returns read-policy configuration values."""
 
         return deepcopy(self._read_policy)
-
-    def get_create_policy(self) -> dict[str, Any]:
-        """This method returns create-policy configuration values."""
-
-        return deepcopy(self._create_policy)
-
-    def get_update_policy(self) -> dict[str, Any]:
-        """This method returns update-policy configuration values."""
-
-        return deepcopy(self._update_policy)
 
     def get_thresholds(self) -> dict[str, Any]:
         """This method returns threshold configuration values."""

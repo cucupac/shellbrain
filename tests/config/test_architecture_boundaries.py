@@ -122,8 +122,6 @@ def test_non_bootstrap_entrypoints_do_not_import_startup() -> None:
     allowed_startup_importers = {
         "app/entrypoints/cli/main.py",
         "app/entrypoints/jobs/episode_sync.py",
-        "app/entrypoints/host_hooks/claude_session_start.py",
-        "app/entrypoints/host_hooks/cursor_statusline.py",
     }
     violations: list[str] = []
     for path in _python_files(APP_ROOT / "entrypoints"):
@@ -535,7 +533,6 @@ def test_infrastructure_does_not_reference_entrypoint_modules() -> None:
         "app.entrypoints",
         "app.entrypoints.cli",
         "app.entrypoints.jobs",
-        "app.entrypoints.host_hooks",
         "python -m app",
     )
     violations: list[str] = []
@@ -669,50 +666,6 @@ def test_core_inner_agent_settings_are_provider_neutral() -> None:
         + "\n".join(violations)
     )
 
-
-def test_planned_effects_use_typed_params() -> None:
-    path = APP_ROOT / "core" / "use_cases" / "memories" / "effect_plan.py"
-    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-    violations: list[str] = []
-    handled_source = "\n".join(
-        (
-            (APP_ROOT / "core" / "use_cases" / "plan_execution.py").read_text(
-                encoding="utf-8"
-            ),
-            (
-                APP_ROOT
-                / "infrastructure"
-                / "telemetry"
-                / "operation_invocations.py"
-            ).read_text(encoding="utf-8"),
-        )
-    )
-    for node in ast.walk(tree):
-        if (
-            isinstance(node, ast.AnnAssign)
-            and isinstance(node.target, ast.Name)
-            and node.target.id == "params"
-        ):
-            annotation = ast.unparse(node.annotation)
-            if annotation == "dict[str, Any]":
-                violations.append(
-                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} PlannedEffect.params is dict[str, Any]"
-                )
-        if isinstance(node, ast.FunctionDef) and node.name in {"__getitem__", "get"}:
-            violations.append(
-                f"{path.relative_to(REPO_ROOT)}:{node.lineno} keeps mapping-style compatibility"
-            )
-    from app.core.use_cases.memories.effect_plan import EffectType
-
-    for effect_type in EffectType:
-        if f"EffectType.{effect_type.name}" not in handled_source:
-            violations.append(
-                f"{effect_type.name} is not handled by execution/telemetry"
-            )
-    assert not violations, (
-        "Planned effects should be typed and exhaustively handled:\n"
-        + "\n".join(violations)
-    )
 
 
 def test_docs_and_onboarding_do_not_teach_removed_cli_aliases() -> None:

@@ -80,7 +80,7 @@ class MemoryAddBody(_StrictModel):
     """Memory-add body fields for immutable shellbrain records."""
 
     text: str
-    scope: Literal["repo", "global"]
+    scope: Literal["repo", "global"] = "repo"
     kind: MemoryKindValue
     rationale: str | None = None
     links: MemoryAddLinks = Field(default_factory=MemoryAddLinks)

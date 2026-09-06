@@ -26,10 +26,9 @@ from app.infrastructure.host_apps.inner_agents.codex_cli import (
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
     parse_build_knowledge_output,
-    parse_inner_agent_response_output,
+    parse_inner_agent_brief_output,
 )
 from app.infrastructure.host_apps.inner_agents.prompt import (
-    render_build_context_prompt,
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
     render_teach_knowledge_prompt,
@@ -45,22 +44,18 @@ class ClaudeCliInnerAgentRunner:
     def run(self, request: InnerAgentRunRequest) -> InnerAgentRunResult:
         """Run one Claude Code build_context request."""
 
-        prompt = (
-            render_build_context_synthesis_prompt(request)
-            if request.synthesis_only
-            else render_build_context_prompt(request)
-        )
+        prompt = render_build_context_synthesis_prompt(request)
         run = self._run_claude(
             request,
             prompt=prompt,
-            mode="build_context_synthesis" if request.synthesis_only else "build_context",
-            tool_profile="none" if request.synthesis_only else "shellbrain",
+            mode="build_context_synthesis",
+            tool_profile="none",
         )
         if run["status"] != "ok":
             return _context_error_result(request, run)
         final_message = str(run["result"])
         try:
-            brief, read_trace = parse_inner_agent_response_output(final_message)
+            brief = parse_inner_agent_brief_output(final_message)
         except InnerAgentOutputParseError as exc:
             return _result(
                 request,
@@ -81,7 +76,6 @@ class ClaudeCliInnerAgentRunner:
             **_usage_or_estimate(
                 prompt=prompt, output=final_message, usage=run.get("usage")
             ),
-            read_trace=read_trace,
         )
 
     def run_build_knowledge(

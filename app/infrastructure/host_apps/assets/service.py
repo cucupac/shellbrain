@@ -14,8 +14,6 @@ def install_host_assets(
     *,
     host_mode: str,
     force: bool = False,
-    claude_session_start_module: str | None = None,
-    cursor_statusline_module: str | None = None,
 ) -> HostAssetInstallResult:
     """Install one or more Shellbrain-managed host assets."""
 
@@ -33,7 +31,6 @@ def install_host_assets(
             install_claude_assets(
                 force=force,
                 render_install_status=render_install_status,
-                session_start_module=claude_session_start_module,
             )
         )
     if host_mode in {"auto", "cursor", "all"}:
@@ -41,7 +38,6 @@ def install_host_assets(
             install_cursor_assets(
                 force=force,
                 render_install_status=render_install_status,
-                statusline_module=cursor_statusline_module,
             )
         )
     return HostAssetInstallResult(lines=lines)

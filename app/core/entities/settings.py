@@ -89,28 +89,8 @@ class ReadPolicySettings:
         }
 
 
-@dataclass(frozen=True)
-class CreatePolicySettings:
-    """Create-policy validation and hydration settings."""
-
-    gates: tuple[str, ...]
-    defaults: Mapping[str, Any]
-
-    def hydration_defaults(self) -> dict[str, Any]:
-        return dict(self.defaults)
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"gates": list(self.gates), "defaults": dict(self.defaults)}
 
 
-@dataclass(frozen=True)
-class UpdatePolicySettings:
-    """Update-policy validation settings."""
-
-    gates: tuple[str, ...]
-
-    def to_dict(self) -> dict[str, Any]:
-        return {"gates": list(self.gates)}
 
 
 @dataclass(frozen=True)

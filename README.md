@@ -6,7 +6,7 @@
 
 <p align="center">Long-term Memory for AI Agents.</p>
 
-ShellBrain gives AI agents memory, so they can store and reuse what they learn over time.
+ShellBrain carries useful lessons from one agent task to the next. It preserves decision reasons, failed approaches, product direction, and preferences that the resulting code does not explain.
 
 ## Install
 
@@ -39,13 +39,13 @@ You can also run `curl -L shellbrain.ai/upgrade | bash`. Manual alternative: `pi
 
 ## Architecture
 
-ShellBrain builds memory in three grounded layers:
+ShellBrain stores evidence and two forms of reusable knowledge:
 
 - **Episodic knowledge records evidence.** It stores prompts, agent steps, tool calls, and outputs from each session.
 - **Empirical knowledge extracts concrete memories.** It organizes problems, solutions, failed tactics, facts, preferences, and changes in a semantic graph for **case-based reasoning**.
 - **Conceptual knowledge abstracts reusable ideas.** Its concept graph connects claims, relations, and implementations to empirical knowledge.
 
-Each higher layer links to evidence in the layer below it. Agents receive a compact orientation first, then request more detail when needed.
+Memories and concept claims link to supporting evidence. A concept can express a product principle without a duplicate memory. Current code remains the source of truth for implementation details.
 
 ---
 
@@ -84,7 +84,7 @@ shellbrain recall "What is ShellBrain, and how does it help a working coding age
 }
 ```
 
-The brief lets the working agent focus on the current task.
+Recall selects an evidence pack in code, then asks an inner agent to summarize it. Source attribution comes from the selected records. Fast mode and provider failures return a brief directly from that same pack.
 
 ### Teach
 

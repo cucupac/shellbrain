@@ -256,7 +256,6 @@ def _query_keyword(
         },
         semantic_retrieval=_NoSemanticRetrieval(),
         keyword_retrieval=uow.keyword_retrieval,
-        vector_search=None,
         thresholds=ThresholdSettings(semantic_threshold=0.0, keyword_threshold=0.0),
     )
     return list(seeds["keyword"])

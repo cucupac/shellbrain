@@ -230,7 +230,6 @@ class IsolatedDockerPostgres:
             embedding_provider_factory=_StubEmbeddingProvider,
             embedding_model="stub-v1",
             inferred_repo_id=self._sentinel.repo_id,
-            defaults={"scope": "repo"},
         )
         if result.get("status") != "ok":
             raise AssertionError(f"Failed to seed sentinel dataset: {result}")

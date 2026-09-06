@@ -11,7 +11,6 @@ from app.startup.cli_runtime import CliRuntime
 def build_cli_runtime():
     """Build the concrete dependency set for the CLI runner."""
 
-    from app.startup import create_policy
     from app.startup import embeddings
     from app.startup import episode_sync_launcher
     from app.startup import operation_dependencies
@@ -28,7 +27,6 @@ def build_cli_runtime():
     return CliRuntime(
         resolve_repo_context=repo_context.resolve_repo_context,
         build_operation_dependencies=operation_dependencies.build_operation_dependencies,
-        get_create_hydration_defaults=create_policy.get_create_hydration_defaults,
         get_read_hydration_defaults=read_policy.get_read_hydration_defaults,
         get_uow_factory=lambda: repos.get_uow,
         get_embedding_provider_factory=lambda: embeddings.get_embedding_provider,

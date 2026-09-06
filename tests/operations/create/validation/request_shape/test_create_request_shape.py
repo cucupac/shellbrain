@@ -1,9 +1,13 @@
 """Request-shape contracts for create-path requests."""
 
+from app.core.use_cases.memories.add.request import MemoryAddRequest
+
 import pytest
 
 from app.entrypoints.cli.request_parsing.hydration import hydrate_memory_add_payload
-from app.entrypoints.cli.request_parsing.payload_validation import validate_create_schema
+from app.entrypoints.cli.request_parsing.payload_validation import (
+    validate_create_schema,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -129,8 +133,8 @@ def test_create_rejects_transport_fields_at_agent_interface() -> None:
     assert "repo_id" in fields
 
 
-def test_create_hydration_infers_configured_scope_default() -> None:
-    """create hydration should always infer configured scope when omitted."""
+def test_create_request_defaults_to_repo_scope() -> None:
+    """A memory request defaults to repo scope when the caller omits it."""
 
     hydrated = hydrate_memory_add_payload(
         {
@@ -141,30 +145,22 @@ def test_create_hydration_infers_configured_scope_default() -> None:
             }
         },
         inferred_repo_id="repo-inferred",
-        defaults={"scope": "global"},
     )
 
-    assert hydrated == {
-        "op": "create",
-        "repo_id": "repo-inferred",
-        "memory": {
-            "text": "Repo-scoped defaulted memory.",
-            "scope": "global",
-            "kind": "problem",
-            "evidence_refs": ["session://1"],
-        },
-    }
+    request = MemoryAddRequest.model_validate(hydrated)
+    assert request.repo_id == "repo-inferred"
+    assert request.memory.scope == "repo"
 
 
 def test_create_hydration_preserves_explicit_scope() -> None:
-    """create hydration should always preserve explicit scope over configured defaults."""
+    """Create hydration preserves an explicit global scope."""
 
     payload = {
         "op": "create",
         "repo_id": "repo-explicit",
         "memory": {
             "text": "Explicit create payload.",
-            "scope": "repo",
+            "scope": "global",
             "kind": "problem",
             "evidence_refs": ["session://1"],
         },
@@ -173,7 +169,6 @@ def test_create_hydration_preserves_explicit_scope() -> None:
     hydrated = hydrate_memory_add_payload(
         payload,
         inferred_repo_id="repo-inferred",
-        defaults={"scope": "global"},
     )
 
     assert hydrated == payload

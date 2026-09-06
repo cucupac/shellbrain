@@ -1,7 +1,0 @@
-# This file defines default create-policy controls for deterministic side-effect planning.
-gates:
-  - schema
-  - semantic
-  - integrity
-defaults:
-  scope: repo

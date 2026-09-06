@@ -53,7 +53,6 @@ def test_create_should_always_append_one_write_summary_row_with_the_created_memo
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "ok"
@@ -71,7 +70,7 @@ def test_create_should_always_append_one_write_summary_row_with_the_created_memo
     assert row["evidence_ref_count"] == 2
 
 
-def test_create_should_always_append_one_write_effect_row_per_planned_side_effect_in_plan_order(
+def test_create_should_always_append_one_write_effect_row_per_completed_write_in_execution_order(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_memory,
     seed_default_evidence_events,
@@ -79,7 +78,7 @@ def test_create_should_always_append_one_write_effect_row_per_planned_side_effec
     assert_relation_exists,
     fetch_relation_rows,
 ) -> None:
-    """create should always append one write effect row per planned side effect in plan order."""
+    """create should always append one write effect row per completed write in execution order."""
 
     seed_default_evidence_events(repo_id="repo-a")
     seed_memory(
@@ -112,7 +111,6 @@ def test_create_should_always_append_one_write_effect_row_per_planned_side_effec
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "ok"
@@ -121,8 +119,13 @@ def test_create_should_always_append_one_write_effect_row_per_planned_side_effec
         "write_effect_items", order_by="invocation_id ASC, ordinal ASC"
     )
 
-    assert len(rows) >= 1
+    assert [row["effect_type"] for row in rows] == [
+        "memory.create", "memory_embedding.upsert", "evidence.attach",
+        "association.upsert_and_observe",
+    ]
     assert [row["ordinal"] for row in rows] == list(range(1, len(rows) + 1))
+    edge = fetch_relation_rows("association_edges")[0]
+    assert rows[-1]["params_json"]["edge_id"] == edge["id"]
 
 
 def test_successful_writes_should_always_record_planned_effect_count_for_downstream_effect_aggregation(
@@ -148,7 +151,6 @@ def test_successful_writes_should_always_record_planned_effect_count_for_downstr
         embedding_provider_factory=lambda: stub_embedding_provider,
         embedding_model="stub-v1",
         inferred_repo_id="repo-a",
-        defaults={"scope": "repo"},
     )
 
     assert result["status"] == "ok"
