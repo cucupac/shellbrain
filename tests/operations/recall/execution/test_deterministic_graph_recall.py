@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
+import pytest
+
 from app.core.entities.concepts import (
     Anchor,
     AnchorKind,
@@ -22,6 +26,10 @@ from app.core.entities.ids import MemoryId, RepoId
 from app.core.entities.memories import Memory, MemoryKind, MemoryScope
 from app.core.use_cases.retrieval.deterministic_graph_recall import (
     _build_query_lanes,
+    _bundle_signal_score,
+    _new_candidate,
+    _select_concepts,
+    _select_final_memories,
     build_deterministic_graph_pack,
     source_items_from_graph_pack,
 )
@@ -72,7 +80,8 @@ def test_graph_pack_discovers_concepts_without_memory_links_and_pulls_graph_cont
     assert any(
         anchor["locator"] == "app/core/settings.py" for anchor in pack["anchors"]
     )
-    assert pack["concepts"][0]["currentness"] == "stale"
+    assert "currentness" not in pack["concepts"][0]
+    assert pack["concepts"][0]["freshness"]["stale"] == 1
     assert any(
         claim["currentness"] == "stale" for claim in pack["concepts"][0]["claims"]
     )
@@ -88,6 +97,7 @@ def test_graph_pack_does_not_select_archived_concept_records_as_signal() -> None
 
     uow = _FakeUow()
     uow.concepts = _ArchivedFakeConcepts()
+    uow.concept_semantic_retrieval = _NoFakeConceptSemanticRetrieval()
 
     pack = build_deterministic_graph_pack(
         request=_request(query="TimeoutError in app/core/settings.py"),
@@ -99,7 +109,7 @@ def test_graph_pack_does_not_select_archived_concept_records_as_signal() -> None
     assert memory_by_id["mem-direct"]["currentness"] == "current"
     assert memory_by_id["mem-direct"]["link_roles"] == []
     assert memory_by_id["mem-direct"]["concept_refs"] == []
-    assert pack["pack_trace"]["concept_candidates"]["candidate_count"] >= 1
+    assert pack["pack_trace"]["concept_candidates"]["candidate_count"] == 0
     assert pack["pack_trace"]["concept_candidates"]["selected"] == 0
 
 
@@ -433,3 +443,290 @@ def test_memory_and_concept_search_share_each_lane_embedding() -> None:
         uow=uow,
     )
     assert queries == [lane["query"] for lane in pack["query_lanes"]]
+
+
+@pytest.mark.parametrize(
+    "query, expect_broad",
+    [
+        ("migration locks", False),
+        ("Migration   locks", False),
+        (
+            "migration locks after deployment with concurrent tasks across many worker processes",
+            True,
+        ),
+    ],
+)
+def test_fallback_search_runs_only_for_a_new_query(
+    query, expect_broad, monkeypatch
+) -> None:
+    uow = _FakeUow()
+    queries = []
+    memory_searches = []
+    concept_searches = []
+    monkeypatch.setattr(
+        uow.vector_search, "embed_query", lambda query: queries.append(query) or [1.0]
+    )
+    monkeypatch.setattr(
+        uow.semantic_retrieval,
+        "query_semantic",
+        lambda **kwargs: memory_searches.append(kwargs) or [],
+    )
+    monkeypatch.setattr(
+        uow.concept_semantic_retrieval,
+        "query_concepts_semantic",
+        lambda **kwargs: concept_searches.append(kwargs) or [],
+    )
+    pack = build_deterministic_graph_pack(request=_request(query=query), uow=uow)
+    assert len(queries) == len({query.casefold() for query in queries})
+    assert queries == [lane["query"] for lane in pack["query_lanes"]]
+    assert len(memory_searches) == len(concept_searches) == len(queries)
+    assert (
+        any(lane["lane"] == "broad_domain" for lane in pack["query_lanes"])
+        == expect_broad
+    )
+
+
+@pytest.mark.parametrize("status", ["stale", "superseded", "wrong", "archived"])
+def test_historical_facets_do_not_lower_active_concept_rank(
+    status, monkeypatch
+) -> None:
+    uow = _FakeUow()
+    request = _request(query="TimeoutError in app/core/settings.py")
+    candidates = {"c-db": {"score": 1.0, "why": []}}
+    before, _ = _select_concepts(
+        request=request, concept_candidates=candidates, uow=uow
+    )
+    get_bundle = uow.concepts.get_concept_bundle
+
+    def with_history(**kwargs):
+        bundle = get_bundle(**kwargs)
+        if bundle and kwargs["concept_ref"] == "c-db":
+            for facet in ("claims", "relations", "groundings", "memory_links"):
+                record = bundle[facet][0]
+                bundle[facet].append(
+                    replace(
+                        record,
+                        id=f"historical-{facet}",
+                        lifecycle=ConceptLifecycle(
+                            status=ConceptLifecycleStatus(status)
+                        ),
+                    )
+                )
+        return bundle
+
+    monkeypatch.setattr(uow.concepts, "get_concept_bundle", with_history)
+    after, _ = _select_concepts(request=request, concept_candidates=candidates, uow=uow)
+    assert [entry["bundle"]["concept"].slug for entry in after] == ["db-admin"]
+    assert after[0]["score"] == before[0]["score"]
+    pack = build_deterministic_graph_pack(request=request, uow=uow)
+    assert any(
+        claim["id"] == "historical-claims" and claim["status"] == status
+        for claim in pack["concepts"][0]["claims"]
+    )
+    assert any(
+        claim["id"] == "claim-failure" and claim["currentness"] == "current"
+        for claim in pack["concepts"][0]["claims"]
+    )
+    assert any(memory["id"] == "mem-warning" for memory in pack["memories"])
+
+
+def test_archived_grounding_does_not_add_anchor_ranking_signal() -> None:
+    bundle = _FakeConcepts().get_concept_bundle(repo_id="repo-a", concept_ref="c-db")
+    for facet in ("claims", "relations", "groundings", "memory_links"):
+        bundle[facet] = [
+            replace(
+                record,
+                lifecycle=ConceptLifecycle(status=ConceptLifecycleStatus.ARCHIVED),
+            )
+            for record in bundle[facet]
+        ]
+    assert (
+        _bundle_signal_score(
+            bundle=bundle,
+            query_terms=["TimeoutError"],
+            identifiers=["app/core/settings.py"],
+        )
+        == 0.0
+    )
+
+
+def test_historical_link_does_not_label_memory_reached_through_active_link(
+    monkeypatch,
+) -> None:
+    uow = _FakeUow()
+    get_bundle = uow.concepts.get_concept_bundle
+
+    def with_retired_link(**kwargs):
+        bundle = get_bundle(**kwargs)
+        if bundle and kwargs["concept_ref"] == "c-db":
+            bundle["memory_links"].append(
+                replace(
+                    bundle["memory_links"][0],
+                    id="old-link",
+                    memory_id="mem-change-context",
+                    lifecycle=ConceptLifecycle(status=ConceptLifecycleStatus.ARCHIVED),
+                )
+            )
+        return bundle
+
+    monkeypatch.setattr(uow.concepts, "get_concept_bundle", with_retired_link)
+    pack = build_deterministic_graph_pack(
+        request=_request(query="migration configuration"), uow=uow
+    )
+    memory = next(
+        item for item in pack["memories"] if item["id"] == "mem-change-context"
+    )
+    assert memory["link_roles"] == ["change_relevant_to"]
+
+
+def _candidates_for_groups(groups):
+    candidates = {}
+    for prefix, count, kind, why, lanes, roles in groups:
+        for index in range(count):
+            memory_id = f"{prefix}-{index:02}"
+            candidate = _new_candidate(
+                Memory(
+                    id=MemoryId(memory_id),
+                    repo_id=RepoId("repo-a"),
+                    scope=MemoryScope.REPO,
+                    kind=kind,
+                    text=memory_id,
+                )
+            )
+            candidate.update(
+                score=1.0,
+                why=set(why),
+                matched_lanes=list(lanes),
+                link_roles=set(roles),
+            )
+            candidates[memory_id] = candidate
+    return candidates
+
+
+def test_reserved_groups_share_one_total_budget() -> None:
+    candidates = _candidates_for_groups(
+        [
+            ("trap", 3, MemoryKind.FAILED_TACTIC, [], [], []),
+            ("change", 2, MemoryKind.CHANGE, [], [], []),
+            ("fact", 1, MemoryKind.FACT, [], [], []),
+            ("graph", 4, MemoryKind.SOLUTION, ["graph_linked_memory"], [], []),
+            (
+                "structural",
+                4,
+                MemoryKind.SOLUTION,
+                ["structural_memory_relation"],
+                [],
+                [],
+            ),
+            ("direct", 12, MemoryKind.SOLUTION, [], ["original"], []),
+        ]
+    )
+    request = _request(query="migration configuration")
+    selected, trace = _select_final_memories(
+        request=request, memory_candidates=candidates
+    )
+    ids = [item["memory"].id for item in selected]
+    assert len(ids) == len(set(ids)) == 24
+    assert ids[:6] == [
+        "trap-00",
+        "trap-01",
+        "trap-02",
+        "change-00",
+        "change-01",
+        "fact-00",
+    ]
+    assert trace["rejected_memory_count"] == 2
+    assert len({item["memory_id"] for item in trace["rejected"]}) == 2
+    reversed_selection, _ = _select_final_memories(
+        request=request, memory_candidates=dict(reversed(list(candidates.items())))
+    )
+    assert [item["memory"].id for item in reversed_selection] == ids
+
+
+def test_overlapping_reserved_groups_do_not_take_an_extra_slot() -> None:
+    candidates = _candidates_for_groups(
+        [
+            ("trap", 3, MemoryKind.FACT, [], [], ["warns_about", "change_relevant_to"]),
+            ("extra", 1, MemoryKind.FACT, [], [], []),
+            ("direct", 30, MemoryKind.SOLUTION, [], ["original"], []),
+        ]
+    )
+    selected, _ = _select_final_memories(
+        request=_request(query="prior cases"), memory_candidates=candidates
+    )
+    ids = [item["memory"].id for item in selected]
+    assert ids[:3] == ["trap-00", "trap-01", "trap-02"]
+    assert ids[3:15] == [f"direct-{index:02}" for index in range(12)]
+    assert len(ids) == 24
+
+
+@pytest.mark.parametrize(
+    "count, query, expected",
+    [
+        (0, "migration configuration", 0),
+        (4, "migration configuration", 4),
+        (30, "migration configuration", 10),
+        (30, "prior cases", 24),
+    ],
+)
+def test_fill_budget_preserves_problem_solution_policy(count, query, expected) -> None:
+    candidates = _candidates_for_groups(
+        [("case", count, MemoryKind.SOLUTION, [], [], [])]
+    )
+    selected, trace = _select_final_memories(
+        request=_request(query=query), memory_candidates=candidates
+    )
+    assert len(selected) == expected
+    assert trace["rejected_memory_count"] == count - expected
+
+
+def test_retired_grounding_cannot_hide_current_anchor(monkeypatch) -> None:
+    uow = _FakeUow()
+    get_bundle = uow.concepts.get_concept_bundle
+
+    def with_retired_grounding(**kwargs):
+        bundle = get_bundle(**kwargs)
+        if bundle and kwargs["concept_ref"] == "c-db":
+            current = bundle["groundings"][0]
+            bundle["groundings"].insert(
+                0,
+                replace(
+                    current,
+                    id="old-grounding",
+                    lifecycle=ConceptLifecycle(status=ConceptLifecycleStatus.ARCHIVED),
+                ),
+            )
+        return bundle
+
+    monkeypatch.setattr(uow.concepts, "get_concept_bundle", with_retired_grounding)
+    pack = build_deterministic_graph_pack(
+        request=_request(query="migration configuration"),
+        uow=uow,
+    )
+    assert len(pack["anchors"]) == 1
+    assert pack["anchors"][0]["currentness"] == "current"
+    assert any(item["id"] == "grounding:old-grounding" for item in pack["conflicts"])
+
+
+def test_archived_link_cannot_discover_an_otherwise_active_concept(monkeypatch) -> None:
+    uow = _FakeUow()
+    uow.concept_semantic_retrieval = _NoFakeConceptSemanticRetrieval()
+    monkeypatch.setattr(
+        uow.concepts,
+        "find_concepts_for_memory_ids",
+        lambda **kwargs: [
+            {
+                "concept_id": "c-db",
+                "memory_id": "mem-direct",
+                "role": "warns_about",
+                "status": "archived",
+                "confidence": 1.0,
+            }
+        ],
+    )
+    pack = build_deterministic_graph_pack(
+        request=_request(query="TimeoutError in app/core/settings.py"),
+        uow=uow,
+    )
+    assert pack["concepts"] == []
+    assert pack["pack_trace"]["concept_candidates"]["candidate_count"] == 0

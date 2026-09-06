@@ -70,12 +70,9 @@ def test_read_should_include_concepts_linked_to_returned_memories(
     assert pack["concepts"]["items"][0]["key_claims"][0]["observed_at"]
     assert pack["concepts"]["items"][0]["key_claims"][0]["created_at"]
     assert pack["concepts"]["items"][0]["why_matched"][0]["reason"] == "linked_memory"
-    assert (
-        pack["concepts"]["items"][0]["expand"][0]["read_payload"]["expand"]["concepts"][
-            "mode"
-        ]
-        == "explicit"
-    )
+    assert "expand" not in pack["concepts"]["items"][0]
+    assert "concept show" in pack["concepts"]["guidance"]
+    assert "evidence" in pack["concepts"]["items"][0]["available_facets"]
 
 
 def test_read_should_include_concepts_matching_query_aliases(
@@ -232,63 +229,8 @@ def test_read_should_suppress_concepts_when_requested(
     assert result.data["pack"]["concepts"] == {
         "mode": "none",
         "items": [],
-        "missing_refs": [],
         "guidance": "Concept context suppressed by request.",
     }
-
-
-def test_read_should_expand_explicit_concept_facets(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    seed_read_memory: Callable[..., None],
-    monkeypatch,
-) -> None:
-    """explicit concept expansion should disclose requested facets through read."""
-
-    seed_read_memory(
-        memory_id="refund-problem-1",
-        repo_id="repo-a",
-        scope=MemoryScope.REPO,
-        kind=MemoryKind.PROBLEM,
-        text_value="Refund problem.",
-    )
-    _seed_deposit_addresses(uow_factory)
-    _stub_pack(monkeypatch, direct_memory_ids=[])
-
-    with uow_factory() as uow:
-        result = execute_read_memory(
-            make_read_request(
-                repo_id="repo-a",
-                query="deposit address refund failure",
-                expand={
-                    "concepts": {
-                        "mode": "explicit",
-                        "refs": ["deposit-addresses"],
-                        "facets": [
-                            "relations",
-                            "groundings",
-                            "memory_links",
-                            "evidence",
-                        ],
-                    }
-                },
-            ),
-            uow,
-        )
-
-    concept_item = result.data["pack"]["concepts"]["items"][0]
-    assert concept_item["relations"][0]["predicate"] == "contains"
-    assert concept_item["relations"][0]["created_at"]
-    assert concept_item["relations"][0]["observed_at"]
-    assert concept_item["groundings"][0]["anchor"]["locator"] == {
-        "path": "app/deposit_addresses.py"
-    }
-    assert concept_item["groundings"][0]["created_at"]
-    assert concept_item["groundings"][0]["anchor"]["created_at"]
-    assert concept_item["memory_links"][0]["memory_id"] == "refund-problem-1"
-    assert concept_item["memory_links"][0]["kind"] == "problem"
-    assert concept_item["memory_links"][0]["memory_created_at"]
-    assert concept_item["evidence"]
-    assert concept_item["evidence"][0]["created_at"]
 
 
 def test_read_should_penalize_stale_concept_links_in_auto_mode(
@@ -365,13 +307,13 @@ def test_read_should_not_select_concepts_from_archived_memory_links(
     assert result.data["pack"]["concepts"]["items"] == []
 
 
-def test_read_should_not_select_superseded_concept_truth_records_as_auto_signal(
+def test_read_keeps_active_groundings_when_claims_are_superseded(
     uow_factory: Callable[[], PostgresUnitOfWork],
     seed_read_memory: Callable[..., None],
     integration_engine: Engine,
     monkeypatch,
 ) -> None:
-    """superseded concept truth records should not create positive auto-read signal."""
+    """Historical claims must not hide a matching active implementation anchor."""
 
     seed_read_memory(
         memory_id="refund-problem-1",
@@ -394,6 +336,17 @@ def test_read_should_not_select_superseded_concept_truth_records_as_auto_signal(
             make_read_request(repo_id="repo-a", query="deposit_addresses.py"), uow
         )
 
+    item = result.data["pack"]["concepts"]["items"][0]
+    assert item["ref"] == "deposit-addresses"
+    assert item["key_claims"] == []
+    assert item["freshness"]["superseded_records"] == 1
+    assert "Relay-controlled EOAs" not in item["orientation"]
+
+    # Historical text alone must not match once the active anchor is removed from the query.
+    with uow_factory() as uow:
+        result = execute_read_memory(
+            make_read_request(repo_id="repo-a", query="EOAs"), uow
+        )
     assert result.data["pack"]["concepts"]["items"] == []
 
 
@@ -413,7 +366,6 @@ def test_read_should_reject_concept_links_missing_ranking_evidence() -> None:
             pack=pack,
             request=make_read_request(repo_id="repo-a", query="refund failure"),
             concepts=_MalformedConceptLinksRepo(),
-            memories=object(),
         )
 
 

@@ -34,9 +34,7 @@ from app.core.policies.retrieval.ontology_semantics import (
     CONCEPT_MEMORY_WARNING_ROLES,
     STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
     STRUCTURAL_PROBLEM_RELATION_PREDICATES,
-    aggregate_currentness_payload,
     bundle_lifecycle_statuses,
-    concept_bundle_retrieval_multiplier,
     is_active_lifecycle,
     lifecycle_currentness_payload,
     lifecycle_retrieval_multiplier,
@@ -98,8 +96,7 @@ def build_deterministic_graph_pack(
 
     if _should_add_broad_lane(lane_results, memory_candidates):
         broad_lane = _broad_domain_lane(request)
-        if broad_lane is not None:
-            lanes.append(broad_lane)
+        if broad_lane is not None and _append_query_lane(lanes, broad_lane):
             embeddings[broad_lane.name] = resolve_query_embedding(
                 query=broad_lane.query,
                 vector_search=uow.vector_search,
@@ -326,16 +323,20 @@ def _build_query_lanes(request: MemoryRecallRequest) -> list[_QueryLane]:
     original = _lane("original", request.query)
     identifiers = _identifier_lane(request)
     traps = _prior_cases_lane(request)
-    lanes = [lane for lane in (original, identifiers, traps) if lane]
-    deduped: list[_QueryLane] = []
-    seen_queries: set[str] = set()
-    for lane in lanes:
-        normalized = " ".join(lane.query.lower().split())
-        if normalized in seen_queries:
-            continue
-        seen_queries.add(normalized)
-        deduped.append(lane)
-    return deduped
+    lanes: list[_QueryLane] = []
+    for lane in (original, identifiers, traps):
+        if lane is not None:
+            _append_query_lane(lanes, lane)
+    return lanes
+
+
+def _append_query_lane(lanes: list[_QueryLane], lane: _QueryLane) -> bool:
+    """Admit each normalized query once, including fallback queries."""
+
+    if any(existing.query.casefold() == lane.query.casefold() for existing in lanes):
+        return False
+    lanes.append(lane)
+    return True
 
 
 def _lane(name: str, query: str) -> _QueryLane | None:
@@ -521,12 +522,12 @@ def _discover_concepts(
         memory_ids=memory_ids,
     ):
         concept_id = str(link["concept_id"])
-        candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
-        confidence = float(link.get("confidence") or 0.5)
-        role = str(link.get("role") or "")
+        confidence = float(link["confidence"])
+        role = str(link["role"])
         lifecycle_multiplier = lifecycle_retrieval_multiplier(str(link["status"]))
         if lifecycle_multiplier <= 0:
             continue
+        candidate = candidates.setdefault(concept_id, {"score": 0.0, "why": []})
         candidate["score"] += 10.0 * lifecycle_multiplier * max(confidence, 0.1)
         candidate["why"].append(
             {
@@ -597,7 +598,6 @@ def _select_concepts(
             query_terms=_tokenize(request.query),
             identifiers=_extract_identifiers(request.query),
         )
-        score *= concept_bundle_retrieval_multiplier(bundle_lifecycle_statuses(bundle))
         if score <= 0:
             rejected_count += 1
             continue
@@ -668,7 +668,9 @@ def _traverse_selected_concepts(
     for entry in selected_concepts:
         concept = entry["bundle"]["concept"]
         for link in entry["bundle"]["memory_links"]:
-            if link.memory_id in linked_memories:
+            if link.memory_id in linked_memories and is_active_lifecycle(
+                link.lifecycle.status
+            ):
                 link_role_by_memory[link.memory_id].add(link.role.value)
                 concept_ref_by_memory[link.memory_id].add(concept.slug)
     for memory_id, memory in linked_memories.items():
@@ -719,14 +721,16 @@ def _select_final_memories(
     rejected: list[dict[str, Any]] = []
 
     def take(predicate, limit: int) -> None:
+        remaining = limit - sum(1 for item in selected if predicate(item))
         for item in ordered:
+            if remaining <= 0 or len(selected) >= _FINAL_MEMORY_TARGET:
+                return
             memory_id = str(item["memory"].id)
             if memory_id in selected_ids or not predicate(item):
                 continue
             selected.append(item)
             selected_ids.add(memory_id)
-            if len([entry for entry in selected if predicate(entry)]) >= limit:
-                return
+            remaining -= 1
 
     take(_is_trap_memory, 3)
     take(_is_change_relevant_memory, 2)
@@ -736,29 +740,23 @@ def _select_final_memories(
     take(lambda item: bool(item["matched_lanes"]), 12)
 
     prior_case_query = _is_prior_case_query(request.query)
-    problem_solution_count = sum(1 for item in selected if _problem_or_solution(item))
-    for item in ordered:
-        if len(selected) >= _FINAL_MEMORY_TARGET:
-            break
-        memory_id = str(item["memory"].id)
-        if memory_id in selected_ids:
-            continue
-        if (
-            not prior_case_query
-            and _problem_or_solution(item)
-            and problem_solution_count >= 10
-        ):
-            rejected.append(_rejected_memory(item, "problem_solution_cap"))
-            continue
-        selected.append(item)
-        selected_ids.add(memory_id)
-        if _problem_or_solution(item):
-            problem_solution_count += 1
+
+    def can_fill(item: dict[str, Any]) -> bool:
+        return (
+            prior_case_query
+            or not _problem_or_solution(item)
+            or sum(1 for entry in selected if _problem_or_solution(entry)) < 10
+        )
+
+    take(can_fill, _FINAL_MEMORY_TARGET)
 
     for item in ordered:
         memory_id = str(item["memory"].id)
         if memory_id not in selected_ids:
-            rejected.append(_rejected_memory(item, "budget_or_role_balance"))
+            reason = (
+                "budget_or_role_balance" if can_fill(item) else "problem_solution_cap"
+            )
+            rejected.append(_rejected_memory(item, reason))
 
     return selected, {
         "selected_memory_count": len(selected),
@@ -826,16 +824,12 @@ def _compact_concept_payload(
 ) -> dict[str, Any]:
     concept: Concept = bundle["concept"]
     claims = _claim_payloads(bundle["claims"], limit=6)
-    temporal = aggregate_currentness_payload(
-        bundle_lifecycle_statuses(bundle), record_label="concept facets"
-    )
     return {
         "id": concept.id,
         "ref": concept.slug,
         "name": concept.name,
         "kind": concept.kind.value,
         "status": concept.status.value,
-        **temporal,
         "orientation": _orientation(concept, bundle["claims"]),
         "why_selected": why_selected,
         "claims": claims,
@@ -1002,6 +996,8 @@ def _anchors_from_concepts(
         concept = entry["bundle"]["concept"]
         anchors_by_id = {anchor.id: anchor for anchor in entry["bundle"]["anchors"]}
         for grounding in entry["bundle"]["groundings"]:
+            if not is_active_lifecycle(grounding.lifecycle.status):
+                continue
             if grounding.anchor_id in seen:
                 continue
             anchor = anchors_by_id.get(grounding.anchor_id)
@@ -1010,6 +1006,8 @@ def _anchors_from_concepts(
                     f"Concept grounding {grounding.id} references missing anchor "
                     f"{grounding.anchor_id}"
                 )
+            if anchor.status.value != "active":
+                continue
             seen.add(grounding.anchor_id)
             anchors.append(
                 {
@@ -1283,7 +1281,16 @@ def _orientation(concept: Concept, claims: Sequence[ConceptClaim]) -> str:
 
 
 def _bundle_anchor_locators(bundle: dict[str, Any]) -> tuple[str, ...]:
-    return tuple(_locator_text(anchor.locator_json) for anchor in bundle["anchors"])
+    active_anchor_ids = {
+        grounding.anchor_id
+        for grounding in bundle["groundings"]
+        if is_active_lifecycle(grounding.lifecycle.status)
+    }
+    return tuple(
+        _locator_text(anchor.locator_json)
+        for anchor in bundle["anchors"]
+        if anchor.id in active_anchor_ids and anchor.status.value == "active"
+    )
 
 
 def _locator_text(locator: dict[str, Any]) -> str:

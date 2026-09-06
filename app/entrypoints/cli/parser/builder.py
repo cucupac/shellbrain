@@ -129,11 +129,11 @@ _CREATE_HELP = dedent(
 
 _READ_HELP = dedent(
     """\
-    Internal recall-agent endpoint for raw retrieval without mutating state.
+    Internal knowledge-builder endpoint for raw retrieval without mutating state.
 
     Use concrete failure modes, subsystem names, decisions, or constraints.
-    This is the retrieval substrate for `build_context`, not the worker interface.
-    Internal recall agents should call this after `events`; working agents should call `recall`.
+    Knowledge builders use this to find existing memories and concept summaries.
+    Use `concept show` for details and evidence. Working agents should call `recall`.
     Avoid generic prompts like "what should I know about this repo?"
 
     Returned pack sections:
@@ -144,7 +144,7 @@ _READ_HELP = dedent(
 
     Example:
       shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
-      shellbrain read --json '{"query":"debug deposit address refund failure","expand":{"concepts":{"mode":"explicit","refs":["deposit-addresses"],"facets":["groundings"]}}}'
+      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["groundings","evidence"]}'
     """
 )
 
@@ -201,7 +201,7 @@ _CONCEPT_HELP = dedent(
       - concept show: inspect one concept and requested facets without mutating state
 
     Examples:
-      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","groundings","lifecycle_events"]}'
+      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","groundings","evidence","lifecycle_events"]}'
       shellbrain concept add --json '{"schema_version":"concept.v1","actions":[{"type":"add_concept","slug":"deposit-addresses","name":"Deposit Addresses","kind":"domain"}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"deposit-addresses","claim_type":"definition","text":"Relay-controlled EOAs users send funds to.","evidence":[{"kind":"manual","note":"Seeded from planning."}]}]}'
       shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"update_lifecycle","target_type":"claim","target_id":"claim-123","status":"wrong","rationale":"Contradicted by later implementation evidence.","actor":"manual","evidence":[{"kind":"manual","note":"Verified during review."}]}]}'

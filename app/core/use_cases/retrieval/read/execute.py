@@ -45,7 +45,6 @@ def execute_read_memory(
         pack=context_pack,
         request=request,
         concepts=uow.concepts,
-        memories=uow.memories,
         concept_keyword_retrieval=uow.concept_keyword_retrieval,
         concept_semantic_retrieval=uow.concept_semantic_retrieval,
         query_vector=query_vector,

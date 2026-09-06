@@ -18,6 +18,8 @@ from app.core.entities.concepts import (
     ConceptRelation,
 )
 
+from app.core.entities.memories import Memory
+
 
 def serialize_concept_bundle(
     bundle: dict[str, Any], *, include: set[str]
@@ -61,6 +63,8 @@ def serialize_concept_bundle(
         payload["groundings"] = groundings
     if "memory_links" in include:
         payload["memory_links"] = memory_links
+    if "evidence" in include:
+        payload["evidence"] = _evidence_payloads(bundle)
     if "lifecycle_events" in include:
         payload["lifecycle_events"] = _lifecycle_event_payloads(
             bundle["lifecycle_events"],
@@ -82,6 +86,62 @@ def serialize_concept_bundle(
             memory_links=memory_links,
         )
     return payload
+
+
+def serialize_concept_show(
+    bundle: dict[str, Any],
+    *,
+    include: set[str],
+    related_concepts: dict[str, Concept],
+    related_memories: dict[str, Memory],
+) -> dict[str, Any]:
+    """Add readable relation endpoints and linked memories to requested facets."""
+
+    payload = serialize_concept_bundle(bundle, include=include)
+    for relation in payload.get("relations", []):
+        for side in ("subject", "object"):
+            concept = related_concepts[relation[f"{side}_concept_id"]]
+            relation[side] = {
+                "id": concept.id,
+                "ref": concept.slug,
+                "name": concept.name,
+                "kind": concept.kind.value,
+            }
+    for link in payload.get("memory_links", []):
+        memory = related_memories[link["memory_id"]]
+        link.update(
+            kind=memory.kind.value,
+            text=memory.text,
+            memory_status=memory.status.value,
+            memory_created_at=_iso(memory.created_at),
+        )
+    return payload
+
+
+def _evidence_payloads(bundle: dict[str, Any]) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": evidence.id,
+            "target_type": evidence.target_type.value,
+            "target_id": evidence.target_id,
+            "kind": evidence.evidence_kind.value,
+            "anchor_id": evidence.anchor_id,
+            "memory_id": evidence.memory_id,
+            "commit_ref": evidence.commit_ref,
+            "transcript_ref": evidence.transcript_ref,
+            "note": evidence.note,
+            "created_at": _iso(evidence.created_at),
+        }
+        for evidence in sorted(
+            bundle["evidence"],
+            key=lambda item: (
+                item.target_type.value,
+                item.target_id,
+                item.evidence_kind.value,
+                item.id,
+            ),
+        )
+    ]
 
 
 def _alias_to_payload(alias) -> dict[str, Any]:
@@ -124,7 +184,7 @@ def _grounding_to_payload(
         "concept_id": grounding.concept_id,
         "role": grounding.role.value,
         "anchor_id": grounding.anchor_id,
-        "anchor": anchors_by_id.get(grounding.anchor_id),
+        "anchor": anchors_by_id[grounding.anchor_id],
         "created_at": _iso(grounding.created_at),
         "updated_at": _iso(grounding.updated_at),
         **_lifecycle_payload(grounding.lifecycle),
@@ -213,9 +273,7 @@ def _lifecycle_event_payloads(
             "actor": event.actor.value,
             "superseded_by_id": event.superseded_by_id,
             "created_at": _iso(event.created_at),
-            "evidence_count": evidence_counts.get(
-                f"lifecycle_event:{event.id}", 0
-            ),
+            "evidence_count": evidence_counts.get(f"lifecycle_event:{event.id}", 0),
         }
         for event in sorted(
             events, key=lambda item: (_iso(item.created_at) or "", item.id)
