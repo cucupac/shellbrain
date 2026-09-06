@@ -41,7 +41,7 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.cache/huggingface
-          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('pyproject.toml', 'app/settings/defaults/runtime.yaml') }}
+          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('pyproject.toml', 'app/startup/settings.py') }}
 
       - name: Install dependencies
         run: |

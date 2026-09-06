@@ -40,12 +40,6 @@ def test_read_deduplicates_memories_reached_by_multiple_paths(
     request = make_read_request(
         repo_id="repo-a",
         query="deployment",
-        expand={
-            "include_problem_links": False,
-            "include_fact_update_links": False,
-            "include_association_links": True,
-            "min_association_strength": 0.25,
-        },
     )
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)

@@ -6,7 +6,6 @@ import os
 from pathlib import Path
 
 from app.startup.dsn_resolution import resolve_database_dsn
-from app.startup.config import get_config_provider
 from app.infrastructure.local_state.paths import get_machine_backups_dir
 from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 
@@ -69,8 +68,7 @@ def _resolve_admin_db_dsn(*, required: bool) -> str | None:
 
     return resolve_database_dsn(
         load_machine_config=try_load_machine_config,
-        runtime_provider=lambda: get_config_provider().get_runtime(),
         machine_field="admin_dsn",
-        runtime_env_key="admin_dsn_env",
+        env_name="SHELLBRAIN_DB_ADMIN_DSN",
         required=required,
     )

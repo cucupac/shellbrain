@@ -50,14 +50,8 @@ def test_read_returns_semantic_direct_matches_through_live_query_embedding_seam_
     monkeypatch.setattr(SemanticRetrievalRepo, "query_semantic", _query_semantic_spy)
 
     request = make_read_request(
-        expand_defaults={
-            "include_problem_links": False,
-            "include_fact_update_links": False,
-            "include_association_links": False,
-        },
         repo_id="repo-a",
         query="latent semantic regression",
-        expand={"semantic_hops": 0},
     )
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
@@ -118,14 +112,8 @@ def test_read_fuses_live_semantic_seeds_with_keyword_direct_hits_without_duplica
     monkeypatch.setattr(SemanticRetrievalRepo, "query_semantic", _query_semantic_spy)
 
     request = make_read_request(
-        expand_defaults={
-            "include_problem_links": False,
-            "include_fact_update_links": False,
-            "include_association_links": False,
-        },
         repo_id="repo-a",
         query="rollback deployment",
-        expand={"semantic_hops": 0},
     )
     with uow_factory() as uow:
         result = execute_read_memory(request, uow)
@@ -148,7 +136,7 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
         raise RuntimeError("query embedding failed")
 
     monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.build_context_pack",
+        "app.core.use_cases.retrieval.read.execute.build_deterministic_graph_pack",
         _build_context_pack_raising,
     )
 
@@ -156,19 +144,7 @@ def test_handle_read_surfaces_query_embedding_failure_as_a_structured_read_error
         {"query": "latent semantic regression"},
         uow_factory=uow_factory,
         inferred_repo_id="repo-a",
-        defaults={
-            "default_mode": "targeted",
-            "include_global": True,
-            "limits_by_mode": {"targeted": 8, "ambient": 12},
-            "expand": {
-                "semantic_hops": 2,
-                "include_problem_links": False,
-                "include_fact_update_links": False,
-                "include_association_links": False,
-                "max_association_depth": 2,
-                "min_association_strength": 0.25,
-            },
-        },
+        defaults={"mode": "targeted", "include_global": True, "limit": 8},
     )
 
     assert result["status"] == "error"

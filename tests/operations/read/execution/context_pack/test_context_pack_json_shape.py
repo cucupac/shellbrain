@@ -1,242 +1,53 @@
-"""Read execution contracts for grouped context-pack JSON output."""
+"""The shared selector keeps the read envelope useful for agents and telemetry."""
 
-from collections.abc import Callable
-
-import pytest
-
-from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.read import execute_read_memory
-from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
+from tests.operations._shared.read_pipeline_stubs import stub_read_pipeline
 
 
-def test_read_context_pack_should_always_return_grouped_sections_under_data_pack(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always return grouped sections under data.pack."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert "pack" in result.data
-
-
-def test_read_context_pack_should_always_order_sections_as_meta_direct_explicit_related_implicit_then_concepts(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always order sections as meta, memory sections, then concepts."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert list(result.data["pack"].keys()) == [
+def test_read_preserves_grouped_evidence_and_display_order(monkeypatch):
+    stub_read_pipeline(monkeypatch, zero_results=False)
+    pack = execute_read_memory(
+        MemoryReadRequest(repo_id="repo-a", query="deployment lesson"), None
+    ).data["pack"]
+    assert list(pack) == [
         "meta",
         "direct",
         "explicit_related",
         "implicit_related",
         "concepts",
+        "relation_neighbors",
+        "conflicts",
     ]
-
-
-def test_read_context_pack_should_always_include_stable_concepts_section(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always include a stable concepts section."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert result.data["pack"]["concepts"] == {
-        "mode": "auto",
-        "items": [],
-        "guidance": "No strong concept match found.",
+    assert pack["meta"] == {
+        "mode": "targeted",
+        "limit": 8,
+        "counts": {"direct": 1, "explicit_related": 1, "implicit_related": 1},
     }
-
-
-def test_read_context_pack_should_never_echo_the_request_query_in_meta(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should never echo the request query in meta."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert "query" not in result.data["pack"]["meta"]
-
-
-def test_read_context_pack_should_always_assign_global_priority_values_in_displayed_order(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always assign global priority values in displayed order."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    priorities = [
-        item["priority"]
+    items = [
+        item
         for section in ("direct", "explicit_related", "implicit_related")
-        for item in result.data["pack"][section]
+        for item in pack[section]
     ]
-    assert priorities == [1, 2, 3]
+    assert [item["priority"] for item in items] == [1, 2, 3]
+    assert [item["memory_id"] for item in items] == [
+        "direct-1",
+        "explicit-1",
+        "implicit-1",
+    ]
+    for item in items:
+        assert item["kind"] and item["text"] and item["why_included"]
+        assert item["created_at"] == "2024-01-01T00:00:00+00:00"
+    assert pack["concepts"] == {"mode": "auto", "items": []}
 
 
-def test_read_context_pack_should_always_include_kind_and_text_for_each_returned_memory(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always include kind and text for each returned memory."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    for section in ("direct", "explicit_related", "implicit_related"):
-        for item in result.data["pack"][section]:
-            assert "kind" in item
-            assert "text" in item
-
-
-def test_read_context_pack_should_always_include_created_at_for_each_returned_memory(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should expose immutable memory recency timestamps."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    for section in ("direct", "explicit_related", "implicit_related"):
-        for item in result.data["pack"][section]:
-            assert item["created_at"] == "2024-01-01T00:00:00+00:00"
-            assert "updated_at" not in item
-
-
-def test_read_context_pack_should_always_include_why_included_for_every_item(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always include why_included for every item."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    for section in ("direct", "explicit_related", "implicit_related"):
-        for item in result.data["pack"][section]:
-            assert "why_included" in item
-
-
-def test_read_context_pack_should_always_include_anchor_memory_id_only_for_non_direct_items(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always include anchor_memory_id only for non-direct items."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert "anchor_memory_id" not in result.data["pack"]["direct"][0]
-    assert result.data["pack"]["explicit_related"][0]["anchor_memory_id"] == "direct-1"
-    assert result.data["pack"]["implicit_related"][0]["anchor_memory_id"] == "direct-1"
-
-
-def test_read_context_pack_should_always_include_relation_type_only_for_association_link_items(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always include relation_type only for association-link items."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert result.data["pack"]["explicit_related"][0]["relation_type"] == "depends_on"
-    assert "relation_type" not in result.data["pack"]["direct"][0]
-    assert "relation_type" not in result.data["pack"]["implicit_related"][0]
-
-
-def test_read_context_pack_should_always_omit_scenarios_in_this_slice(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """read context pack should always omit scenarios in this slice."""
-
-    result = _execute_stubbed_read(uow_factory=uow_factory, monkeypatch=monkeypatch)
-
-    assert "scenarios" not in result.data["pack"]
-
-
-def _execute_stubbed_read(
-    *,
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    monkeypatch: pytest.MonkeyPatch,
-):
-    """Execute one read call with deterministic scored candidates for JSON-shape tests."""
-
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.retrieve_seeds",
-        lambda payload, **kwargs: {"semantic": [], "keyword": []},
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.fuse_with_rrf",
-        lambda semantic, keyword, **kwargs: [
-            {
-                "memory_id": "direct-1",
-                "rrf_score": 0.99,
-                "score": 0.99,
-                "kind": "problem",
-                "text": "Primary direct memory.",
-                "created_at": "2024-01-01T00:00:00+00:00",
-                "status": "active",
-                "why_included": "direct_match",
-            }
-        ],
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.expand_candidates",
-        lambda direct_candidates, payload, **kwargs: {
-            "explicit": [
-                {
-                    "memory_id": "explicit-1",
-                    "score": 0.88,
-                    "kind": "solution",
-                    "text": "Linked association memory.",
-                    "created_at": "2024-01-01T00:00:00+00:00",
-                    "status": "active",
-                    "why_included": "association_link",
-                    "anchor_memory_id": "direct-1",
-                    "relation_type": "depends_on",
-                }
-            ],
-            "implicit": [
-                {
-                    "memory_id": "implicit-1",
-                    "score": 0.77,
-                    "kind": "fact",
-                    "text": "Nearby semantic memory.",
-                    "created_at": "2024-01-01T00:00:00+00:00",
-                    "status": "active",
-                    "why_included": "semantic_neighbor",
-                    "anchor_memory_id": "direct-1",
-                }
-            ],
-        },
-    )
-    monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.score_candidates",
-        lambda bucketed_candidates: bucketed_candidates,
-    )
-
-    with uow_factory() as uow:
-        return execute_read_memory(
-            MemoryReadRequest.model_validate(
-                {
-                    "op": "read",
-                    "repo_id": "repo-a",
-                    "mode": "targeted",
-                    "query": "rollback deployment issue",
-                    "include_global": True,
-                    "limit": 8,
-                    "expand": {
-                        "semantic_hops": 0,
-                        "include_problem_links": True,
-                        "include_fact_update_links": True,
-                        "include_association_links": True,
-                        "max_association_depth": 2,
-                        "min_association_strength": 0.25,
-                    },
-                }
-            ),
-            uow,
-        )
+def test_empty_read_keeps_evidence_envelope(monkeypatch):
+    stub_read_pipeline(monkeypatch, zero_results=True)
+    pack = execute_read_memory(
+        MemoryReadRequest(
+            repo_id="repo-a", query="unknown", expand={"concepts": {"mode": "none"}}
+        ),
+        None,
+    ).data["pack"]
+    assert sum(pack["meta"]["counts"].values()) == 0
+    assert pack["concepts"] == {"mode": "none", "items": []}

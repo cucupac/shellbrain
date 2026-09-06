@@ -41,7 +41,6 @@ STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES = (
     "explained_by_change",
 )
 
-REVERSIBLE_ASSOCIATION_RELATION_TYPES = frozenset({"associated_with"})
 
 _STRUCTURAL_EXPANSION_BY_PREDICATE = {
     "solved_by": "problem_attempt",

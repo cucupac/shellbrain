@@ -33,7 +33,9 @@ from app.core.use_cases.retrieval.deterministic_graph_recall import (
     build_deterministic_graph_pack,
     source_items_from_graph_pack,
 )
+from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
+from app.core.use_cases.retrieval.read import execute_read_memory
 
 
 def test_query_lanes_extract_identifiers_from_natural_language_query() -> None:
@@ -142,11 +144,13 @@ def test_graph_pack_expands_canonical_structural_memory_relations() -> None:
     assert sources_by_id["mem-change"]["input_section"] == "explicit_related"
 
 
-def _request(*, query: str) -> MemoryRecallRequest:
-    return MemoryRecallRequest.model_validate(
+def _request(*, query: str) -> MemoryReadRequest:
+    return MemoryReadRequest.model_validate(
         {
             "repo_id": "repo-a",
             "query": query,
+            "limit": 24,
+            "expand": {"concepts": {"max_auto": 6}},
         }
     )
 
@@ -730,3 +734,66 @@ def test_archived_link_cannot_discover_an_otherwise_active_concept(monkeypatch) 
     )
     assert pack["concepts"] == []
     assert pack["pack_trace"]["concept_candidates"]["candidate_count"] == 0
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "TimeoutError in app/core/settings.py",
+        "previous migration failure",
+        "migration policy",
+    ],
+)
+def test_learning_and_recall_select_same_evidence(query):
+    recall = build_deterministic_graph_pack(
+        request=MemoryRecallRequest(repo_id="repo-a", query=query), uow=_FakeUow()
+    )
+    read = execute_read_memory(_request(query=query), _FakeUow()).data["pack"]
+    read_items = [
+        item
+        for section in ("direct", "explicit_related", "implicit_related")
+        for item in read[section]
+    ]
+    assert {item["id"] for item in read_items} == {
+        "mem-direct",
+        "mem-warning",
+        "mem-change",
+        "mem-change-context",
+    }
+    assert {item["id"] for item in read_items} == {
+        item["id"] for item in recall["memories"]
+    }
+    assert len(read_items) == len({item["id"] for item in read_items})
+    assert read["concepts"]["items"] == recall["concepts"]
+    assert read["conflicts"] == recall["conflicts"]
+    assert any(item["type"] == "stale_claim" for item in read["conflicts"])
+
+
+@pytest.mark.parametrize(
+    "include_global,expected",
+    [(False, {"mem-direct"}), (True, {"mem-direct", "mem-change-context"})],
+)
+def test_learning_filters_apply_to_graph_linked_memories(include_global, expected):
+    uow = _FakeUow()
+    memories = uow.memories._memories
+    memories["mem-warning"] = replace(memories["mem-warning"], repo_id=RepoId("repo-b"))
+    memories["mem-change-context"] = replace(
+        memories["mem-change-context"],
+        repo_id=RepoId("repo-b"),
+        scope=MemoryScope.GLOBAL,
+    )
+    request = MemoryReadRequest(
+        repo_id="repo-a",
+        query="TimeoutError",
+        include_global=include_global,
+        kinds=[MemoryKind.FACT],
+    )
+    pack = build_deterministic_graph_pack(request=request, uow=uow)
+    assert {item["id"] for item in pack["memories"]} == expected
+
+
+@pytest.mark.parametrize("limit", [1, 2, 3])
+def test_learning_limit_bounds_all_memory_sources(limit):
+    request = MemoryReadRequest(repo_id="repo-a", query="TimeoutError", limit=limit)
+    pack = build_deterministic_graph_pack(request=request, uow=_FakeUow())
+    assert len(pack["memories"]) == limit

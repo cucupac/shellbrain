@@ -17,7 +17,6 @@ def execute_read_memory_with_dependencies(
     return execute_read_memory(
         request,
         uow,
-        read_settings=dependencies.read_settings,
         threshold_settings=dependencies.threshold_settings,
     )
 

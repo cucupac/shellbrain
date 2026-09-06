@@ -81,113 +81,6 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
             if _is_positive_score(row["score"])
         ]
 
-    def list_semantic_neighbors(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds: Sequence[str] | None,
-        limit: int | None = None,
-    ) -> Sequence[dict[str, Any]]:
-        """This method returns implicit semantic neighbors for one anchor memory."""
-
-        anchor_row = self._visible_anchor_embedding_row(
-            repo_id=repo_id,
-            include_global=include_global,
-            kinds=kinds,
-            anchor_memory_id=anchor_memory_id,
-        )
-        if anchor_row is None:
-            return []
-        _validate_embedding_row(anchor_row)
-        if _is_zero_vector(anchor_row["vector"]):
-            return []
-
-        self._raise_on_incompatible_visible_embedding(
-            repo_id=repo_id,
-            include_global=include_global,
-            kinds=kinds,
-            expected_dim=int(anchor_row["dim"]),
-            expected_model=str(anchor_row["model"]),
-            reference_label=f"anchor embedding {anchor_memory_id}",
-        )
-
-        distance = memory_embeddings.c.vector.cosine_distance(anchor_row["vector"])
-        score = ((1.0 - distance) * _memory_status_multiplier()).label("score")
-        stmt = (
-            select(
-                memories.c.id.label("memory_id"),
-                score,
-            )
-            .select_from(
-                memories.join(
-                    memory_embeddings, memory_embeddings.c.memory_id == memories.c.id
-                )
-            )
-            .where(
-                *visible_memory_filters(
-                    repo_id=repo_id,
-                    include_global=include_global,
-                    kinds=kinds,
-                ),
-                memories.c.id != anchor_memory_id,
-                memory_embeddings.c.dim == int(anchor_row["dim"]),
-                memory_embeddings.c.model == str(anchor_row["model"]),
-            )
-            .order_by(desc(score), memories.c.id.asc())
-        )
-        if limit is not None:
-            stmt = stmt.limit(limit)
-
-        return [
-            {"memory_id": str(row["memory_id"]), "score": float(row["score"])}
-            for row in self._session.execute(stmt).mappings().all()
-            if _is_positive_score(row["score"])
-        ]
-
-    def _visible_anchor_embedding_row(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        kinds: Sequence[str] | None,
-        anchor_memory_id: str,
-    ) -> dict[str, Any] | None:
-        """Load the one visible anchor embedding used for semantic expansion."""
-
-        stmt = (
-            select(
-                memories.c.id.label("memory_id"),
-                memory_embeddings.c.model,
-                memory_embeddings.c.dim,
-                memory_embeddings.c.vector,
-            )
-            .select_from(
-                memories.join(
-                    memory_embeddings, memory_embeddings.c.memory_id == memories.c.id
-                )
-            )
-            .where(
-                *visible_memory_filters(
-                    repo_id=repo_id,
-                    include_global=include_global,
-                    kinds=kinds,
-                ),
-                memories.c.id == anchor_memory_id,
-            )
-            .limit(1)
-        )
-        row = self._session.execute(stmt).mappings().first()
-        if row is None:
-            return None
-        return {
-            "memory_id": str(row["memory_id"]),
-            "model": str(row["model"]),
-            "dim": int(row["dim"]),
-            "vector": [float(value) for value in row["vector"]],
-        }
-
     def _raise_on_incompatible_visible_embedding(
         self,
         *,
@@ -240,18 +133,6 @@ class SemanticRetrievalRepo(ISemanticRetrievalRepo):
             expected_dim=expected_dim,
             expected_model=expected_model,
             reference_label=reference_label,
-        )
-
-
-def _validate_embedding_row(row: dict[str, Any]) -> None:
-    """Validate one persisted embedding before it can participate in scoring."""
-
-    vector_length = len(row["vector"])
-    declared_dim = int(row["dim"])
-    if vector_length != declared_dim:
-        raise ValueError(
-            "Stored semantic embedding dimension mismatch for "
-            f"{row['memory_id']}: dim={declared_dim}, vector_length={vector_length}"
         )
 
 

@@ -2,7 +2,6 @@
 
 from functools import lru_cache
 
-from app.startup.config import get_config_provider
 from app.startup.dsn_resolution import resolve_database_dsn
 from app.infrastructure.local_state.machine_config_store import try_load_machine_config
 from app.infrastructure.db.runtime.engine import get_engine
@@ -64,8 +63,7 @@ def _resolve_app_db_dsn(*, required: bool) -> str | None:
 
     return resolve_database_dsn(
         load_machine_config=try_load_machine_config,
-        runtime_provider=lambda: get_config_provider().get_runtime(),
         machine_field="app_dsn",
-        runtime_env_key="dsn_env",
+        env_name="SHELLBRAIN_DB_DSN",
         required=required,
     )

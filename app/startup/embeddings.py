@@ -1,7 +1,7 @@
 """This module defines boot-time wiring for embedding provider construction."""
 
 from app.infrastructure.local_state.paths import get_machine_models_dir
-from app.startup.config import get_config_provider
+from app.startup.settings import DEFAULT_EMBEDDING_MODEL
 from app.core.ports.embeddings.provider import IEmbeddingProvider
 from app.infrastructure.local_state.machine_config_store import load_machine_config
 from app.infrastructure.embeddings.local_provider import (
@@ -9,29 +9,9 @@ from app.infrastructure.embeddings.local_provider import (
 )
 
 
-def _get_embedding_config() -> dict:
-    """This function returns runtime embedding configuration values."""
-
-    runtime = get_config_provider().get_runtime()
-    values = runtime.get("embeddings")
-    if not isinstance(values, dict):
-        raise ValueError("runtime.embeddings must be configured")
-    return values
-
-
 def get_embedding_model_name() -> str:
-    """This function resolves the model name persisted alongside embedding vectors."""
-
-    config = _get_embedding_config()
-    provider = config.get("provider")
-    model = config.get("model")
-    if not isinstance(provider, str) or not provider:
-        raise ValueError("runtime.embeddings.provider must be configured")
-    if not isinstance(model, str) or not model:
-        raise ValueError("runtime.embeddings.model must be configured")
-    if provider == "sentence_transformers":
-        return model
-    raise ValueError(f"Unsupported embedding provider: {provider}")
+    """Return the model name persisted alongside embedding vectors."""
+    return DEFAULT_EMBEDDING_MODEL
 
 
 def get_embedding_provider() -> IEmbeddingProvider:

@@ -2,8 +2,6 @@
 
 from typing import Any, Mapping
 
-from app.core.entities.settings import default_read_policy_settings
-
 
 def fuse_with_rrf(
     semantic: list[dict[str, Any]],
@@ -14,9 +12,11 @@ def fuse_with_rrf(
 ) -> list[dict[str, Any]]:
     """This function merges lane candidates using reciprocal-rank fusion."""
 
-    retrieval_defaults = (
-        retrieval_defaults or default_read_policy_settings().retrieval_defaults()
-    )
+    retrieval_defaults = retrieval_defaults or {
+        "semantic_weight": 1.0,
+        "keyword_weight": 1.0,
+        "k_rrf": 20.0,
+    }
     k_rrf = float(retrieval_defaults["k_rrf"])
     lane_weights = {
         "semantic": float(retrieval_defaults["semantic_weight"]),

@@ -1,12 +1,13 @@
 """Config loader contracts for renamed create and update policy sections."""
 
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 import app.core.entities.inner_agents as core_inner_agents
-from app.infrastructure.host_apps.inner_agents.claude_cli import ClaudeCliInnerAgentRunner
+from app.infrastructure.host_apps.inner_agents.claude_cli import (
+    ClaudeCliInnerAgentRunner,
+)
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.local_state.recall_mode_store import (
     load_recall_mode,
@@ -21,7 +22,7 @@ from app.startup.internal_agents import (
     get_teach_knowledge_inner_agent_runner,
     get_teach_knowledge_settings,
 )
-from app.startup.settings import YamlConfigProvider
+from app.startup.internal_agent_config import default_internal_agents_config
 
 
 @pytest.fixture(autouse=True)
@@ -29,13 +30,10 @@ def _isolated_shellbrain_home(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path / "shellbrain-home"))
 
 
+def test_packaged_defaults_preserve_inner_agent_settings() -> None:
+    """Packaged defaults should expose per-agent model and reasoning settings."""
 
-
-def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
-    """yaml config provider should expose per-agent model and reasoning settings."""
-
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
 
     assert settings["build_context"]["strategy"] == "deterministic_synthesis"
     assert settings["build_context"]["provider"] == "auto"
@@ -63,7 +61,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
     assert settings["teach"]["max_write_commands"] == 12
     assert "idle_stable_seconds" not in settings["teach"]
     assert settings["providers"]["codex"]["command"] == "codex"
-    assert "model_override" not in settings["providers"]["codex"]
+    assert settings["providers"]["codex"]["model_override"] is None
     assert settings["providers"]["claude"]["command"] == "claude"
     assert settings["providers"]["claude"]["model_override"] == "sonnet"
     assert "working_directory" not in settings["providers"]["codex"]
@@ -73,8 +71,7 @@ def test_yaml_config_provider_exposes_internal_agent_settings() -> None:
 def test_internal_agent_config_rejects_removed_toggle_fields() -> None:
     """typed internal-agent config should reject stale enabled/fallback knobs."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     settings["build_context"]["enabled"] = True
     settings["build_context"]["fallback"] = "deterministic"
 
@@ -85,8 +82,7 @@ def test_internal_agent_config_rejects_removed_toggle_fields() -> None:
 def test_internal_agent_config_rejects_removed_candidate_token_budget() -> None:
     """typed build_context config should reject stale synthesis-token ceilings."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     settings["build_context"]["max_candidate_tokens"] = 10_000
 
     with pytest.raises(ValueError):
@@ -96,8 +92,7 @@ def test_internal_agent_config_rejects_removed_candidate_token_budget() -> None:
 def test_internal_agent_config_rejects_removed_provider_fields() -> None:
     """typed provider config should reject stale runtime knobs."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     settings["providers"]["codex"]["working_directory"] = "repo_root"
     settings["providers"]["codex"]["allow_shellbrain_cli"] = True
 
@@ -115,8 +110,7 @@ def test_provider_runtime_config_is_startup_owned() -> None:
 def test_internal_agent_config_accepts_auto_without_auto_provider() -> None:
     """auto is a startup selector, not a configured provider key."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
 
     InternalAgentsConfig.model_validate(settings)
 
@@ -124,8 +118,7 @@ def test_internal_agent_config_accepts_auto_without_auto_provider() -> None:
 def test_internal_agent_config_rejects_unknown_explicit_provider() -> None:
     """unknown explicit providers should still fail validation."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     settings["build_context"]["provider"] = "unknown"
 
     with pytest.raises(ValueError):
@@ -135,8 +128,7 @@ def test_internal_agent_config_rejects_unknown_explicit_provider() -> None:
 def test_internal_agent_config_requires_non_codex_model_override() -> None:
     """Providers with fixed models should declare their override."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     del settings["providers"]["claude"]["model_override"]
 
     with pytest.raises(ValueError):
@@ -163,7 +155,9 @@ def test_startup_auto_uses_claude_when_codex_is_missing(monkeypatch) -> None:
     assert isinstance(runner, ClaudeCliInnerAgentRunner)
 
 
-def test_startup_auto_returns_no_runner_when_no_provider_is_installed(monkeypatch) -> None:
+def test_startup_auto_returns_no_runner_when_no_provider_is_installed(
+    monkeypatch,
+) -> None:
     """auto should not construct a runner when no configured CLI exists."""
 
     _patch_which(monkeypatch, set())
@@ -218,7 +212,9 @@ def test_recall_mode_store_rejects_invalid_config(tmp_path: Path, text: str) -> 
         load_recall_mode(path)
 
 
-def test_recall_mode_fast_skips_build_context_runner(monkeypatch, tmp_path: Path) -> None:
+def test_recall_mode_fast_skips_build_context_runner(
+    monkeypatch, tmp_path: Path
+) -> None:
     """fast recall mode should force deterministic-only recall."""
 
     monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
@@ -234,12 +230,11 @@ def test_recall_mode_fast_skips_build_context_runner(monkeypatch, tmp_path: Path
 def test_recall_mode_full_forces_synthesis(monkeypatch, tmp_path: Path) -> None:
     """full recall mode should force the normal synthesis strategy."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     settings["build_context"]["strategy"] = "deterministic_only"
     monkeypatch.setattr(
-        "app.startup.internal_agents.get_config_provider",
-        lambda: SimpleNamespace(get_internal_agents=lambda: settings),
+        "app.startup.internal_agents.get_internal_agents_config",
+        lambda: InternalAgentsConfig.model_validate(settings),
     )
     monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
     save_recall_mode("full")
@@ -266,12 +261,11 @@ def test_missing_recall_mode_preserves_packaged_strategy(
 def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
     """explicit provider selection should construct that runner without probing fallback."""
 
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    settings = provider.get_internal_agents()
+    settings = default_internal_agents_config().model_dump()
     settings["build_context"]["provider"] = "codex"
     monkeypatch.setattr(
-        "app.startup.internal_agents.get_config_provider",
-        lambda: SimpleNamespace(get_internal_agents=lambda: settings),
+        "app.startup.internal_agents.get_internal_agents_config",
+        lambda: InternalAgentsConfig.model_validate(settings),
     )
     _patch_which(monkeypatch, {"claude"})
 

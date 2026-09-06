@@ -10,37 +10,7 @@ def hydrate_read_payload(
 ) -> dict[str, Any]:
     """Hydrate read payloads with inferred defaults before strict validation."""
 
-    if not isinstance(defaults.get("limits_by_mode"), dict):
-        raise ValueError("read hydration defaults must include limits_by_mode")
-    if not isinstance(defaults.get("expand"), dict):
-        raise ValueError("read hydration defaults must include expand")
-    if "default_mode" not in defaults:
-        raise ValueError("read hydration defaults must include default_mode")
-    if "include_global" not in defaults:
-        raise ValueError("read hydration defaults must include include_global")
-
-    merged = dict(payload)
-    merged.setdefault("op", "read")
-    merged.setdefault("repo_id", inferred_repo_id)
-    merged.setdefault("mode", defaults["default_mode"])
-    merged.setdefault("include_global", defaults["include_global"])
-    if "limit" not in merged:
-        mode = str(merged["mode"])
-        limits_by_mode = defaults["limits_by_mode"]
-        if mode not in limits_by_mode:
-            raise ValueError(
-                f"read hydration defaults must define limit for mode: {mode}"
-            )
-        merged["limit"] = limits_by_mode[mode]
-    expand_defaults = dict(defaults["expand"])
-    incoming_expand = merged.get("expand")
-    if isinstance(incoming_expand, dict):
-        merged_expand = dict(expand_defaults)
-        merged_expand.update(incoming_expand)
-        merged["expand"] = merged_expand
-    else:
-        merged.setdefault("expand", dict(expand_defaults))
-    return merged
+    return {"op": "read", "repo_id": inferred_repo_id, **defaults, **payload}
 
 
 def hydrate_memory_add_payload(

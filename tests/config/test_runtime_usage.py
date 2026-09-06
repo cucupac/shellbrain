@@ -1,6 +1,5 @@
 """Runtime-config usage contracts for boot helpers."""
 
-from pathlib import Path
 
 from app.startup.embeddings import get_embedding_provider
 from app.startup.admin_db import (
@@ -10,7 +9,6 @@ from app.startup.admin_db import (
 )
 from app.startup import db as startup_db
 from app.startup.db import get_db_dsn
-from app.startup.settings import YamlConfigProvider
 from app.core.entities.machine_config import (
     BackupState,
     DatabaseState,
@@ -25,20 +23,8 @@ def test_db_boot_should_always_resolve_the_runtime_configured_dsn_env(
 ) -> None:
     """db boot should always resolve the runtime-configured dsn env."""
 
-    class _FakeProvider:
-        """Stub config provider for runtime database settings."""
-
-        def get_runtime(self) -> dict[str, object]:
-            return {
-                "database": {
-                    "dsn_env": "CUSTOM_MEMORY_DSN",
-                    "admin_dsn_env": "CUSTOM_ADMIN_DSN",
-                }
-            }
-
-    monkeypatch.setattr("app.startup.db.get_config_provider", lambda: _FakeProvider())
     monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (None, None))
-    monkeypatch.setenv("CUSTOM_MEMORY_DSN", "postgresql://configured-dsn")
+    monkeypatch.setenv("SHELLBRAIN_DB_DSN", "postgresql://configured-dsn")
 
     assert get_db_dsn() == "postgresql://configured-dsn"
 
@@ -48,54 +34,12 @@ def test_admin_db_boot_should_always_resolve_the_runtime_configured_admin_dsn_en
 ) -> None:
     """admin db boot should always resolve the runtime-configured admin dsn env."""
 
-    class _FakeProvider:
-        """Stub config provider for runtime database settings."""
-
-        def get_runtime(self) -> dict[str, object]:
-            return {
-                "database": {
-                    "dsn_env": "CUSTOM_MEMORY_DSN",
-                    "admin_dsn_env": "CUSTOM_ADMIN_DSN",
-                }
-            }
-
-    monkeypatch.setattr(
-        "app.startup.admin_db.get_config_provider", lambda: _FakeProvider()
-    )
     monkeypatch.setattr(
         "app.startup.admin_db.try_load_machine_config", lambda: (None, None)
     )
-    monkeypatch.setenv("CUSTOM_ADMIN_DSN", "postgresql://configured-admin-dsn")
+    monkeypatch.setenv("SHELLBRAIN_DB_ADMIN_DSN", "postgresql://configured-admin-dsn")
 
     assert get_admin_db_dsn() == "postgresql://configured-admin-dsn"
-
-
-def test_admin_db_boot_should_fail_when_runtime_admin_dsn_key_is_missing(
-    monkeypatch,
-) -> None:
-    """admin db boot should fail cleanly when the runtime admin env key is missing."""
-
-    class _FakeProvider:
-        """Stub config provider missing the admin dsn env key."""
-
-        def get_runtime(self) -> dict[str, object]:
-            return {"database": {"dsn_env": "CUSTOM_MEMORY_DSN"}}
-
-    monkeypatch.setattr(
-        "app.startup.admin_db.get_config_provider", lambda: _FakeProvider()
-    )
-    monkeypatch.setattr(
-        "app.startup.admin_db.try_load_machine_config", lambda: (None, None)
-    )
-
-    try:
-        get_admin_db_dsn()
-    except RuntimeError as exc:
-        assert str(exc) == "runtime.database.admin_dsn_env must be configured"
-    else:  # pragma: no cover - defensive guard
-        raise AssertionError(
-            "Expected get_admin_db_dsn() to fail when admin_dsn_env is missing."
-        )
 
 
 def test_admin_db_boot_should_fail_when_runtime_admin_dsn_env_is_unset(
@@ -103,29 +47,15 @@ def test_admin_db_boot_should_fail_when_runtime_admin_dsn_env_is_unset(
 ) -> None:
     """admin db boot should fail cleanly when the configured admin dsn env is unset."""
 
-    class _FakeProvider:
-        """Stub config provider for runtime database settings."""
-
-        def get_runtime(self) -> dict[str, object]:
-            return {
-                "database": {
-                    "dsn_env": "CUSTOM_MEMORY_DSN",
-                    "admin_dsn_env": "CUSTOM_ADMIN_DSN",
-                }
-            }
-
-    monkeypatch.setattr(
-        "app.startup.admin_db.get_config_provider", lambda: _FakeProvider()
-    )
     monkeypatch.setattr(
         "app.startup.admin_db.try_load_machine_config", lambda: (None, None)
     )
-    monkeypatch.delenv("CUSTOM_ADMIN_DSN", raising=False)
+    monkeypatch.delenv("SHELLBRAIN_DB_ADMIN_DSN", raising=False)
 
     try:
         get_admin_db_dsn()
     except RuntimeError as exc:
-        assert str(exc) == "CUSTOM_ADMIN_DSN is not set"
+        assert str(exc) == "SHELLBRAIN_DB_ADMIN_DSN is not set"
     else:  # pragma: no cover - defensive guard
         raise AssertionError(
             "Expected get_admin_db_dsn() to fail when the configured env var is unset."
@@ -198,15 +128,6 @@ def test_db_boot_should_reuse_runtime_engine_for_same_dsn(monkeypatch) -> None:
     engine_calls: list[str] = []
     session_factory_calls: list[object] = []
 
-    class _FakeProvider:
-        def get_runtime(self) -> dict[str, object]:
-            return {
-                "database": {
-                    "dsn_env": "CUSTOM_MEMORY_DSN",
-                    "admin_dsn_env": "CUSTOM_ADMIN_DSN",
-                }
-            }
-
     def _fake_engine(dsn: str) -> object:
         engine_calls.append(dsn)
         return object()
@@ -216,11 +137,10 @@ def test_db_boot_should_reuse_runtime_engine_for_same_dsn(monkeypatch) -> None:
         return object()
 
     startup_db.clear_db_runtime_caches()
-    monkeypatch.setattr("app.startup.db.get_config_provider", lambda: _FakeProvider())
     monkeypatch.setattr("app.startup.db.try_load_machine_config", lambda: (None, None))
     monkeypatch.setattr("app.startup.db.get_engine", _fake_engine)
     monkeypatch.setattr("app.startup.db.get_session_factory", _fake_session_factory)
-    monkeypatch.setenv("CUSTOM_MEMORY_DSN", "postgresql://configured-dsn")
+    monkeypatch.setenv("SHELLBRAIN_DB_DSN", "postgresql://configured-dsn")
 
     try:
         first = startup_db.get_session_factory_instance()
@@ -267,17 +187,6 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(
             self.cache_folder = cache_folder
             self.local_files_only = local_files_only
 
-    class _FakeConfigProvider:
-        """Stub config provider for runtime embedding settings."""
-
-        def get_runtime(self) -> dict[str, object]:
-            return {
-                "embeddings": {
-                    "provider": "sentence_transformers",
-                    "model": "all-MiniLM-L6-v2",
-                }
-            }
-
     machine_config = MachineConfig(
         config_version=2,
         bootstrap_version=1,
@@ -316,9 +225,6 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(
     )
 
     monkeypatch.setattr(
-        "app.startup.embeddings.get_config_provider", lambda: _FakeConfigProvider()
-    )
-    monkeypatch.setattr(
         "app.startup.embeddings.load_machine_config", lambda: machine_config
     )
     monkeypatch.setattr(
@@ -331,25 +237,6 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(
     assert provider.model == "all-MiniLM-L6-v2"
     assert provider.cache_folder == "/tmp/shellbrain-models"
     assert provider.local_files_only is True
-
-
-def test_runtime_yaml_should_always_define_database_cli_and_embedding_sections() -> (
-    None
-):
-    """runtime yaml should always define database cli and embedding sections."""
-
-    provider = YamlConfigProvider(Path("app/settings/defaults"))
-    runtime = provider.get_runtime()
-
-    assert runtime["database"] == {
-        "dsn_env": "SHELLBRAIN_DB_DSN",
-        "admin_dsn_env": "SHELLBRAIN_DB_ADMIN_DSN",
-    }
-    assert runtime["cli"] == {"default_mode": "targeted", "include_global": True}
-    assert runtime["embeddings"] == {
-        "provider": "sentence_transformers",
-        "model": "all-MiniLM-L6-v2",
-    }
 
 
 def test_db_boot_should_support_external_machine_config(monkeypatch) -> None:

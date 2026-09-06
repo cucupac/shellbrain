@@ -129,14 +129,14 @@ def test_read_should_always_record_kind_section_priority_why_included_and_anchor
     assert rows[1]["kind"] == "solution"
     assert rows[1]["section"] == "explicit_related"
     assert rows[1]["priority"] == 2
-    assert rows[1]["why_included"] == "association_link"
-    assert rows[1]["anchor_memory_id"] == "direct-1"
-    assert rows[1]["relation_type"] == "depends_on"
+    assert rows[1]["why_included"] == "structural_memory_relation"
+    assert rows[1]["anchor_memory_id"] is None
+    assert rows[1]["relation_type"] is None
     assert rows[2]["kind"] == "fact"
     assert rows[2]["section"] == "implicit_related"
     assert rows[2]["priority"] == 3
-    assert rows[2]["why_included"] == "semantic_neighbor"
-    assert rows[2]["anchor_memory_id"] == "direct-1"
+    assert rows[2]["why_included"] == "concept_evidence"
+    assert rows[2]["anchor_memory_id"] is None
 
 
 def test_read_should_always_record_zero_results_true_when_the_context_pack_is_empty(

@@ -1,3 +1,0 @@
-# This file defines threshold defaults for semantic and lexical retrieval gates.
-semantic_threshold: 0.25
-keyword_threshold: 0.0

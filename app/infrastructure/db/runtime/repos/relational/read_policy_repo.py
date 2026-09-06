@@ -4,11 +4,10 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from sqlalchemy import or_, select, union_all
+from sqlalchemy import or_, select
 
 from app.core.policies.retrieval.ontology_semantics import POSITIVE_LIFECYCLE_STATUSES
 from app.core.ports.db.retrieval_repositories import IReadPolicyRepo
-from app.infrastructure.db.runtime.models.associations import association_edges
 from app.infrastructure.db.runtime.models.experiences import structural_memory_relations
 from app.infrastructure.db.runtime.models.memories import memories
 from app.infrastructure.db.runtime.repos.memory_visibility import visible_memory_filters
@@ -77,74 +76,6 @@ class ReadPolicyRepo(IReadPolicyRepo):
             }
             for row in rows
         ]
-
-    def list_association_edge_rows(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds: Sequence[str] | None,
-    ) -> Sequence[dict[str, Any]]:
-        """Return visible active association edge rows touching one anchor."""
-
-        from_stmt = (
-            select(
-                association_edges.c.from_memory_id,
-                association_edges.c.to_memory_id.label("memory_id"),
-                association_edges.c.to_memory_id,
-                association_edges.c.relation_type,
-                association_edges.c.strength,
-            )
-            .select_from(
-                association_edges.join(
-                    memories, memories.c.id == association_edges.c.to_memory_id
-                )
-            )
-            .where(
-                association_edges.c.repo_id == repo_id,
-                association_edges.c.from_memory_id == anchor_memory_id,
-                association_edges.c.state != "deprecated",
-                *visible_memory_filters(
-                    repo_id=repo_id, include_global=include_global, kinds=kinds
-                ),
-            )
-        )
-        to_stmt = (
-            select(
-                association_edges.c.from_memory_id,
-                association_edges.c.from_memory_id.label("memory_id"),
-                association_edges.c.to_memory_id,
-                association_edges.c.relation_type,
-                association_edges.c.strength,
-            )
-            .select_from(
-                association_edges.join(
-                    memories, memories.c.id == association_edges.c.from_memory_id
-                )
-            )
-            .where(
-                association_edges.c.repo_id == repo_id,
-                association_edges.c.to_memory_id == anchor_memory_id,
-                association_edges.c.state != "deprecated",
-                *visible_memory_filters(
-                    repo_id=repo_id, include_global=include_global, kinds=kinds
-                ),
-            )
-        )
-        union_stmt = union_all(from_stmt, to_stmt).subquery()
-        stmt = (
-            select(
-                union_stmt.c.from_memory_id,
-                union_stmt.c.to_memory_id,
-                union_stmt.c.memory_id,
-                union_stmt.c.relation_type,
-                union_stmt.c.strength,
-            )
-            .where(union_stmt.c.memory_id != anchor_memory_id)
-            .order_by(union_stmt.c.memory_id.asc(), union_stmt.c.relation_type.asc())
-        )
-        return list(self._session.execute(stmt).mappings().all())
 
     def _visible_memory_ids(
         self,

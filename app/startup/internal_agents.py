@@ -5,7 +5,6 @@ from __future__ import annotations
 import shutil
 from typing import Any
 
-from pydantic import ValidationError
 
 from app.core.entities.inner_agents import (
     BuildKnowledgeSettings,
@@ -17,14 +16,18 @@ from app.core.ports.host_apps.inner_agents import (
     IInnerAgentRunner,
     ITeachKnowledgeAgentRunner,
 )
-from app.infrastructure.host_apps.inner_agents.claude_cli import ClaudeCliInnerAgentRunner
+from app.infrastructure.host_apps.inner_agents.claude_cli import (
+    ClaudeCliInnerAgentRunner,
+)
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.local_state.recall_mode_store import (
     RECALL_MODE_FAST,
     load_recall_mode,
 )
-from app.startup.config import get_config_provider
-from app.startup.internal_agent_config import InternalAgentsConfig
+from app.startup.internal_agent_config import (
+    InternalAgentsConfig,
+    default_internal_agents_config,
+)
 
 
 _AUTO_PROVIDER = "auto"
@@ -32,13 +35,8 @@ _AUTO_PROVIDER_ORDER = ("codex", "claude")
 
 
 def get_internal_agents_config() -> InternalAgentsConfig:
-    """Return typed internal-agent settings from packaged YAML config."""
-
-    raw_config = get_config_provider().get_internal_agents()
-    try:
-        return InternalAgentsConfig.model_validate(raw_config)
-    except ValidationError as exc:
-        raise ValueError(f"Invalid internal-agent config: {exc}") from exc
+    """Return typed packaged defaults for the inner agents."""
+    return default_internal_agents_config()
 
 
 def get_build_context_settings() -> InnerAgentSettings:
@@ -89,12 +87,7 @@ def get_teach_knowledge_inner_agent_runner() -> ITeachKnowledgeAgentRunner | Non
 def _runner_for(
     config: InternalAgentsConfig,
     settings: Any,
-) -> (
-    IInnerAgentRunner
-    | IBuildKnowledgeAgentRunner
-    | ITeachKnowledgeAgentRunner
-    | None
-):
+) -> IInnerAgentRunner | IBuildKnowledgeAgentRunner | ITeachKnowledgeAgentRunner | None:
     provider_name = _select_provider(config, settings.provider)
     if provider_name is None:
         return None

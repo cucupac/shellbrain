@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import json
 from pathlib import Path
 import shutil
 import subprocess
@@ -130,7 +131,7 @@ def test_editable_install_should_package_onboarding_assets_in_a_clean_room(
                 "print(root.joinpath('claude', 'skills', 'shellbrain', 'SKILL.md').read_text()); "
                 "print(root.joinpath('codex', 'shellbrain-usage-review', 'agents', 'openai.yaml').read_text()); "
                 "print(root.joinpath('codex', 'shellbrain-usage-review', 'assets', 'shellbrain_logo.png').is_file()); "
-                "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text().splitlines()[0])"
+                "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text())"
             ),
         ],
         check=True,
@@ -179,7 +180,7 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
                 "print(root.joinpath('claude', 'skills', 'shellbrain', 'SKILL.md').read_text()); "
                 "print(root.joinpath('codex', 'shellbrain-usage-review', 'agents', 'openai.yaml').read_text()); "
                 "print(root.joinpath('codex', 'shellbrain-usage-review', 'assets', 'shellbrain_logo.png').is_file()); "
-                "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text().splitlines()[0])"
+                "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text())"
             ),
         ],
         check=True,
@@ -199,7 +200,7 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
 def test_git_file_install_should_package_internal_agent_settings(
     tmp_path: Path,
 ) -> None:
-    """git-url installs should carry packaged internal-agent YAML defaults."""
+    """git-url installs should carry typed internal-agent defaults."""
 
     if shutil.which("git") is None:
         pytest.skip("git is required for git+file install smoke tests")
@@ -213,7 +214,7 @@ def test_git_file_install_should_package_internal_agent_settings(
         name="internal-agent-settings-git-install",
         install_spec=f"git+file://{git_snapshot}",
         editable=False,
-        install_runtime_deps=False,
+        install_runtime_deps=True,
     )
 
     completed = subprocess.run(
@@ -221,9 +222,8 @@ def test_git_file_install_should_package_internal_agent_settings(
             str(python_executable),
             "-c",
             (
-                "from importlib import resources; "
-                    "settings = resources.files('app').joinpath('settings', 'internal-agents', 'defaults.yaml').read_text(); "
-                "print(settings)"
+                "from app.startup.internal_agent_config import default_internal_agents_config; "
+                "import json; print(json.dumps(default_internal_agents_config().model_dump()))"
             ),
         ],
         check=True,
@@ -233,15 +233,11 @@ def test_git_file_install_should_package_internal_agent_settings(
         env=os.environ.copy(),
     )
 
-    assert (
-        "build_context:\n  strategy: deterministic_synthesis\n  provider: auto\n"
-        "  model: gpt-5.6-luna\n  reasoning: low"
-    ) in completed.stdout
-    assert (
-        "build_knowledge:\n  provider: auto\n  model: gpt-5.6-luna\n"
-        "  reasoning: xhigh"
-    ) in completed.stdout
-    assert "claude:\n    command: claude\n    model_override: sonnet" in completed.stdout
+    settings = json.loads(completed.stdout)
+    assert settings["build_context"]["model"] == "gpt-5.6-luna"
+    assert settings["build_context"]["reasoning"] == "low"
+    assert settings["build_knowledge"]["reasoning"] == "xhigh"
+    assert settings["providers"]["claude"]["model_override"] == "sonnet"
 
 
 def test_admin_migrate_should_initialize_schema_from_an_installed_package(
@@ -358,7 +354,9 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
         assert concepts_table is not None
         assert wiki_summaries_table is None
         assert alembic_version == CURRENT_ALEMBIC_HEAD
-        assert knowledge_build_trigger_constraints == {"ck_knowledge_build_runs_trigger"}
+        assert knowledge_build_trigger_constraints == {
+            "ck_knowledge_build_runs_trigger"
+        }
         assert "Applied shellbrain schema migrations to head." in completed.stdout
     finally:
         drop_temp_database(admin_dsn, db_name)
@@ -673,9 +671,7 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                 assert cur.fetchone()[0] == "concept_lifecycle_events"
                 cur.execute("SELECT to_regclass('public.memory_lifecycle_events');")
                 assert cur.fetchone()[0] == "memory_lifecycle_events"
-                cur.execute(
-                    "SELECT to_regclass('public.structural_memory_relations');"
-                )
+                cur.execute("SELECT to_regclass('public.structural_memory_relations');")
                 assert cur.fetchone()[0] == "structural_memory_relations"
                 for retired_table in (
                     "memory_evidence",

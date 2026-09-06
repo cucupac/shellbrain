@@ -1,16 +1,11 @@
-"""This module defines the read-shellbrain use-case orchestration entry point."""
+"""Expose shared evidence selection to knowledge-building agents."""
 
-from app.core.use_cases.retrieval import context_pack_pipeline
-from app.core.use_cases.retrieval.seed_retrieval import resolve_query_embedding
-
-from app.core.entities.settings import (
-    ReadPolicySettings,
-    ThresholdSettings,
-    default_read_policy_settings,
-    default_threshold_settings,
-)
+from app.core.entities.settings import ThresholdSettings
 from app.core.ports.db.unit_of_work import IUnitOfWork
-from app.core.use_cases.retrieval.read_concepts import append_concepts_to_pack
+from app.core.use_cases.retrieval.deterministic_graph_recall import (
+    build_deterministic_graph_pack,
+    source_items_from_graph_pack,
+)
 from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.read.result import ReadMemoryResult
 
@@ -19,36 +14,49 @@ def execute_read_memory(
     request: MemoryReadRequest,
     uow: IUnitOfWork,
     *,
-    read_settings: ReadPolicySettings | None = None,
     threshold_settings: ThresholdSettings | None = None,
 ) -> ReadMemoryResult:
-    """This function orchestrates read flow with retrieval and context-pack policy hooks."""
-
-    read_settings = read_settings or default_read_policy_settings()
-    threshold_settings = threshold_settings or default_threshold_settings()
-    payload = request.model_dump(mode="python")
-    query_vector, query_model = resolve_query_embedding(
-        query=payload["query"], vector_search=uow.vector_search
+    """Return selected records using the existing read and telemetry envelope."""
+    selected = build_deterministic_graph_pack(
+        request=request, uow=uow, threshold_settings=threshold_settings
     )
-    context_pack = context_pack_pipeline.build_context_pack(
-        payload,
-        keyword_retrieval=uow.keyword_retrieval,
-        memories=uow.memories,
-        semantic_retrieval=uow.semantic_retrieval,
-        read_policy=uow.read_policy,
-        read_settings=read_settings,
-        threshold_settings=threshold_settings,
-        query_vector=query_vector,
-        query_model=query_model,
+    sections = {name: [] for name in ("direct", "explicit_related", "implicit_related")}
+    sources = {
+        row["source_id"]: row
+        for row in source_items_from_graph_pack(selected)
+        if row["source_kind"] == "memory"
+    }
+    for priority, memory in enumerate(selected["memories"], start=1):
+        section = sources[memory["id"]]["input_section"]
+        sections[section].append(
+            {
+                **memory,
+                "memory_id": memory["id"],
+                "priority": priority,
+                "why_included": ", ".join(memory["why"]),
+            }
+        )
+    for priority, memory in enumerate(
+        (item for items in sections.values() for item in items), start=1
+    ):
+        memory["priority"] = priority
+    return ReadMemoryResult(
+        pack={
+            "meta": {
+                "mode": request.mode,
+                "limit": request.limit,
+                "counts": {
+                    "direct": len(sections["direct"]),
+                    "explicit_related": len(sections["explicit_related"]),
+                    "implicit_related": len(sections["implicit_related"]),
+                },
+            },
+            **sections,
+            "concepts": {
+                "mode": request.expand.concepts.mode,
+                "items": selected["concepts"],
+            },
+            "relation_neighbors": selected["relation_neighbors"],
+            "conflicts": selected["conflicts"],
+        }
     )
-    context_pack = append_concepts_to_pack(
-        pack=context_pack,
-        request=request,
-        concepts=uow.concepts,
-        concept_keyword_retrieval=uow.concept_keyword_retrieval,
-        concept_semantic_retrieval=uow.concept_semantic_retrieval,
-        query_vector=query_vector,
-        query_model=query_model,
-        threshold_settings=threshold_settings,
-    )
-    return ReadMemoryResult(pack=context_pack)

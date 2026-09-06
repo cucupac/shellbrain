@@ -16,7 +16,6 @@ _LIGHTWEIGHT_RUNTIME_DEPS = [
     "SQLAlchemy>=2.0,<3.0",
     "alembic>=1.13,<2.0",
     "pydantic>=2.7,<3.0",
-    "PyYAML>=6.0,<7.0",
     "psycopg[binary]>=3.1,<4.0",
     "pgvector>=0.3,<1.0",
 ]

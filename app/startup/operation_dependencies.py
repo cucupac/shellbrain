@@ -10,10 +10,12 @@ from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import (
-    ReadPolicySettings,
     ThresholdSettings,
 )
-from app.core.ports.host_apps.inner_agents import IInnerAgentRunner, ITeachKnowledgeAgentRunner
+from app.core.ports.host_apps.inner_agents import (
+    IInnerAgentRunner,
+    ITeachKnowledgeAgentRunner,
+)
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 from app.core.ports.local_state.shadow_git import IShadowGitStore
 from app.core.ports.system.clock import IClock
@@ -26,7 +28,9 @@ from app.infrastructure.host_apps.identity.resolver import (
 from app.infrastructure.host_apps.transcripts.model_usage import (
     collect_model_usage_records_for_session,
 )
-from app.infrastructure.host_apps.transcripts.normalization import normalize_host_transcript
+from app.infrastructure.host_apps.transcripts.normalization import (
+    normalize_host_transcript,
+)
 from app.infrastructure.host_apps.transcripts.session_selection import (
     summarize_runtime_selection,
 )
@@ -43,7 +47,6 @@ from app.startup.internal_agents import (
     get_teach_knowledge_inner_agent_runner,
     get_teach_knowledge_settings,
 )
-from app.startup.read_policy import get_read_policy_settings
 from app.startup.runtime_context import get_operation_telemetry_context
 from app.startup.thresholds import get_typed_threshold_settings
 
@@ -53,7 +56,6 @@ class OperationDependencies:
     """Ports and settings injected by startup into operation workflows."""
 
     session_state_store: ISessionStateStore
-    read_settings: ReadPolicySettings
     threshold_settings: ThresholdSettings
     clock: IClock
     id_generator: IIdGenerator
@@ -79,7 +81,6 @@ def build_operation_dependencies() -> OperationDependencies:
     clock = SystemClock()
     return OperationDependencies(
         session_state_store=FileSessionStateStore(),
-        read_settings=get_read_policy_settings(),
         threshold_settings=get_typed_threshold_settings(),
         clock=clock,
         id_generator=UuidGenerator(),

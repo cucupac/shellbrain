@@ -44,7 +44,7 @@ from app.core.use_cases.admin.initialize_runtime import (
     InitializeRuntimePorts,
     run_initialize_runtime,
 )
-from app.startup.config import get_config_provider
+from app.startup.settings import DEFAULT_EMBEDDING_MODEL
 from app.infrastructure.db.admin.instance_guard import fingerprint_summary
 from app.infrastructure.local_state.machine_config_store import (
     backup_corrupt_machine_config,
@@ -332,8 +332,4 @@ def _recover_machine_config() -> MachineConfig | None:
 def _runtime_embeddings_config() -> dict[str, object]:
     """Return runtime embedding config for adapter construction."""
 
-    runtime = get_config_provider().get_runtime()
-    embeddings = runtime.get("embeddings")
-    if not isinstance(embeddings, dict):
-        raise RuntimeError("runtime.embeddings must be configured")
-    return embeddings
+    return {"provider": "sentence_transformers", "model": DEFAULT_EMBEDDING_MODEL}

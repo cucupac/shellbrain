@@ -8,7 +8,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from time import perf_counter
-from typing import Any, Iterable, Sequence
+from typing import Any, Iterable, Sequence, TYPE_CHECKING
 
 from app.core.entities.concepts import (
     Concept,
@@ -43,6 +43,9 @@ from app.core.policies.retrieval.ontology_semantics import (
 )
 from app.core.use_cases.retrieval.concept_seed_retrieval import retrieve_concept_seeds
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
+
+if TYPE_CHECKING:
+    from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.seed_retrieval import (
     retrieve_seeds,
     resolve_query_embedding,
@@ -66,11 +69,21 @@ class _QueryLane:
 
 def build_deterministic_graph_pack(
     *,
-    request: MemoryRecallRequest,
+    request: MemoryRecallRequest | MemoryReadRequest,
     uow: IUnitOfWork,
     threshold_settings: ThresholdSettings | None = None,
 ) -> dict[str, Any]:
-    """Build a bounded graph-aware recall pack without autonomous reads."""
+    """Select evidence for both working-agent recall and internal learning reads."""
+
+    from app.core.use_cases.retrieval.read.request import MemoryReadRequest
+
+    if isinstance(request, MemoryRecallRequest):
+        request = MemoryReadRequest(
+            repo_id=request.repo_id,
+            query=request.query,
+            limit=_FINAL_MEMORY_TARGET,
+            expand={"concepts": {"max_auto": _CONCEPT_TARGET}},
+        )
 
     thresholds = threshold_settings or default_threshold_settings()
     started = perf_counter()
@@ -319,7 +332,7 @@ def source_items_from_graph_pack(pack: dict[str, Any]) -> list[dict[str, Any]]:
     return source_items
 
 
-def _build_query_lanes(request: MemoryRecallRequest) -> list[_QueryLane]:
+def _build_query_lanes(request: MemoryReadRequest) -> list[_QueryLane]:
     original = _lane("original", request.query)
     identifiers = _identifier_lane(request)
     traps = _prior_cases_lane(request)
@@ -347,12 +360,12 @@ def _lane(name: str, query: str) -> _QueryLane | None:
     return _QueryLane(name=name, query=text, terms=terms)
 
 
-def _identifier_lane(request: MemoryRecallRequest) -> _QueryLane | None:
+def _identifier_lane(request: MemoryReadRequest) -> _QueryLane | None:
     identifiers = _extract_identifiers(request.query)
     return _lane("identifiers", " ".join(identifiers))
 
 
-def _prior_cases_lane(request: MemoryRecallRequest) -> _QueryLane | None:
+def _prior_cases_lane(request: MemoryReadRequest) -> _QueryLane | None:
     terms = list(dict.fromkeys(_tokenize(request.query)))
     strongest = " ".join(terms[:8])
     if not strongest:
@@ -363,7 +376,7 @@ def _prior_cases_lane(request: MemoryRecallRequest) -> _QueryLane | None:
     )
 
 
-def _broad_domain_lane(request: MemoryRecallRequest) -> _QueryLane | None:
+def _broad_domain_lane(request: MemoryReadRequest) -> _QueryLane | None:
     terms = _tokenize(request.query)
     if not terms:
         return None
@@ -394,7 +407,7 @@ def _run_memory_lane(
     *,
     lane: _QueryLane,
     query_embedding: tuple[list[float], str | None],
-    request: MemoryRecallRequest,
+    request: MemoryReadRequest,
     uow: IUnitOfWork,
     thresholds: ThresholdSettings,
     memory_candidates: dict[str, dict[str, Any]],
@@ -410,10 +423,10 @@ def _run_memory_lane(
         thresholds=thresholds,
     )
     fused = fuse_with_rrf(seeds["semantic"], seeds["keyword"])
-    selected = fused[:_MEMORY_LANE_LIMIT]
+    selected = fused[: max(_MEMORY_LANE_LIMIT, request.limit)]
     hydrated = _visible_memories_by_id(
         uow=uow,
-        repo_id=request.repo_id,
+        request=request,
         memory_ids=[str(item["memory_id"]) for item in selected],
     )
     for rank, candidate in enumerate(selected, start=1):
@@ -442,7 +455,7 @@ def _run_memory_lane(
 
 def _expand_structural_memory_relations(
     *,
-    request: MemoryRecallRequest,
+    request: MemoryReadRequest,
     memory_candidates: dict[str, dict[str, Any]],
     uow: IUnitOfWork,
 ) -> dict[str, Any]:
@@ -458,9 +471,9 @@ def _expand_structural_memory_relations(
         ):
             rows = uow.read_policy.list_structural_memory_relation_rows(
                 repo_id=request.repo_id,
-                include_global=True,
+                include_global=request.include_global,
                 anchor_memory_id=anchor_memory_id,
-                kinds=list(MATURE_MEMORY_KIND_VALUES),
+                kinds=request.kinds or list(MATURE_MEMORY_KIND_VALUES),
                 predicates=predicates,
             )
             for neighbor in select_structural_memory_relation_neighbors(
@@ -481,7 +494,7 @@ def _expand_structural_memory_relations(
 
     hydrated = _visible_memories_by_id(
         uow=uow,
-        repo_id=request.repo_id,
+        request=request,
         memory_ids=[item["memory_id"] for item in discovered],
     )
     relation_types = Counter()
@@ -508,7 +521,7 @@ def _expand_structural_memory_relations(
 
 def _discover_concepts(
     *,
-    request: MemoryRecallRequest,
+    request: MemoryReadRequest,
     lanes: Sequence[_QueryLane],
     embeddings: dict[str, tuple[list[float], str | None]],
     memory_candidates: dict[str, dict[str, Any]],
@@ -516,6 +529,8 @@ def _discover_concepts(
     thresholds: ThresholdSettings,
 ) -> dict[str, dict[str, Any]]:
     candidates: dict[str, dict[str, Any]] = {}
+    if request.expand.concepts.mode == "none":
+        return candidates
     memory_ids = list(memory_candidates)
     for link in uow.concepts.find_concepts_for_memory_ids(
         repo_id=request.repo_id,
@@ -577,7 +592,7 @@ def _discover_concepts(
 
 def _select_concepts(
     *,
-    request: MemoryRecallRequest,
+    request: MemoryReadRequest,
     concept_candidates: dict[str, dict[str, Any]],
     uow: IUnitOfWork,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
@@ -613,18 +628,19 @@ def _select_concepts(
             )
         )
     selected.sort(key=lambda item: (-item[0], item[1]))
-    chosen = [entry for _, _, entry in selected[:_CONCEPT_TARGET]]
+    chosen = [entry for _, _, entry in selected[: request.expand.concepts.max_auto]]
     return chosen, {
         "candidate_count": len(concept_candidates),
         "selected": len(chosen),
-        "rejected": rejected_count + max(0, len(selected) - _CONCEPT_TARGET),
+        "rejected": rejected_count
+        + max(0, len(selected) - request.expand.concepts.max_auto),
         "selected_refs": [entry["bundle"]["concept"].slug for entry in chosen],
     }
 
 
 def _traverse_selected_concepts(
     *,
-    request: MemoryRecallRequest,
+    request: MemoryReadRequest,
     selected_concepts: list[dict[str, Any]],
     memory_candidates: dict[str, dict[str, Any]],
     uow: IUnitOfWork,
@@ -660,7 +676,7 @@ def _traverse_selected_concepts(
 
     linked_memories = _visible_memories_by_id(
         uow=uow,
-        repo_id=request.repo_id,
+        request=request,
         memory_ids=linked_memory_ids,
     )
     link_role_by_memory = defaultdict(set)
@@ -709,7 +725,7 @@ def _traverse_selected_concepts(
 
 def _select_final_memories(
     *,
-    request: MemoryRecallRequest,
+    request: MemoryReadRequest,
     memory_candidates: dict[str, dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     ordered = sorted(
@@ -723,7 +739,7 @@ def _select_final_memories(
     def take(predicate, limit: int) -> None:
         remaining = limit - sum(1 for item in selected if predicate(item))
         for item in ordered:
-            if remaining <= 0 or len(selected) >= _FINAL_MEMORY_TARGET:
+            if remaining <= 0 or len(selected) >= request.limit:
                 return
             memory_id = str(item["memory"].id)
             if memory_id in selected_ids or not predicate(item):
@@ -748,7 +764,7 @@ def _select_final_memories(
             or sum(1 for entry in selected if _problem_or_solution(entry)) < 10
         )
 
-    take(can_fill, _FINAL_MEMORY_TARGET)
+    take(can_fill, request.limit)
 
     for item in ordered:
         memory_id = str(item["memory"].id)
@@ -766,25 +782,28 @@ def _select_final_memories(
     }
 
 
-def _lane_request_data(*, request: MemoryRecallRequest, query: str) -> dict[str, Any]:
+def _lane_request_data(*, request: MemoryReadRequest, query: str) -> dict[str, Any]:
     return {
         "repo_id": request.repo_id,
-        "mode": "targeted",
+        "mode": request.mode,
         "query": query,
-        "limit": _MEMORY_LANE_LIMIT,
-        "include_global": True,
-        "kinds": list(MATURE_MEMORY_KIND_VALUES),
+        "limit": max(_MEMORY_LANE_LIMIT, request.limit),
+        "include_global": request.include_global,
+        "kinds": request.kinds or list(MATURE_MEMORY_KIND_VALUES),
     }
 
 
 def _visible_memories_by_id(
-    *, uow: IUnitOfWork, repo_id: str, memory_ids: Sequence[str]
+    *, uow: IUnitOfWork, request: MemoryReadRequest, memory_ids: Sequence[str]
 ) -> dict[str, Memory]:
     memories = uow.memories.list_by_ids(tuple(dict.fromkeys(memory_ids)))
     return {
         str(memory.id): memory
         for memory in memories
-        if memory.has_positive_retrieval_signal() and memory.is_visible_in(repo_id)
+        if memory.has_positive_retrieval_signal()
+        and memory.is_visible_in(request.repo_id)
+        and (request.include_global or memory.scope.value != "global")
+        and (request.kinds is None or memory.kind.value in request.kinds)
     }
 
 

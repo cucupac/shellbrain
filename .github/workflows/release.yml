@@ -43,7 +43,7 @@ jobs:
               raise SystemExit(f"expected one wheel, found {wheels!r}")
 
           required = {
-              "app/settings/internal-agents/defaults.yaml",
+              "app/startup/internal_agent_config.py",
               "app/entrypoints/cli/handlers/working_agent/teach.py",
               "migrations/versions/20260519_0023_explicit_teach_trigger.py",
               "migrations/versions/20260519_0024_read_retrieval_latency_indexes.py",

@@ -4,7 +4,6 @@ from collections.abc import Callable
 
 import pytest
 
-from app.core.use_cases.retrieval.expansion import expand_candidates
 from app.infrastructure.db.runtime.uow import PostgresUnitOfWork
 
 
@@ -151,84 +150,6 @@ def test_read_rejects_semantic_rows_from_a_different_embedding_model(
                 kinds=None,
                 limit=1,
             )
-
-
-def test_read_expands_semantic_neighbors_through_the_real_semantic_lane_only_up_to_semantic_hops_depth(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    seed_read_memory: Callable[..., None],
-    seed_read_embedding: Callable[..., None],
-) -> None:
-    """read should always expand semantic neighbors through the real semantic lane only up to semantic_hops depth."""
-
-    seed_read_memory(
-        memory_id="anchor",
-        repo_id="repo-a",
-        scope="repo",
-        kind="fact",
-        text_value="Anchor shellbrain without query overlap.",
-    )
-    seed_read_memory(
-        memory_id="neighbor-1",
-        repo_id="repo-a",
-        scope="repo",
-        kind="fact",
-        text_value="First semantic neighbor without query overlap.",
-    )
-    seed_read_memory(
-        memory_id="neighbor-2",
-        repo_id="repo-a",
-        scope="repo",
-        kind="fact",
-        text_value="Second semantic neighbor without query overlap.",
-    )
-    seed_read_embedding(memory_id="anchor", vector=[1.0, 0.0, 0.0, 0.0])
-    seed_read_embedding(memory_id="neighbor-1", vector=[0.6, 0.8, 0.0, 0.0])
-    seed_read_embedding(memory_id="neighbor-2", vector=[0.0, 1.0, 0.0, 0.0])
-
-    with uow_factory() as uow:
-        zero_hops = expand_candidates(
-            [{"memory_id": "anchor", "score": 1.0}],
-            _make_expansion_payload(semantic_hops=0),
-            read_policy=uow.read_policy,
-            semantic_retrieval=uow.semantic_retrieval,
-        )
-        one_hop = expand_candidates(
-            [{"memory_id": "anchor", "score": 1.0}],
-            _make_expansion_payload(semantic_hops=1),
-            read_policy=uow.read_policy,
-            semantic_retrieval=uow.semantic_retrieval,
-        )
-        two_hops = expand_candidates(
-            [{"memory_id": "anchor", "score": 1.0}],
-            _make_expansion_payload(semantic_hops=2),
-            read_policy=uow.read_policy,
-            semantic_retrieval=uow.semantic_retrieval,
-        )
-
-    zero_hop_ids = _candidate_ids(zero_hops["implicit"])
-    one_hop_ids = _candidate_ids(one_hop["implicit"])
-    two_hop_ids = _candidate_ids(two_hops["implicit"])
-    assert "neighbor-1" not in zero_hop_ids
-    assert "neighbor-1" in one_hop_ids
-    assert "neighbor-2" not in one_hop_ids
-    assert "neighbor-2" in two_hop_ids
-
-
-def _make_expansion_payload(*, semantic_hops: int) -> dict[str, object]:
-    """Build the minimal payload shape needed by expansion-stage tests."""
-
-    return {
-        "repo_id": "repo-a",
-        "include_global": True,
-        "limit": 1,
-        "expand": {
-            "semantic_hops": semantic_hops,
-            "include_problem_links": False,
-            "include_fact_update_links": False,
-            "include_association_links": False,
-            "min_association_strength": 0.25,
-        },
-    }
 
 
 def _candidate_ids(candidates) -> list[str]:

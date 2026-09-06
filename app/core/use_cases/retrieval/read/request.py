@@ -29,18 +29,12 @@ class ReadConceptsExpandRequest(_StrictModel):
     """Concept-context expansion controls for read requests."""
 
     mode: Literal["auto", "none"] = "auto"
-    max_auto: int = Field(default=2, ge=1, le=5)
+    max_auto: int = Field(default=2, ge=1, le=6)
 
 
 class ReadExpandRequest(_StrictModel):
     """Expansion knobs for read requests."""
 
-    semantic_hops: int | None = Field(default=None, ge=0, le=3)
-    include_problem_links: bool | None = None
-    include_fact_update_links: bool | None = None
-    include_association_links: bool | None = None
-    max_association_depth: int | None = Field(default=None, ge=1, le=4)
-    min_association_strength: float | None = Field(default=None, ge=0.0, le=1.0)
     concepts: ReadConceptsExpandRequest = Field(
         default_factory=ReadConceptsExpandRequest
     )
@@ -51,12 +45,12 @@ class MemoryReadRequest(_StrictModel):
 
     op: Literal["read"] = "read"
     repo_id: RepoId
-    mode: Literal["ambient", "targeted"]
+    mode: Literal["ambient", "targeted"] = "targeted"
     query: str = Field(min_length=1)
-    include_global: bool | None = None
+    include_global: bool = True
     kinds: list[MemoryKindValue] | None = Field(default=None, min_length=1)
-    limit: int | None = Field(default=None, ge=1, le=100)
-    expand: ReadExpandRequest | None = None
+    limit: int = Field(default=8, ge=1, le=100)
+    expand: ReadExpandRequest = Field(default_factory=ReadExpandRequest)
 
     @field_validator("repo_id")
     @classmethod

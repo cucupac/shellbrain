@@ -24,7 +24,7 @@ class InnerAgentProviderConfig(_StrictModel):
 
 
 class InternalAgentsConfig(_StrictModel):
-    """Typed internal-agent configuration loaded from YAML."""
+    """Typed internal-agent configuration selected by startup."""
 
     build_context: BuildContextSettings
     build_knowledge: BuildKnowledgeSettings
@@ -61,3 +61,34 @@ class InternalAgentsConfig(_StrictModel):
                     f"internal_agents.providers.{provider_name}.model_override is required"
                 )
         return self
+
+
+def default_internal_agents_config() -> InternalAgentsConfig:
+    """Construct validated defaults without a separate configuration format."""
+    return InternalAgentsConfig(
+        build_context=BuildContextSettings(
+            provider="auto",
+            model="gpt-5.6-luna",
+            reasoning="low",
+            timeout_seconds=90,
+            max_brief_tokens=500,
+        ),
+        build_knowledge=BuildKnowledgeSettings(
+            provider="auto",
+            model="gpt-5.6-luna",
+            reasoning="xhigh",
+            timeout_seconds=600,
+        ),
+        teach=TeachKnowledgeSettings(
+            provider="auto",
+            model="gpt-5.4-mini",
+            reasoning="medium",
+            timeout_seconds=600,
+        ),
+        providers={
+            "codex": InnerAgentProviderConfig(command="codex"),
+            "claude": InnerAgentProviderConfig(
+                command="claude", model_override="sonnet"
+            ),
+        },
+    )

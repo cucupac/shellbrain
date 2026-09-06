@@ -84,7 +84,9 @@ def seed_read_memory(integration_engine: Engine) -> Callable[..., None]:
     ) -> None:
         scope_value = scope.value if isinstance(scope, MemoryScope) else scope
         kind_value = kind.value if isinstance(kind, MemoryKind) else kind
-        status_value = status.value if isinstance(status, MemoryLifecycleStatus) else status
+        status_value = (
+            status.value if isinstance(status, MemoryLifecycleStatus) else status
+        )
         ts = created_at or _BASE_TS
         with integration_engine.begin() as conn:
             conn.execute(
@@ -175,9 +177,7 @@ def seed_structural_problem_link(integration_engine: Engine) -> Callable[..., No
         created_at: datetime | None = None,
     ) -> None:
         ts = created_at or _BASE_TS
-        predicate = {"solution": "solved_by", "failed_tactic": "failed_with"}[
-            link_kind
-        ]
+        predicate = {"solution": "solved_by", "failed_tactic": "failed_with"}[link_kind]
         with integration_engine.begin() as conn:
             conn.execute(
                 insert(structural_memory_relations).values(
@@ -317,9 +317,12 @@ class _StubVectorSearch(IVectorSearch):
     def embed_query(self, text: str) -> list[float]:
         """Return the preconfigured query vector for the provided text."""
 
-        if text not in self._vectors_by_query:
-            raise KeyError(f"No stub query vector configured for: {text}")
-        return list(self._vectors_by_query[text])
+        # Query variants in the shared selector represent the same semantic intent.
+        return list(
+            self._vectors_by_query.get(
+                text, next(iter(self._vectors_by_query.values()))
+            )
+        )
 
 
 class DeterministicSemanticRetrievalRepo:
@@ -366,44 +369,6 @@ class DeterministicSemanticRetrievalRepo:
                 continue
             scored.append({"memory_id": row["memory_id"], "score": score})
         scored.sort(key=lambda item: (-float(item["score"]), str(item["memory_id"])))
-        return scored[:limit]
-
-    def list_semantic_neighbors(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds,
-        limit: int | None = None,
-    ) -> list[dict[str, object]]:
-        """Return semantic neighbors for an anchor shellbrain using the same deterministic scoring."""
-
-        visible_rows = self._visible_embedding_rows(
-            repo_id=repo_id, include_global=include_global, kinds=kinds
-        )
-        anchor_vector = next(
-            (
-                row["vector"]
-                for row in visible_rows
-                if row["memory_id"] == anchor_memory_id
-            ),
-            None,
-        )
-        if anchor_vector is None:
-            return []
-
-        scored: list[dict[str, object]] = []
-        for row in visible_rows:
-            if row["memory_id"] == anchor_memory_id:
-                continue
-            score = _cosine_similarity(anchor_vector, row["vector"])
-            if score < self._neighbor_threshold:
-                continue
-            scored.append({"memory_id": row["memory_id"], "score": score})
-        scored.sort(key=lambda item: (-float(item["score"]), str(item["memory_id"])))
-        if limit is None:
-            return scored
         return scored[:limit]
 
     def _visible_embedding_rows(

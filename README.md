@@ -55,6 +55,8 @@ Memories and concept claims link to supporting evidence. A concept can express a
 
 Working agents run `shellbrain recall` to get one compact brief for the current task.
 
+Recall, automatic learning, and teaching use the same evidence selector. It combines BM25, vector similarity, and graph links. Learning agents receive the selected records. The recall agent can summarize them.
+
 Recall receives only the quoted query. Include the relevant task, failure, subsystem, or decision in the question.
 
 ```bash

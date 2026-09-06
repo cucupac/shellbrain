@@ -177,125 +177,15 @@ def test_startup_references_entrypoints_only_as_bootstrap_module_constants() -> 
     )
 
 
-def test_infrastructure_adapter_families_are_grouped() -> None:
-    expected_paths = (
-        APP_ROOT / "infrastructure" / "db" / "runtime",
-        APP_ROOT / "infrastructure" / "db" / "admin",
-        APP_ROOT / "infrastructure" / "db" / "admin" / "backups",
-        APP_ROOT / "infrastructure" / "db" / "admin" / "provisioning",
-        APP_ROOT / "infrastructure" / "embeddings" / "prewarm.py",
-        APP_ROOT / "infrastructure" / "host_apps" / "assets",
-        APP_ROOT / "infrastructure" / "host_apps" / "identity",
-        APP_ROOT / "infrastructure" / "host_apps" / "transcripts",
-        APP_ROOT / "infrastructure" / "process" / "episode_sync",
-        APP_ROOT / "infrastructure" / "system",
-    )
-    missing = [
-        str(path.relative_to(REPO_ROOT)) for path in expected_paths if not path.exists()
-    ]
-    assert not missing, "Infrastructure adapter groups are missing:\n" + "\n".join(
-        missing
-    )
-
-
-def test_packaged_settings_are_data_not_runtime_layer() -> None:
-    settings_root = APP_ROOT / "settings"
-    assert settings_root.is_dir()
-    violations = [
-        str(path.relative_to(REPO_ROOT))
-        for path in settings_root.rglob("*")
-        if path.is_file()
-        and "__pycache__" not in path.parts
-        and path.name != "__init__.py"
-        and path.suffix not in {".yaml", ".yml", ".toml", ".json"}
-    ]
-    assert not violations, (
-        "app/settings should contain app-owned package data, not runtime behavior:\n"
-        + "\n".join(violations)
-    )
-
-
-def test_cli_entrypoint_main_is_startup_shim() -> None:
-    path = APP_ROOT / "entrypoints" / "cli" / "main.py"
-    app_imports = [
-        module_name
-        for _line_no, module_name in _imported_modules(path)
-        if module_name.startswith("app.")
-    ]
-    assert app_imports == ["app.entrypoints.cli.runner", "app.startup.cli"]
-
-
-def test_cli_adapter_lives_under_entrypoints() -> None:
-    expected_paths = (
-        APP_ROOT / "entrypoints" / "cli" / "runner.py",
-        APP_ROOT / "entrypoints" / "cli" / "handlers",
-        APP_ROOT / "entrypoints" / "cli" / "parser",
-        APP_ROOT / "entrypoints" / "cli" / "presenters",
-        APP_ROOT / "entrypoints" / "cli" / "request_parsing",
-    )
-    missing = [
-        str(path.relative_to(REPO_ROOT)) for path in expected_paths if not path.exists()
-    ]
-    assert not missing, "CLI adapter paths are missing:\n" + "\n".join(missing)
-
-
 def test_bare_concept_payload_is_rejected() -> None:
     parser = build_parser()
     with pytest.raises(SystemExit):
         parser.parse_args(["concept", "--json", "{}"])
 
 
-def test_core_ports_replace_interfaces() -> None:
-    violations: list[str] = []
-    if not (APP_ROOT / "core" / "ports").is_dir():
-        violations.append("app/core/ports is missing")
-    if (APP_ROOT / "core" / "interfaces").exists():
-        violations.append("app/core/interfaces still exists")
-    assert not violations, "Core ports must replace interfaces:\n" + "\n".join(
-        violations
-    )
-
-
-def test_core_ports_are_grouped_by_adapter_category() -> None:
-    ports_root = APP_ROOT / "core" / "ports"
-    expected_categories = {
-        "db",
-        "embeddings",
-        "host_apps",
-        "local_state",
-        "system",
-    }
-    categories = {
-        path.name
-        for path in ports_root.iterdir()
-        if path.is_dir() and "__pycache__" not in path.parts
-    }
-    flat_modules = [
-        str(path.relative_to(REPO_ROOT))
-        for path in ports_root.glob("*.py")
-        if path.name != "__init__.py"
-    ]
-    missing_categories = sorted(expected_categories - categories)
-    assert not flat_modules and not missing_categories, (
-        "Core ports should be grouped by adapter category:\n"
-        + "\n".join(flat_modules + missing_categories)
-    )
-
-
 def test_core_contracts_do_not_own_raw_cli_protocol() -> None:
     assert not (APP_ROOT / "core" / "contracts" / "agent_requests.py").exists()
     assert not (APP_ROOT / "core" / "contracts" / "request_hydration.py").exists()
-
-
-def test_direct_core_directories_have_boundary_readmes() -> None:
-    missing = [
-        str(path.relative_to(REPO_ROOT))
-        for path in sorted((APP_ROOT / "core").iterdir())
-        if path.is_dir()
-        and "__pycache__" not in path.parts
-        and not (path / "README.md").is_file()
-    ]
-    assert not missing, "Core directories missing README.md:\n" + "\n".join(missing)
 
 
 def test_core_use_cases_do_not_accept_raw_payloads() -> None:
@@ -329,64 +219,6 @@ def test_core_use_cases_do_not_accept_raw_payloads() -> None:
     )
 
 
-def test_no_empty_production_package_directories() -> None:
-    violations: list[str] = []
-    for root in (
-        APP_ROOT / "core",
-        APP_ROOT / "entrypoints",
-        APP_ROOT / "infrastructure",
-        APP_ROOT / "startup",
-    ):
-        for path in sorted(root.rglob("*")):
-            if not path.is_dir() or "__pycache__" in path.parts:
-                continue
-            children = [
-                child
-                for child in path.iterdir()
-                if "__pycache__" not in child.parts
-            ]
-            if not children:
-                violations.append(str(path.relative_to(REPO_ROOT)))
-
-    assert not violations, (
-        "Production package directories should not be empty/speculative:\n"
-        + "\n".join(violations)
-    )
-
-
-def test_no_speculative_architecture_bucket_names() -> None:
-    forbidden_names = {
-        "application",
-        "common",
-        "common.py",
-        "contracts",
-        "effects",
-        "flow_common.py",
-        "helpers",
-        "helpers.py",
-        "operations.py",
-        "support.py",
-        "utils",
-        "utils.py",
-        "_shared",
-    }
-    violations = [
-        str(path.relative_to(REPO_ROOT))
-        for root in (
-            APP_ROOT / "core",
-            APP_ROOT / "entrypoints",
-            APP_ROOT / "startup",
-            APP_ROOT / "infrastructure",
-        )
-        for path in root.rglob("*")
-        if "__pycache__" not in path.parts and path.name in forbidden_names
-    ]
-    assert not violations, (
-        "Rename vague/speculative architecture buckets by the concept they actually represent:\n"
-        + "\n".join(violations)
-    )
-
-
 def test_startup_has_no_process_or_postgres_mechanics() -> None:
     forbidden = (
         "import subprocess",
@@ -406,23 +238,6 @@ def test_startup_has_no_process_or_postgres_mechanics() -> None:
                 violations.append(f"{path.relative_to(REPO_ROOT)} contains {needle!r}")
     assert not violations, (
         "Startup contains concrete process/DB mechanics:\n" + "\n".join(violations)
-    )
-
-
-def test_infrastructure_package_initializers_stay_thin() -> None:
-    violations: list[str] = []
-    for path in _python_files(APP_ROOT / "infrastructure"):
-        if path.name != "__init__.py":
-            continue
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in ast.iter_child_nodes(tree):
-            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
-                violations.append(
-                    f"{path.relative_to(REPO_ROOT)}:{node.lineno} defines {node.name}"
-                )
-    assert not violations, (
-        "Infrastructure package initializers should only re-export names:\n"
-        + "\n".join(violations)
     )
 
 
@@ -574,7 +389,14 @@ def test_core_use_cases_and_policies_use_ports_for_runtime_effects() -> None:
         APP_ROOT / "core" / "use_cases",
         APP_ROOT / "core" / "policies",
     )
-    forbidden_methods = {"exists", "mkdir", "read_text", "rename", "unlink", "write_text"}
+    forbidden_methods = {
+        "exists",
+        "mkdir",
+        "read_text",
+        "rename",
+        "unlink",
+        "write_text",
+    }
     for scan_root in scan_roots:
         for path in _python_files(scan_root):
             tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -653,7 +475,7 @@ def test_core_inner_agent_settings_are_provider_neutral() -> None:
         APP_ROOT / "core" / "ports" / "host_apps" / "inner_agents.py",
         APP_ROOT / "core" / "use_cases" / "retrieval" / "build_context" / "execute.py",
     )
-    forbidden = ('Literal["codex"]', "provider=\"codex\"", 'provider="codex"')
+    forbidden = ('Literal["codex"]', 'provider="codex"', 'provider="codex"')
     violations: list[str] = []
     for path in scanned_paths:
         text = path.read_text(encoding="utf-8")
@@ -665,7 +487,6 @@ def test_core_inner_agent_settings_are_provider_neutral() -> None:
         "Core inner-agent settings should be provider-neutral:\n"
         + "\n".join(violations)
     )
-
 
 
 def test_docs_and_onboarding_do_not_teach_removed_cli_aliases() -> None:

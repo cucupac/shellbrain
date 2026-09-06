@@ -161,7 +161,7 @@ def test_read_rejects_concept_max_auto_above_hard_cap() -> None:
     payload = {
         "op": "read",
         "query": "find deployment issue memory",
-        "expand": {"concepts": {"mode": "auto", "max_auto": 6}},
+        "expand": {"concepts": {"mode": "auto", "max_auto": 7}},
     }
 
     request, errors = validate_read_schema(payload)

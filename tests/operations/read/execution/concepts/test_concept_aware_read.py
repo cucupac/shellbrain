@@ -2,7 +2,6 @@
 
 from collections.abc import Callable
 
-import pytest
 from sqlalchemy import insert, select, update
 from sqlalchemy.engine import Engine
 
@@ -14,7 +13,6 @@ from app.core.ports.system.idgen import IIdGenerator
 from app.core.use_cases.concepts.add import add_concepts
 from app.core.use_cases.concepts.update import update_concepts
 from app.core.use_cases.retrieval.read import execute_read_memory
-from app.core.use_cases.retrieval.read_concepts import append_concepts_to_pack
 from app.infrastructure.db.runtime.models.concepts import (
     concept_claims,
     concept_embeddings,
@@ -65,14 +63,9 @@ def test_read_should_include_concepts_linked_to_returned_memories(
         "Relay-controlled EOAs"
     )
     assert pack["concepts"]["items"][0]["status"] == "active"
-    assert pack["concepts"]["items"][0]["created_at"]
-    assert pack["concepts"]["items"][0]["updated_at"]
-    assert pack["concepts"]["items"][0]["key_claims"][0]["observed_at"]
-    assert pack["concepts"]["items"][0]["key_claims"][0]["created_at"]
-    assert pack["concepts"]["items"][0]["why_matched"][0]["reason"] == "linked_memory"
+    assert pack["concepts"]["items"][0]["claims"][0]["observed_at"]
+    assert pack["concepts"]["items"][0]["why_selected"][0]["reason"] == "linked_memory"
     assert "expand" not in pack["concepts"]["items"][0]
-    assert "concept show" in pack["concepts"]["guidance"]
-    assert "evidence" in pack["concepts"]["items"][0]["available_facets"]
 
 
 def test_read_should_include_concepts_matching_query_aliases(
@@ -100,7 +93,10 @@ def test_read_should_include_concepts_matching_query_aliases(
 
     concept_item = result.data["pack"]["concepts"]["items"][0]
     assert concept_item["ref"] == "deposit-addresses"
-    assert {"reason": "concept_keyword", "rank": 1} in concept_item["why_matched"]
+    assert any(
+        reason["reason"] == "concept_keyword" and reason["rank"] == 1
+        for reason in concept_item["why_selected"]
+    )
 
 
 def test_read_should_include_concepts_matching_semantic_concept_embeddings(
@@ -149,7 +145,10 @@ def test_read_should_include_concepts_matching_semantic_concept_embeddings(
 
     concept_item = result.data["pack"]["concepts"]["items"][0]
     assert concept_item["ref"] == "semantic-only"
-    assert {"reason": "concept_semantic", "rank": 1} in concept_item["why_matched"]
+    assert any(
+        reason["reason"] == "concept_semantic" and reason["rank"] == 1
+        for reason in concept_item["why_selected"]
+    )
 
 
 def test_concept_keyword_corpus_should_include_anchors_and_exclude_inactive_concepts(
@@ -229,7 +228,6 @@ def test_read_should_suppress_concepts_when_requested(
     assert result.data["pack"]["concepts"] == {
         "mode": "none",
         "items": [],
-        "guidance": "Concept context suppressed by request.",
     }
 
 
@@ -338,8 +336,8 @@ def test_read_keeps_active_groundings_when_claims_are_superseded(
 
     item = result.data["pack"]["concepts"]["items"][0]
     assert item["ref"] == "deposit-addresses"
-    assert item["key_claims"] == []
-    assert item["freshness"]["superseded_records"] == 1
+    assert all(claim["status"] == "superseded" for claim in item["claims"])
+    assert item["freshness"]["superseded"] == 1
     assert "Relay-controlled EOAs" not in item["orientation"]
 
     # Historical text alone must not match once the active anchor is removed from the query.
@@ -348,25 +346,6 @@ def test_read_keeps_active_groundings_when_claims_are_superseded(
             make_read_request(repo_id="repo-a", query="EOAs"), uow
         )
     assert result.data["pack"]["concepts"]["items"] == []
-
-
-def test_read_should_reject_concept_links_missing_ranking_evidence() -> None:
-    """auto concept ranking should not invent status or confidence for malformed links."""
-
-    pack = {
-        "direct": [{"memory_id": "memory-1"}],
-        "explicit_related": [],
-        "implicit_related": [],
-    }
-
-    with pytest.raises(
-        ValueError, match="concept memory link is missing required status"
-    ):
-        append_concepts_to_pack(
-            pack=pack,
-            request=make_read_request(repo_id="repo-a", query="refund failure"),
-            concepts=_MalformedConceptLinksRepo(),
-        )
 
 
 def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:
@@ -513,44 +492,24 @@ def _seed_refund_policy(uow_factory: Callable[[], PostgresUnitOfWork]) -> None:
 
 
 def _stub_pack(monkeypatch, *, direct_memory_ids: list[str]) -> None:
-    pack = {
-        "meta": {
-            "mode": "targeted",
-            "limit": 8,
-            "counts": {
-                "direct": len(direct_memory_ids),
-                "explicit_related": 0,
-                "implicit_related": 0,
-            },
-        },
-        "direct": [
-            {
-                "memory_id": memory_id,
-                "why_included": "direct_match",
-                "priority": index,
-                "kind": "problem",
-                "text": "Refund problem.",
-            }
-            for index, memory_id in enumerate(direct_memory_ids, start=1)
-        ],
-        "explicit_related": [],
-        "implicit_related": [],
-    }
+    from app.core.use_cases.retrieval.deterministic_graph_recall import _new_candidate
+
+    def run_lane(*, lane, uow, memory_candidates, **kwargs):
+        for rank, memory in enumerate(
+            uow.memories.list_by_ids(direct_memory_ids), start=1
+        ):
+            candidate = memory_candidates.setdefault(memory.id, _new_candidate(memory))
+            candidate["score"] = 1.0
+            candidate["matched_lanes"].append(lane.name)
+            candidate["lane_ranks"][lane.name] = rank
+            candidate["why"].add("memory_fanout")
+        return {
+            "lane": lane.name,
+            "zero_result": not direct_memory_ids,
+            "duplicate_heavy": False,
+        }
+
     monkeypatch.setattr(
-        "app.core.use_cases.retrieval.context_pack_pipeline.build_context_pack",
-        lambda *args, **kwargs: pack,
+        "app.core.use_cases.retrieval.deterministic_graph_recall._run_memory_lane",
+        run_lane,
     )
-
-
-class _MalformedConceptLinksRepo:
-    """Concept repo stub that returns malformed auto-ranking evidence."""
-
-    def find_concepts_for_memory_ids(self, *, repo_id: str, memory_ids):
-        del repo_id, memory_ids
-        return [
-            {
-                "concept_id": "concept-1",
-                "role": "example_of",
-                "confidence": 0.5,
-            }
-        ]

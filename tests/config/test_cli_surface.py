@@ -115,7 +115,10 @@ def test_shellbrain_help_should_explain_the_workflow(
     assert "scenario record" in output
     assert "Examples by audience" in output
     assert "Internal knowledge-builder agents:" in output
-    assert 'shellbrain events --json \'{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}\'' in output
+    assert (
+        'shellbrain events --json \'{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}\''
+        in output
+    )
     assert "utility_vote" in output
     assert "shellbrain admin doctor" in output
     assert "curl -L shellbrain.ai/install | bash" in output
@@ -264,7 +267,10 @@ def test_recall_help_should_describe_read_only_synthesis_contract(
 
     assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert 'shellbrain recall "What context matters for this migration lock timeout?"' in output
+    assert (
+        'shellbrain recall "What context matters for this migration lock timeout?"'
+        in output
+    )
     assert "normal working-agent interface" in output
     assert "not internal commands like `read`, `events`, or `concept show`" in output
     assert "natural-language query" in output
@@ -372,9 +378,9 @@ def test_concept_parser_should_require_subcommand_and_accept_payloads(
     assert file_args.command == "concept"
     assert file_args.concept_command == "update"
     assert (
-        cli_runner._load_payload(file_args.json_text, file_args.json_file)["actions"][0][
-            "type"
-        ]
+        cli_runner._load_payload(file_args.json_text, file_args.json_file)["actions"][
+            0
+        ]["type"]
         == "update_concept"
     )
 
@@ -757,12 +763,11 @@ def test_admin_analytics_should_print_the_report(
         "app.startup.analytics.build_analytics_report",
         lambda **kwargs: {
             "window": {"days": kwargs["days"]},
-            "summary": {"overall_health": "healthy"},
-            "strengths": [],
+            "summary": {"invocation_count": 0},
+            "commands": [],
             "failures": [],
-            "capability_gaps": [],
-            "priorities": [],
-            "repo_rollups": [],
+            "retrieval": [],
+            "sync": [],
         },
     )
 
@@ -771,7 +776,7 @@ def test_admin_analytics_should_print_the_report(
     assert exit_code == 0
     output = capsys.readouterr().out
     assert '"days": 5' in output
-    assert '"overall_health": "healthy"' in output
+    assert '"invocation_count": 0' in output
 
 
 def test_admin_session_state_help_should_include_management_examples(
@@ -808,7 +813,9 @@ def test_main_accepts_repo_targeting_flags_before_subcommand(
         sync_calls.append(kwargs["repo_context"])
         return result
 
-    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(
+        cli_runner, "run_operation_command", _fake_run_operation_command
+    )
 
     exit_code = cli_main.main(
         [
@@ -847,7 +854,9 @@ def test_main_accepts_repo_targeting_flags_after_subcommand(
         captured["repo_context"] = kwargs["repo_context"]
         return {"status": "ok", "data": {"episode_id": "ep-1"}}
 
-    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(
+        cli_runner, "run_operation_command", _fake_run_operation_command
+    )
 
     exit_code = cli_main.main(
         [
@@ -891,7 +900,9 @@ def test_main_dispatches_recall_query(monkeypatch, tmp_path: Path) -> None:
         captured["result"] = result
         return result
 
-    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(
+        cli_runner, "run_operation_command", _fake_run_operation_command
+    )
 
     exit_code = cli_main.main(
         [
@@ -922,7 +933,9 @@ def test_main_dispatches_snapshot_without_json(monkeypatch, tmp_path: Path) -> N
         captured["repo_context"] = kwargs["repo_context"]
         return {"status": "ok", "data": {"result": "created"}}
 
-    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(
+        cli_runner, "run_operation_command", _fake_run_operation_command
+    )
 
     exit_code = cli_main.main(
         ["--repo-root", str(repo_root), "--repo-id", "repo-snapshot", "snapshot"]
@@ -950,7 +963,9 @@ def test_main_returns_nonzero_for_error_operation_envelope(
             "errors": [{"code": "schema_error", "message": "bad request"}],
         }
 
-    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(
+        cli_runner, "run_operation_command", _fake_run_operation_command
+    )
 
     exit_code = cli_main.main(
         [
@@ -1077,7 +1092,9 @@ def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> Non
             sync_calls.append(kwargs["repo_context"])
         return result
 
-    monkeypatch.setattr(cli_runner, "run_operation_command", _fake_run_operation_command)
+    monkeypatch.setattr(
+        cli_runner, "run_operation_command", _fake_run_operation_command
+    )
 
     exit_code = cli_main.main(
         [
@@ -1192,7 +1209,9 @@ def test_operational_command_should_fail_cleanly_when_managed_runtime_is_unavail
 def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:
     """upgrade should delegate to the hosted upgrader and propagate its exit code."""
 
-    monkeypatch.setattr("app.infrastructure.system.package_upgrade.run_upgrade", lambda: 23)
+    monkeypatch.setattr(
+        "app.infrastructure.system.package_upgrade.run_upgrade", lambda: 23
+    )
 
     exit_code = cli_main.main(["upgrade"])
 

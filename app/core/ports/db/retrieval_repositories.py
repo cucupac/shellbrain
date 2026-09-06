@@ -20,18 +20,6 @@ class ISemanticRetrievalRepo(ABC):
     ) -> Sequence[dict[str, Any]]:
         """This method returns semantic retrieval candidates with scores."""
 
-    @abstractmethod
-    def list_semantic_neighbors(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds: Sequence[str] | None,
-        limit: int | None = None,
-    ) -> Sequence[dict[str, Any]]:
-        """This method returns implicit semantic neighbors for one anchor memory."""
-
 
 class IKeywordRetrievalRepo(ABC):
     """This interface defines keyword-lane corpus access."""
@@ -92,14 +80,3 @@ class IReadPolicyRepo(ABC):
         predicates: Sequence[str],
     ) -> Sequence[dict[str, Any]]:
         """Return structural relation rows touching an anchor plus visible participants."""
-
-    @abstractmethod
-    def list_association_edge_rows(
-        self,
-        *,
-        repo_id: str,
-        include_global: bool,
-        anchor_memory_id: str,
-        kinds: Sequence[str] | None,
-    ) -> Sequence[dict[str, Any]]:
-        """This method returns visible active association edge rows touching an anchor."""

@@ -37,7 +37,6 @@ def test_read_returns_semantic_seed_matches_when_lexical_misses(
     request = make_read_request(
         repo_id="repo-a",
         query="latent semantic regression",
-        expand={"semantic_hops": 0},
     )
     result = _execute_read_with_semantic_override(
         request,
@@ -84,7 +83,6 @@ def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
             query=query_text,
             include_global=False,
             kinds=["fact"],
-            expand={"semantic_hops": 0},
         ),
         uow_factory=uow_factory,
         vector_search=vector_search,
@@ -96,7 +94,6 @@ def test_read_applies_semantic_visibility_and_kind_filters_before_admission(
             query=query_text,
             include_global=True,
             kinds=["fact"],
-            expand={"semantic_hops": 0},
         ),
         uow_factory=uow_factory,
         vector_search=vector_search,
@@ -140,7 +137,6 @@ def test_read_fuses_semantic_and_keyword_direct_hits_without_duplicates(
     request = make_read_request(
         repo_id="repo-a",
         query="rollback deployment",
-        expand={"semantic_hops": 0},
     )
     result = _execute_read_with_semantic_override(
         request,
@@ -153,98 +149,6 @@ def test_read_fuses_semantic_and_keyword_direct_hits_without_duplicates(
     assert ids.count("dual-hit") == 1
     assert "keyword-only" in ids
     assert ids[0] == "dual-hit"
-
-
-def test_read_expands_implicit_semantic_neighbors_only_up_to_semantic_hops_depth(
-    uow_factory: Callable[[], PostgresUnitOfWork],
-    seed_read_memory: Callable[..., None],
-    seed_read_embedding: Callable[..., None],
-    stub_vector_search: Callable[[dict[str, list[float]]], IVectorSearch],
-    semantic_retrieval_override_factory: Callable[..., object],
-) -> None:
-    """read should always expand implicit semantic neighbors only up to semantic_hops depth."""
-
-    seed_read_memory(
-        memory_id="anchor",
-        repo_id="repo-a",
-        scope="repo",
-        kind="fact",
-        text_value="Anchor shellbrain without shared query tokens.",
-    )
-    seed_read_memory(
-        memory_id="neighbor-1",
-        repo_id="repo-a",
-        scope="repo",
-        kind="fact",
-        text_value="First linked shellbrain without shared query tokens.",
-    )
-    seed_read_memory(
-        memory_id="neighbor-2",
-        repo_id="repo-a",
-        scope="repo",
-        kind="fact",
-        text_value="Second linked shellbrain without shared query tokens.",
-    )
-    seed_read_embedding(memory_id="anchor", vector=[1.0, 0.0, 0.0, 0.0])
-    seed_read_embedding(memory_id="neighbor-1", vector=[0.6, 0.8, 0.0, 0.0])
-    seed_read_embedding(memory_id="neighbor-2", vector=[0.0, 1.0, 0.0, 0.0])
-
-    query_text = "latent vector probe"
-    vector_search = stub_vector_search({query_text: [1.0, 0.0, 0.0, 0.0]})
-
-    zero_hops = _execute_read_with_semantic_override(
-        make_read_request(
-            repo_id="repo-a",
-            query=query_text,
-            expand={
-                "semantic_hops": 0,
-                "include_problem_links": False,
-                "include_fact_update_links": False,
-                "include_association_links": False,
-            },
-        ),
-        uow_factory=uow_factory,
-        vector_search=vector_search,
-        semantic_retrieval_override_factory=semantic_retrieval_override_factory,
-    )
-    one_hop = _execute_read_with_semantic_override(
-        make_read_request(
-            repo_id="repo-a",
-            query=query_text,
-            expand={
-                "semantic_hops": 1,
-                "include_problem_links": False,
-                "include_fact_update_links": False,
-                "include_association_links": False,
-            },
-        ),
-        uow_factory=uow_factory,
-        vector_search=vector_search,
-        semantic_retrieval_override_factory=semantic_retrieval_override_factory,
-    )
-    two_hops = _execute_read_with_semantic_override(
-        make_read_request(
-            repo_id="repo-a",
-            query=query_text,
-            expand={
-                "semantic_hops": 2,
-                "include_problem_links": False,
-                "include_fact_update_links": False,
-                "include_association_links": False,
-            },
-        ),
-        uow_factory=uow_factory,
-        vector_search=vector_search,
-        semantic_retrieval_override_factory=semantic_retrieval_override_factory,
-    )
-
-    zero_hops_ids = item_ids(zero_hops)
-    one_hop_ids = item_ids(one_hop)
-    two_hops_ids = item_ids(two_hops)
-    assert "neighbor-1" not in zero_hops_ids
-    assert "neighbor-1" in one_hop_ids
-    assert "neighbor-2" not in one_hop_ids
-    assert "neighbor-2" in two_hops_ids
 
 
 def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
@@ -276,7 +180,6 @@ def test_read_keeps_semantic_ordering_deterministic_on_stable_snapshot(
     request = make_read_request(
         repo_id="repo-a",
         query="deterministic semantic query",
-        expand={"semantic_hops": 0},
     )
     vector_search = stub_vector_search(
         {"deterministic semantic query": [1.0, 0.0, 0.0, 0.0]}
@@ -343,9 +246,7 @@ def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and
     )
     seed_read_embedding(memory_id="archived-direct", vector=[1.0, 0.0, 0.0, 0.0])
     seed_read_embedding(memory_id="wrong-direct", vector=[1.0, 0.0, 0.0, 0.0])
-    seed_read_embedding(
-        memory_id="superseded-direct", vector=[1.0, 0.0, 0.0, 0.0]
-    )
+    seed_read_embedding(memory_id="superseded-direct", vector=[1.0, 0.0, 0.0, 0.0])
 
     seed_read_memory(
         memory_id="visible-solution",
@@ -476,7 +377,6 @@ def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and
     request = make_read_request(
         repo_id="repo-a",
         query="lifecycle probe",
-        expand={"semantic_hops": 1},
     )
     result = _execute_read_with_semantic_override(
         request,
@@ -491,9 +391,9 @@ def test_read_excludes_non_positive_lifecycle_memories_from_direct_retrieval_and
     assert "visible-old-fact" in ids
     assert "visible-change" in ids
     assert "visible-assoc-anchor" in ids
-    assert "visible-assoc-neighbor" in ids
+    assert "visible-assoc-neighbor" not in ids
     assert "visible-semantic-anchor" in ids
-    assert "visible-semantic-neighbor" in ids
+    assert "visible-semantic-neighbor" not in ids
     assert "archived-direct" not in ids
     assert "wrong-direct" not in ids
     assert "superseded-direct" not in ids

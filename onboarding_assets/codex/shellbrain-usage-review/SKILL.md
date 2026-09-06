@@ -1,30 +1,17 @@
 ---
 name: shellbrain-usage-review
-description: Use when a reviewer agent needs one fast cross-repo picture of how agents are using Shellbrain, where the product is working, where it is failing, and which expected capabilities are being skipped.
+description: Review Shellbrain usage measurements across repositories and identify useful product follow-up.
 ---
 
 # Shellbrain Usage Review
 
-Run the canonical cross-repo analytics report and synthesize it for review.
+Run `shellbrain admin analytics --days 2`.
 
-## Primary Command
+The JSON report contains observed counts, command latency, empty retrieval results,
+sync totals, and grouped errors with sample record IDs. It does not assign health
+scores or product priorities.
 
-```bash
-shellbrain admin analytics --days 2
-```
-
-## What To Extract
-
-- where Shellbrain is working well
-- where it is failing
-- what is failing and why
-- where working agents are skipping expected `recall`
-- where internal recall or knowledge-builder runs are failing
-- the top priorities that should drive product follow-up
-
-## Operating Rules
-
-- treat the JSON report as the source of truth
-- do not reconstruct the report with ad hoc SQL unless the command is broken
-- summarize the strongest wins, the most important failures, and the highest-priority capability gaps first
-- use `repo_rollups` only as secondary supporting context
+Use the measurements and supporting records to explain what works, what fails,
+and which changes would help. Distinguish your interpretation from measured facts.
+A successful call does not establish that the memory helped solve a task.
+Do not infer missing recall from counts alone without checking task context.
