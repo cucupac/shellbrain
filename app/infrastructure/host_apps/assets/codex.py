@@ -21,10 +21,12 @@ PRIMARY_CODEX_SKILL_NAME = "shellbrain"
 CODEX_SKILL_NAMES = (
     "shellbrain",
     "shellbrain-usage-review",
+)
+LEGACY_CODEX_SKILL_NAMES = (
+    "shellbrain-session-start",
     "clean-architecture",
     "clean-code",
 )
-LEGACY_CODEX_SKILL_NAMES = ("shellbrain-session-start",)
 CODEX_STARTUP_MARKER = "shellbrain-managed:codex-startup"
 
 
