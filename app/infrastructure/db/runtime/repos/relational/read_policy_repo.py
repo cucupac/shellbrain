@@ -38,6 +38,9 @@ class ReadPolicyRepo(IReadPolicyRepo):
                     structural_memory_relations.c.subject_memory_id,
                     structural_memory_relations.c.predicate,
                     structural_memory_relations.c.object_memory_id,
+                    structural_memory_relations.c.status,
+                    structural_memory_relations.c.confidence,
+                    structural_memory_relations.c.validated_at,
                 ).where(
                     structural_memory_relations.c.repo_id == repo_id,
                     structural_memory_relations.c.predicate.in_(list(predicates)),
@@ -60,6 +63,9 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 "subject_memory_id": str(row["subject_memory_id"]),
                 "predicate": str(row["predicate"]),
                 "object_memory_id": str(row["object_memory_id"]),
+                "status": str(row["status"]),
+                "confidence": row["confidence"],
+                "validated_at": row["validated_at"],
                 "visible_memory_ids": tuple(
                     sorted(
                         self._visible_memory_ids(

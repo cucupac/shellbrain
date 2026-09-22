@@ -17,6 +17,7 @@ def test_read_preserves_grouped_evidence_and_display_order(monkeypatch):
         "implicit_related",
         "concepts",
         "relation_neighbors",
+        "memory_relations",
         "conflicts",
     ]
     assert pack["meta"] == {
@@ -51,3 +52,4 @@ def test_empty_read_keeps_evidence_envelope(monkeypatch):
     ).data["pack"]
     assert sum(pack["meta"]["counts"].values()) == 0
     assert pack["concepts"] == {"mode": "none", "items": []}
+    assert pack["memory_relations"] == []

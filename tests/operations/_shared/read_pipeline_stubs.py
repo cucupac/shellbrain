@@ -39,6 +39,7 @@ def stub_read_pipeline(monkeypatch: pytest.MonkeyPatch, *, zero_results: bool) -
         "app.core.use_cases.retrieval.read.execute.build_deterministic_graph_pack",
         lambda **kwargs: {
             "memories": memories,
+            "memory_relations": [],
             "concepts": [],
             "relation_neighbors": [],
             "conflicts": [],

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from datetime import datetime, timezone
 
 import pytest
 
@@ -31,7 +32,9 @@ from app.core.use_cases.retrieval.deterministic_graph_recall import (
     _select_concepts,
     _select_final_memories,
     build_deterministic_graph_pack,
+    deterministic_brief_from_graph_pack,
     source_items_from_graph_pack,
+    synthesis_pack_from_graph_pack,
 )
 from app.core.use_cases.retrieval.read.request import MemoryReadRequest
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
@@ -144,6 +147,86 @@ def test_graph_pack_expands_canonical_structural_memory_relations() -> None:
     assert sources_by_id["mem-change"]["input_section"] == "explicit_related"
 
 
+@pytest.mark.parametrize("seed_both_endpoints", [False, True])
+@pytest.mark.parametrize("excluded", [None, "hidden", "budget"])
+def test_recall_preserves_case_pairings(monkeypatch, seed_both_endpoints, excluded):
+    uow = _FakeUow()
+    uow.concepts = _NoFakeConcepts()
+    uow.concept_semantic_retrieval = _NoFakeConceptSemanticRetrieval()
+    template = uow.memories._memories["mem-direct"]
+    uow.memories._memories = {
+        key: replace(template, id=MemoryId(key), kind=MemoryKind(kind), text=text)
+        for key, kind, text in (
+            ("p1", "problem", "Writes time out while a lock is held."),
+            ("p2", "problem", "Writes time out while the disk is full."),
+            ("s1", "solution", "Release the lock."),
+            ("s2", "solution", "Free disk space."),
+            ("f1", "failed_tactic", "Increasing the timeout failed."),
+        )
+    }
+    if excluded == "hidden":
+        uow.memories._memories["s2"] = replace(
+            uow.memories._memories["s2"], repo_id=RepoId("other-repo")
+        )
+    relations = [
+        {
+            "subject_memory_id": subject,
+            "predicate": predicate,
+            "object_memory_id": target,
+            "status": status,
+            "confidence": 0.8,
+            "validated_at": datetime(2026, 9, 1, tzinfo=timezone.utc),
+        }
+        for subject, predicate, target, status in (
+            ("p1", "solved_by", "s1", "active"),
+            ("p2", "solved_by", "s2", "maybe_stale"),
+            ("p1", "failed_with", "f1", "active"),
+        )
+    ]
+    monkeypatch.setattr(
+        uow.read_policy,
+        "list_structural_memory_relation_rows",
+        lambda **kw: [
+            {
+                **row,
+                "visible_memory_ids": (row["subject_memory_id"], row["object_memory_id"]),
+            }
+            for row in relations
+            if kw["anchor_memory_id"] in (row["subject_memory_id"], row["object_memory_id"])
+            and row["predicate"] in kw["predicates"]
+        ],
+    )
+    seeds = list(uow.memories._memories) if seed_both_endpoints else ["s1", "s2", "f1"]
+    monkeypatch.setattr(
+        uow.semantic_retrieval,
+        "query_semantic",
+        lambda **kw: [{"memory_id": key, "score": 0.92} for key in seeds],
+    )
+    request = _request(query="prior writes timeout")
+    if excluded == "budget":
+        request = request.model_copy(update={"limit": 1})
+    pack = build_deterministic_graph_pack(request=request, uow=uow)
+    expected = [
+        {**row, "validated_at": row["validated_at"].isoformat()}
+        for row in relations
+        if excluded != "budget" and (excluded != "hidden" or row["object_memory_id"] != "s2")
+    ]
+    assert sorted(pack["memory_relations"], key=str) == sorted(expected, key=str)
+    synthesis = synthesis_pack_from_graph_pack(pack)
+    read = execute_read_memory(request, uow).data["pack"]
+    assert synthesis["memory_relations"] == read["memory_relations"] == pack["memory_relations"]
+    cases = deterministic_brief_from_graph_pack(pack)["prior_cases"]
+    for row in expected:
+        subject = uow.memories._memories[row["subject_memory_id"]].text
+        target = uow.memories._memories[row["object_memory_id"]].text
+        assert any(
+            subject in case and target in case and row["predicate"] in case
+            and row["status"] in case and row["validated_at"] in case
+            for case in cases
+        )
+    assert not any("lock is held" in case and "Free disk" in case for case in cases)
+
+
 def _request(*, query: str) -> MemoryReadRequest:
     return MemoryReadRequest.model_validate(
         {
@@ -153,6 +236,35 @@ def _request(*, query: str) -> MemoryReadRequest:
             "expand": {"concepts": {"max_auto": 6}},
         }
     )
+
+
+@pytest.mark.parametrize("linked_solutions", [(0, 1, 2), (5,)])
+def test_fast_brief_preserves_case_order_without_duplicate_solutions(linked_solutions):
+    memories = [
+        {"id": f"s{i}", "kind": "solution", "text": f"Fix {i}.", "currentness": "current"}
+        for i in range(6)
+    ] + [
+        {"id": f"p{i}", "kind": "problem", "text": f"Problem {i}.", "currentness": "current"}
+        for i in linked_solutions
+    ]
+    relations = [
+        {"subject_memory_id": f"p{i}", "predicate": "solved_by", "object_memory_id": f"s{i}",
+         "status": "active", "confidence": None, "validated_at": None}
+        for i in reversed(linked_solutions)
+    ]
+    cases = deterministic_brief_from_graph_pack(
+        {"memories": memories, "memory_relations": relations}
+    )["prior_cases"]
+    assert len(cases) == 6
+    for i, case in enumerate(cases):
+        assert f"Fix {i}." in case
+        if i in linked_solutions:
+            assert f"Problem {i}." in case and "solved_by" in case
+
+
+def test_synthesis_rejects_missing_memory_relations():
+    with pytest.raises(KeyError, match="memory_relations"):
+        synthesis_pack_from_graph_pack({"memories": []})
 
 
 class _FakeVectorSearch:
@@ -415,6 +527,9 @@ class _StructuralFakeReadPolicy:
                 "subject_memory_id": "mem-direct",
                 "predicate": "explained_by_change",
                 "object_memory_id": "mem-change",
+                "status": "active",
+                "confidence": None,
+                "validated_at": None,
                 "visible_memory_ids": ("mem-direct", "mem-change"),
             }
         ]
