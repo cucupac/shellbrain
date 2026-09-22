@@ -57,6 +57,7 @@ def execute_read_memory(
                 "items": selected["concepts"],
             },
             "relation_neighbors": selected["relation_neighbors"],
+            "memory_relations": selected.get("memory_relations", []),
             "conflicts": selected["conflicts"],
         }
     )

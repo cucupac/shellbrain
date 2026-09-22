@@ -125,10 +125,12 @@ def build_deterministic_graph_pack(
                 )
             )
 
+    memory_relations: dict[tuple[str, str, str], dict[str, Any]] = {}
     structural_trace = _expand_structural_memory_relations(
         request=request,
         memory_candidates=memory_candidates,
         uow=uow,
+        memory_relations=memory_relations,
     )
     concept_candidates = _discover_concepts(
         request=request,
@@ -153,6 +155,12 @@ def build_deterministic_graph_pack(
         request=request,
         memory_candidates=memory_candidates,
     )
+    selected_ids = {str(item["memory"].id) for item in selected_memories}
+    relations_payload = [
+        relation
+        for (subject, _, target), relation in sorted(memory_relations.items())
+        if subject in selected_ids and target in selected_ids
+    ]
     concepts_payload = [
         _compact_concept_payload(entry["bundle"], why_selected=entry["why"])
         for entry in selected_concepts
@@ -172,6 +180,7 @@ def build_deterministic_graph_pack(
             for lane in lanes
         ],
         "memories": [_memory_payload(item) for item in selected_memories],
+        "memory_relations": relations_payload,
         "concepts": concepts_payload,
         "relation_neighbors": neighbor_payload,
         "anchors": anchors[:16],
@@ -186,6 +195,7 @@ def build_deterministic_graph_pack(
             "pack_composition": _pack_composition(selected_memories, anchors),
             "pack_budget": _pack_budget(
                 selected_memories=selected_memories,
+                memory_relations=relations_payload,
                 concepts=concepts_payload,
                 neighbors=neighbor_payload,
                 ranking_trace=ranking_trace,
@@ -254,7 +264,7 @@ def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
         link_roles={"failed_tactic_for", "warns_about"},
     )
     known_traps.extend(_claim_texts(concept_items, {"failure_mode"}))
-    prior_cases = _brief_memory_texts(
+    prior_cases = _brief_case_texts(pack) + _brief_memory_texts(
         memories,
         kinds={"solution"},
         link_roles={"solution_for", "example_of"},
@@ -458,6 +468,7 @@ def _expand_structural_memory_relations(
     request: MemoryReadRequest,
     memory_candidates: dict[str, dict[str, Any]],
     uow: IUnitOfWork,
+    memory_relations: dict[tuple[str, str, str], dict[str, Any]],
 ) -> dict[str, Any]:
     """Add canonical structural memory-relation neighbors to recall candidates."""
 
@@ -476,6 +487,16 @@ def _expand_structural_memory_relations(
                 kinds=request.kinds or list(MATURE_MEMORY_KIND_VALUES),
                 predicates=predicates,
             )
+            for row in rows:
+                key = (row["subject_memory_id"], row["predicate"], row["object_memory_id"])
+                memory_relations[key] = {
+                    "subject_memory_id": key[0],
+                    "predicate": key[1],
+                    "object_memory_id": key[2],
+                    "status": row["status"],
+                    "confidence": row["confidence"],
+                    "validated_at": _iso(row["validated_at"]),
+                }
             for neighbor in select_structural_memory_relation_neighbors(
                 rows, anchor_memory_id=anchor_memory_id
             ):
@@ -1127,12 +1148,14 @@ def _pack_composition(
 def _pack_budget(
     *,
     selected_memories: Sequence[dict[str, Any]],
+    memory_relations: Sequence[dict[str, Any]],
     concepts: Sequence[dict[str, Any]],
     neighbors: Sequence[dict[str, Any]],
     ranking_trace: dict[str, Any],
 ) -> dict[str, Any]:
     payload = {
         "memories": [_memory_payload(item) for item in selected_memories],
+        "memory_relations": memory_relations,
         "concepts": concepts,
         "relation_neighbors": neighbors,
     }
@@ -1155,6 +1178,7 @@ def synthesis_pack_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
         "strategy": pack.get("strategy"),
         "request": pack.get("request") if isinstance(pack.get("request"), dict) else {},
         "memories": _dict_items(pack.get("memories")),
+        "memory_relations": _dict_items(pack.get("memory_relations")),
         "concepts": _dict_items(pack.get("concepts")),
         "relation_neighbors": _dict_items(pack.get("relation_neighbors")),
         "anchors": _dict_items(pack.get("anchors")),
@@ -1185,6 +1209,26 @@ def _brief_memory_texts(
             continue
         rendered.append(_truncate(f"{memory.get('kind')}: {memory.get('text')}", 300))
     return rendered
+
+
+def _brief_case_texts(pack: dict[str, Any]) -> list[str]:
+    """Keep each recorded outcome attached to its selected source memory."""
+
+    memories = {item["id"]: item for item in pack["memories"]}
+    cases = []
+    for relation in pack.get("memory_relations", []):
+        subject = memories[relation["subject_memory_id"]]
+        target = memories[relation["object_memory_id"]]
+        qualifiers = [relation["status"]]
+        for name in ("confidence", "validated_at"):
+            if relation[name] is not None:
+                qualifiers.append(f"{name}={relation[name]}")
+        cases.append(
+            f"{subject['kind']} ({subject['currentness']}): {_truncate(subject['text'], 300)} "
+            f"--{relation['predicate']} [{'; '.join(qualifiers)}]--> "
+            f"{target['kind']} ({target['currentness']}): {_truncate(target['text'], 300)}"
+        )
+    return cases
 
 
 def _claim_texts(

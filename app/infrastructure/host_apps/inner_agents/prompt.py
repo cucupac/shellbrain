@@ -33,6 +33,12 @@ Memories are concrete records:
 - `preference` records user or team guidance.
 - `change` revises or replaces older knowledge.
 
+`memory_relations` connect specific records by subject, predicate, and object.
+`solved_by` and `failed_with` bind an outcome to its problem; keep that pairing and its stated conditions together.
+`superseded_by` and `explained_by_change` bind old guidance to its replacement or explanation.
+Preserve link direction and lifecycle qualifications when describing a case.
+Do not transfer a solution or failure to another problem because their text is similar.
+
 Concept claims give orientation:
 - `definition` and `behavior` explain a concept.
 - Active, relevant `invariant` and `usage_note` claims become constraints.
