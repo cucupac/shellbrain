@@ -238,6 +238,35 @@ def _request(*, query: str) -> MemoryReadRequest:
     )
 
 
+@pytest.mark.parametrize("linked_solutions", [(0, 1, 2), (5,)])
+def test_fast_brief_preserves_case_order_without_duplicate_solutions(linked_solutions):
+    memories = [
+        {"id": f"s{i}", "kind": "solution", "text": f"Fix {i}.", "currentness": "current"}
+        for i in range(6)
+    ] + [
+        {"id": f"p{i}", "kind": "problem", "text": f"Problem {i}.", "currentness": "current"}
+        for i in linked_solutions
+    ]
+    relations = [
+        {"subject_memory_id": f"p{i}", "predicate": "solved_by", "object_memory_id": f"s{i}",
+         "status": "active", "confidence": None, "validated_at": None}
+        for i in reversed(linked_solutions)
+    ]
+    cases = deterministic_brief_from_graph_pack(
+        {"memories": memories, "memory_relations": relations}
+    )["prior_cases"]
+    assert len(cases) == 6
+    for i, case in enumerate(cases):
+        assert f"Fix {i}." in case
+        if i in linked_solutions:
+            assert f"Problem {i}." in case and "solved_by" in case
+
+
+def test_synthesis_rejects_missing_memory_relations():
+    with pytest.raises(KeyError, match="memory_relations"):
+        synthesis_pack_from_graph_pack({"memories": []})
+
+
 class _FakeVectorSearch:
     model_name = "fake-embedding"
 

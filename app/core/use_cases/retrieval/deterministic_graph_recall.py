@@ -264,11 +264,7 @@ def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
         link_roles={"failed_tactic_for", "warns_about"},
     )
     known_traps.extend(_claim_texts(concept_items, {"failure_mode"}))
-    prior_cases = _brief_case_texts(pack) + _brief_memory_texts(
-        memories,
-        kinds={"solution"},
-        link_roles={"solution_for", "example_of"},
-    )
+    prior_cases = _brief_case_texts(memories, pack["memory_relations"])
     return {
         "summary": _summary(memories=memories, concepts=concept_items),
         "constraints": _truncate_list(constraints, 6),
@@ -489,14 +485,8 @@ def _expand_structural_memory_relations(
             )
             for row in rows:
                 key = (row["subject_memory_id"], row["predicate"], row["object_memory_id"])
-                memory_relations[key] = {
-                    "subject_memory_id": key[0],
-                    "predicate": key[1],
-                    "object_memory_id": key[2],
-                    "status": row["status"],
-                    "confidence": row["confidence"],
-                    "validated_at": _iso(row["validated_at"]),
-                }
+                memory_relations[key] = row | {"validated_at": _iso(row["validated_at"])}
+                del memory_relations[key]["visible_memory_ids"]
             for neighbor in select_structural_memory_relation_neighbors(
                 rows, anchor_memory_id=anchor_memory_id
             ):
@@ -1178,7 +1168,7 @@ def synthesis_pack_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
         "strategy": pack.get("strategy"),
         "request": pack.get("request") if isinstance(pack.get("request"), dict) else {},
         "memories": _dict_items(pack.get("memories")),
-        "memory_relations": _dict_items(pack.get("memory_relations")),
+        "memory_relations": pack["memory_relations"],
         "concepts": _dict_items(pack.get("concepts")),
         "relation_neighbors": _dict_items(pack.get("relation_neighbors")),
         "anchors": _dict_items(pack.get("anchors")),
@@ -1211,23 +1201,33 @@ def _brief_memory_texts(
     return rendered
 
 
-def _brief_case_texts(pack: dict[str, Any]) -> list[str]:
-    """Keep each recorded outcome attached to its selected source memory."""
+def _brief_case_texts(
+    memories: Sequence[dict[str, Any]], relations: Sequence[dict[str, Any]]
+) -> list[str]:
+    """Render cases in selected memory order, keeping outcomes with their sources."""
 
-    memories = {item["id"]: item for item in pack["memories"]}
+    memories_by_id = {item["id"]: item for item in memories}
+    relations_by_target = defaultdict(list)
+    for relation in relations:
+        relations_by_target[relation["object_memory_id"]].append(relation)
     cases = []
-    for relation in pack.get("memory_relations", []):
-        subject = memories[relation["subject_memory_id"]]
-        target = memories[relation["object_memory_id"]]
-        qualifiers = [relation["status"]]
-        for name in ("confidence", "validated_at"):
-            if relation[name] is not None:
-                qualifiers.append(f"{name}={relation[name]}")
-        cases.append(
-            f"{subject['kind']} ({subject['currentness']}): {_truncate(subject['text'], 300)} "
-            f"--{relation['predicate']} [{'; '.join(qualifiers)}]--> "
-            f"{target['kind']} ({target['currentness']}): {_truncate(target['text'], 300)}"
-        )
+    for target in memories:
+        linked = relations_by_target[target["id"]]
+        if not linked:
+            cases.extend(_brief_memory_texts(
+                [target], kinds={"solution"}, link_roles={"solution_for", "example_of"}
+            ))
+        for relation in linked:
+            subject = memories_by_id[relation["subject_memory_id"]]
+            qualifiers = [relation["status"]]
+            for name in ("confidence", "validated_at"):
+                if relation[name] is not None:
+                    qualifiers.append(f"{name}={relation[name]}")
+            cases.append(
+                f"{subject['kind']} ({subject['currentness']}): {_truncate(subject['text'], 300)} "
+                f"--{relation['predicate']} [{'; '.join(qualifiers)}]--> "
+                f"{target['kind']} ({target['currentness']}): {_truncate(target['text'], 300)}"
+            )
     return cases
 
 

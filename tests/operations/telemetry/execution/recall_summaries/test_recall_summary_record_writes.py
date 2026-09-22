@@ -350,6 +350,7 @@ def _candidate_pack() -> dict:
     return {
         "strategy": "deterministic_graph",
         "request": {"query": "recall telemetry"},
+        "memory_relations": [],
         "query_lanes": [{"lane": "original", "query": "recall telemetry"}],
         "memories": [
             {
@@ -402,6 +403,7 @@ def _empty_pack() -> dict:
         "request": {"query": "nothing matches"},
         "query_lanes": [],
         "memories": [],
+        "memory_relations": [],
         "concepts": [],
         "relation_neighbors": [],
         "anchors": [],

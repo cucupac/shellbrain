@@ -279,6 +279,7 @@ def _graph_pack() -> dict:
     return {
         "strategy": "deterministic_graph",
         "request": {"query": "migration timeout"},
+        "memory_relations": [],
         "query_lanes": [{"lane": "original", "query": "migration timeout"}],
         "memories": [
             {
@@ -336,6 +337,7 @@ def _empty_graph_pack() -> dict:
     return {
         "strategy": "deterministic_graph",
         "request": {"query": "nothing"},
+        "memory_relations": [],
         "query_lanes": [],
         "memories": [],
         "concepts": [],
