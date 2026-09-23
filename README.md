@@ -101,6 +101,4 @@ Switch back with `shellbrain admin recall provider codex`, or choose `claude`.
 
 ## Docs
 
-- [For Humans](https://shellbrain.ai/humans/): installation, upgrades, and first steps
-- [For Agents](https://shellbrain.ai/agents/): agent workflow and memory rules
-- [Technical Docs](https://deepwiki.com/cucupac/shellbrain): detailed documentation and code map
+- [Technical Docs](https://deepwiki.com/cucupac/shellbrain)
