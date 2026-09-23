@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import shutil
 from typing import Any
 
@@ -19,6 +18,7 @@ from app.infrastructure.host_apps.inner_agents.claude_cli import (
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.local_state.recall_provider_store import load_recall_provider
+from app.infrastructure.local_state.recall_credentials import load_inception_api_key
 from app.infrastructure.host_apps.inner_agents.inception_api import (
     InceptionApiInnerAgentRunner,
 )
@@ -57,7 +57,7 @@ def get_build_context_inner_agent_runner(
     """Return the configured build_context provider adapter."""
 
     if settings.provider == "inception":
-        key = os.environ.get("INCEPTION_API_KEY", "").strip()
+        key = load_inception_api_key()
         return InceptionApiInnerAgentRunner(api_key=key) if key else None
     config = get_internal_agents_config()
     return _runner_for(config, settings)

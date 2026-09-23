@@ -93,3 +93,49 @@ def test_removed_commands_are_rejected(args):
     with pytest.raises(SystemExit) as error:
         main(args)
     assert error.value.code == 2
+
+
+@pytest.mark.parametrize("value", ["test-key", '"test-key"', "'test-key' # comment"])
+def test_saved_key_is_loaded_without_host_environment(home, value):
+    from app.infrastructure.local_state.recall_credentials import load_inception_api_key
+    from app.startup.internal_agents import get_build_context_settings
+
+    (home / ".env").write_text(f"# Credentials\nINCEPTION_API_KEY={value}\n")
+    save_recall_provider("inception")
+    assert load_inception_api_key() == "test-key"
+    assert isinstance(
+        get_build_context_inner_agent_runner(get_build_context_settings()),
+        InceptionApiInnerAgentRunner,
+    )
+    (home / ".env").write_text("INCEPTION_API_KEY=replacement-key\n")
+    assert load_inception_api_key() == "replacement-key"
+
+
+def test_environment_overrides_saved_key(home, monkeypatch):
+    from app.infrastructure.local_state.recall_credentials import load_inception_api_key
+
+    (home / ".env").write_text("INCEPTION_API_KEY=file-key\n")
+    monkeypatch.setenv("INCEPTION_API_KEY", "environment-key")
+    assert load_inception_api_key() == "environment-key"
+
+
+def test_key_lookup_ignores_repository_and_does_not_execute_file(home, tmp_path, monkeypatch):
+    from app.infrastructure.local_state.recall_credentials import load_inception_api_key
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".env").write_text("INCEPTION_API_KEY=repo-key\n")
+    monkeypatch.chdir(repo)
+    marker = home / "executed"
+    (home / ".env").write_text(f"touch {marker}\nOTHER_KEY=unused\n")
+    assert load_inception_api_key() == ""
+    assert not marker.exists()
+
+
+def test_invalid_key_does_not_expose_secret(home):
+    from app.infrastructure.local_state.recall_credentials import load_inception_api_key
+
+    (home / ".env").write_text('INCEPTION_API_KEY="secret-value\n')
+    with pytest.raises(ValueError) as error:
+        load_inception_api_key()
+    assert "secret-value" not in str(error.value)

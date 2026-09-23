@@ -90,42 +90,16 @@ Recall selects an evidence pack in code, then asks an inner agent to summarize i
 
 ### Recall provider
 
-Codex is the default. Choose one provider for recall across repositories:
+For faster recall, [get an Inception API key](https://platform.inceptionlabs.ai/dashboard/api-keys), replace `PASTE_YOUR_KEY_HERE`, and run once:
 
 ```bash
-shellbrain admin recall provider inception
-shellbrain admin recall provider codex
-shellbrain admin recall provider claude
-```
-
-For faster recall with Mercury, [create an Inception API key](https://platform.inceptionlabs.ai/dashboard/api-keys), then set it and select Inception:
-
-```bash
-export INCEPTION_API_KEY="your-inception-api-key"
+mkdir -p ~/.shellbrain
+printf '\nINCEPTION_API_KEY=%s\n' 'PASTE_YOUR_KEY_HERE' >> ~/.shellbrain/.env
+chmod 600 ~/.shellbrain/.env
 shellbrain admin recall provider inception
 ```
 
-Start your agent host with that environment. `.env` files are not loaded automatically. Automatic memory building is unchanged.
-
-Selection is stored in `~/.shellbrain/recall-provider.toml` (or under `SHELLBRAIN_HOME`). API failures return deterministic context with failure metadata. The API uses a 10-second socket timeout and no automatic retries; a slowly trickling response can exceed that elapsed time.
-
----
-
-## Memory Discipline
-
-ShellBrain keeps memory grounded in evidence and narrow in scope. Agents request memory when they need it.
-
-**Memory that cannot justify itself should not persist.**
-
----
-
-## Use ShellBrain
-
-Use Shellbrain with your preferred agent. Then work as usual.
-
-- **Claude Code:** Use `/shellbrain` to recall context at task boundaries.
-- **Codex:** Use $shellbrain to recall context at task boundaries.
-- **Cursor:** Use `/shellbrain` to recall context at task boundaries.
+Shellbrain loads the saved key automatically. Switch back with `shellbrain admin recall provider codex` (the default), or choose `claude`.
 
 ---
 

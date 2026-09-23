@@ -30,7 +30,7 @@ shellbrain admin recall provider codex
 shellbrain admin recall provider claude
 ```
 
-For Inception, export `INCEPTION_API_KEY` into the environment of the agent host. A repository `.env` is not loaded automatically. Restart existing hosts after configuring their environment. Mercury is used only for recall synthesis; automatic learning retains its existing tool-capable provider. A failed synthesis returns deterministic context with explicit failure metadata.
+For faster recall, [get an Inception API key](https://platform.inceptionlabs.ai/dashboard/api-keys), add `INCEPTION_API_KEY=your-key` to `~/.shellbrain/.env`, and run `shellbrain admin recall provider inception` once. Shellbrain loads the key automatically.
 
 ## Backups
 
