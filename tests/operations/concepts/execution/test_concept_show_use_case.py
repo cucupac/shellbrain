@@ -292,3 +292,116 @@ def _seed_deposit_addresses(uow_factory: Callable[[], PostgresUnitOfWork]) -> No
             uow,
             id_generator=_SequenceIdGenerator(),
         )
+
+
+def test_bulk_bundles_preserve_typed_evidence_lifecycle_and_repo_scope(uow_factory):
+    """Batching must not leak evidence when record tables reuse an ID."""
+    from sqlalchemy import event, update
+    from app.core.entities.concepts import (
+        Concept,
+        ConceptKind,
+        ConceptLifecycleEvent,
+        ConceptLifecycleTargetType,
+        ConceptLifecycleStatus,
+        ConceptCreatedBy,
+    )
+    from app.infrastructure.db.runtime.models.evidence import evidence_links
+
+    _seed_deposit_addresses(uow_factory)
+    with uow_factory() as uow:
+        first = uow.concepts.get_concept_bundle(
+            repo_id="repo-a", concept_ref="deposit-addresses"
+        )
+        first_id = first["concept"].id
+        second_id = first["relations"][0].object_concept_id
+        shared_id = first["relations"][0].id
+        claim_id = first["claims"][0].id
+        uow.concepts.add_concept(
+            Concept(
+                id="third",
+                repo_id="repo-a",
+                slug="third",
+                name="Third",
+                kind=ConceptKind.DOMAIN,
+            ),
+            [],
+        )
+        uow.concepts.add_concept(
+            Concept(
+                id="foreign",
+                repo_id="repo-b",
+                slug="foreign",
+                name="Foreign",
+                kind=ConceptKind.DOMAIN,
+            ),
+            [],
+        )
+        uow.concepts._session.execute(
+            update(concept_claims)
+            .where(concept_claims.c.id == claim_id)
+            .values(id=shared_id, concept_id="third", status="archived")
+        )
+        uow.concepts._session.execute(
+            update(evidence_links)
+            .where(
+                evidence_links.c.target_type == "concept_claim",
+                evidence_links.c.target_id == claim_id,
+            )
+            .values(target_id=shared_id)
+        )
+        uow.concepts.add_lifecycle_event(
+            ConceptLifecycleEvent(
+                id="event",
+                repo_id="repo-a",
+                target_type=ConceptLifecycleTargetType.CLAIM,
+                target_id=shared_id,
+                from_status=ConceptLifecycleStatus.ACTIVE,
+                to_status=ConceptLifecycleStatus.ARCHIVED,
+                rationale="Old definition",
+                actor=ConceptCreatedBy.MANUAL,
+            )
+        )
+        statements = []
+        connection = uow.concepts._session.connection()
+
+        def count(*args):
+            statements.append(args[2])
+
+        event.listen(connection, "before_cursor_execute", count)
+        try:
+            assert (
+                uow.concepts.get_concept_bundles(repo_id="repo-a", concept_ids=[]) == {}
+            )
+            assert statements == []
+            bundles = uow.concepts.get_concept_bundles(
+                repo_id="repo-a",
+                concept_ids=["third", second_id, "missing", "foreign", first_id],
+                include_lifecycle_events=True,
+            )
+        finally:
+            event.remove(connection, "before_cursor_execute", count)
+        assert len(statements) == 9
+        assert set(bundles) == {first_id, second_id, "third"}
+        assert bundles[first_id]["relations"] == bundles[second_id]["relations"]
+        assert bundles[first_id]["lifecycle_events"] == []
+        assert bundles["third"]["lifecycle_events"][0].id == "event"
+        assert bundles["third"]["claims"][0].lifecycle.status.value == "archived"
+        assert {item.target_type.value for item in bundles["third"]["evidence"]} == {
+            "claim"
+        }
+        assert {item.target_type.value for item in bundles[first_id]["evidence"]} == {
+            "relation"
+        }
+        assert (
+            bundles[second_id]["anchors"][0].id
+            == bundles[second_id]["groundings"][0].anchor_id
+        )
+        for concept_id, bundle in bundles.items():
+            assert bundle == uow.concepts.get_concept_bundle(
+                repo_id="repo-a", concept_ref=concept_id, include_lifecycle_events=True
+            )
+        assert bundles == uow.concepts.get_concept_bundles(
+            repo_id="repo-a",
+            concept_ids=list(reversed(bundles)),
+            include_lifecycle_events=True,
+        )

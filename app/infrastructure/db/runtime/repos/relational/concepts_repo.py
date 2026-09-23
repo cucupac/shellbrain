@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import datetime, timezone
 from typing import Any, Sequence
 
@@ -373,9 +374,7 @@ class ConceptsRepo(IConceptsRepo):
         table, converter = _lifecycle_target_table(target_type)
         row = (
             self._session.execute(
-                select(table).where(
-                    table.c.repo_id == repo_id, table.c.id == target_id
-                )
+                select(table).where(table.c.repo_id == repo_id, table.c.id == target_id)
             )
             .mappings()
             .first()
@@ -443,131 +442,113 @@ class ConceptsRepo(IConceptsRepo):
         concept = self.get_concept_by_ref(repo_id=repo_id, concept_ref=concept_ref)
         if concept is None:
             return None
-        relation_rows = (
-            self._session.execute(
-                select(concept_relations).where(
-                    concept_relations.c.repo_id == repo_id,
-                    (
-                        (concept_relations.c.subject_concept_id == concept.id)
-                        | (concept_relations.c.object_concept_id == concept.id)
-                    ),
-                )
-            )
-            .mappings()
-            .all()
-        )
-        claim_rows = (
-            self._session.execute(
-                select(concept_claims).where(
-                    concept_claims.c.repo_id == repo_id,
-                    concept_claims.c.concept_id == concept.id,
-                )
-            )
-            .mappings()
-            .all()
-        )
-        grounding_rows = (
-            self._session.execute(
-                select(concept_groundings).where(
-                    concept_groundings.c.repo_id == repo_id,
-                    concept_groundings.c.concept_id == concept.id,
-                )
-            )
-            .mappings()
-            .all()
-        )
-        memory_link_rows = (
-            self._session.execute(
-                select(concept_memory_links).where(
-                    concept_memory_links.c.repo_id == repo_id,
-                    concept_memory_links.c.concept_id == concept.id,
-                )
-            )
-            .mappings()
-            .all()
-        )
-        alias_rows = (
-            self._session.execute(
-                select(concept_aliases).where(
-                    concept_aliases.c.repo_id == repo_id,
-                    concept_aliases.c.concept_id == concept.id,
-                )
-            )
-            .mappings()
-            .all()
-        )
-        anchor_ids = [str(row["anchor_id"]) for row in grounding_rows]
-        anchor_rows = []
-        if anchor_ids:
-            anchor_rows = (
+        return self.get_concept_bundles(
+            repo_id=repo_id,
+            concept_ids=[concept.id],
+            include_lifecycle_events=include_lifecycle_events,
+        ).get(concept.id)
+
+    def get_concept_bundles(
+        self,
+        *,
+        repo_id: str,
+        concept_ids: Sequence[str],
+        include_lifecycle_events: bool = False,
+    ) -> dict[str, dict[str, Any]]:
+        """Fetch candidate bundles in a fixed number of repo-scoped queries."""
+        if not concept_ids:
+            return {}
+
+        def rows(table, condition):
+            return (
                 self._session.execute(
-                    select(anchors).where(
-                        anchors.c.repo_id == repo_id, anchors.c.id.in_(anchor_ids)
-                    )
+                    select(table)
+                    .where(table.c.repo_id == repo_id, condition)
+                    .order_by(table.c.created_at, *table.primary_key.columns)
                 )
                 .mappings()
                 .all()
             )
-        target_pairs = (
-            [("relation", "concept_relation", str(row["id"])) for row in relation_rows]
-            + [("claim", "concept_claim", str(row["id"])) for row in claim_rows]
-            + [
-                ("grounding", "concept_grounding", str(row["id"]))
-                for row in grounding_rows
-            ]
-            + [
-                ("memory_link", "concept_memory_link", str(row["id"]))
-                for row in memory_link_rows
-            ]
-        )
-        lifecycle_event_rows = []
-        if include_lifecycle_events and target_pairs:
-            lifecycle_event_rows = (
-                self._session.execute(
-                    select(concept_lifecycle_events).where(
-                        concept_lifecycle_events.c.repo_id == repo_id,
-                        or_(
-                            *[
-                                and_(
-                                    concept_lifecycle_events.c.target_type
-                                    == lifecycle_target_type,
-                                    concept_lifecycle_events.c.target_id
-                                    == target_id,
-                                )
-                                for lifecycle_target_type, _, target_id in target_pairs
-                            ]
-                        ),
-                    )
-                )
-                .mappings()
-                .all()
-            )
-        event_pairs = [
-            ("lifecycle_event", "concept_lifecycle_event", str(row["id"]))
-            for row in lifecycle_event_rows
-        ]
-        evidence_rows = []
-        evidence_pairs = target_pairs + event_pairs
-        if evidence_pairs:
-            evidence_rows = self._unified_evidence_rows(
-                repo_id=repo_id, evidence_pairs=evidence_pairs
-            )
-        return {
-            "concept": concept,
-            "aliases": [_to_alias(row) for row in alias_rows],
-            "relations": [_to_relation(row) for row in relation_rows],
-            "claims": [_to_claim(row) for row in claim_rows],
-            "groundings": [_to_grounding(row) for row in grounding_rows],
-            "memory_links": [_to_memory_link(row) for row in memory_link_rows],
-            "lifecycle_events": [
-                _to_lifecycle_event(row) for row in lifecycle_event_rows
-            ],
-            "anchors": [_to_anchor(row) for row in anchor_rows],
-            "evidence": [_to_evidence(row) for row in evidence_rows],
+
+        bundles = {
+            str(row["id"]): {
+                "concept": _to_concept(row),
+                "relations": [],
+                "claims": [],
+                "groundings": [],
+                "memory_links": [],
+                "aliases": [],
+                "anchors": [],
+                "lifecycle_events": [],
+                "evidence": [],
+            }
+            for row in rows(concepts, concepts.c.id.in_(concept_ids))
         }
+        if not bundles:
+            return {}
+        ids = list(bundles)
+        owners = defaultdict(set)
+        for row in rows(
+            concept_relations,
+            or_(
+                concept_relations.c.subject_concept_id.in_(ids),
+                concept_relations.c.object_concept_id.in_(ids),
+            ),
+        ):
+            relation = _to_relation(row)
+            for concept_id in {
+                relation.subject_concept_id,
+                relation.object_concept_id,
+            } & bundles.keys():
+                bundles[concept_id]["relations"].append(relation)
+                owners[("relation", relation.id)].add(concept_id)
+        for field, table, convert, kind in (
+            ("claims", concept_claims, _to_claim, "claim"),
+            ("groundings", concept_groundings, _to_grounding, "grounding"),
+            ("memory_links", concept_memory_links, _to_memory_link, "memory_link"),
+            ("aliases", concept_aliases, _to_alias, None),
+        ):
+            for row in rows(table, table.c.concept_id.in_(ids)):
+                item = convert(row)
+                concept_id = str(row["concept_id"])
+                bundles[concept_id][field].append(item)
+                if kind:
+                    owners[(kind, item.id)].add(concept_id)
+        anchor_owners = defaultdict(set)
+        for concept_id, bundle in bundles.items():
+            for grounding in bundle["groundings"]:
+                anchor_owners[grounding.anchor_id].add(concept_id)
+        if anchor_owners:
+            for row in rows(anchors, anchors.c.id.in_(anchor_owners)):
+                anchor = _to_anchor(row)
+                for concept_id in anchor_owners[anchor.id]:
+                    bundles[concept_id]["anchors"].append(anchor)
+        if include_lifecycle_events and owners:
+            for row in rows(
+                concept_lifecycle_events,
+                _target_filter(concept_lifecycle_events, owners),
+            ):
+                event = _to_lifecycle_event(row)
+                concept_ids_for_event = owners[
+                    (event.target_type.value, event.target_id)
+                ]
+                for concept_id in concept_ids_for_event:
+                    bundles[concept_id]["lifecycle_events"].append(event)
+                owners[("lifecycle_event", event.id)].update(concept_ids_for_event)
+        if owners:
+            for row in self._unified_evidence_rows(
+                repo_id=repo_id,
+                targets=[(f"concept_{kind}", target_id) for kind, target_id in owners],
+            ):
+                evidence = _to_evidence(row)
+                for concept_id in owners[
+                    (evidence.target_type.value, evidence.target_id)
+                ]:
+                    bundles[concept_id]["evidence"].append(evidence)
+        return bundles
 
     def _unified_evidence_rows(
-        self, *, repo_id: str, evidence_pairs: Sequence[tuple[str, str, str]]
+        self, *, repo_id: str, targets: Sequence[tuple[str, str]]
     ) -> list[dict[str, Any]]:
         """Return concept evidence rows from unified evidence storage."""
 
@@ -596,15 +577,7 @@ class ConceptsRepo(IConceptsRepo):
                 )
                 .where(
                     evidence_links.c.repo_id == repo_id,
-                    or_(
-                        *[
-                            and_(
-                                evidence_links.c.target_type == unified_target_type,
-                                evidence_links.c.target_id == target_id,
-                            )
-                            for _, unified_target_type, target_id in evidence_pairs
-                        ]
-                    ),
+                    _target_filter(evidence_links, targets),
                 )
                 .order_by(evidence_links.c.created_at, evidence_links.c.id)
             )
@@ -836,7 +809,9 @@ def _unified_evidence_to_concept_row(row) -> dict[str, Any]:
         "repo_id": row["repo_id"],
         "target_type": _CONCEPT_TARGET_TYPE_BY_UNIFIED[str(row["target_type"])],
         "target_id": row["target_id"],
-        "evidence_kind": "transcript" if source_kind == "episode_event" else source_kind,
+        "evidence_kind": "transcript"
+        if source_kind == "episode_event"
+        else source_kind,
         "anchor_id": row["anchor_id"],
         "memory_id": row["memory_id"],
         "commit_ref": row["commit_ref"],
@@ -903,3 +878,16 @@ def _normalize_text(value: str) -> str:
     """Normalize natural keys for aliases and claim text."""
 
     return " ".join(value.strip().lower().split())
+
+
+def _target_filter(table, targets):
+    """Match typed IDs without one SQL OR expression per record."""
+    ids_by_type = defaultdict(list)
+    for kind, target_id in targets:
+        ids_by_type[kind].append(target_id)
+    return or_(
+        *(
+            and_(table.c.target_type == kind, table.c.target_id.in_(ids))
+            for kind, ids in ids_by_type.items()
+        )
+    )

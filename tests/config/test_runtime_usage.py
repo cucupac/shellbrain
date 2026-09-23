@@ -179,12 +179,8 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(
     class _FakeProvider:
         """Record the embedding provider constructor arguments."""
 
-        def __init__(
-            self, *, model: str, cache_folder: str, local_files_only: bool
-        ) -> None:
-            self.model = model
+        def __init__(self, *, cache_folder: str) -> None:
             self.cache_folder = cache_folder
-            self.local_files_only = local_files_only
 
     machine_config = MachineConfig(
         config_version=2,
@@ -226,16 +222,12 @@ def test_embedding_boot_should_use_local_only_when_machine_config_is_ready(
     monkeypatch.setattr(
         "app.startup.embeddings.load_machine_config", lambda: machine_config
     )
-    monkeypatch.setattr(
-        "app.startup.embeddings.SentenceTransformersEmbeddingProvider", _FakeProvider
-    )
+    monkeypatch.setattr("app.startup.embeddings.OnnxEmbeddingProvider", _FakeProvider)
 
     provider = get_embedding_provider()
 
     assert isinstance(provider, _FakeProvider)
-    assert provider.model == "all-MiniLM-L6-v2"
     assert provider.cache_folder == "/tmp/shellbrain-models"
-    assert provider.local_files_only is True
 
 
 def test_db_boot_should_support_external_machine_config(monkeypatch) -> None:

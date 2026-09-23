@@ -28,7 +28,7 @@ jobs:
         with:
           path: |
             ${{ github.workspace }}/.cache/huggingface
-          key: ${{ runner.os }}-sentence-transformers-${{ hashFiles('pyproject.toml', 'app/startup/settings.py') }}
+          key: ${{ runner.os }}-onnx-${{ hashFiles('pyproject.toml', 'app/infrastructure/embeddings/local_provider.py') }}
 
       - name: Install dependencies
         run: |

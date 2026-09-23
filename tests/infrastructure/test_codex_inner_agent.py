@@ -26,12 +26,13 @@ from app.infrastructure.host_apps.inner_agents.prompt import (
 )
 
 
-def test_codex_exec_uses_fast_service_tier_for_luna() -> None:
+@pytest.mark.parametrize("model", ["gpt-5.6-luna", "gpt-6-luna"])
+def test_codex_exec_uses_fast_service_tier_for_luna(model: str) -> None:
     """Luna inner-agent calls should use Codex Fast mode."""
 
     args = _codex_exec_args(
         command_path="/usr/bin/codex",
-        model="gpt-5.6-luna",
+        model=model,
         reasoning="low",
         workspace="/tmp/workspace",
         output_path="/tmp/output.json",

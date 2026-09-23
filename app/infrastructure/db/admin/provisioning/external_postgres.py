@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import importlib.metadata
 import secrets
 
 import psycopg
@@ -43,7 +42,6 @@ def build_fresh_machine_config(
         raise RuntimeError("runtime.embeddings must be configured")
     app_dsn = _provision_external_app_role(admin_dsn=admin_dsn)
     instance_id = dsn_fingerprint(admin_dsn)
-    backend_version = _sentence_transformers_version()
     return MachineConfig(
         config_version=CONFIG_VERSION,
         bootstrap_version=BOOTSTRAP_VERSION,
@@ -56,10 +54,10 @@ def build_fresh_machine_config(
         managed=None,
         backups=BackupState(root=str(get_machine_backups_dir()), mirror_root=None),
         embeddings=EmbeddingRuntimeState(
-            provider=str(embeddings.get("provider") or "sentence_transformers"),
+            provider=str(embeddings.get("provider") or "onnxruntime"),
             model=str(embeddings.get("model") or "all-MiniLM-L6-v2"),
             model_revision=None,
-            backend_version=backend_version,
+            backend_version=None,
             cache_path=str(get_machine_models_dir()),
             readiness_state="pending",
             last_error=None,
@@ -205,12 +203,3 @@ def _app_dsn_from_admin_dsn(*, admin_dsn: str, app_user: str, app_password: str)
 
     url = make_url(admin_dsn)
     return str(url.set(username=app_user, password=app_password))
-
-
-def _sentence_transformers_version() -> str | None:
-    """Return the installed sentence-transformers version when present."""
-
-    try:
-        return importlib.metadata.version("sentence-transformers")
-    except importlib.metadata.PackageNotFoundError:
-        return None

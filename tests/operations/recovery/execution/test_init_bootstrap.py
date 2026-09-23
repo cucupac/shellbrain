@@ -20,7 +20,9 @@ from app.core.entities.machine_config import (
 from app.infrastructure.db.admin.provisioning import managed_local as managed_runtime
 from app.infrastructure.db.admin.provisioning import docker_prerequisites
 from app.infrastructure.local_state.repo_registration_store import RepoRegistration
-from app.entrypoints.cli.presenters.init import render_success_lines as render_init_lines
+from app.entrypoints.cli.presenters.init import (
+    render_success_lines as render_init_lines,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -54,9 +56,7 @@ def test_run_init_should_block_when_corrupt_config_cannot_be_recovered(
         init_module, "try_load_machine_config", lambda: (None, "corrupt toml")
     )
     monkeypatch.setattr(init_module, "backup_corrupt_machine_config", lambda: preserved)
-    monkeypatch.setattr(
-        init_module, "_recover_machine_config", lambda: None
-    )
+    monkeypatch.setattr(init_module, "_recover_machine_config", lambda: None)
     monkeypatch.setattr(
         "app.startup.runtime_admin.save_recovery_stub",
         lambda **kwargs: captured_stub.update(kwargs),
@@ -434,8 +434,9 @@ def test_run_init_should_run_maintenance_when_machine_already_ready(
     monkeypatch.setattr(
         init_module,
         "prewarm_embeddings",
-        lambda config, skip_model_download: (_ for _ in ()).throw(
-            AssertionError("ready maintenance should not prewarm embeddings")
+        lambda config, skip_model_download: (
+            call_order.append("embeddings") or False,
+            config,
         ),
     )
     monkeypatch.setattr(
@@ -448,9 +449,7 @@ def test_run_init_should_run_maintenance_when_machine_already_ready(
     monkeypatch.setattr(
         init_module,
         "install_host_assets",
-        lambda host_mode, force: (
-            call_order.append("assets") or _FakeHostAssetsResult()
-        ),
+        lambda host_mode, force: call_order.append("assets") or _FakeHostAssetsResult(),
     )
 
     result = init_module.run_init(
@@ -471,12 +470,14 @@ def test_run_init_should_run_maintenance_when_machine_already_ready(
         "wait",
         "reconcile",
         "migrate",
+        "embeddings",
         "assets",
     ]
 
 
+@pytest.mark.parametrize("embedding_failed", [False, True])
 def test_ready_external_init_should_run_maintenance_without_docker(
-    tmp_path: Path, monkeypatch
+    tmp_path: Path, monkeypatch, embedding_failed
 ) -> None:
     """ready external-postgres init should migrate the DB without managed Docker setup."""
 
@@ -486,6 +487,22 @@ def test_ready_external_init_should_run_maintenance_without_docker(
     ready_config = _external_machine_config(
         bootstrap_state="ready", readiness_state="ready", last_error=None
     )
+    from dataclasses import replace
+
+    warmed_config = (
+        replace(
+            ready_config,
+            bootstrap_state="repair_needed",
+            embeddings=replace(
+                ready_config.embeddings,
+                readiness_state="failed",
+                last_error="download failed",
+            ),
+        )
+        if embedding_failed
+        else ready_config
+    )
+    saved = []
     call_order: list[str] = []
 
     monkeypatch.setattr(init_module, "get_shellbrain_home", lambda: home_root)
@@ -504,7 +521,7 @@ def test_ready_external_init_should_run_maintenance_without_docker(
             AssertionError("ready maintenance should not ask storage questions")
         ),
     )
-    monkeypatch.setattr(init_module, "save_machine_config", lambda config: None)
+    monkeypatch.setattr(init_module, "save_machine_config", saved.append)
     monkeypatch.setattr(
         init_module,
         "_migrate_machine_config",
@@ -540,8 +557,9 @@ def test_ready_external_init_should_run_maintenance_without_docker(
     monkeypatch.setattr(
         init_module,
         "prewarm_embeddings",
-        lambda config, skip_model_download: (_ for _ in ()).throw(
-            AssertionError("ready maintenance should not prewarm embeddings")
+        lambda config, skip_model_download: (
+            call_order.append("embeddings") or embedding_failed,
+            warmed_config,
         ),
     )
     monkeypatch.setattr(
@@ -561,8 +579,13 @@ def test_ready_external_init_should_run_maintenance_without_docker(
         render_success_lines=_render_success_lines,
     )
 
-    assert result.outcome == init_module.INIT_OUTCOME_NOOP
-    assert call_order == ["config", "wait", "reconcile", "migrate"]
+    if embedding_failed:
+        assert result.outcome == init_module.INIT_OUTCOME_BLOCKED_DEPENDENCY
+        assert saved[-1].bootstrap_state == "repair_needed"
+        assert result.lines == ["download failed"]
+    else:
+        assert result.outcome == init_module.INIT_OUTCOME_NOOP
+    assert call_order == ["config", "wait", "reconcile", "migrate", "embeddings"]
 
 
 def test_ready_init_should_propagate_schema_migration_failure(
@@ -1107,3 +1130,100 @@ class _FakeConnection:
 
     def __exit__(self, exc_type, exc, tb) -> bool:
         return False
+
+
+@pytest.mark.parametrize("existing_ready", [False, True])
+def test_prewarm_installs_onnx_for_fresh_and_existing_installations(
+    tmp_path, monkeypatch, existing_ready
+):
+    from dataclasses import replace
+    from app.infrastructure.embeddings import prewarm
+    from app.infrastructure.embeddings.local_provider import (
+        MODEL_FILES,
+        MODEL_REVISION,
+        model_directory,
+    )
+    import huggingface_hub
+
+    config = _machine_config(
+        bootstrap_state="ready" if existing_ready else "provisioning"
+    )
+    config = replace(
+        config,
+        embeddings=replace(
+            config.embeddings,
+            cache_path=str(tmp_path),
+            readiness_state="ready" if existing_ready else "pending",
+        ),
+    )
+    downloads = []
+
+    def download(repo_id, *, revision, cache_dir, allow_patterns, force_download):
+        downloads.append(repo_id)
+        assert force_download is True
+        assert revision == MODEL_REVISION
+        assert allow_patterns == list(MODEL_FILES)
+        for name in allow_patterns:
+            path = model_directory(cache_dir) / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", download)
+
+    def embed(self, text):
+        if not all(
+            (model_directory(str(tmp_path)) / name).is_file() for name in MODEL_FILES
+        ):
+            raise RuntimeError("missing model files")
+        return [0.0] * 384
+
+    monkeypatch.setattr(prewarm.OnnxEmbeddingProvider, "embed", embed)
+    changed, ready = prewarm.prewarm_embeddings(config, skip_model_download=False)
+    assert changed and ready.embeddings.readiness_state == "ready"
+    assert ready.embeddings.provider == "onnxruntime"
+    assert ready.embeddings.model_revision == MODEL_REVISION
+    assert len(downloads) == 1
+    assert prewarm.prewarm_embeddings(ready, skip_model_download=False) == (
+        False,
+        ready,
+    )
+    assert len(downloads) == 1
+
+
+def test_prewarm_failure_keeps_installation_unready(tmp_path, monkeypatch):
+    from dataclasses import replace
+    import huggingface_hub
+    from app.infrastructure.embeddings.prewarm import prewarm_embeddings
+
+    config = _machine_config(
+        bootstrap_state="ready", readiness_state="ready", last_error=None
+    )
+    config = replace(
+        config, embeddings=replace(config.embeddings, cache_path=str(tmp_path))
+    )
+
+    def interrupted(*args, **kwargs):
+        raise OSError("interrupted model download")
+
+    monkeypatch.setattr(huggingface_hub, "snapshot_download", interrupted)
+    changed, failed = prewarm_embeddings(config, skip_model_download=False)
+    assert changed
+    assert failed.bootstrap_state == "repair_needed"
+    assert failed.embeddings.readiness_state == "failed"
+    assert failed.embeddings.last_error == "interrupted model download"
+
+
+def test_prewarm_rejects_unverified_cached_revision(tmp_path):
+    from dataclasses import replace
+    from app.infrastructure.embeddings.prewarm import prewarm_embeddings
+
+    config = _machine_config(bootstrap_state="ready")
+    config = replace(
+        config, embeddings=replace(config.embeddings, cache_path=str(tmp_path))
+    )
+    ref = tmp_path / "models--sentence-transformers--all-MiniLM-L6-v2/refs/main"
+    ref.parent.mkdir(parents=True)
+    ref.write_text("different-revision")
+    _, failed = prewarm_embeddings(config, skip_model_download=False)
+    assert failed.embeddings.readiness_state == "failed"
+    assert "Re-embed" in failed.embeddings.last_error

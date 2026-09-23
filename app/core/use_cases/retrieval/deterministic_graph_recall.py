@@ -140,14 +140,19 @@ def build_deterministic_graph_pack(
         uow=uow,
         thresholds=thresholds,
     )
+    concept_bundles = uow.concepts.get_concept_bundles(
+        repo_id=request.repo_id,
+        concept_ids=list(concept_candidates),
+    )
     selected_concepts, concept_trace = _select_concepts(
         request=request,
         concept_candidates=concept_candidates,
-        uow=uow,
+        concept_bundles=concept_bundles,
     )
     traversal = _traverse_selected_concepts(
         request=request,
         selected_concepts=selected_concepts,
+        concept_bundles=concept_bundles,
         memory_candidates=memory_candidates,
         uow=uow,
     )
@@ -484,8 +489,14 @@ def _expand_structural_memory_relations(
                 predicates=predicates,
             )
             for row in rows:
-                key = (row["subject_memory_id"], row["predicate"], row["object_memory_id"])
-                memory_relations[key] = row | {"validated_at": _iso(row["validated_at"])}
+                key = (
+                    row["subject_memory_id"],
+                    row["predicate"],
+                    row["object_memory_id"],
+                )
+                memory_relations[key] = row | {
+                    "validated_at": _iso(row["validated_at"])
+                }
                 del memory_relations[key]["visible_memory_ids"]
             for neighbor in select_structural_memory_relation_neighbors(
                 rows, anchor_memory_id=anchor_memory_id
@@ -605,14 +616,14 @@ def _select_concepts(
     *,
     request: MemoryReadRequest,
     concept_candidates: dict[str, dict[str, Any]],
-    uow: IUnitOfWork,
+    concept_bundles: dict[str, dict[str, Any]],
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     selected: list[tuple[float, str, dict[str, Any]]] = []
     rejected_count = 0
+    query_terms = _tokenize(request.query)
+    identifiers = _extract_identifiers(request.query)
     for concept_id, candidate in concept_candidates.items():
-        bundle = uow.concepts.get_concept_bundle(
-            repo_id=request.repo_id, concept_ref=concept_id
-        )
+        bundle = concept_bundles.get(concept_id)
         if bundle is None:
             rejected_count += 1
             continue
@@ -621,8 +632,8 @@ def _select_concepts(
             continue
         score = float(candidate["score"]) + _bundle_signal_score(
             bundle=bundle,
-            query_terms=_tokenize(request.query),
-            identifiers=_extract_identifiers(request.query),
+            query_terms=query_terms,
+            identifiers=identifiers,
         )
         if score <= 0:
             rejected_count += 1
@@ -653,6 +664,7 @@ def _traverse_selected_concepts(
     *,
     request: MemoryReadRequest,
     selected_concepts: list[dict[str, Any]],
+    concept_bundles: dict[str, dict[str, Any]],
     memory_candidates: dict[str, dict[str, Any]],
     uow: IUnitOfWork,
 ) -> dict[str, Any]:
@@ -711,12 +723,22 @@ def _traverse_selected_concepts(
     ]
     neighbors = []
     selected_ids = {entry["bundle"]["concept"].id for entry in selected_concepts}
+    missing_ids = [
+        key
+        for key in unique_neighbor_ids
+        if key not in concept_bundles and key not in selected_ids
+    ]
+    if missing_ids:
+        concept_bundles.update(
+            uow.concepts.get_concept_bundles(
+                repo_id=request.repo_id,
+                concept_ids=missing_ids,
+            )
+        )
     for neighbor_id in unique_neighbor_ids:
         if neighbor_id in selected_ids:
             continue
-        bundle = uow.concepts.get_concept_bundle(
-            repo_id=request.repo_id, concept_ref=neighbor_id
-        )
+        bundle = concept_bundles.get(neighbor_id)
         if bundle is None or not _active_concept(bundle["concept"]):
             continue
         neighbors.append(
@@ -1214,9 +1236,13 @@ def _brief_case_texts(
     for target in memories:
         linked = relations_by_target[target["id"]]
         if not linked:
-            cases.extend(_brief_memory_texts(
-                [target], kinds={"solution"}, link_roles={"solution_for", "example_of"}
-            ))
+            cases.extend(
+                _brief_memory_texts(
+                    [target],
+                    kinds={"solution"},
+                    link_roles={"solution_for", "example_of"},
+                )
+            )
         for relation in linked:
             subject = memories_by_id[relation["subject_memory_id"]]
             qualifiers = [relation["status"]]

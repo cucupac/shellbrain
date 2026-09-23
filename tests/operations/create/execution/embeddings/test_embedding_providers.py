@@ -1,82 +1,70 @@
-"""Embedding provider contracts for create execution."""
+"""Check local-only embedding execution and MiniLM pooling semantics."""
 
 import sys
-import types
+from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 from app.infrastructure.embeddings.local_provider import (
-    SentenceTransformersEmbeddingProvider,
+    MODEL_FILES,
+    OnnxEmbeddingProvider,
+    model_directory,
 )
 
 
-def test_sentence_transformers_provider_uses_local_library_when_available(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """local embedding providers should always return embeddings when sentence-transformers is available."""
+def test_missing_artifacts_require_upgrade_without_downloading(tmp_path):
+    provider = OnnxEmbeddingProvider(cache_folder=str(tmp_path))
+    with pytest.raises(RuntimeError, match="shellbrain upgrade"):
+        provider.embed("query")
 
-    captured: dict[str, object] = {}
 
-    class _FakeModel:
-        """This helper class returns a fixed embedding payload for test assertions."""
+def test_embedding_masks_padding_normalizes_and_preserves_tokenizer_rules(
+    tmp_path, monkeypatch
+):
+    directory = model_directory(str(tmp_path))
+    for name in MODEL_FILES:
+        path = directory / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.touch()
+    calls = []
 
-        def encode(
-            self, text: str, *, convert_to_numpy: bool, normalize_embeddings: bool
-        ):
-            _ = (text, convert_to_numpy, normalize_embeddings)
-            return [0.1, 0.2, 0.3]
+    class Tokenizer:
+        @staticmethod
+        def from_file(path):
+            assert path == str(directory / "tokenizer.json")
+            return Tokenizer()
 
-    class _FakeSentenceTransformer:
-        """This helper class mimics the sentence-transformers model constructor."""
+        def enable_truncation(self, *, max_length):
+            assert max_length == 256
 
-        def __init__(
-            self,
-            model_name: str,
-            *,
-            cache_folder: str | None = None,
-            local_files_only: bool = False,
-        ) -> None:
-            captured["model_name"] = model_name
-            captured["cache_folder"] = cache_folder
-            captured["local_files_only"] = local_files_only
-            self._model = _FakeModel()
-
-        def encode(
-            self, text: str, *, convert_to_numpy: bool, normalize_embeddings: bool
-        ):
-            return self._model.encode(
-                text,
-                convert_to_numpy=convert_to_numpy,
-                normalize_embeddings=normalize_embeddings,
+        def encode(self, text):
+            calls.append(text)
+            return SimpleNamespace(
+                ids=[101, 42, 0], attention_mask=[1, 1, 0], type_ids=[0, 0, 0]
             )
 
+    class Session:
+        def __init__(self, path, *, sess_options, providers):
+            assert path == str(directory / "onnx/model.onnx")
+            assert (
+                sess_options.intra_op_num_threads
+                == sess_options.inter_op_num_threads
+                == 1
+            )
+            assert providers == ["CPUExecutionProvider"]
+
+        def run(self, outputs, inputs):
+            assert all(value.dtype == np.int64 for value in inputs.values())
+            return [np.array([[[3, 0], [0, 4], [999, 999]]], dtype=np.float32)]
+
+    monkeypatch.setitem(sys.modules, "tokenizers", SimpleNamespace(Tokenizer=Tokenizer))
     monkeypatch.setitem(
         sys.modules,
-        "sentence_transformers",
-        types.SimpleNamespace(SentenceTransformer=_FakeSentenceTransformer),
+        "onnxruntime",
+        SimpleNamespace(SessionOptions=SimpleNamespace, InferenceSession=Session),
     )
-
-    provider = SentenceTransformersEmbeddingProvider(
-        model="all-MiniLM-L6-v2",
-        cache_folder="/tmp/shellbrain-models",
-        local_files_only=True,
-    )
-    assert provider.embed("hello") == [0.1, 0.2, 0.3]
-    assert captured == {
-        "model_name": "all-MiniLM-L6-v2",
-        "cache_folder": "/tmp/shellbrain-models",
-        "local_files_only": True,
-    }
-
-
-def test_sentence_transformers_provider_raises_without_library(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """local embedding providers should always fail fast when sentence-transformers is unavailable."""
-
-    monkeypatch.setitem(
-        sys.modules, "sentence_transformers", types.ModuleType("sentence_transformers")
-    )
-    provider = SentenceTransformersEmbeddingProvider(model="all-MiniLM-L6-v2")
-    with pytest.raises(RuntimeError):
-        provider.embed("hello")
+    provider = OnnxEmbeddingProvider(cache_folder=str(tmp_path))
+    assert provider.embed("  query \n") == pytest.approx([0.6, 0.8])
+    assert provider.embed("") == pytest.approx([0.6, 0.8])
+    assert calls == ["query", ""]
