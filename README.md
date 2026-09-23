@@ -98,7 +98,7 @@ shellbrain admin recall provider codex
 shellbrain admin recall provider claude
 ```
 
-For faster recall with Mercury, set your Inception API key and select Inception:
+For faster recall with Mercury, [create an Inception API key](https://platform.inceptionlabs.ai/dashboard/api-keys), then set it and select Inception:
 
 ```bash
 export INCEPTION_API_KEY="your-inception-api-key"
