@@ -17,19 +17,17 @@ curl -L shellbrain.ai/install | bash
 **Works for Codex, Claude Code, and Cursor.**
 
 Requirements.
-- macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
+- macOS or Linux, Python 3.11+, Docker.
 
-### Upgrade for latest capabilities
+### Upgrade for Latest Capabilities
 
 ```bash
 shellbrain upgrade
 ```
 
-You can also run `curl -L shellbrain.ai/upgrade | bash`.
-
 ---
 
-## Recall in one command
+## Recall in One Command
 
 <p align="center">
   <img src="docs/assets/shellbrain-recall-context-diagram.png" alt="ShellBrain recall uses vector search and BM25 to search your memories. An inner recall agent summarizes the search results." width="720">
