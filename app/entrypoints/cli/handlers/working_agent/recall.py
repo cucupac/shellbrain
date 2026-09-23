@@ -76,7 +76,18 @@ def run_recall_memory_operation(
                 repo_root=str(resolved_repo_root),
             )
             recall_telemetry = core_result.telemetry
-            result = ok_envelope(core_result)
+            if core_result.fallback_reason not in {None, "no_candidates"}:
+                error_stage = "recall_synthesis"
+                result = error_response(
+                    [
+                        ErrorDetail(
+                            code=ErrorCode.INTERNAL_ERROR,
+                            message=f"Recall synthesis failed: {core_result.fallback_reason}",
+                        )
+                    ]
+                )
+            else:
+                result = ok_envelope(core_result)
     except DomainValidationError as exc:
         error_stage = "semantic_validation"
         result = error_response(exc.errors)

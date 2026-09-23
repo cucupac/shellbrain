@@ -27,10 +27,8 @@ def test_recall_output(monkeypatch, capsys, terminal, no_color, term, colored):
         "status": "ok",
         "data": {
             "brief": {
-                "summary": "Discovery selects edges.",
-                "known_traps": ["Preserve delayed branches."],
-                "anchors": ["router/src/compute_route.rs"],
-                "gaps": [],
+                "memories": ["Discovery selects edges."],
+                "code": ["router/src/compute_route.rs"],
             },
             "fallback_reason": None,
         },
@@ -44,37 +42,37 @@ def test_recall_output(monkeypatch, capsys, terminal, no_color, term, colored):
         return
     plain = re.sub(r"\033\[[\d;]+m", "", output)
     assert plain == (
-        "\n  SHELLBRAIN · RECALL\n\n  Discovery selects edges.\n\n"
-        "  Known traps\n    • Preserve delayed branches.\n\n"
-        "  Anchors\n    • router/src/compute_route.rs\n\n"
+        "\n  SHELLBRAIN · RECALL\n\n  Memories\n    • Discovery selects edges.\n\n"
+        "  Code\n    • router/src/compute_route.rs\n\n"
     )
     if colored:
-        assert "\033[1;33m  Known traps" in output
-        assert "\033[1;36m  Anchors" in output
+        assert "\033[1;36m  Memories" in output
+        assert "\033[1;36m  Code" in output
 
 
-def test_recall_wrapping_controls_and_fallback():
-    """Wrap continuation lines, preserve full paths, and display fallback reasons."""
+def test_recall_wrapping_and_controls():
+    """Wrap bullets, preserve full paths, and escape terminal controls."""
 
     path = "rust-backends/crates/routing/router/src/compute_route.rs"
     output = render_recall(
         {
             "brief": {
-                "summary": "A café summary.",
-                "constraints": ["Keep all delayed branches when the routes rejoin."],
-                "anchors": [path],
-                "conflicts": ["Escape \x1b[31m safely."],
+                "memories": [
+                    "A café memory.",
+                    "Keep all delayed branches when the routes rejoin.",
+                    "Escape \x1b[31m safely.",
+                ],
+                "code": [path],
             },
-            "fallback_reason": "provider_timeout",
+            "fallback_reason": None,
         },
         width=40,
         color=False,
     )
     assert "    • Keep all delayed branches when the\n      routes rejoin." in output
     assert path in output
-    assert "A café summary." in output
+    assert "A café memory." in output
     assert "Escape \\u001b[31m safely." in output
-    assert "  Fallback\n    • provider_timeout" in output
     assert "\033" not in output
 
 
@@ -86,3 +84,12 @@ def test_other_results_keep_complete_json(monkeypatch, capsys, command, status):
     result = {"status": status, "data": {}, "errors": ["detail"]}
     print_result(result, command=command)
     assert json.loads(capsys.readouterr().out) == result
+
+
+def test_empty_recall_has_one_message():
+    """Empty recall must not display headings or code references."""
+    assert render_recall(
+        {"brief": {"memories": [], "code": []}}, width=88, color=False
+    ) == (
+        "\n  SHELLBRAIN · RECALL\n\n    • No relevant memories found for this question.\n"
+    )

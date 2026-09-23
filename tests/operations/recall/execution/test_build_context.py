@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 
 from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.ports.host_apps.inner_agents import InnerAgentRunResult
@@ -23,19 +25,11 @@ class _FakeRunner:
             model=request.model,
             reasoning=request.reasoning,
             brief={
-                "summary": "Use the migration timeout precedent.",
-                "constraints": ["Keep startup wiring out of core."],
-                "known_traps": ["Do not make Docker calls from startup."],
-                "prior_cases": [
-                    "A prior migration hang was caused by missing timeout."
+                "memories": [
+                    "Use the migration timeout precedent.",
+                    "Keep startup wiring out of core.",
                 ],
-                "concept_orientation": ["DB admin work belongs under infrastructure."],
-                "anchors": ["app/infrastructure/db/admin"],
-                "conflicts": [
-                    "Older guidance about startup-owned DB admin wiring is stale."
-                ],
-                "gaps": [],
-                "next_checks": ["Inspect db/admin migration wiring first."],
+                "code": ["app/infrastructure/db/admin"],
             },
             input_tokens=100,
             output_tokens=40,
@@ -52,7 +46,7 @@ class _ErrorRunner:
             provider=request.provider,
             model=request.model,
             reasoning=request.reasoning,
-            fallback_used=True,
+            fallback_used=False,
             error_code="invalid_output",
             error_message="bad JSON",
         )
@@ -76,7 +70,7 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
         inner_agent_runner=runner,
     )
 
-    assert result.data["brief"]["summary"] == "Use the migration timeout precedent."
+    assert result.data["brief"]["memories"][0] == "Use the migration timeout precedent."
     assert "sources" not in result.data["brief"]
     assert result.data["fallback_reason"] is None
     assert runner.request is not None
@@ -96,10 +90,10 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     assert telemetry["concept_expansion_count"] == 1
 
 
-def test_build_context_missing_provider_returns_deterministic_context(
+def test_build_context_missing_provider_reports_failure(
     monkeypatch,
 ) -> None:
-    """deterministic_only should return a graph brief without running a model."""
+    """Missing providers produce explicit failure metadata without invented context."""
 
     _stub_graph_pack(monkeypatch, pack=_graph_pack())
 
@@ -115,9 +109,7 @@ def test_build_context_missing_provider_returns_deterministic_context(
         build_context_settings=_recall_settings(),
     )
 
-    assert result.data["brief"]["summary"] == (
-        "Shellbrain found 1 memory source(s) and 1 concept source(s) for this recall query."
-    )
+    assert result.data["brief"] == {}
     assert "sources" not in result.data["brief"]
     assert result.data["fallback_reason"] == "provider_unavailable"
     telemetry = result.data["_telemetry"]["inner_agent"]
@@ -125,10 +117,10 @@ def test_build_context_missing_provider_returns_deterministic_context(
     assert telemetry["model"] == "gpt-5.4-mini"
 
 
-def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
+def test_build_context_provider_unavailable_returns_no_brief(
     monkeypatch,
 ) -> None:
-    """build_context should use graph fallback when no runner exists."""
+    """Unavailable synthesis cannot become successful raw retrieval."""
 
     _stub_graph_pack(monkeypatch, pack=_graph_pack())
 
@@ -142,16 +134,10 @@ def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
         object(),
     )
 
-    assert result.data["brief"]["summary"] == (
-        "Shellbrain found 1 memory source(s) and 1 concept source(s) for this recall query."
-    )
-    assert result.data["brief"]["conflicts"] == []
-    assert result.data["brief"]["next_checks"] == [
-        "Check implementation anchor: app/infrastructure/db/admin"
-    ]
+    assert result.data["brief"] == {}
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["status"] == "provider_unavailable"
-    assert telemetry["fallback_used"] is True
+    assert telemetry["fallback_used"] is False
 
 
 def test_build_context_closes_owned_uow_before_synthesis(
@@ -212,15 +198,13 @@ def test_build_context_truthfully_reports_no_context(monkeypatch) -> None:
 
     assert result.data["fallback_reason"] == "no_candidates"
     assert "sources" not in result.data["brief"]
-    assert result.data["brief"]["conflicts"] == []
-    assert result.data["brief"]["next_checks"] == []
-    assert "no relevant memories" in result.data["brief"]["gaps"][0]
+    assert result.data["brief"] == {"memories": [], "code": []}
 
 
-def test_build_context_provider_error_uses_deterministic_fallback(
+def test_build_context_provider_error_returns_no_brief(
     monkeypatch,
 ) -> None:
-    """build_context should use deterministic fallback when the provider fails."""
+    """Failed synthesis retains telemetry but does not create a brief."""
 
     _stub_graph_pack(monkeypatch, pack=_graph_pack())
 
@@ -236,12 +220,10 @@ def test_build_context_provider_error_uses_deterministic_fallback(
     )
 
     assert result.data["fallback_reason"] is not None
-    assert result.data["brief"]["summary"] == (
-        "Shellbrain found 1 memory source(s) and 1 concept source(s) for this recall query."
-    )
+    assert result.data["brief"] == {}
     telemetry = result.data["_telemetry"]["inner_agent"]
     assert telemetry["status"] == "invalid_output"
-    assert telemetry["fallback_used"] is True
+    assert telemetry["fallback_used"] is False
     assert telemetry["error_code"] == "invalid_output"
 
 
@@ -343,3 +325,83 @@ def _empty_graph_pack() -> dict:
         "conflicts": [],
         "pack_trace": {"duration_ms": 1},
     }
+
+
+@pytest.mark.parametrize(
+    "brief",
+    [
+        None,
+        {"memories": [], "code": ["app/infrastructure/db/admin"]},
+        {"memories": ["Useful context."], "code": ["invented/file.py"]},
+        {"memories": [" "], "code": []},
+    ],
+)
+def test_build_context_rejects_unusable_provider_results(monkeypatch, brief):
+    """All providers share schema and supplied-reference validation."""
+
+    class Runner(_FakeRunner):
+        def run(self, request):
+            return super().run(request).model_copy(update={"brief": brief})
+
+    _stub_graph_pack(monkeypatch, pack=_graph_pack())
+    result = execute_build_context(
+        MemoryRecallRequest(repo_id="repo-a", query="migration timeout"),
+        object(),
+        inner_agent_runner=Runner(),
+    )
+    assert result.brief == {}
+    assert result.fallback_reason == "invalid_output"
+    assert result.telemetry["inner_agent"]["status"] == "invalid_output"
+
+
+def test_retrieved_candidates_can_produce_no_relevant_memory(monkeypatch):
+    """The synthesizer can reject all retrieved candidates without an error."""
+
+    class Runner(_FakeRunner):
+        def run(self, request):
+            return (
+                super()
+                .run(request)
+                .model_copy(update={"brief": {"memories": [], "code": []}})
+            )
+
+    _stub_graph_pack(monkeypatch, pack=_graph_pack())
+    result = execute_build_context(
+        MemoryRecallRequest(repo_id="repo-a", query="unrelated question"),
+        object(),
+        inner_agent_runner=Runner(),
+    )
+    assert result.brief == {"memories": [], "code": []}
+    assert result.fallback_reason is None
+
+
+def test_code_reference_can_come_from_memory_text(monkeypatch):
+    """A remembered location remains useful without a concept grounding."""
+    pack = _graph_pack()
+    pack["memories"][0]["text"] = (
+        "Retry logic is in src/invoice/retry.py; its policy was not recorded."
+    )
+
+    class Runner(_FakeRunner):
+        def run(self, request):
+            return (
+                super()
+                .run(request)
+                .model_copy(
+                    update={
+                        "brief": {
+                            "memories": [pack["memories"][0]["text"]],
+                            "code": ["src/invoice/retry.py"],
+                        }
+                    }
+                )
+            )
+
+    _stub_graph_pack(monkeypatch, pack=pack)
+    result = execute_build_context(
+        MemoryRecallRequest(repo_id="repo-a", query="Where is retry logic?"),
+        object(),
+        inner_agent_runner=Runner(),
+    )
+    assert result.fallback_reason is None
+    assert result.brief["code"] == ["src/invoice/retry.py"]

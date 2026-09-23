@@ -81,7 +81,7 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         tmp_path.joinpath("seen.txt").write_text("ran", encoding="utf-8")
         with open(output_path, "w", encoding="utf-8") as handle:
             handle.write(
-                '{"brief": {"summary": "Stub synthesis", "constraints": ["Keep core clean"], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}, "read_trace": {"commands": [{"command": "shellbrain read --json {}", "source_ids": ["mem-1"]}], "source_ids": ["mem-1"]}}'
+                '{"memories": ["Stub synthesis", "Keep core clean"], "code": []}'
             )
         return subprocess.CompletedProcess(
             args,
@@ -104,9 +104,9 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
     result = runner.run(_request(repo_root=str(tmp_path)))
 
     assert result.status == "ok"
-    assert {k: v for k, v in result.brief.items() if v} == {
-        "summary": "Stub synthesis",
-        "constraints": ["Keep core clean"],
+    assert result.brief == {
+        "memories": ["Stub synthesis", "Keep core clean"],
+        "code": [],
     }
     assert result.input_tokens == 11
     assert result.output_tokens == 7
@@ -125,14 +125,12 @@ def test_codex_runner_synthesis_only_uses_synthesis_mode(monkeypatch, tmp_path) 
     def _fake_run(args, *, input, text, capture_output, timeout, check, env):
         del text, capture_output, timeout, check
         assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "build_context_synthesis"
-        assert "Do not run commands" in input
+        assert "run commands, or inspect files" in input
         assert "mem-1" in input
         assert "shellbrain read --json" not in input
         output_path = args[args.index("--output-last-message") + 1]
         with open(output_path, "w", encoding="utf-8") as handle:
-            handle.write(
-                '{"brief": {"summary": "Synthesized from pack", "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}}'
-            )
+            handle.write('{"memories": ["Synthesized from pack"], "code": []}')
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
     monkeypatch.setattr(
@@ -154,18 +152,38 @@ def test_codex_runner_synthesis_only_uses_synthesis_mode(monkeypatch, tmp_path) 
 
     assert result.status == "ok"
     assert {k: v for k, v in result.brief.items() if v} == {
-        "summary": "Synthesized from pack"
+        "memories": ["Synthesized from pack"]
     }
 
 
-def test_inner_agent_output_parser_accepts_json_fenced_brief() -> None:
-    """Output parser should accept common fenced JSON responses."""
+@pytest.mark.parametrize(
+    "output",
+    [
+        '{"brief":{"memories":[],"code":[]}}',
+        '```json\n{"memories":[],"code":[]}\n```',
+        '{"memories": [" "], "code": []}',
+        '{"memories": [], "code": ["file.py"]}',
+        '{"memories": "text", "code": []}',
+        '{"memories": [], "code": [], "summary": "legacy"}',
+        '{"memories": ["Fact"], "code": ["a", "b", "c", "d"]}',
+    ],
+)
+def test_recall_parser_rejects_invalid_and_legacy_outputs(output):
+    """Reject ambiguous empty recall and obsolete provider formats."""
+    with pytest.raises(InnerAgentOutputParseError):
+        parse_inner_agent_brief_output(output)
 
-    brief = parse_inner_agent_brief_output(
-        '```json\n{"brief": {"summary": "Context found", "gaps": [], "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "next_checks": []}}\n```'
+
+def test_recall_parser_accepts_empty_and_partial_memory():
+    """Useful partial memory needs neither a full answer nor code references."""
+    assert parse_inner_agent_brief_output('{"memories":[],"code":[]}') == {
+        "memories": [],
+        "code": [],
+    }
+    result = parse_inner_agent_brief_output(
+        '{"memories":["The fix was proposed; completion is unknown."],"code":[]}'
     )
-
-    assert brief["summary"] == "Context found"
+    assert result["memories"] == ["The fix was proposed; completion is unknown."]
 
 
 def test_build_knowledge_runner_uses_build_knowledge_mode(
@@ -244,7 +262,7 @@ def test_recall_provider_requires_an_evidence_pack_and_brief_envelope() -> None:
         InnerAgentRunRequest.model_validate(payload)
     with pytest.raises(ValidationError, match="deterministic_pack"):
         InnerAgentRunRequest.model_validate({**payload, "deterministic_pack": None})
-    with pytest.raises(InnerAgentOutputParseError, match="valid brief"):
+    with pytest.raises(InnerAgentOutputParseError, match="valid memories/code object"):
         parse_inner_agent_brief_output('{"summary":"Missing the brief envelope"}')
 
 
@@ -269,27 +287,12 @@ def test_build_context_synthesis_prompt_uses_only_deterministic_pack() -> None:
         )
     )
 
-    assert "build_context_synthesizer" in prompt
-    assert "Do not run commands" in prompt
-    assert "Memory links explain why" in prompt
-    assert "# TEMPORAL AND LIFECYCLE JUDGMENT" in prompt
-    assert "# PREFERENCES" in prompt
-    assert "# CHANGE AND CONTRADICTION JUDGMENT" in prompt
-    assert "# SECTION RULES" in prompt
-    assert "# WRITE CLEARLY" in prompt
-    assert "Lead with the answer" in prompt
-    assert "Summary: max two sentences" in prompt
-    assert "Lists: max three items" in prompt
-    assert "Treat `max_brief_tokens` as the limit for the complete brief" in prompt
-    assert "Keep every relevant constraint, trap, conflict, and warning" in prompt
-    assert "Use only the text and metadata present in the pack" in prompt
-    assert "The query is the complete worker request" in prompt
-    assert (
-        "facts, preferences, invariants, behavior claims, configuration rules" in prompt
-    )
-    assert '"sources":' not in prompt
-    assert "deterministic source provenance" not in prompt
+    assert "Use ASD-STE100 Simplified Technical English." in prompt
+    assert "run commands, or inspect files" in prompt
     assert "mem-1" in prompt
+    assert "max_brief_tokens" in prompt
+    assert '"output_contract"' not in prompt
+    assert "# SECTION RULES" not in prompt
     assert "shellbrain read --json" not in prompt
 
 

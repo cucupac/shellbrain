@@ -27,27 +27,12 @@ def request():
 
 
 def response():
-    brief = {"summary": "Check the lock owner first."}
-    brief.update(
-        {
-            key: []
-            for key in (
-                "constraints",
-                "known_traps",
-                "prior_cases",
-                "concept_orientation",
-                "anchors",
-                "conflicts",
-                "gaps",
-                "next_checks",
-            )
-        }
-    )
+    brief = {"memories": ["Check the lock owner first."], "code": []}
     return {
         "choices": [
             {
                 "finish_reason": "stop",
-                "message": {"content": json.dumps({"brief": brief})},
+                "message": {"content": json.dumps(brief)},
             }
         ],
         "usage": {
@@ -100,7 +85,7 @@ def test_failures_are_explicit_and_redacted(monkeypatch, error, code):
 
     monkeypatch.setattr(inception_api, "urlopen", fail)
     result = InceptionApiInnerAgentRunner(api_key="test-key").run(request())
-    assert result.error_code == code and result.fallback_used
+    assert result.error_code == code and not result.fallback_used
     assert "secret" not in result.error_message
     assert len(calls) == 1
 
@@ -126,12 +111,12 @@ def test_invalid_output_is_rejected(monkeypatch, invalid):
     else:
         content = json.loads(data["choices"][0]["message"]["content"])
         if invalid == "missing_section":
-            del content["brief"]["constraints"]
+            del content["memories"]
         else:
-            content["brief"]["constraints"] = "not a list"
+            content["memories"] = "not a list"
         data["choices"][0]["message"]["content"] = json.dumps(content)
     monkeypatch.setattr(
         inception_api, "urlopen", lambda *a, **kw: io.BytesIO(json.dumps(data).encode())
     )
     result = InceptionApiInnerAgentRunner(api_key="test-key").run(request())
-    assert result.status == "invalid_output" and result.fallback_used
+    assert result.status == "invalid_output" and not result.fallback_used

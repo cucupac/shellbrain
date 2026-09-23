@@ -66,15 +66,8 @@ shellbrain recall "What is ShellBrain, and how does it help a working coding age
   "status": "ok",
   "data": {
     "brief": {
-      "summary": "...",
-      "constraints": ["..."],
-      "known_traps": ["..."],
-      "prior_cases": ["..."],
-      "concept_orientation": ["..."],
-      "anchors": ["`README.md`"],
-      "conflicts": ["..."],
-      "gaps": ["..."],
-      "next_checks": ["..."]
+      "memories": ["Relevant remembered context."],
+      "code": ["README.md"]
     },
     "fallback_reason": null
   },
@@ -82,7 +75,8 @@ shellbrain recall "What is ShellBrain, and how does it help a working coding age
 }
 ```
 
-If there are no relevant memories, nothing is returned.
+Terminals show styled Memories and Code bullets. Pipes receive JSON.
+If no useful memory is found, both lists are empty. Provider failures return errors.
 
 ### Recall Provider
 

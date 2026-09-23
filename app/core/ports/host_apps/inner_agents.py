@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol
+from typing import Annotated, Any, Protocol, Self
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.core.entities.inner_agents import (
     InnerAgentName,
@@ -25,18 +25,18 @@ class _StrictModel(BaseModel):
 
 
 class RecallBrief(_StrictModel):
-    """Complete synthesis output; invalid sections must not become silent omissions."""
+    """Useful remembered context and its supplied code references."""
 
     model_config = ConfigDict(extra="forbid", strict=True)
-    summary: str = Field(min_length=1, pattern=r"\S")
-    constraints: list[str] = Field(max_length=3)
-    known_traps: list[str] = Field(max_length=3)
-    prior_cases: list[str] = Field(max_length=3)
-    concept_orientation: list[str] = Field(max_length=3)
-    anchors: list[str] = Field(max_length=3)
-    conflicts: list[str] = Field(max_length=3)
-    gaps: list[str] = Field(max_length=3)
-    next_checks: list[str] = Field(max_length=3)
+    memories: list[Annotated[str, Field(min_length=1, pattern=r"\S")]]
+    code: list[Annotated[str, Field(min_length=1, pattern=r"\S")]] = Field(max_length=3)
+
+    @model_validator(mode="after")
+    def require_memories_for_code(self) -> Self:
+        """Code references must accompany useful memories."""
+        if self.code and not self.memories:
+            raise ValueError("code references require memories")
+        return self
 
 
 class InnerAgentRunRequest(_StrictModel):

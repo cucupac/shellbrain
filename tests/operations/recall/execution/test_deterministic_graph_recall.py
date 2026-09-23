@@ -32,7 +32,6 @@ from app.core.use_cases.retrieval.deterministic_graph_recall import (
     _select_concepts,
     _select_final_memories,
     build_deterministic_graph_pack,
-    deterministic_brief_from_graph_pack,
     source_items_from_graph_pack,
     synthesis_pack_from_graph_pack,
 )
@@ -224,19 +223,6 @@ def test_recall_preserves_case_pairings(monkeypatch, seed_both_endpoints, exclud
         == read["memory_relations"]
         == pack["memory_relations"]
     )
-    cases = deterministic_brief_from_graph_pack(pack)["prior_cases"]
-    for row in expected:
-        subject = uow.memories._memories[row["subject_memory_id"]].text
-        target = uow.memories._memories[row["object_memory_id"]].text
-        assert any(
-            subject in case
-            and target in case
-            and row["predicate"] in case
-            and row["status"] in case
-            and row["validated_at"] in case
-            for case in cases
-        )
-    assert not any("lock is held" in case and "Free disk" in case for case in cases)
 
 
 def _request(*, query: str) -> MemoryReadRequest:
@@ -248,46 +234,6 @@ def _request(*, query: str) -> MemoryReadRequest:
             "expand": {"concepts": {"max_auto": 6}},
         }
     )
-
-
-@pytest.mark.parametrize("linked_solutions", [(0, 1, 2), (5,)])
-def test_fast_brief_preserves_case_order_without_duplicate_solutions(linked_solutions):
-    memories = [
-        {
-            "id": f"s{i}",
-            "kind": "solution",
-            "text": f"Fix {i}.",
-            "currentness": "current",
-        }
-        for i in range(6)
-    ] + [
-        {
-            "id": f"p{i}",
-            "kind": "problem",
-            "text": f"Problem {i}.",
-            "currentness": "current",
-        }
-        for i in linked_solutions
-    ]
-    relations = [
-        {
-            "subject_memory_id": f"p{i}",
-            "predicate": "solved_by",
-            "object_memory_id": f"s{i}",
-            "status": "active",
-            "confidence": None,
-            "validated_at": None,
-        }
-        for i in reversed(linked_solutions)
-    ]
-    cases = deterministic_brief_from_graph_pack(
-        {"memories": memories, "memory_relations": relations}
-    )["prior_cases"]
-    assert len(cases) == 6
-    for i, case in enumerate(cases):
-        assert f"Fix {i}." in case
-        if i in linked_solutions:
-            assert f"Problem {i}." in case and "solved_by" in case
 
 
 def test_synthesis_rejects_missing_memory_relations():

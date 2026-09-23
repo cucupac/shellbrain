@@ -46,28 +46,26 @@ def render_recall(data: dict[str, Any], *, width: int, color: bool) -> str:
 
     brief = data["brief"]
     lines = ["", style("  SHELLBRAIN · RECALL", "2"), ""]
-    if brief.get("summary"):
-        lines.extend([wrap(brief["summary"], "  ", "  "), ""])
-    for field, items in brief.items():
-        if field == "summary" or not items:
+    if not brief["memories"]:
+        lines.extend(
+            [
+                wrap(
+                    "No relevant memories found for this question.", "    • ", "      "
+                ),
+                "",
+            ]
+        )
+        return "\n".join(lines)
+    for field in ("memories", "code"):
+        if not brief[field]:
             continue
-        heading = field.replace("_", " ").capitalize()
-        tone = "1;33" if field in {"known_traps", "conflicts"} else "1;36"
-        lines.append(style(f"  {heading}", tone))
-        for item in items:
+        lines.append(style(f"  {field.capitalize()}", "1;36"))
+        for item in brief[field]:
             bullet = wrap(item, "    • ", "      ")
-            if field == "anchors":
+            if field == "code":
                 bullet = style(bullet, "2")
             else:
                 bullet = bullet.replace("    • ", "    " + style("•", "2") + " ", 1)
             lines.append(bullet)
         lines.append("")
-    if data.get("fallback_reason"):
-        lines.extend(
-            [
-                style("  Fallback", "1;33"),
-                wrap(data["fallback_reason"], "    • ", "      "),
-                "",
-            ]
-        )
     return "\n".join(lines)

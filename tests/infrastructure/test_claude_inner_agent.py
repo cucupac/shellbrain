@@ -48,9 +48,7 @@ def test_claude_runner_parses_envelope_and_restricts_tools(monkeypatch) -> None:
             0,
             stdout=json.dumps(
                 {
-                    "result": (
-                        '{"brief": {"summary": "Claude synthesis", "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}, "read_trace": {"source_ids": ["mem-1"]}}'
-                    ),
+                    "result": ('{"memories": ["Claude synthesis"], "code": []}'),
                     "usage": {
                         "input_tokens": 13,
                         "output_tokens": 8,
@@ -79,7 +77,7 @@ def test_claude_runner_parses_envelope_and_restricts_tools(monkeypatch) -> None:
     assert result.provider == "claude"
     assert result.model == "sonnet"
     assert {k: v for k, v in result.brief.items() if v} == {
-        "summary": "Claude synthesis"
+        "memories": ["Claude synthesis"]
     }
     assert result.input_tokens == 13
     assert result.output_tokens == 8
@@ -99,11 +97,7 @@ def test_claude_synthesis_only_disables_tools(monkeypatch) -> None:
         return subprocess.CompletedProcess(
             args,
             0,
-            stdout=json.dumps(
-                {
-                    "result": '{"brief": {"summary": "From pack", "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}}'
-                }
-            ),
+            stdout=json.dumps({"result": '{"memories": ["From pack"], "code": []}'}),
             stderr="",
         )
 
@@ -213,7 +207,7 @@ def test_claude_runner_rejects_disallowed_reported_model(monkeypatch) -> None:
             0,
             stdout=json.dumps(
                 {
-                    "result": '{"brief": {"summary": "Too expensive", "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}}',
+                    "result": '{"memories": ["Too expensive"], "code": []}',
                     "modelUsage": {"model": "claude-haiku-4-5"},
                 }
             ),

@@ -58,7 +58,6 @@ class ClaudeCliInnerAgentRunner:
             return _result(
                 request,
                 status="invalid_output",
-                fallback_used=True,
                 duration_ms=int(run["duration_ms"]),
                 **_usage_or_estimate(
                     prompt=prompt, output=final_message, usage=run.get("usage")
@@ -227,7 +226,6 @@ def _context_error_result(
     return _result(
         request,
         status=str(run["status"]),
-        fallback_used=True,
         duration_ms=int(run.get("duration_ms") or 0),
         input_tokens=run.get("input_tokens"),
         capture_quality=run.get("capture_quality"),

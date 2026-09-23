@@ -112,7 +112,7 @@ def test_recall_command_telemetry_can_be_inserted_after_migration(
         )
 
 
-def test_successful_recall_should_write_recall_summary_source_items_and_no_read_telemetry(
+def test_failed_synthesis_keeps_recall_and_provider_telemetry(
     uow_factory: Callable[[], PostgresUnitOfWork],
     monkeypatch: pytest.MonkeyPatch,
     fetch_relation_rows,
@@ -127,10 +127,10 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
         inferred_repo_id="repo-a",
     )
 
-    assert result["status"] == "ok"
+    assert result["status"] == "error"
     assert "_telemetry" not in result["data"]
-    assert result["data"]["fallback_reason"] == "provider_unavailable"
-    assert "sources" not in result["data"]["brief"]
+    assert result["data"] == {}
+    assert "provider_unavailable" in result["errors"][0]["message"]
     recall_request = captured["request"]
     assert recall_request.query == "recall telemetry"
 
@@ -139,7 +139,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     )
     assert len(operation_rows) == 1
     assert operation_rows[0]["command"] == "recall"
-    assert operation_rows[0]["outcome"] == "ok"
+    assert operation_rows[0]["outcome"] == "error"
 
     summary_rows = fetch_relation_rows("recall_invocation_summaries")
     assert len(summary_rows) == 1
@@ -176,7 +176,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert inner_agent_rows[0]["agent_name"] == "build_context"
     assert inner_agent_rows[0]["provider"] == "codex"
     assert inner_agent_rows[0]["status"] == "provider_unavailable"
-    assert inner_agent_rows[0]["fallback_used"] is True
+    assert inner_agent_rows[0]["fallback_used"] is False
     assert inner_agent_rows[0]["input_tokens"] is None
     assert inner_agent_rows[0]["output_tokens"] is None
     assert inner_agent_rows[0]["capture_quality"] is None
@@ -231,7 +231,7 @@ def test_no_candidate_recall_should_write_no_candidates_fallback(
     assert result["status"] == "ok"
     assert result["data"]["fallback_reason"] == "no_candidates"
     assert "sources" not in result["data"]["brief"]
-    assert result["data"]["brief"]["gaps"]
+    assert result["data"]["brief"] == {"memories": [], "code": []}
 
     summary_rows = fetch_relation_rows("recall_invocation_summaries")
     assert len(summary_rows) == 1
@@ -250,6 +250,10 @@ def test_recall_should_not_mutate_knowledge_state(
     """recall should not write memories, concepts, utility observations, or problem runs."""
 
     _stub_graph_pack(monkeypatch, pack=_candidate_pack())
+    monkeypatch.setattr(
+        "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
+        lambda settings: _FakeInnerAgentRunner(),
+    )
     before = _knowledge_counts(fetch_relation_rows)
 
     result = handle_recall(
@@ -270,6 +274,10 @@ def test_recall_token_estimates_should_be_deterministic(
     """candidate and brief token estimates should be stable for identical recall output."""
 
     _stub_graph_pack(monkeypatch, pack=_candidate_pack())
+    monkeypatch.setattr(
+        "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
+        lambda settings: _FakeInnerAgentRunner(),
+    )
 
     for _ in range(2):
         result = handle_recall(
@@ -298,15 +306,7 @@ class _FakeInnerAgentRunner:
             provider=request.provider,
             model=request.model,
             reasoning=request.reasoning,
-            brief={
-                "summary": "Provider synthesized context.",
-                "constraints": [],
-                "known_traps": [],
-                "prior_cases": [],
-                "concept_orientation": [],
-                "anchors": [],
-                "gaps": [],
-            },
+            brief={"memories": ["Provider synthesized context."], "code": []},
             input_tokens=111,
             output_tokens=22,
             reasoning_output_tokens=0,

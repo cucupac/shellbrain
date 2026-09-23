@@ -16,7 +16,7 @@ class InnerAgentOutputParseError(ValueError):
 def parse_inner_agent_brief_output(output: str) -> dict[str, Any]:
     """Parse a provider final response into a worker brief object."""
 
-    text = _strip_code_fence(output.strip())
+    text = output.strip()
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
@@ -27,10 +27,10 @@ def parse_inner_agent_brief_output(output: str) -> dict[str, Any]:
         raise InnerAgentOutputParseError("inner-agent output must be a JSON object")
 
     try:
-        return RecallBrief.model_validate(payload.get("brief")).model_dump()
+        return RecallBrief.model_validate(payload).model_dump()
     except ValidationError as exc:
         raise InnerAgentOutputParseError(
-            "inner-agent output must include a complete valid brief"
+            "inner-agent output must be a valid memories/code object"
         ) from exc
 
 

@@ -212,22 +212,6 @@ def build_deterministic_graph_pack(
     return pack
 
 
-def no_context_brief() -> dict[str, Any]:
-    """Return the truthful no-context brief shape."""
-
-    return {
-        "summary": "No stored Shellbrain context matched this recall query.",
-        "constraints": [],
-        "known_traps": [],
-        "prior_cases": [],
-        "concept_orientation": [],
-        "anchors": [],
-        "conflicts": [],
-        "gaps": ["Shellbrain has no relevant memories or concepts for this query."],
-        "next_checks": [],
-    }
-
-
 def record_synthesis_pack_size(
     *,
     graph_pack: dict[str, Any],
@@ -245,58 +229,6 @@ def record_synthesis_pack_size(
     pack_budget["synthesis_candidate_tokens_estimated"] = int(
         _estimate_pack_tokens(synthesis_pack)
     )
-
-
-def deterministic_brief_from_graph_pack(pack: dict[str, Any]) -> dict[str, Any]:
-    """Render a compact worker brief from a deterministic graph pack."""
-
-    memories = [item for item in pack.get("memories", []) if isinstance(item, dict)]
-    concepts = [item for item in pack.get("concepts", []) if isinstance(item, dict)]
-    neighbors = [
-        item for item in pack.get("relation_neighbors", []) if isinstance(item, dict)
-    ]
-    if not memories and not concepts and not neighbors:
-        return no_context_brief()
-    concept_items = concepts + neighbors
-    constraints = _brief_memory_texts(
-        memories,
-        kinds={"fact", "preference", "change"},
-        link_roles=set(),
-    )
-    constraints.extend(_claim_texts(concept_items, {"invariant", "behavior"}))
-    known_traps = _brief_memory_texts(
-        memories,
-        kinds={"problem", "failed_tactic"},
-        link_roles={"failed_tactic_for", "warns_about"},
-    )
-    known_traps.extend(_claim_texts(concept_items, {"failure_mode"}))
-    prior_cases = _brief_case_texts(memories, pack["memory_relations"])
-    return {
-        "summary": _summary(memories=memories, concepts=concept_items),
-        "constraints": _truncate_list(constraints, 6),
-        "known_traps": _truncate_list(known_traps, 6),
-        "prior_cases": _truncate_list(prior_cases, 6),
-        "concept_orientation": _truncate_list(
-            [
-                _truncate(
-                    f"{item.get('name') or item.get('ref')}: "
-                    f"{item.get('orientation') or ''}",
-                    320,
-                )
-                for item in concept_items
-                if item.get("orientation") or item.get("name") or item.get("ref")
-            ],
-            8,
-        ),
-        "anchors": _truncate_list(
-            [str(anchor.get("locator")) for anchor in pack.get("anchors", [])], 12
-        ),
-        "conflicts": _truncate_list(
-            [_conflict_summary(item) for item in pack.get("conflicts", [])], 6
-        ),
-        "gaps": [],
-        "next_checks": _next_checks(pack),
-    }
 
 
 def source_items_from_graph_pack(pack: dict[str, Any]) -> list[dict[str, Any]]:
@@ -1227,88 +1159,6 @@ def _estimate_pack_tokens(pack: dict[str, Any]) -> int:
     return max(1, len(json.dumps(pack, sort_keys=True, default=str)) // 4)
 
 
-def _brief_memory_texts(
-    memories: Sequence[dict[str, Any]],
-    *,
-    kinds: set[str],
-    link_roles: set[str],
-) -> list[str]:
-    rendered: list[str] = []
-    for memory in memories:
-        memory_roles = set(memory.get("link_roles") or [])
-        if str(memory.get("kind")) not in kinds and not (memory_roles & link_roles):
-            continue
-        rendered.append(_truncate(f"{memory.get('kind')}: {memory.get('text')}", 300))
-    return rendered
-
-
-def _brief_case_texts(
-    memories: Sequence[dict[str, Any]], relations: Sequence[dict[str, Any]]
-) -> list[str]:
-    """Render cases in selected memory order, keeping outcomes with their sources."""
-
-    memories_by_id = {item["id"]: item for item in memories}
-    relations_by_target = defaultdict(list)
-    for relation in relations:
-        relations_by_target[relation["object_memory_id"]].append(relation)
-    cases = []
-    for target in memories:
-        linked = relations_by_target[target["id"]]
-        if not linked:
-            cases.extend(
-                _brief_memory_texts(
-                    [target],
-                    kinds={"solution"},
-                    link_roles={"solution_for", "example_of"},
-                )
-            )
-        for relation in linked:
-            subject = memories_by_id[relation["subject_memory_id"]]
-            qualifiers = [relation["status"]]
-            for name in ("confidence", "validated_at"):
-                if relation[name] is not None:
-                    qualifiers.append(f"{name}={relation[name]}")
-            cases.append(
-                f"{subject['kind']} ({subject['currentness']}): {_truncate(subject['text'], 300)} "
-                f"--{relation['predicate']} [{'; '.join(qualifiers)}]--> "
-                f"{target['kind']} ({target['currentness']}): {_truncate(target['text'], 300)}"
-            )
-    return cases
-
-
-def _claim_texts(
-    concepts: Sequence[dict[str, Any]], claim_types: set[str]
-) -> list[str]:
-    rendered: list[str] = []
-    for concept in concepts:
-        ref = concept.get("ref") or concept.get("id")
-        for claim in concept.get("claims", []):
-            if claim.get("type") in claim_types and claim.get("status") == "active":
-                rendered.append(
-                    _truncate(f"{ref} {claim.get('type')}: {claim.get('text')}", 300)
-                )
-    return rendered
-
-
-def _next_checks(pack: dict[str, Any]) -> list[str]:
-    checks = []
-    for anchor in pack.get("anchors", []):
-        role = anchor.get("role")
-        locator = anchor.get("locator")
-        if (
-            role in {"implementation", "entrypoint", "test", "configuration"}
-            and locator
-        ):
-            checks.append(f"Check {role} anchor: {locator}")
-    return list(dict.fromkeys(checks))[:3]
-
-
-def _conflict_summary(item: object) -> str:
-    if isinstance(item, dict):
-        return str(item.get("summary") or item.get("reason") or item)
-    return str(item)
-
-
 def _source_section_for_memory(memory: dict[str, Any]) -> str:
     reasons = set(memory.get("why") or [])
     if "graph_linked_memory" in reasons or "structural_memory_relation" in reasons:
@@ -1316,15 +1166,6 @@ def _source_section_for_memory(memory: dict[str, Any]) -> str:
     if memory.get("matched_lanes"):
         return "direct"
     return "implicit_related"
-
-
-def _summary(
-    *, memories: Sequence[dict[str, Any]], concepts: Sequence[dict[str, Any]]
-) -> str:
-    return (
-        f"Shellbrain found {len(memories)} memory source(s) and "
-        f"{len(concepts)} concept source(s) for this recall query."
-    )
 
 
 def _memory_candidate_score(candidate: dict[str, Any]) -> float:
@@ -1472,10 +1313,6 @@ def _dedupe_reasons(reasons: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _active_concept(concept: Concept) -> bool:
     return concept.status == ConceptStatus.ACTIVE
-
-
-def _truncate_list(values: Sequence[str], limit: int) -> list[str]:
-    return [value for value in values if value][:limit]
 
 
 def _truncate(value: str, max_chars: int) -> str:

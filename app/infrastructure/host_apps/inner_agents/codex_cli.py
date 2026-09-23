@@ -60,7 +60,6 @@ class CodexCliInnerAgentRunner:
             return _result(
                 request,
                 status="provider_unavailable",
-                fallback_used=True,
                 error_code="command_not_found",
                 error_message=f"Codex command not found: {self._command}",
             )
@@ -95,7 +94,6 @@ class CodexCliInnerAgentRunner:
             return _result(
                 request,
                 status="timeout",
-                fallback_used=True,
                 duration_ms=_duration_ms(started),
                 input_tokens=_estimate_tokens(prompt),
                 capture_quality="estimated",
@@ -109,7 +107,6 @@ class CodexCliInnerAgentRunner:
             return _result(
                 request,
                 status="error",
-                fallback_used=True,
                 duration_ms=duration_ms,
                 **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="codex_nonzero_exit",
@@ -121,7 +118,6 @@ class CodexCliInnerAgentRunner:
             return _result(
                 request,
                 status="invalid_output",
-                fallback_used=True,
                 duration_ms=duration_ms,
                 **_usage_or_estimate(prompt=prompt, output=final_message, usage=usage),
                 error_code="invalid_output",
@@ -282,7 +278,6 @@ def _result(
     *,
     status,
     brief: dict | None = None,
-    fallback_used: bool = False,
     duration_ms: int = 0,
     input_tokens: int | None = None,
     output_tokens: int | None = None,
@@ -300,7 +295,6 @@ def _result(
         model=request.model,
         reasoning=request.reasoning,
         brief=brief,
-        fallback_used=fallback_used,
         timeout_seconds=request.timeout_seconds,
         duration_ms=duration_ms,
         input_tokens=input_tokens,

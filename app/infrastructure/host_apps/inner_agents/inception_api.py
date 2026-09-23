@@ -53,12 +53,7 @@ class InceptionApiInnerAgentRunner:
                 "json_schema": {
                     "name": "recall_brief",
                     "strict": True,
-                    "schema": {
-                        "type": "object",
-                        "properties": {"brief": RecallBrief.model_json_schema()},
-                        "required": ["brief"],
-                        "additionalProperties": False,
-                    },
+                    "schema": RecallBrief.model_json_schema(),
                 },
             },
             "stream": False,
@@ -118,5 +113,4 @@ class InceptionApiInnerAgentRunner:
             result.error_code = "invalid_output"
             result.error_message = "Inception returned an invalid or incomplete brief"
         result.duration_ms = int((perf_counter() - started) * 1000)
-        result.fallback_used = result.status != "ok"
         return result

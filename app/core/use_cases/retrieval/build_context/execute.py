@@ -8,6 +8,7 @@ from typing import Any
 
 from app.core.entities.inner_agents import InnerAgentSettings
 from app.core.ports.host_apps.inner_agents import (
+    RecallBrief,
     InnerAgentRunRequest,
     InnerAgentRunResult,
 )
@@ -19,7 +20,6 @@ from app.core.ports.db.unit_of_work import IUnitOfWork
 from app.core.ports.host_apps.inner_agents import IInnerAgentRunner
 from app.core.use_cases.retrieval.deterministic_graph_recall import (
     build_deterministic_graph_pack,
-    deterministic_brief_from_graph_pack,
     record_synthesis_pack_size,
     source_items_from_graph_pack,
     synthesis_pack_from_graph_pack,
@@ -83,7 +83,7 @@ def execute_build_context(
 
     if fallback_reason == "no_candidates":
         return _graph_result(
-            deterministic_brief_from_graph_pack(graph_pack),
+            {"memories": [], "code": []},
             fallback_reason,
             InnerAgentRunResult(
                 status="ok",
@@ -110,11 +110,11 @@ def execute_build_context(
     if synthesis_result.status == "ok" and synthesis_result.brief is not None:
         return _graph_result(synthesis_result.brief, None, synthesis_result)
     return _graph_result(
-        deterministic_brief_from_graph_pack(graph_pack),
+        {},
         synthesis_result.status
         if synthesis_result.status != "ok"
         else "invalid_output",
-        synthesis_result.model_copy(update={"fallback_used": True}),
+        synthesis_result,
     )
 
 
@@ -132,12 +132,11 @@ def _run_inner_agent(
         return _inner_agent_result(
             settings=settings,
             status="provider_unavailable",
-            fallback_used=True,
             error_code="missing_runner",
             error_message="no inner-agent runner is configured",
         )
     try:
-        return inner_agent_runner.run(
+        result = inner_agent_runner.run(
             InnerAgentRunRequest(
                 agent_name="build_context",
                 provider=settings.provider,
@@ -155,17 +154,47 @@ def _run_inner_agent(
         return _inner_agent_result(
             settings=settings,
             status="error",
-            fallback_used=True,
             error_code="runner_exception",
             error_message=str(exc),
         )
+
+    if result.status != "ok":
+        return result
+    try:
+        brief = RecallBrief.model_validate(result.brief)
+        supplied_locations = {
+            grounding["locator"]
+            for concept in deterministic_pack.get("concepts", [])
+            + deterministic_pack.get("relation_neighbors", [])
+            for grounding in concept.get("groundings", [])
+        }
+        # Memories can record a location even when no concept grounding exists.
+        memory_texts = [
+            memory["text"] for memory in deterministic_pack.get("memories", [])
+        ]
+        for location in brief.code:
+            if location not in supplied_locations and not any(
+                location in text for text in memory_texts
+            ):
+                raise ValueError(
+                    "recall code references must come from supplied evidence"
+                )
+    except ValueError:
+        return result.model_copy(
+            update={
+                "status": "invalid_output",
+                "brief": None,
+                "error_code": "invalid_output",
+                "error_message": "Recall returned invalid memories or code references",
+            }
+        )
+    return result.model_copy(update={"brief": brief.model_dump()})
 
 
 def _inner_agent_result(
     *,
     settings: InnerAgentSettings,
     status,
-    fallback_used: bool,
     error_code: str | None = None,
     error_message: str | None = None,
 ) -> InnerAgentRunResult:
@@ -176,7 +205,6 @@ def _inner_agent_result(
         provider=settings.provider,
         model=settings.model,
         reasoning=settings.reasoning,
-        fallback_used=fallback_used,
         timeout_seconds=settings.timeout_seconds,
         error_code=error_code,
         error_message=error_message,

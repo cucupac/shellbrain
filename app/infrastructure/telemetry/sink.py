@@ -103,16 +103,16 @@ class TelemetrySink:
                             created_at=created_at,
                         )
 
-                if (
-                    result.get("status") == "ok"
-                    and command == "recall"
-                    and request is not None
-                ):
+                if command == "recall" and request is not None:
                     data = result.get("data", {})
                     if isinstance(data, dict) and isinstance(recall_telemetry, dict):
                         brief = data.get("brief", {})
                         if isinstance(brief, dict):
                             fallback_reason = data.get("fallback_reason")
+                            if result.get("status") != "ok":
+                                fallback_reason = recall_telemetry["inner_agent"][
+                                    "status"
+                                ]
                             recall_summary, recall_items = build_recall_summary_records(
                                 invocation_id=telemetry_context.invocation_id,
                                 request=request,
