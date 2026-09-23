@@ -148,6 +148,7 @@ def _run_inner_agent(
                 query=request.query,
                 repo_root=repo_root,
                 deterministic_pack=deterministic_pack,
+                recall=settings.recall,
             )
         )
     except Exception as exc:  # pragma: no cover - defensive core boundary

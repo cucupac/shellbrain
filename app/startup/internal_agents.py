@@ -18,6 +18,7 @@ from app.infrastructure.host_apps.inner_agents.claude_cli import (
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
 from app.infrastructure.local_state.recall_provider_store import load_recall_provider
+from app.startup.recall_settings import load_recall_settings
 from app.infrastructure.local_state.recall_credentials import load_inception_api_key
 from app.infrastructure.host_apps.inner_agents.inception_api import (
     InceptionApiInnerAgentRunner,
@@ -41,7 +42,9 @@ def get_build_context_settings() -> InnerAgentSettings:
     """Return typed settings for the read-only build_context agent."""
 
     config = get_internal_agents_config()
-    return _resolve_build_context_settings(config)
+    return _resolve_build_context_settings(config).model_copy(
+        update={"recall": load_recall_settings()}
+    )
 
 
 def get_build_knowledge_settings() -> BuildKnowledgeSettings:
@@ -107,7 +110,11 @@ def _resolve_build_context_settings(config: InternalAgentsConfig) -> InnerAgentS
     settings = config.build_context.model_copy(update={"provider": provider})
     if provider == "inception":
         return settings.model_copy(
-            update={"model": "mercury-2.5", "reasoning": "instant", "timeout_seconds": 10}
+            update={
+                "model": "mercury-2.5",
+                "reasoning": "instant",
+                "timeout_seconds": 10,
+            }
         )
     return _resolve_settings(config, settings)
 

@@ -13,6 +13,7 @@ from app.core.entities.inner_agents import (
     InnerAgentRunStatus,
     TokenCaptureQuality,
 )
+from app.core.entities.recall_settings import RecallSettings
 from app.core.entities.knowledge_builder import (
     KnowledgeBuildRunStatus,
     KnowledgeBuildTrigger,
@@ -50,6 +51,7 @@ class InnerAgentRunRequest(_StrictModel):
     query: str = Field(min_length=1)
     repo_root: str | None = None
     deterministic_pack: dict[str, Any]
+    recall: RecallSettings = Field(default_factory=RecallSettings)
 
 
 class InnerAgentRunResult(_StrictModel):

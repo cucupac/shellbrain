@@ -483,3 +483,21 @@ def test_synthesis_resolves_similar_case_endpoints_without_mutating_input():
     assert cases[0]["status"] == "maybe_stale"
     assert cases[1]["object_text"] == "Release the lock"
     assert pack == original
+
+
+def test_rendered_prompt_fits_estimated_budget_with_large_memories():
+    """The budget includes instructions and resolved relationship endpoint text."""
+    from app.core.entities.recall_settings import RecallSettings
+
+    pack = {
+        "memories": [
+            {"id": f"m{i}", "text": "router detail " * 150} for i in range(12)
+        ],
+        "memory_relations": [],
+    }
+    request = _request(deterministic_pack=pack).model_copy(
+        update={"recall": RecallSettings(max_input_tokens=4000)}
+    )
+    prompt = render_build_context_synthesis_prompt(request)
+    assert (len(prompt.encode("utf-8")) + 2) // 3 <= 4000
+    assert "router detail" in prompt

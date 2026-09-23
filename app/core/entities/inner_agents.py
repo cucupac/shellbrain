@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.core.entities.recall_settings import RecallSettings
+
 
 class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -34,6 +36,7 @@ class BuildContextSettings(_StrictModel):
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
     timeout_seconds: int = Field(ge=1, le=600)
+    recall: RecallSettings = Field(default_factory=RecallSettings)
     max_brief_tokens: int | None = Field(default=None, ge=1, le=100_000)
 
 

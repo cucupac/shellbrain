@@ -501,6 +501,32 @@ Do not use `code_trace` as a source for exact patches.
 
 
 def render_build_context_synthesis_prompt(request: InnerAgentRunRequest) -> str:
+    """Render recall evidence within the configured estimated input budget."""
+    from app.core.policies.retrieval.synthesis_evidence import (
+        fit_synthesis_evidence,
+        select_synthesis_evidence,
+    )
+
+    def render(pack: dict) -> str:
+        return _render_synthesis_prompt(
+            request.model_copy(update={"deterministic_pack": pack})
+        )
+
+    def estimate(pack: dict) -> int:
+        # Byte-based estimate includes instructions and repeated endpoint text.
+        # This is a portable budget proxy, not a provider token count.
+        return (len(render(pack).encode("utf-8")) + 2) // 3
+
+    pack = select_synthesis_evidence(
+        request.deterministic_pack, request.query, request.recall
+    )
+    pack = fit_synthesis_evidence(
+        pack, max_tokens=request.recall.max_input_tokens, measure=estimate
+    )
+    return render(pack)
+
+
+def _render_synthesis_prompt(request: InnerAgentRunRequest) -> str:
     """Render the prompt sent to a synthesis-only build_context provider."""
 
     # Resolve relationship endpoints in code so the model need not join opaque IDs.
