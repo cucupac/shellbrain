@@ -162,23 +162,23 @@ def _run_inner_agent(
         return result
     try:
         brief = RecallBrief.model_validate(result.brief)
-        supplied_locations = {
-            grounding["locator"]
-            for concept in deterministic_pack.get("concepts", [])
-            + deterministic_pack.get("relation_neighbors", [])
-            for grounding in concept.get("groundings", [])
-        }
-        # Memories can record a location even when no concept grounding exists.
-        memory_texts = [
+        # A file reference can be an excerpt of a locator with a symbol or line.
+        evidence_texts = [
             memory["text"] for memory in deterministic_pack.get("memories", [])
         ]
-        for location in brief.code:
-            if location not in supplied_locations and not any(
-                location in text for text in memory_texts
-            ):
-                raise ValueError(
-                    "recall code references must come from supplied evidence"
-                )
+        for concept in deterministic_pack.get("concepts", []) + deterministic_pack.get(
+            "relation_neighbors", []
+        ):
+            evidence_texts.append(concept.get("orientation", ""))
+            evidence_texts.extend(claim["text"] for claim in concept.get("claims", []))
+            evidence_texts.extend(
+                grounding["locator"] for grounding in concept.get("groundings", [])
+            )
+        if any(
+            not any(location in text for text in evidence_texts)
+            for location in brief.code
+        ):
+            raise ValueError("recall code references must come from supplied evidence")
     except ValueError:
         return result.model_copy(
             update={

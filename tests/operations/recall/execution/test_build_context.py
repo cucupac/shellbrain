@@ -405,3 +405,43 @@ def test_code_reference_can_come_from_memory_text(monkeypatch):
     )
     assert result.fallback_reason is None
     assert result.brief["code"] == ["src/invoice/retry.py"]
+
+
+@pytest.mark.parametrize("source", ["grounding", "claim", "orientation"])
+def test_code_reference_can_quote_supplied_concept_text(monkeypatch, source):
+    """A supplied path stays valid when the model omits surrounding prose or symbols."""
+    pack = _graph_pack()
+    concept = pack["concepts"][0]
+    location = "src/invoice/retry.py"
+    if source == "grounding":
+        concept["groundings"] = [{"locator": location + " retry_invoice"}]
+    elif source == "claim":
+        concept["claims"] = [{"text": "The retry logic lives in " + location}]
+    else:
+        concept["orientation"] = "Retry implementation: " + location
+
+    class Runner(_FakeRunner):
+        def run(self, request):
+            return (
+                super()
+                .run(request)
+                .model_copy(
+                    update={
+                        "brief": {
+                            "memories": [
+                                "The recorded retry implementation is in " + location
+                            ],
+                            "code": [location],
+                        }
+                    }
+                )
+            )
+
+    _stub_graph_pack(monkeypatch, pack=pack)
+    result = execute_build_context(
+        MemoryRecallRequest(repo_id="repo-a", query="Where is retry logic?"),
+        object(),
+        inner_agent_runner=Runner(),
+    )
+    assert result.fallback_reason is None
+    assert result.brief["code"] == [location]
