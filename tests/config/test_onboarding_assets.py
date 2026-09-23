@@ -26,8 +26,8 @@ def test_readme_should_teach_the_installer_first_happy_path() -> None:
     assert "curl -L shellbrain.ai/install | bash" in readme
     assert "shellbrain upgrade" in readme
     assert "curl -L shellbrain.ai/upgrade | bash" in readme
-    assert "runs `shellbrain init` for you" in readme
-    assert "pipx upgrade shellbrain && shellbrain init" in readme
+    assert "configures the runtime automatically" in readme
+    assert "shellbrain admin recall provider inception" in readme
     assert "Use $shellbrain" in readme
     assert "Use Shellbrain" in readme
     assert "utility_vote" not in readme
@@ -43,36 +43,15 @@ def test_agent_docs_should_share_the_shellbrain_protocol() -> None:
     texts = [
         _read_text(repo_root / "docs" / "external-quickstart.md"),
         _read_text(assets_root / "codex" / "shellbrain" / "SKILL.md"),
-        _read_text(
-            assets_root / "claude" / "skills" / "shellbrain" / "SKILL.md"
-        ),
-        _read_text(
-            assets_root / "cursor" / "skills" / "shellbrain" / "SKILL.md"
-        ),
+        _read_text(assets_root / "claude" / "skills" / "shellbrain" / "SKILL.md"),
+        _read_text(assets_root / "cursor" / "skills" / "shellbrain" / "SKILL.md"),
     ]
 
-    required_phrases = [
-        "shellbrain init",
-        "shellbrain admin doctor",
-        'shellbrain recall "',
-        "shellbrain teach --json",
-        "current_problem",
-        "--repo-root",
-        "goal | surface | obstacle | hypothesis",
-        "SB: recall |",
-        "Recall receives only this query",
-        "As the working agent",
-        "explicitly asks",
-        "Do not call",
-        "shellbrain read",
-        "what should I know about this repo?",
-        "sysconfig.get_path('scripts', 'posix_user')",
-        "~/.bash_profile",
-        "Do not keep sourcing the login profile on every Shellbrain command.",
-    ]
-
-    for phrase in required_phrases:
-        assert all(phrase in text for text in texts)
+    for text in texts:
+        assert 'shellbrain recall "' in text
+        assert "shellbrain snapshot" in text
+        assert "shellbrain teach" not in text
+        assert "shellbrain admin doctor" not in text
 
     forbidden_worker_teaching = [
         "shellbrain create",
@@ -97,7 +76,7 @@ def test_public_agent_page_should_show_current_worker_commands() -> None:
 
     assert 'shellbrain recall "&lt;what you want to know&gt;"' in agent_page
     assert "Recall receives only this query" in agent_page
-    assert "shellbrain teach --json" in agent_page
+    assert "shellbrain teach" not in agent_page
 
 
 def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> (
@@ -119,7 +98,7 @@ def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_ti
         "Do not keep sourcing the login profile on every Shellbrain command."
     )
 
-    assert required_phrase in external_quickstart
+    assert "shellbrain upgrade" in external_quickstart
     assert required_phrase in session_workflow
     assert (
         "Then use the same wrapper shape for real commands when needed:"
@@ -136,24 +115,16 @@ def test_cli_help_should_share_the_short_protocol() -> None:
 
     help_text = cli_parser._TOP_LEVEL_HELP
 
-    required_phrases = [
-        "case-based memory system",
-        "curl -L shellbrain.ai/install | bash",
-        "curl -L shellbrain.ai/upgrade | bash",
-        "Avoid generic prompts like",
-        "evidence_refs",
-        "utility_vote",
-        "shellbrain upgrade",
-        "shellbrain teach",
-        "pipx upgrade shellbrain && shellbrain init",
-        "shellbrain admin migrate",
+    assert "shellbrain upgrade" in help_text
+    assert "Use recall for context" in help_text
+    assert "Internal commands:" in help_text
+    for removed in (
         "shellbrain init",
-        "--repo-root",
-        "closed or idle-stable",
-    ]
-
-    for phrase in required_phrases:
-        assert phrase in help_text
+        "shellbrain teach",
+        "admin doctor",
+        "admin migrate",
+    ):
+        assert removed not in help_text
 
     assert "--no-sync" not in help_text
 
@@ -162,11 +133,7 @@ def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
     """The packaged Codex skill should include Codex UI metadata."""
 
     openai_yaml = _read_text(
-        _onboarding_assets_root()
-        / "codex"
-        / "shellbrain"
-        / "agents"
-        / "openai.yaml"
+        _onboarding_assets_root() / "codex" / "shellbrain" / "agents" / "openai.yaml"
     )
 
     assert 'display_name: "Shellbrain"' in openai_yaml
@@ -178,9 +145,7 @@ def test_packaged_codex_skill_should_ship_codex_agent_metadata() -> None:
 def test_packaged_codex_asset_should_include_required_files() -> None:
     """The packaged Codex asset should include the files needed by the host."""
 
-    packaged_skill_root = (
-        _onboarding_assets_root() / "codex" / "shellbrain"
-    )
+    packaged_skill_root = _onboarding_assets_root() / "codex" / "shellbrain"
 
     relative_paths = [
         Path("SKILL.md"),
@@ -210,29 +175,10 @@ def test_packaged_startup_guidance_assets_should_exist_for_codex_and_claude() ->
     assert "You have a persistent memory system called Shellbrain" not in claude_startup
 
 
-def test_packaged_codex_usage_review_asset_should_include_ui_metadata_and_icons() -> (
-    None
-):
-    """The secondary packaged Codex skill should also ship icon metadata and assets."""
-
-    packaged_skill_root = (
-        _onboarding_assets_root() / "codex" / "shellbrain-usage-review"
-    )
-    openai_yaml = _read_text(packaged_skill_root / "agents" / "openai.yaml")
-
-    assert 'display_name: "Shellbrain Usage Review"' in openai_yaml
-    assert 'icon_small: "./assets/shellbrain-small.svg"' in openai_yaml
-    assert 'icon_large: "./assets/shellbrain_logo.png"' in openai_yaml
-    assert (packaged_skill_root / "assets" / "shellbrain-small.svg").is_file()
-    assert (packaged_skill_root / "assets" / "shellbrain_logo.png").is_file()
-
-
 def test_packaged_cursor_skill_should_include_the_required_skill_file() -> None:
     """The packaged Cursor skill should ship the SKILL.md file consumed by Cursor."""
 
-    packaged_skill_root = (
-        _onboarding_assets_root() / "cursor" / "skills" / "shellbrain"
-    )
+    packaged_skill_root = _onboarding_assets_root() / "cursor" / "skills" / "shellbrain"
 
     assert (packaged_skill_root / "SKILL.md").is_file()
 
@@ -247,13 +193,13 @@ def test_install_script_should_locate_binary_delegate_to_init_and_configure_shel
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in install_script
     assert "--upgrade" in install_script
-    assert 'if "$SHELLBRAIN" init; then' in install_script
-    assert 'rerun bootstrap with: "%s" init' in install_script
+    assert 'if "$(dirname "$SHELLBRAIN")/_shellbrain-bootstrap"; then' in install_script
+    assert 'retry setup with: "%s" upgrade' in install_script
     assert "ensure_user_bin_on_shell_path" in install_script
     assert "shellbrain/path.sh" in install_script
     assert "shellbrain.fish" in install_script
     assert "cli path: ensured via $PATH_SNIPPET" in install_script
-    assert "shellbrain init will ask how it should store data." in install_script
+    assert "Setup will ask how it should store data." in install_script
     assert "existing PostgreSQL + pgvector database" in install_script
     assert "git rev-parse --is-inside-work-tree" not in install_script
     assert "shellbrain was installed but is not on PATH." not in install_script
@@ -269,12 +215,12 @@ def test_upgrade_script_should_locate_binary_delegate_to_init_and_configure_shel
 
     assert "sysconfig.get_path('scripts', 'posix_user')" in upgrade_script
     assert "--upgrade" in upgrade_script
-    assert 'if "$SHELLBRAIN" init; then' in upgrade_script
-    assert 'rerun bootstrap with: "%s" init' in upgrade_script
+    assert 'if "$(dirname "$SHELLBRAIN")/_shellbrain-bootstrap"; then' in upgrade_script
+    assert 'retry setup with: "%s" upgrade' in upgrade_script
     assert "ensure_user_bin_on_shell_path" in upgrade_script
     assert "shellbrain/path.sh" in upgrade_script
     assert "shellbrain.fish" in upgrade_script
     assert "cli path: ensured via $PATH_SNIPPET" in upgrade_script
-    assert "shellbrain init will ask how it should store data." in upgrade_script
+    assert "Setup will ask how it should store data." in upgrade_script
     assert "existing PostgreSQL + pgvector database" in upgrade_script
     assert "shellbrain was upgraded but could not be found." in upgrade_script

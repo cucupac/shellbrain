@@ -32,7 +32,8 @@ jobs:
           /tmp/shellbrain-release-smoke/bin/python -m pip install --no-deps dist/*.whl
           /tmp/shellbrain-release-smoke/bin/shellbrain --help
           /tmp/shellbrain-release-smoke/bin/shellbrain recall --help
-          /tmp/shellbrain-release-smoke/bin/shellbrain teach --help
+          /tmp/shellbrain-release-smoke/bin/shellbrain admin recall provider --help
+          /tmp/shellbrain-release-smoke/bin/_shellbrain-bootstrap --help
           python - <<'PY'
           from pathlib import Path
           import glob
@@ -44,7 +45,9 @@ jobs:
 
           required = {
               "app/startup/internal_agent_config.py",
-              "app/entrypoints/cli/handlers/working_agent/teach.py",
+              "app/entrypoints/bootstrap.py",
+              "migrations/versions/20260922_0040_recall_failure_reasons.py",
+              "app/infrastructure/host_apps/inner_agents/inception_api.py",
               "migrations/versions/20260519_0023_explicit_teach_trigger.py",
               "migrations/versions/20260519_0024_read_retrieval_latency_indexes.py",
               "migrations/versions/20260519_0025_repair_recall_source_input_section_constraint.py",

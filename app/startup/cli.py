@@ -54,11 +54,6 @@ def build_cli_runtime():
                 uow_factory=repos.get_uow, **kwargs
             )
         ),
-        should_register_repo_during_init=(
-            operation_registration.should_register_repo_during_init
-        ),
-        run_init=runtime_admin.run_init,
-        init_success_presenter_context=runtime_admin.init_success_presenter_context,
         run_upgrade_command=run_upgrade_command,
         warn_or_fail_on_unsafe_app_role=warn_or_fail_on_unsafe_app_role,
         admin_dependencies=build_admin_command_dependencies(),
@@ -70,21 +65,16 @@ def build_admin_command_dependencies():
 
     from app.startup import admin as startup_admin
     from app.startup import admin_db
-    from app.startup import admin_diagnose
     from app.startup import backup as startup_backup
     from app.startup import db as startup_db
-    from app.startup import migrations
-    from app.startup import model_usage_backfill
     from app.startup.admin_dependencies import AdminCommandDependencies
-    from app.infrastructure.local_state import recall_mode_store
+    from app.infrastructure.local_state.recall_provider_store import (
+        save_recall_provider,
+    )
 
     return AdminCommandDependencies(
-        upgrade_database=migrations.upgrade_database,
-        migration_conflict_error=migrations.DatabaseMigrationConflictError,
         get_admin_db_dsn=admin_db.get_admin_db_dsn,
-        get_optional_admin_db_dsn=admin_db.get_optional_admin_db_dsn,
         get_optional_db_dsn=startup_db.get_optional_db_dsn,
-        get_engine_instance=startup_db.get_engine_instance,
         get_backup_dir=admin_db.get_backup_dir,
         get_backup_mirror_dir=admin_db.get_backup_mirror_dir,
         managed_backup_kwargs=startup_admin.managed_backup_kwargs,
@@ -93,16 +83,7 @@ def build_admin_command_dependencies():
         list_backups=startup_backup.list_backups,
         verify_backup=startup_backup.verify_backup,
         restore_backup=startup_backup.restore_backup,
-        build_doctor_report=admin_diagnose.build_doctor_report,
-        build_admin_analytics_report=startup_admin.build_admin_analytics_report,
-        backfill_model_usage=model_usage_backfill.backfill_model_usage,
-        install_repo_claude_hook=startup_admin.install_repo_claude_hook,
-        install_managed_host_assets=startup_admin.install_managed_host_assets,
-        load_session_state=startup_admin.load_session_state,
-        delete_session_state=startup_admin.delete_session_state,
-        gc_session_state=startup_admin.gc_session_state,
-        load_recall_mode=recall_mode_store.load_recall_mode,
-        save_recall_mode=recall_mode_store.save_recall_mode,
+        save_recall_provider=save_recall_provider,
     )
 
 

@@ -82,8 +82,8 @@ def _assert_database_revision_is_known(
             "Installed Shellbrain package "
             f"({installed_version}) cannot manage database revision {current_revision}. "
             "This database was likely migrated by a newer Shellbrain release than the one currently installed. "
-            "Upgrade Shellbrain to a build that includes this revision, then rerun `shellbrain init` or "
-            "`shellbrain admin migrate`."
+            "Upgrade Shellbrain to a build that includes this revision, then rerun `shellbrain upgrade` or "
+            "`shellbrain upgrade`."
         ) from exc
 
 

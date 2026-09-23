@@ -14,7 +14,7 @@ ShellBrain carries useful lessons from one agent task to the next. It preserves 
 curl -L shellbrain.ai/install | bash
 ```
 
-**Works for Codex, Claude Code, and Cursor.** The installer runs `shellbrain init` for you. Repos register themselves on first use.
+**Works for Codex, Claude Code, and Cursor.** The installer configures the runtime automatically. Repos register themselves on first use.
 
 Requirements.
 - macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
@@ -25,7 +25,7 @@ Requirements.
 shellbrain upgrade
 ```
 
-You can also run `curl -L shellbrain.ai/upgrade | bash`. Manual alternative: `pipx upgrade shellbrain && shellbrain init`.
+You can also run `curl -L shellbrain.ai/upgrade | bash`.
 
 ---
 
@@ -55,7 +55,7 @@ Memories and concept claims link to supporting evidence. A concept can express a
 
 Working agents run `shellbrain recall` to get one compact brief for the current task.
 
-Recall, automatic learning, and teaching use the same evidence selector. It combines BM25, vector similarity, and graph links. Learning agents receive the selected records. The recall agent can summarize them.
+Recall and automatic learning use the same evidence selector. It combines BM25, vector similarity, and graph links. Learning agents receive the selected records. The recall agent can summarize them.
 
 Recall receives only the quoted query. Include the relevant task, failure, subsystem, or decision in the question.
 
@@ -86,11 +86,28 @@ shellbrain recall "What is ShellBrain, and how does it help a working coding age
 }
 ```
 
-Recall selects an evidence pack in code, then asks an inner agent to summarize it. Source attribution comes from the selected records. Fast mode and provider failures return a brief directly from that same pack.
+Recall selects an evidence pack in code, then asks an inner agent to summarize it. Source attribution comes from the selected records. Provider failures return a brief directly from that same pack.
 
-### Teach
+### Recall provider
 
-Run `shellbrain teach` only when you explicitly want ShellBrain to remember something important.
+Codex is the default. Choose one provider for recall across repositories:
+
+```bash
+shellbrain admin recall provider inception
+shellbrain admin recall provider codex
+shellbrain admin recall provider claude
+```
+
+For faster recall with Mercury, set your Inception API key and select Inception:
+
+```bash
+export INCEPTION_API_KEY="your-inception-api-key"
+shellbrain admin recall provider inception
+```
+
+Start your agent host with that environment. `.env` files are not loaded automatically. Automatic memory building is unchanged.
+
+Selection is stored in `~/.shellbrain/recall-provider.toml` (or under `SHELLBRAIN_HOME`). API failures return deterministic context with failure metadata. The API uses a 10-second socket timeout and no automatic retries; a slowly trickling response can exceed that elapsed time.
 
 ---
 
@@ -114,7 +131,7 @@ Use Shellbrain with your preferred agent. Then work as usual.
 
 ## Repair
 
-Run `shellbrain admin doctor` to inspect the installation. If it reports a problem, run `shellbrain init`. Do not run init every session.
+Run `shellbrain upgrade` to repair an existing installation. Setup and schema migrations run automatically.
 
 ---
 

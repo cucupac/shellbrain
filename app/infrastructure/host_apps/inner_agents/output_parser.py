@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from pydantic import ValidationError
+from app.core.ports.host_apps.inner_agents import RecallBrief
+
 
 class InnerAgentOutputParseError(ValueError):
     """Raised when provider output is not valid inner-agent JSON."""
@@ -17,16 +20,18 @@ def parse_inner_agent_brief_output(output: str) -> dict[str, Any]:
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise InnerAgentOutputParseError("inner-agent output is not valid JSON") from exc
+        raise InnerAgentOutputParseError(
+            "inner-agent output is not valid JSON"
+        ) from exc
     if not isinstance(payload, dict):
         raise InnerAgentOutputParseError("inner-agent output must be a JSON object")
 
-    brief = payload.get("brief")
-    if not isinstance(brief, dict):
-        raise InnerAgentOutputParseError("inner-agent output must include an object brief")
-    if not isinstance(brief.get("summary"), str) or not brief["summary"].strip():
-        raise InnerAgentOutputParseError("inner-agent brief.summary is required")
-    return brief
+    try:
+        return RecallBrief.model_validate(payload.get("brief")).model_dump()
+    except ValidationError as exc:
+        raise InnerAgentOutputParseError(
+            "inner-agent output must include a complete valid brief"
+        ) from exc
 
 
 def parse_build_knowledge_output(output: str) -> dict[str, Any]:
@@ -36,7 +41,9 @@ def parse_build_knowledge_output(output: str) -> dict[str, Any]:
     try:
         payload = json.loads(text)
     except json.JSONDecodeError as exc:
-        raise InnerAgentOutputParseError("build_knowledge output is not valid JSON") from exc
+        raise InnerAgentOutputParseError(
+            "build_knowledge output is not valid JSON"
+        ) from exc
     if not isinstance(payload, dict):
         raise InnerAgentOutputParseError("build_knowledge output must be a JSON object")
 
@@ -87,7 +94,9 @@ def _count_write_commands(payload: dict[str, Any]) -> int:
             text = _command_text(command)
             if text.startswith(("shellbrain memory add", "shellbrain memory update")):
                 count += 1
-            elif text.startswith(("shellbrain concept add", "shellbrain concept update")):
+            elif text.startswith(
+                ("shellbrain concept add", "shellbrain concept update")
+            ):
                 count += 1
             elif text.startswith("shellbrain scenario record"):
                 count += 1

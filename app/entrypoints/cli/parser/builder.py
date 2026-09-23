@@ -5,101 +5,16 @@ from __future__ import annotations
 import argparse
 import importlib.metadata
 from textwrap import dedent
+from typing import get_args
+
+from app.core.entities.recall_provider import RecallProvider
 
 
 class _HelpFormatter(argparse.RawDescriptionHelpFormatter):
     """Keep multiline examples readable in CLI help output."""
 
 
-_TOP_LEVEL_HELP = dedent(
-    """\
-    Use Shellbrain as a case-based memory system for agent work.
-
-    Install and bootstrap:
-      1. `curl -L shellbrain.ai/install | bash`
-      2. Upgrade later with `shellbrain upgrade` or `curl -L shellbrain.ai/upgrade | bash`
-      3. Manual/advanced upgrade path: `pipx upgrade shellbrain && shellbrain init`
-      4. The installer/upgrade flow runs `shellbrain init` for machine bootstrap and repair.
-      5. Repos auto-register on first Shellbrain use inside a git repo.
-
-    Managed-local prerequisites:
-      - macOS or Linux
-      - Python 3.11+ required
-      - Docker installed and daemon running
-      - First init downloads a local embedding model and boots PostgreSQL + pgvector inside a managed Docker container.
-      - Windows and first-class external Postgres adoption are not part of this happy path.
-
-    After install:
-      - Start a repo session in Codex, Claude Code, or Cursor (see shellbrain.ai/humans).
-      - If readiness is unclear, run `shellbrain admin doctor`.
-
-    Audience lanes:
-      Humans:
-        - Bootstrap or repair with `shellbrain init`.
-        - Upgrade with `shellbrain upgrade`.
-        - Check health with `shellbrain admin doctor`.
-
-      Working agents:
-        - Use `shellbrain recall` for normal task context.
-        - Use `shellbrain teach` only when the user explicitly asks to store or teach Shellbrain something.
-        - If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed.
-        - Send one concrete natural-language query.
-        - Recall receives only this query, so include relevant task context naturally.
-        - Avoid generic prompts like "what should I know about this repo?"
-
-      Internal recall agents:
-        - Start with `shellbrain events`.
-        - Use `shellbrain read` for memories and concept orientation.
-        - Use `shellbrain concept show` for progressive concept disclosure.
-        - These commands are read-only.
-
-      Knowledge-builder agents:
-        - Session builders run from Shellbrain episode lifecycle triggers, not from working agents.
-        - When episode evidence is closed or idle-stable, consolidate through an event watermark.
-        - Inspect exact episode evidence with `shellbrain events`.
-        - Use returned `episode_event` ids as `evidence_refs`.
-        - Write `problem`, `failed_tactic`, `solution`, `fact`, `preference`, and `change` memories through Shellbrain CLI commands.
-        - Use `memory update` for `utility_vote`, truth evolution, and associations.
-        - Use `scenario record` to store solved or abandoned problem-solving runs into problem_runs after memory boundaries exist.
-        - Explicit teach agents run immediately from `teach` evidence and do not call `events` or `scenario record`.
-
-    Examples by audience:
-      Humans:
-      shellbrain init
-      shellbrain upgrade
-      shellbrain admin doctor
-      shellbrain admin migrate
-
-      Working agents:
-      shellbrain recall "What context matters for this migration lock timeout?"
-      shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
-      shellbrain snapshot
-
-      Internal recall agents:
-      shellbrain events --json '{"limit":10}'
-      shellbrain read --json '{"query":"Have we seen this migration lock timeout before?","kinds":["problem","solution","failed_tactic"]}'
-      shellbrain concept show --json '{"schema_version":"concept.v1","concept":"deposit-addresses","include":["claims","relations","groundings","memory_links"]}'
-
-      Internal knowledge-builder agents:
-      shellbrain events --json '{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}'
-      shellbrain memory add --json '{"memory":{"text":"Migration failed because the lock timeout was too low","kind":"problem","evidence_refs":["evt-123"]}}'
-      shellbrain memory update --json '{"memory_id":"mem-older-solution","update":{"type":"utility_vote","problem_id":"mem-problem-123","vote":1.0,"evidence_refs":["evt-124"]}}'
-      shellbrain concept update --json '{"schema_version":"concept.v1","actions":[{"type":"add_claim","concept":"migrations","claim_type":"failure_mode","text":"Lock timeouts can fail long-running schema changes.","evidence":[{"kind":"transcript","transcript_ref":"evt-123"}]}]}'
-      shellbrain scenario record --json '{"schema_version":"scenario.v1","scenario":{"episode_id":"episode-123","outcome":"solved","problem_memory_id":"mem-problem-1","solution_memory_id":"mem-solution-1","opened_event_id":"evt-123","closed_event_id":"evt-124"}}'
-
-    Docs:
-      https://shellbrain.ai/agents — how agents use shellbrain
-      https://shellbrain.ai/humans — install, upgrade, and getting started
-
-    Common recovery steps:
-      - `shellbrain: command not found`: rerun `curl -L shellbrain.ai/install | bash`.
-      - `Shellbrain machine config is unreadable`: rerun `shellbrain init` to repair the managed instance.
-      - `Outcome: blocked_dependency`: install Docker or start the Docker daemon, then rerun `shellbrain init`.
-      - No active host session found: verify Codex, Claude Code, or Cursor transcript availability, then rerun `events`.
-      - Evidence ref rejected: rerun `events` and use the returned `episode_event` ids verbatim.
-      - Wrong working tree: rerun with `--repo-root` (and optionally `--repo-id`) for the target repo.
-    """
-)
+_TOP_LEVEL_HELP = "Install: curl -L shellbrain.ai/install | bash\nUpgrade: shellbrain upgrade\nUse recall for context and snapshot after code changes.\nInternal commands: read, events, concept, memory, scenario."
 
 _CREATE_HELP = dedent(
     """\
@@ -165,27 +80,6 @@ _RECALL_HELP = dedent(
     """
 )
 
-_TEACH_HELP = dedent(
-    """\
-    Immediately teach Shellbrain an explicit user-provided fact, preference, or change.
-
-    This is a worker-facing command for explicit teaching only. Working agents should
-    use `recall` for normal task context and `teach` only when the user asks to store
-    or teach Shellbrain something.
-
-    Requires `text` and `current_problem`.
-    `current_problem` must include non-empty `goal`, `surface`, `obstacle`, and
-    `hypothesis`; use an explicit value like "none yet" when there is no hypothesis.
-
-    Shellbrain first stores the teaching as episode evidence, then immediately runs
-    a separate teach knowledge agent. The teach agent may write memories and concept
-    graph updates through internal CLI commands. The working agent should not call
-    those internal commands directly.
-
-    Example:
-      shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
-    """
-)
 
 _CONCEPT_HELP = dedent(
     """\
@@ -231,7 +125,7 @@ _EVENTS_HELP = dedent(
     `events` performs an inline transcript sync before returning normalized episodic evidence.
     Recall agents should run this before private reads. Session knowledge-builder agents
     should use this to inspect exact episode evidence and use returned ids as
-    `evidence_refs`. Explicit teach agents do not call `events`.
+    `evidence_refs`.
 
     Examples:
       shellbrain events --json '{"limit":10}'
@@ -280,70 +174,13 @@ _SCENARIO_HELP = dedent(
     """
 )
 
-_ADMIN_HELP = dedent(
-    """\
-    Administrative commands for bootstrapping and maintaining the shellbrain database.
+_ADMIN_HELP = "Manage backups and select the recall provider."
 
-    Example:
-      shellbrain init
-      shellbrain admin migrate
-      shellbrain admin recall fast
-    """
+
+_UPGRADE_HELP = (
+    "Upgrade the package and automatically repair runtime setup and host integrations."
 )
 
-_RECALL_MODE_HELP = dedent(
-    """\
-    Toggle whether recall uses the inner LLM synthesis agent.
-
-    Examples:
-      shellbrain admin recall fast
-      shellbrain admin recall full
-      shellbrain admin recall status
-    """
-)
-
-_UPGRADE_HELP = dedent(
-    """\
-    Upgrade the installed Shellbrain package through the hosted upgrade script.
-
-    This is the official product-path upgrader for website installs.
-    It upgrades the package and reruns `shellbrain init` to refresh the managed runtime,
-    Codex skill, Claude skill, Cursor skill, and Claude hook.
-
-    Manual/advanced path:
-      pipx upgrade shellbrain && shellbrain init
-
-    Examples:
-      shellbrain upgrade
-      curl -L shellbrain.ai/upgrade | bash
-    """
-)
-
-_INIT_HELP = dedent(
-    """\
-    Bootstrap or repair the machine-local Shellbrain runtime.
-
-    Happy path:
-      - `shellbrain init`
-      - On first bootstrap, Shellbrain asks how it should store data.
-      - The recommended default provisions or reuses one managed local PostgreSQL + pgvector instance, prepares embeddings, installs host integrations, and registers a repo only when one is obvious.
-      - External mode uses an existing PostgreSQL database with pgvector.
-      - Requirements for managed-local mode: macOS or Linux, Python 3.11+, and Docker installed with the daemon running.
-
-    Advanced:
-      - `--repo-root` targets a different repo root.
-      - `--repo-id` overrides repo identity when multiple remotes exist or a weak local identity is not acceptable.
-      - `--storage managed|external` skips the first-run storage prompt.
-      - External mode requires `--admin-dsn` in non-interactive runs.
-
-    Examples:
-      shellbrain init
-      shellbrain init --repo-root /path/to/repo
-      shellbrain init --no-host-assets
-      shellbrain init --skip-model-download
-      shellbrain init --storage external --admin-dsn postgresql+psycopg://admin:password@host:5432/shellbrain
-    """
-)
 
 _BACKUP_HELP = dedent(
     """\
@@ -354,74 +191,6 @@ _BACKUP_HELP = dedent(
       shellbrain admin backup list
       shellbrain admin backup verify
       shellbrain admin backup restore --target-db shellbrain_restore_001
-    """
-)
-
-_DOCTOR_HELP = dedent(
-    """\
-    Print one safety report for the current Shellbrain database configuration.
-
-    Example:
-      shellbrain admin doctor
-    """
-)
-
-_ANALYTICS_HELP = dedent(
-    """\
-    Print one cross-repo usage analytics report for reviewer agents.
-
-    Example:
-      shellbrain admin analytics --days 2
-    """
-)
-
-_BACKFILL_TOKEN_USAGE_HELP = dedent(
-    """\
-    Backfill normalized model-token telemetry from Shellbrain-linked host session files.
-
-    Example:
-      shellbrain admin backfill-token-usage
-    """
-)
-
-_INSTALL_CLAUDE_HOOK_HELP = dedent(
-    """\
-    Install or update the repo-local Claude Code SessionStart hook used as an explicit repo-local override.
-
-    Example:
-      shellbrain admin install-claude-hook --repo-root /path/to/repo
-    """
-)
-
-_INSTALL_HOST_ASSETS_HELP = dedent(
-    """\
-    Install or update Shellbrain-managed Codex, Claude, and Cursor host integrations.
-
-    Examples:
-      shellbrain admin install-host-assets --host auto
-      shellbrain admin install-host-assets --host codex
-      shellbrain admin install-host-assets --host cursor
-      shellbrain admin install-host-assets --host claude --force
-    """
-)
-
-_SESSION_STATE_HELP = dedent(
-    """\
-    Inspect or clean repo-local per-caller Shellbrain session state.
-
-    Examples:
-      shellbrain admin session-state inspect --caller-id codex:thread-123
-      shellbrain admin session-state clear --caller-id codex:thread-123
-      shellbrain admin session-state gc
-    """
-)
-
-_MIGRATE_HELP = dedent(
-    """\
-    Apply packaged Alembic migrations to the database referenced by `SHELLBRAIN_DB_ADMIN_DSN`.
-
-    Example:
-      SHELLBRAIN_DB_ADMIN_DSN=postgresql+psycopg://<admin-user>:<admin-password>@localhost:5432/<database-name> shellbrain admin migrate
     """
 )
 
@@ -452,38 +221,10 @@ def build_parser() -> argparse.ArgumentParser:
     _add_repo_context_arguments(parser)
     subparsers = parser.add_subparsers(dest="command", required=True, metavar="command")
 
-    init_parser = subparsers.add_parser(
-        "init",
-        help="Bootstrap or repair the Shellbrain runtime.",
-        description="Bootstrap or repair the Shellbrain runtime and default host integrations.",
-        epilog=_INIT_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    _add_repo_context_arguments(init_parser, suppress_default=True)
-    init_parser.add_argument(
-        "--storage",
-        choices=("managed", "external"),
-        help="Choose managed local PostgreSQL + pgvector or an existing external PostgreSQL + pgvector database.",
-    )
-    init_parser.add_argument(
-        "--admin-dsn",
-        help="Admin PostgreSQL DSN for external storage mode. Required for non-interactive external init.",
-    )
-    init_parser.add_argument(
-        "--skip-model-download",
-        action="store_true",
-        help="Skip embedding model prewarm during init.",
-    )
-    init_parser.add_argument(
-        "--no-host-assets",
-        action="store_true",
-        help="Skip Codex skill, Claude skill, Cursor skill, and Claude global hook installation during init.",
-    )
-
     subparsers.add_parser(
         "upgrade",
-        help="Upgrade Shellbrain and rerun init through the hosted upgrader.",
-        description="Upgrade Shellbrain through the hosted upgrade script and rerun init.",
+        help="Upgrade Shellbrain and repair runtime setup through the hosted upgrader.",
+        description="Upgrade Shellbrain through the hosted upgrade script and repair runtime setup.",
         epilog=_UPGRADE_HELP,
         formatter_class=_HelpFormatter,
     )
@@ -507,16 +248,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_repo_context_arguments(recall_parser, suppress_default=True)
     recall_parser.add_argument("query", help="Natural-language recall query.")
-
-    teach_parser = subparsers.add_parser(
-        "teach",
-        help="Immediately teach Shellbrain explicit user-provided knowledge.",
-        description="Store explicit teaching as evidence and run the teach knowledge agent immediately.",
-        epilog=_TEACH_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    _add_repo_context_arguments(teach_parser, suppress_default=True)
-    _add_payload_arguments(teach_parser)
 
     snapshot_parser = subparsers.add_parser(
         "snapshot",
@@ -628,20 +359,13 @@ def build_parser() -> argparse.ArgumentParser:
 
     admin_parser = subparsers.add_parser(
         "admin",
-        help="Administrative bootstrap commands.",
-        description="Administrative commands for database bootstrap and maintenance.",
+        help="Backups and recall provider settings.",
+        description="Manage backups and recall synthesis settings.",
         epilog=_ADMIN_HELP,
         formatter_class=_HelpFormatter,
     )
     admin_subparsers = admin_parser.add_subparsers(
         dest="admin_command", required=True, metavar="admin-command"
-    )
-    admin_subparsers.add_parser(
-        "migrate",
-        help="Apply packaged schema migrations to the configured database.",
-        description="Apply packaged Alembic migrations to the database referenced by SHELLBRAIN_DB_ADMIN_DSN.",
-        epilog=_MIGRATE_HELP,
-        formatter_class=_HelpFormatter,
     )
     backup_parser = admin_subparsers.add_parser(
         "backup",
@@ -676,105 +400,16 @@ def build_parser() -> argparse.ArgumentParser:
         "--backup-id",
         help="Optional backup id to restore. Defaults to the newest backup.",
     )
-    admin_subparsers.add_parser(
-        "doctor",
-        help="Print one Shellbrain safety report for DB role, instance mode, and backups.",
-        description="Print one Shellbrain safety report for DB role, instance mode, and backups.",
-        epilog=_DOCTOR_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    admin_subparsers.choices["doctor"].add_argument(
-        "--repo-root",
-        help="Optional repo root for repo registration and Claude integration diagnostics.",
-    )
-    analytics_parser = admin_subparsers.add_parser(
-        "analytics",
-        help="Print one cross-repo usage analytics report for reviewer agents.",
-        description="Print one cross-repo usage analytics report for reviewer agents.",
-        epilog=_ANALYTICS_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    analytics_parser.add_argument(
-        "--days",
-        type=int,
-        default=2,
-        help="Number of trailing days to include in the report. Defaults to 2.",
-    )
-    admin_subparsers.add_parser(
-        "backfill-token-usage",
-        help="Backfill normalized token usage from linked host session files.",
-        description="Backfill normalized token usage from Shellbrain-linked host session files.",
-        epilog=_BACKFILL_TOKEN_USAGE_HELP,
-        formatter_class=_HelpFormatter,
-    )
     recall_parser = admin_subparsers.add_parser(
-        "recall",
-        help="Toggle recall between fast deterministic mode and full LLM synthesis.",
-        description="Toggle whether recall uses the inner LLM synthesis agent.",
-        epilog=_RECALL_MODE_HELP,
-        formatter_class=_HelpFormatter,
+        "recall", help="Configure recall synthesis."
     )
     recall_subparsers = recall_parser.add_subparsers(
-        dest="recall_command", required=True, metavar="recall-command"
+        dest="recall_command", required=True
     )
-    recall_subparsers.add_parser("fast", help="Use deterministic-only recall.")
-    recall_subparsers.add_parser("full", help="Use LLM synthesis recall.")
-    recall_subparsers.add_parser("status", help="Print the current recall mode.")
-    install_hook_parser = admin_subparsers.add_parser(
-        "install-claude-hook",
-        help="Install the repo-local Claude hook used for trusted caller identity.",
-        description="Install or update the repo-local Claude Code SessionStart hook used by Shellbrain.",
-        epilog=_INSTALL_CLAUDE_HOOK_HELP,
-        formatter_class=_HelpFormatter,
+    provider_parser = recall_subparsers.add_parser(
+        "provider", help="Choose the recall provider (default: codex)."
     )
-    install_hook_parser.add_argument(
-        "--repo-root",
-        help="Target repository root. Defaults to the current working directory.",
-    )
-    install_host_assets_parser = admin_subparsers.add_parser(
-        "install-host-assets",
-        help="Install Shellbrain-managed Codex, Claude, and Cursor host integrations.",
-        description="Install or update Shellbrain-managed Codex, Claude, and Cursor host integrations.",
-        epilog=_INSTALL_HOST_ASSETS_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    install_host_assets_parser.add_argument(
-        "--host",
-        choices=("auto", "codex", "claude", "cursor", "all"),
-        default="auto",
-        help="Host asset install mode. Defaults to auto.",
-    )
-    install_host_assets_parser.add_argument(
-        "--force",
-        action="store_true",
-        help="Replace conflicting unmanaged installs.",
-    )
-
-    session_state_parser = admin_subparsers.add_parser(
-        "session-state",
-        help="Inspect or clean repo-local per-caller Shellbrain session state.",
-        description="Inspect or clean repo-local per-caller Shellbrain session state.",
-        epilog=_SESSION_STATE_HELP,
-        formatter_class=_HelpFormatter,
-    )
-    session_state_parser.add_argument(
-        "--repo-root",
-        help="Target repository root. Defaults to the current working directory.",
-    )
-    session_state_subparsers = session_state_parser.add_subparsers(
-        dest="session_state_command",
-        required=True,
-        metavar="session-state-command",
-    )
-    inspect_parser = session_state_subparsers.add_parser(
-        "inspect", help="Print one caller state as JSON."
-    )
-    inspect_parser.add_argument("--caller-id", required=True)
-    clear_parser = session_state_subparsers.add_parser(
-        "clear", help="Delete one caller state."
-    )
-    clear_parser.add_argument("--caller-id", required=True)
-    session_state_subparsers.add_parser("gc", help="Delete stale caller state files.")
+    provider_parser.add_argument("provider", choices=get_args(RecallProvider))
     return parser
 
 

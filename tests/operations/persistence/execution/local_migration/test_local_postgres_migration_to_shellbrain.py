@@ -300,7 +300,7 @@ def _run_packaged_migrations(repo_root: Path, dsn: str, *, backup_dir: Path) -> 
     shellbrain_home = backup_dir.parent / ".shellbrain-home"
     shellbrain_home.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "app.entrypoints.cli.main", "admin", "migrate"],
+        [sys.executable, "-m", "app.entrypoints.bootstrap", "--migrate-only"],
         check=True,
         cwd=repo_root,
         env={

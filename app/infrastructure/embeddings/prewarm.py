@@ -42,7 +42,7 @@ def prewarm_embeddings(
         cache_folder=config.embeddings.cache_path,
     )
     try:
-        provider.embed("shellbrain init warmup")
+        provider.embed("shellbrain upgrade warmup")
     except Exception as exc:
         updated = replace(
             config,

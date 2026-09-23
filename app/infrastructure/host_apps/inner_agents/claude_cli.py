@@ -12,7 +12,6 @@ from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentResult,
     InnerAgentRunRequest,
     InnerAgentRunResult,
-    TeachKnowledgeAgentRequest,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import (
     _build_knowledge_result,
@@ -31,7 +30,6 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
-    render_teach_knowledge_prompt,
 )
 
 
@@ -90,21 +88,9 @@ class ClaudeCliInnerAgentRunner:
             tool_profile="knowledge",
         )
 
-    def run_teach_knowledge(
-        self, request: TeachKnowledgeAgentRequest
-    ) -> BuildKnowledgeAgentResult:
-        """Run one Claude Code teach request."""
-
-        return self._run_knowledge(
-            request,
-            prompt=render_teach_knowledge_prompt(request),
-            mode="teach",
-            tool_profile="shellbrain",
-        )
-
     def _run_knowledge(
         self,
-        request: BuildKnowledgeAgentRequest | TeachKnowledgeAgentRequest,
+        request: BuildKnowledgeAgentRequest,
         *,
         prompt: str,
         mode: str,
@@ -251,7 +237,7 @@ def _context_error_result(
 
 
 def _knowledge_error_result(
-    request: BuildKnowledgeAgentRequest | TeachKnowledgeAgentRequest,
+    request: BuildKnowledgeAgentRequest,
     run: dict[str, object],
 ) -> BuildKnowledgeAgentResult:
     return _build_knowledge_result(
@@ -376,7 +362,11 @@ def _reported_models(payload: dict[str, object]) -> list[str]:
     model_usage = payload.get("modelUsage")
     if isinstance(model_usage, dict):
         for key, value in model_usage.items():
-            if isinstance(key, str) and "model" in key.lower() and isinstance(value, str):
+            if (
+                isinstance(key, str)
+                and "model" in key.lower()
+                and isinstance(value, str)
+            ):
                 models.append(value)
     return models
 

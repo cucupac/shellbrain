@@ -120,6 +120,7 @@ memory-system-explorer.html
 
 # AI / agent host local state
 .claude/
+.shed/
 
 # Frontend / JS noise if introduced later
 node_modules/

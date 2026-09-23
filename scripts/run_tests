@@ -280,5 +280,5 @@ PY
 
 trap cleanup EXIT
 
-"$PYTHON_BIN" -m app admin migrate
+"$PYTHON_BIN" -m app.entrypoints.bootstrap --migrate-only
 "$PYTHON_BIN" -m pytest -q tests

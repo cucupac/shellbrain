@@ -3,30 +3,20 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
 import json
-from pathlib import Path
 import sys
 
-from app.entrypoints.cli.handlers.human.admin_dependencies import AdminCommandDependencies
+from app.entrypoints.cli.handlers.human.admin_dependencies import (
+    AdminCommandDependencies,
+)
 
 
 def run_admin_command(
     args: argparse.Namespace,
     *,
-    resolve_admin_repo_root: Callable[[str | None], Path],
     dependencies: AdminCommandDependencies,
 ) -> int:
     """Execute one admin command."""
-
-    if args.admin_command == "migrate":
-        try:
-            dependencies.upgrade_database()
-        except dependencies.migration_conflict_error as exc:
-            print(str(exc), file=sys.stderr)
-            return 1
-        print("Applied shellbrain schema migrations to head.")
-        return 0
 
     if args.admin_command == "backup":
         admin_dsn = dependencies.get_admin_db_dsn()
@@ -84,87 +74,12 @@ def run_admin_command(
             )
             return 0
 
-    if args.admin_command == "doctor":
-        report = dependencies.build_doctor_report(
-            app_dsn=dependencies.get_optional_db_dsn(),
-            admin_dsn=dependencies.get_optional_admin_db_dsn(),
-            backup_root=dependencies.get_backup_dir(),
-            repo_root=resolve_admin_repo_root(getattr(args, "repo_root", None)),
-        )
-        print(json.dumps(report, indent=2, sort_keys=True))
-        return 0
-
-    if args.admin_command == "analytics":
-        report = dependencies.build_admin_analytics_report(days=int(args.days))
-        print(json.dumps(report, indent=2, sort_keys=True))
-        return 0
-
-    if args.admin_command == "backfill-token-usage":
-        summary = dependencies.backfill_model_usage(
-            engine=dependencies.get_engine_instance()
-        )
-        print(json.dumps(summary.to_payload(), indent=2, sort_keys=True))
-        return 0
-
     if args.admin_command == "recall":
         try:
-            if args.recall_command in {"fast", "full"}:
-                mode, path, exists = dependencies.save_recall_mode(args.recall_command)
-            else:
-                mode, path, exists = dependencies.load_recall_mode()
-        except ValueError as exc:
+            dependencies.save_recall_provider(args.provider)
+        except (ValueError, OSError) as exc:
             print(str(exc), file=sys.stderr)
             return 1
-        print(_format_recall_mode(mode=mode, path=path, exists=exists))
+        print(f"Recall provider: {args.provider}")
         return 0
-
-    repo_root = resolve_admin_repo_root(getattr(args, "repo_root", None))
-    if args.admin_command == "install-claude-hook":
-        settings_path = dependencies.install_repo_claude_hook(repo_root=repo_root)
-        print(f"Installed Claude hook at {settings_path}")
-        return 0
-    if args.admin_command == "install-host-assets":
-        result = dependencies.install_managed_host_assets(
-            host_mode=args.host, force=bool(args.force)
-        )
-        for line in result.lines:
-            print(line)
-        return 0
-    if args.admin_command == "session-state":
-        subcommand = getattr(args, "session_state_command", None)
-        if subcommand == "inspect":
-            state = dependencies.load_session_state(
-                repo_root=repo_root, caller_id=args.caller_id
-            )
-            print(
-                json.dumps(
-                    None if state is None else state.__dict__, indent=2, sort_keys=True
-                )
-            )
-            return 0
-        if subcommand == "clear":
-            dependencies.delete_session_state(
-                repo_root=repo_root, caller_id=args.caller_id
-            )
-            print(f"Cleared session state for {args.caller_id}")
-            return 0
-        if subcommand == "gc":
-            deleted = dependencies.gc_session_state(repo_root=repo_root)
-            print(json.dumps({"deleted": deleted}, indent=2, sort_keys=True))
-            return 0
     raise ValueError(f"Unsupported admin command: {args.admin_command}")
-
-
-def _format_recall_mode(*, mode: str, path: Path, exists: bool) -> str:
-    if not exists:
-        return "Recall mode: full (default; no override file)"
-    if mode == "fast":
-        return f"Recall mode: fast (deterministic only) from {_display_path(path)}"
-    return f"Recall mode: full (LLM synthesis) from {_display_path(path)}"
-
-
-def _display_path(path: Path) -> str:
-    try:
-        return f"~/{path.expanduser().resolve().relative_to(Path.home())}"
-    except ValueError:
-        return str(path)

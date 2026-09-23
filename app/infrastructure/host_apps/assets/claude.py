@@ -23,8 +23,11 @@ from app.infrastructure.host_apps.identity.claude_hook_install import (
 )
 
 PRIMARY_CLAUDE_SKILL_NAME = "shellbrain"
-CLAUDE_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
-LEGACY_CLAUDE_SKILL_NAMES = ("shellbrain-session-start",)
+CLAUDE_SKILL_NAMES = ("shellbrain",)
+LEGACY_CLAUDE_SKILL_NAMES = (
+    "shellbrain-usage-review",
+    "shellbrain-session-start",
+)
 CLAUDE_STARTUP_MARKER = "shellbrain-managed:claude-startup"
 
 

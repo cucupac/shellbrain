@@ -1,6 +1,5 @@
 """Runtime-config usage contracts for boot helpers."""
 
-
 from app.startup.embeddings import get_embedding_provider
 from app.startup.admin_db import (
     get_admin_db_dsn,
@@ -165,7 +164,7 @@ def test_db_boot_should_fail_cleanly_when_machine_config_is_corrupt(
     try:
         get_db_dsn()
     except RuntimeError as exc:
-        assert "rerun `shellbrain init`" in str(exc).lower()
+        assert "rerun `shellbrain upgrade`" in str(exc).lower()
     else:  # pragma: no cover - defensive guard
         raise AssertionError(
             "Expected get_db_dsn() to fail when machine config is corrupt."

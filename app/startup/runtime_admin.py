@@ -21,6 +21,10 @@ from app.infrastructure.db.admin.backups.destructive_guard import (
     backup_and_verify_before_destructive_action,
 )
 from app.infrastructure.embeddings.prewarm import prewarm_embeddings
+from app.infrastructure.local_state.operation_registration import (
+    should_register_repo_during_init,
+)
+
 from app.core.entities.admin_errors import InitConflictError, InitDependencyError
 from app.core.entities.machine_config import (
     BOOTSTRAP_STATE_PROVISIONING,
@@ -74,6 +78,7 @@ __all__ = [
     "ensure_managed_runtime_ready",
     "init_success_presenter_context",
     "run_init",
+    "should_register_repo_during_init",
 ]
 
 
@@ -147,7 +152,7 @@ def _ensure_dependencies() -> None:
     """Verify shared bootstrap dependencies before mutation."""
 
     if sys.version_info < (3, 11):
-        raise InitDependencyError("Python 3.11+ required for `shellbrain init`.")
+        raise InitDependencyError("Python 3.11+ required for `shellbrain upgrade`.")
 
 
 def _ensure_shellbrain_home() -> Path:

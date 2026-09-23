@@ -23,6 +23,21 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class RecallBrief(_StrictModel):
+    """Complete synthesis output; invalid sections must not become silent omissions."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    summary: str = Field(min_length=1, pattern=r"\S")
+    constraints: list[str] = Field(max_length=3)
+    known_traps: list[str] = Field(max_length=3)
+    prior_cases: list[str] = Field(max_length=3)
+    concept_orientation: list[str] = Field(max_length=3)
+    anchors: list[str] = Field(max_length=3)
+    conflicts: list[str] = Field(max_length=3)
+    gaps: list[str] = Field(max_length=3)
+    next_checks: list[str] = Field(max_length=3)
+
+
 class InnerAgentRunRequest(_StrictModel):
     """One build_context inner-agent request."""
 
@@ -81,27 +96,6 @@ class BuildKnowledgeAgentRequest(_StrictModel):
     max_write_commands: int = Field(ge=1, le=200)
 
 
-class TeachKnowledgeAgentRequest(_StrictModel):
-    """One autonomous provider request for explicit user teaching."""
-
-    agent_name: InnerAgentName = "teach"
-    run_id: str = Field(min_length=1)
-    provider: InnerAgentProviderName = Field(min_length=1)
-    model: str = Field(min_length=1)
-    reasoning: InnerAgentReasoningLevel
-    timeout_seconds: int = Field(ge=1, le=1200)
-    repo_id: str = Field(min_length=1)
-    repo_root: str
-    episode_id: str = Field(min_length=1)
-    teaching_event_id: str = Field(min_length=1)
-    teaching_event_seq: int = Field(ge=1)
-    teaching_text: str = Field(min_length=1)
-    current_problem: dict[str, str]
-    max_shellbrain_reads: int = Field(ge=1, le=50)
-    max_code_files: int = Field(ge=0, le=200)
-    max_write_commands: int = Field(ge=1, le=200)
-
-
 class BuildKnowledgeAgentResult(_StrictModel):
     """Provider-neutral result from one build_knowledge run."""
 
@@ -141,12 +135,3 @@ class IBuildKnowledgeAgentRunner(Protocol):
         self, request: BuildKnowledgeAgentRequest
     ) -> BuildKnowledgeAgentResult:
         """Run one build_knowledge request and return a provider-neutral result."""
-
-
-class ITeachKnowledgeAgentRunner(Protocol):
-    """Behavior protocol for explicit teaching providers."""
-
-    def run_teach_knowledge(
-        self, request: TeachKnowledgeAgentRequest
-    ) -> BuildKnowledgeAgentResult:
-        """Run one teach request and return a provider-neutral result."""

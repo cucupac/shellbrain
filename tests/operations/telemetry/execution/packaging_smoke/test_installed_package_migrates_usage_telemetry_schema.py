@@ -17,7 +17,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260901_0039"
+CURRENT_ALEMBIC_HEAD = "20260922_0040"
 
 
 def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_tables_and_views_from_packaged_artifacts(
@@ -47,7 +47,7 @@ def test_installed_package_admin_migrate_should_initialize_the_usage_telemetry_t
     package_admin_dsn = replace_database_dsn(admin_base_dsn, db_name)
     try:
         subprocess.run(
-            [shellbrain_executable, "admin", "migrate"],
+            [shellbrain_executable.parent / "_shellbrain-bootstrap", "--migrate-only"],
             check=True,
             cwd=external_repo,
             text=True,

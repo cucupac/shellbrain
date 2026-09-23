@@ -17,14 +17,6 @@ shellbrain recall "<targeted natural-language question>"
 
 Recall returns a compact brief synthesized from prior memories, concepts, scenarios, and recent episode context. It is meant to reduce wasted exploration and help you decide where to look next.
 
-When the user explicitly asks you to store or teach Shellbrain something, use:
-
-```bash
-shellbrain teach
-```
-
-Teach stores the user-provided statement as evidence and immediately asks Shellbrain's teach agent to turn it into durable memories or concept graph updates.
-
 If you changed any files since your last user-facing response, run this exactly once after validation and immediately before your next user-facing response:
 
 ```bash
@@ -37,13 +29,7 @@ Do not call Shellbrain internal commands directly. `read`, `events`, `memory`, `
 
 ## Quick Start
 
-Do not run `shellbrain init` at the start of every session.
-
-Use this order:
-
-1. If Shellbrain is missing or broken, run `shellbrain admin doctor`.
-2. If doctor says repair is needed, run `shellbrain init`.
-3. Otherwise, use `shellbrain recall` with one targeted natural-language query.
+Use `shellbrain recall` with a targeted query. Run `shellbrain upgrade` to repair an existing installation.
 
 If `shellbrain` is not found, do a one-time PATH check:
 
@@ -113,14 +99,6 @@ Pass one self-contained question as a quoted positional argument. Recall receive
 shellbrain recall "Have we seen this architecture guardrail failure or subsystem boundary before?"
 ```
 
-## Teach Payload
-
-Use `teach` only for explicit user teaching, not for ordinary closeout.
-
-```bash
-shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
-```
-
 ## Snapshot Habit
 
 If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed. It does not need `--json`.
@@ -172,7 +150,6 @@ Current repo state remains the source of truth.
 
 ## What Not To Do
 
-Do not use `teach` as a substitute for recall or as a generic session summary. Use it when the user explicitly says to store, remember, or teach Shellbrain a specific point.
 
 Do not call:
 

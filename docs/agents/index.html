@@ -76,25 +76,6 @@
         </div>
       </section>
 
-      <section class="section" aria-labelledby="teach-title">
-        <div class="section-inner split">
-          <div>
-            <div class="section-eyebrow">Teach</div>
-            <h2 class="section-title" id="teach-title">Only when the user asks.</h2>
-          </div>
-          <div class="module-grid">
-            <article class="module">
-              <h3>Store an explicit fact</h3>
-              <div class="code-block"><pre>shellbrain teach --json '{"text":"&lt;statement&gt;","current_problem":{"goal":"&lt;goal&gt;","surface":"&lt;surface&gt;","obstacle":"&lt;obstacle&gt;","hypothesis":"&lt;hypothesis&gt;"}}'</pre></div>
-              <p>The statement becomes available to future recall.</p>
-            </article>
-            <article class="module">
-              <h3>Do not teach automatically</h3>
-              <p>Use teach only when the user explicitly asks ShellBrain to remember something. Memory is built automatically after the session closes.</p>
-            </article>
-          </div>
-        </div>
-      </section>
 
       <section class="section" aria-labelledby="dont-title">
         <div class="section-inner split">
@@ -113,7 +94,6 @@
                 <div class="command-row"><code>shellbrain concept add</code></div>
                 <div class="command-row"><code>shellbrain concept update</code></div>
                 <div class="command-row"><code>shellbrain admin</code></div>
-                <div class="command-row"><code>shellbrain init</code></div>
                 <div class="command-row"><code>shellbrain upgrade</code></div>
               </div>
             </article>
@@ -135,12 +115,12 @@
             <article class="module">
               <h3>Install</h3>
               <div class="code-block"><pre>curl -L shellbrain.ai/install | bash</pre></div>
-              <p>Installs the CLI and host skills, then runs <code>shellbrain init</code>.</p>
+              <p>Installs the CLI and host skills, configures the runtime automatically.</p>
             </article>
             <article class="module">
               <h3>Repair</h3>
-              <div class="code-block"><pre>shellbrain admin doctor</pre></div>
-              <p>If doctor finds a problem, run <code>shellbrain init</code>. Do not run init every session.</p>
+              <div class="code-block"><pre>shellbrain upgrade</pre></div>
+              <p>Upgrade repairs setup and applies migrations automatically.</p>
             </article>
           </div>
         </div>

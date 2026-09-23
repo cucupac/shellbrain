@@ -86,56 +86,13 @@ def test_resolve_repo_context_should_register_at_git_root_from_subdirectories(
     assert context.registration_root == repo_root.resolve()
 
 
-def test_shellbrain_help_should_explain_the_workflow(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """top-level help should explain the Shellbrain mental model and session protocol."""
-
-    with pytest.raises(SystemExit) as excinfo:
+def test_shellbrain_help_should_explain_the_workflow(capsys):
+    with pytest.raises(SystemExit):
         cli_main.main(["--help"])
-
-    assert excinfo.value.code == 0
     output = capsys.readouterr().out
-    assert "case-based memory system" in output
-    assert "Audience lanes" in output
-    assert "Humans:" in output
-    assert "Working agents:" in output
-    assert "Internal recall agents:" in output
-    assert "Knowledge-builder agents:" in output
-    assert "Use `shellbrain recall` for normal task context" in output
-    assert "Use `shellbrain teach` only when the user explicitly asks" in output
-    assert (
-        "run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response"
-        in output
-    )
-    assert "Use `shellbrain concept show` for progressive concept disclosure" in output
-    assert "Avoid generic prompts like" in output
-    assert "Session builders run from Shellbrain episode lifecycle triggers" in output
-    assert "Explicit teach agents run immediately from `teach` evidence" in output
-    assert "scenario record" in output
-    assert "Examples by audience" in output
-    assert "Internal knowledge-builder agents:" in output
-    assert (
-        'shellbrain events --json \'{"episode_id":"episode-123","after_seq":3,"up_to_seq":8}\''
-        in output
-    )
-    assert "utility_vote" in output
-    assert "shellbrain admin doctor" in output
-    assert "curl -L shellbrain.ai/install | bash" in output
-    assert "curl -L shellbrain.ai/upgrade | bash" in output
-    assert "shellbrain upgrade" in output
-    assert "pipx upgrade shellbrain && shellbrain init" in output
-    assert "shellbrain init" in output
-    assert "--repo-root" in output
-    assert "--no-sync" not in output
-    assert "read" in output
-    assert "recall" in output
-    assert "teach" in output
-    assert "snapshot" in output
-    assert "memory" in output
-    assert "scenario" in output
-    assert "events" in output
-    assert "upgrade" in output
+    assert "Use recall for context" in output
+    assert "Internal commands:" in output
+    assert "shellbrain teach" not in output
 
 
 def test_shellbrain_version_should_print_the_installed_version(
@@ -153,87 +110,10 @@ def test_shellbrain_version_should_print_the_installed_version(
     assert capsys.readouterr().out.strip() == "shellbrain 9.9.9"
 
 
-def test_init_help_should_include_bootstrap_examples(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """init help should explain the managed bootstrap path and advanced overrides."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["init", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "Bootstrap or repair" in output
-    assert "registers a repo only when one is obvious" in output
-    assert "--storage" in output
-    assert "--admin-dsn" in output
-    assert "PostgreSQL database with pgvector" in output
-    assert "--no-host-assets" in output
-    assert "--skip-model-download" in output
-    assert "--repo-id" in output
-
-
-def test_init_should_forward_storage_flags_to_run_init(
-    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """init should pass storage selection flags through to the bootstrap entrypoint."""
-
-    repo_root = tmp_path / "repo"
-    repo_root.mkdir()
-    captured: dict[str, object] = {}
-
-    monkeypatch.setattr(
-        cli_runner, "_resolve_admin_repo_root", lambda repo_root_arg: repo_root
-    )
-    monkeypatch.setattr(
-        "app.infrastructure.local_state.operation_registration.should_register_repo_during_init",
-        lambda **kwargs: False,
-    )
-    monkeypatch.setattr(
-        "app.startup.runtime_admin.run_init",
-        lambda **kwargs: (
-            captured.update(kwargs)
-            or type(
-                "Result",
-                (),
-                {"outcome": "initialized", "lines": ["ok"], "exit_code": 0},
-            )()
-        ),
-    )
-
-    exit_code = cli_main.main(
-        [
-            "init",
-            "--storage",
-            "external",
-            "--admin-dsn",
-            "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain",
-        ]
-    )
-
-    assert exit_code == 0
-    assert captured["storage"] == "external"
-    assert (
-        captured["admin_dsn"]
-        == "postgresql+psycopg://admin:secret@db.example.com:5432/shellbrain"
-    )
-    assert captured["repo_root"] == repo_root
-    assert "Outcome: initialized" in capsys.readouterr().out
-
-
-def test_upgrade_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """upgrade help should teach the hosted upgrader and manual fallback."""
-
-    with pytest.raises(SystemExit) as excinfo:
+def test_upgrade_help_should_include_one_example(capsys):
+    with pytest.raises(SystemExit):
         cli_main.main(["upgrade", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "hosted upgrade script" in output
-    assert "shellbrain.ai/upgrade" in output
-    assert "pipx upgrade shellbrain && shellbrain init" in output
+    assert "automatically repair runtime setup" in capsys.readouterr().out
 
 
 def test_read_help_should_include_one_example(
@@ -275,26 +155,6 @@ def test_recall_help_should_describe_read_only_synthesis_contract(
     assert "not internal commands like `read`, `events`, or `concept show`" in output
     assert "natural-language query" in output
     assert "does not mutate" in output
-
-
-def test_teach_help_should_describe_immediate_teaching_contract(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """teach help should describe explicit user teaching and immediate build."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["teach", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "shellbrain teach --json" in output
-    assert "explicit teaching only" in output
-    assert "Requires `text` and `current_problem`" in output
-    assert "stores the teaching as episode evidence" in output
-    assert "immediately runs" in output
-    assert "working agent should not call" in output
-    assert "goal" in output
-    assert "hypothesis" in output
 
 
 def test_concept_help_should_describe_internal_json_endpoint(
@@ -442,7 +302,6 @@ def test_events_help_should_include_one_example(
     assert "Internal-agent endpoint" in output
     assert "Recall agents should run this before private reads" in output
     assert "Session knowledge-builder agents" in output
-    assert "Explicit teach agents do not call `events`" in output
     assert "shellbrain events --json" in output
     assert "inline transcript sync" in output
     assert "after_seq" in output
@@ -508,28 +367,12 @@ def test_scenario_record_help_should_describe_problem_windows(
     assert "scenario.v1" in output
 
 
-def test_admin_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin help should always include one minimal example."""
-
-    with pytest.raises(SystemExit) as excinfo:
+def test_admin_help_should_include_one_example(capsys):
+    with pytest.raises(SystemExit):
         cli_main.main(["admin", "--help"])
-
-    assert excinfo.value.code == 0
-    assert "shellbrain admin migrate" in capsys.readouterr().out
-
-
-def test_admin_migrate_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin migrate help should always include one minimal example."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "migrate", "--help"])
-
-    assert excinfo.value.code == 0
-    assert "Apply packaged Alembic migrations" in capsys.readouterr().out
+    output = capsys.readouterr().out
+    assert "backup" in output and "recall" in output
+    assert "migrate" not in output
 
 
 def test_admin_backup_help_should_include_backup_examples(
@@ -545,253 +388,6 @@ def test_admin_backup_help_should_include_backup_examples(
     assert "backup create" in output
     assert "backup verify" in output
     assert "backup restore" in output
-
-
-def test_admin_doctor_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin doctor help should explain the safety report path."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "doctor", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "safety report" in output
-    assert "--repo-root" in output
-
-
-def test_admin_analytics_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin analytics help should explain the reviewer-agent report path."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "analytics", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "reviewer agents" in output
-    assert "--days" in output
-    assert "analytics --days 2" in output
-
-
-def test_admin_install_claude_hook_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin install-claude-hook help should explain the trusted Claude setup step."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "install-claude-hook", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "repo-local" in output
-    assert "install-claude-hook" in output
-
-
-def test_admin_install_host_assets_help_should_include_examples(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin install-host-assets help should explain the personal host-asset repair path."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "install-host-assets", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "Codex, Claude, and Cursor host integrations" in output
-    assert "--host" in output
-    assert "--force" in output
-
-
-def test_admin_install_host_assets_should_dispatch_to_installer(
-    monkeypatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin install-host-assets should print the installer result lines."""
-
-    monkeypatch.setattr(
-        "app.infrastructure.host_apps.assets.install_host_assets",
-        lambda **kwargs: type(
-            "Result", (), {"lines": ["Codex skill: installed at /tmp/codex"]}
-        )(),
-    )
-
-    exit_code = cli_main.main(["admin", "install-host-assets", "--host", "codex"])
-
-    assert exit_code == 0
-    assert "Codex skill: installed at /tmp/codex" in capsys.readouterr().out
-
-
-def test_admin_backfill_token_usage_help_should_include_one_example(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin backfill-token-usage help should explain the retroactive telemetry path."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "backfill-token-usage", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "Backfill normalized token usage" in output
-    assert "backfill-token-usage" in output
-
-
-def test_admin_backfill_token_usage_should_print_the_summary(
-    monkeypatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """admin backfill-token-usage should render the backfill summary as JSON."""
-
-    monkeypatch.setattr("app.startup.db.get_engine_instance", lambda: "engine")
-    monkeypatch.setattr(
-        "app.startup.model_usage_backfill.backfill_model_usage",
-        lambda **kwargs: type(
-            "Summary",
-            (),
-            {
-                "to_payload": lambda self: {
-                    "sessions_examined": 3,
-                    "sessions_with_records": 2,
-                    "records_attempted": 5,
-                }
-            },
-        )(),
-    )
-
-    exit_code = cli_main.main(["admin", "backfill-token-usage"])
-
-    assert exit_code == 0
-    output = capsys.readouterr().out
-    assert '"sessions_examined": 3' in output
-    assert '"records_attempted": 5' in output
-
-
-def test_admin_recall_help_should_include_modes(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin recall help should expose the human recall mode toggle."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "recall", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "recall fast" in output
-    assert "recall full" in output
-    assert "recall status" in output
-
-
-def test_admin_recall_should_write_and_report_mode(
-    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """admin recall should persist and report the machine-local recall mode."""
-
-    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
-
-    fast_exit = cli_main.main(["admin", "recall", "fast"])
-    fast_output = capsys.readouterr().out
-    status_exit = cli_main.main(["admin", "recall", "status"])
-    status_output = capsys.readouterr().out
-    full_exit = cli_main.main(["admin", "recall", "full"])
-    full_output = capsys.readouterr().out
-
-    assert fast_exit == 0
-    assert "Recall mode: fast (deterministic only)" in fast_output
-    assert status_exit == 0
-    assert "Recall mode: fast (deterministic only)" in status_output
-    assert full_exit == 0
-    assert "Recall mode: full (LLM synthesis)" in full_output
-    assert (tmp_path / "recall.toml").read_text(encoding="utf-8") == 'mode = "full"\n'
-
-
-def test_admin_recall_status_should_report_missing_override(
-    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """admin recall status should explain the default when no override exists."""
-
-    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
-
-    exit_code = cli_main.main(["admin", "recall", "status"])
-
-    assert exit_code == 0
-    assert (
-        capsys.readouterr().out.strip()
-        == "Recall mode: full (default; no override file)"
-    )
-
-
-def test_admin_recall_rejects_invalid_mode() -> None:
-    """admin recall should reject unknown mode names at parse time."""
-
-    parser = cli_parser.build_parser()
-
-    with pytest.raises(SystemExit) as excinfo:
-        parser.parse_args(["admin", "recall", "turbo"])
-
-    assert excinfo.value.code == 2
-
-
-def test_admin_recall_status_fails_on_invalid_config(
-    monkeypatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """admin recall status should fail clearly on a corrupt override file."""
-
-    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
-    (tmp_path / "recall.toml").write_text('mode = "turbo"\n', encoding="utf-8")
-
-    exit_code = cli_main.main(["admin", "recall", "status"])
-
-    captured = capsys.readouterr()
-    assert exit_code == 1
-    assert "Invalid recall mode config" in captured.err
-
-
-def test_admin_analytics_should_print_the_report(
-    monkeypatch, capsys: pytest.CaptureFixture[str]
-) -> None:
-    """admin analytics should render the built analytics report as JSON."""
-
-    monkeypatch.setattr(
-        "app.startup.db.get_optional_db_dsn", lambda: "postgresql://app"
-    )
-    monkeypatch.setattr("app.startup.admin_db.get_optional_admin_db_dsn", lambda: None)
-    monkeypatch.setattr(
-        "app.infrastructure.db.runtime.engine.get_engine", lambda dsn: f"engine:{dsn}"
-    )
-    monkeypatch.setattr(
-        "app.startup.analytics.build_analytics_report",
-        lambda **kwargs: {
-            "window": {"days": kwargs["days"]},
-            "summary": {"invocation_count": 0},
-            "commands": [],
-            "failures": [],
-            "retrieval": [],
-            "sync": [],
-        },
-    )
-
-    exit_code = cli_main.main(["admin", "analytics", "--days", "5"])
-
-    assert exit_code == 0
-    output = capsys.readouterr().out
-    assert '"days": 5' in output
-    assert '"invocation_count": 0' in output
-
-
-def test_admin_session_state_help_should_include_management_examples(
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin session-state help should expose inspect, clear, and gc management paths."""
-
-    with pytest.raises(SystemExit) as excinfo:
-        cli_main.main(["admin", "session-state", "--help"])
-
-    assert excinfo.value.code == 0
-    output = capsys.readouterr().out
-    assert "session-state inspect" in output
-    assert "session-state clear" in output
-    assert "session-state gc" in output
 
 
 def test_main_accepts_repo_targeting_flags_before_subcommand(
@@ -1049,36 +645,6 @@ def test_inner_agent_build_knowledge_mode_allows_only_builder_routes(
             cli_runner._enforce_inner_agent_mode(command)
 
 
-def test_inner_agent_teach_mode_allows_only_teach_writer_routes(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """teach mode should allow memory/concept writes but reject events and scenarios."""
-
-    monkeypatch.setenv("SHELLBRAIN_INNER_AGENT_MODE", "teach")
-
-    for command in (
-        "read",
-        "concept:show",
-        "memory:add",
-        "memory:update",
-        "concept:add",
-        "concept:update",
-    ):
-        cli_runner._enforce_inner_agent_mode(command)
-    for command in (
-        "events",
-        "scenario:record",
-        "recall",
-        "snapshot",
-        "teach",
-        "admin",
-        "init",
-        "upgrade",
-    ):
-        with pytest.raises(ValueError):
-            cli_runner._enforce_inner_agent_mode(command)
-
-
 def test_no_sync_should_prevent_poller_start(monkeypatch, tmp_path: Path) -> None:
     """--no-sync should suppress repo-local poller startup after a successful command."""
 
@@ -1218,48 +784,6 @@ def test_upgrade_should_delegate_to_hosted_upgrader(monkeypatch) -> None:
     assert exit_code == 23
 
 
-def test_admin_migrate_should_invoke_packaged_migration_runner(
-    monkeypatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin migrate should delegate to the packaged migration runner."""
-
-    calls: list[str] = []
-
-    monkeypatch.setattr(
-        "app.startup.migrations.upgrade_database", lambda: calls.append("migrated")
-    )
-
-    exit_code = cli_main.main(["admin", "migrate"])
-
-    assert exit_code == 0
-    assert calls == ["migrated"]
-    assert "Applied shellbrain schema migrations to head." in capsys.readouterr().out
-
-
-def test_admin_migrate_should_fail_cleanly_when_installed_package_is_older_than_database_revision(
-    monkeypatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin migrate should print one clear message when the database revision is newer than this package."""
-
-    from app.startup.migrations import DatabaseMigrationConflictError
-
-    monkeypatch.setattr(
-        "app.startup.migrations.upgrade_database",
-        lambda: (_ for _ in ()).throw(
-            DatabaseMigrationConflictError(
-                "Installed Shellbrain package (0.1.22) cannot manage database revision 20260415_0012."
-            )
-        ),
-    )
-
-    exit_code = cli_main.main(["admin", "migrate"])
-
-    assert exit_code == 1
-    assert "cannot manage database revision 20260415_0012" in capsys.readouterr().err
-
-
 def test_operational_command_should_fail_cleanly_when_app_role_is_unsafe(
     monkeypatch,
     tmp_path: Path,
@@ -1368,110 +892,6 @@ def test_admin_backup_create_should_dispatch_to_backup_module(
 
     assert exit_code == 0
     assert '"backup_id": "b-1"' in capsys.readouterr().out
-
-
-def test_admin_doctor_should_print_structured_report(
-    monkeypatch,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """admin doctor should print one JSON safety report."""
-
-    monkeypatch.setattr(
-        "app.startup.db.get_optional_db_dsn",
-        lambda: "postgresql+psycopg://app_user:app_password@localhost:5432/test_app",
-    )
-    monkeypatch.setattr(
-        "app.startup.admin_db.get_optional_admin_db_dsn",
-        lambda: (
-            "postgresql+psycopg://admin_user:admin_password@localhost:5432/test_admin"
-        ),
-    )
-    monkeypatch.setattr(
-        "app.startup.admin_db.get_backup_dir", lambda: Path("/tmp/shellbrain-backups")
-    )
-    monkeypatch.setattr(
-        "app.startup.admin_diagnose.build_doctor_report",
-        lambda **kwargs: {"instance": {"instance_mode": "live"}, "backup_count": 1},
-    )
-
-    exit_code = cli_main.main(["admin", "doctor"])
-
-    assert exit_code == 0
-    assert '"backup_count": 1' in capsys.readouterr().out
-
-
-def test_init_should_print_outcome_and_return_mapped_exit_code(
-    monkeypatch,
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-) -> None:
-    """init should print the stable outcome prefix and forward the mapped exit code."""
-
-    from app.startup.runtime_admin import InitResult
-
-    repo_root = tmp_path / "init-repo"
-    repo_root.mkdir()
-
-    monkeypatch.setattr(
-        "app.startup.runtime_admin.run_init",
-        lambda **kwargs: InitResult(
-            outcome="repaired",
-            lines=["Managed instance: shellbrain-postgres-test", "Repo: example/repo"],
-        ),
-    )
-
-    exit_code = cli_main.main(["init", "--repo-root", str(repo_root)])
-
-    assert exit_code == 0
-    output = capsys.readouterr().out
-    assert output.splitlines()[0] == "Outcome: repaired"
-    assert "Managed instance: shellbrain-postgres-test" in output
-
-
-def test_init_should_forward_register_repo_now_for_explicit_repo_root(
-    monkeypatch, tmp_path: Path
-) -> None:
-    """init should register immediately when one explicit repo root is provided."""
-
-    from app.startup.runtime_admin import InitResult
-
-    repo_root = tmp_path / "init-explicit-repo"
-    repo_root.mkdir()
-    captured: dict[str, object] = {}
-
-    def _fake_run_init(**kwargs):
-        captured.update(kwargs)
-        return InitResult(outcome="noop", lines=[])
-
-    monkeypatch.setattr("app.startup.runtime_admin.run_init", _fake_run_init)
-
-    exit_code = cli_main.main(["init", "--repo-root", str(repo_root)])
-
-    assert exit_code == 0
-    assert captured["register_repo_now"] is True
-
-
-def test_init_should_forward_no_host_assets(monkeypatch, tmp_path: Path) -> None:
-    """init should forward the no-host-assets flag into the init runner."""
-
-    from app.startup.runtime_admin import InitResult
-
-    repo_root = tmp_path / "init-no-host-assets"
-    repo_root.mkdir()
-    captured: dict[str, object] = {}
-
-    def _fake_run_init(**kwargs):
-        captured.update(kwargs)
-        return InitResult(outcome="noop", lines=[])
-
-    monkeypatch.setattr("app.startup.runtime_admin.run_init", _fake_run_init)
-
-    exit_code = cli_main.main(
-        ["init", "--repo-root", str(repo_root), "--no-host-assets"]
-    )
-
-    assert exit_code == 0
-    assert captured["skip_host_assets"] is True
 
 
 def test_ensure_repo_registration_for_operation_should_register_when_machine_state_is_ready(

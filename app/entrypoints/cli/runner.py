@@ -29,14 +29,6 @@ _INNER_AGENT_ALLOWED_COMMANDS_BY_MODE = {
         "concept:update",
         "scenario:record",
     },
-    "teach": {
-        "read",
-        "concept:show",
-        "memory:add",
-        "memory:update",
-        "concept:add",
-        "concept:update",
-    },
 }
 
 
@@ -84,21 +76,6 @@ def main(
         return 2
     runtime = _require_runtime(runtime=runtime, runtime_factory=runtime_factory)
 
-    if args.command == "init":
-        from app.entrypoints.cli.handlers.human.init import run as run_init_command
-
-        try:
-            return run_init_command(
-                args,
-                resolve_admin_repo_root=_resolve_admin_repo_root,
-                should_register_repo=runtime.should_register_repo_during_init,
-                run_init=runtime.run_init,
-                init_success_presenter_context=runtime.init_success_presenter_context,
-            )
-        except ValueError as exc:
-            parser.error(str(exc))
-            return 2
-
     if args.command == "upgrade":
         return runtime.run_upgrade_command()
 
@@ -107,7 +84,6 @@ def main(
 
         return run_admin_command(
             args,
-            resolve_admin_repo_root=_resolve_admin_repo_root,
             dependencies=runtime.admin_dependencies,
         )
 
@@ -257,27 +233,7 @@ def _dispatch_operation_command(
             telemetry_context=runtime.get_operation_telemetry_context(),
             repo_root=repo_root,
         )
-    if command == "teach":
-        from app.entrypoints.cli.handlers.working_agent.teach import (
-            run_teach_operation,
-        )
-        from app.entrypoints.cli.request_parsing.teach import prepare_teach_request
 
-        prepared = prepare_teach_request(
-            payload,
-            inferred_repo_id=repo_id,
-            repo_root=str(repo_root),
-        )
-        return run_teach_operation(
-            prepared.request,
-            dependencies=dependencies,
-            uow_factory=runtime.get_uow_factory(),
-            inferred_repo_id=repo_id,
-            validation_errors=prepared.errors,
-            validation_error_stage=prepared.error_stage,
-            telemetry_context=runtime.get_operation_telemetry_context(),
-            repo_root=repo_root,
-        )
     if command == "read":
         from app.entrypoints.cli.handlers.internal_agent.retrieval.read import (
             run_read_memory_operation,
@@ -321,7 +277,9 @@ def _dispatch_operation_command(
         from app.entrypoints.cli.handlers.internal_agent.memories.add import (
             run_create_memory_operation,
         )
-        from app.entrypoints.cli.request_parsing.memories import prepare_memory_add_request
+        from app.entrypoints.cli.request_parsing.memories import (
+            prepare_memory_add_request,
+        )
 
         prepared = prepare_memory_add_request(
             payload,
@@ -360,7 +318,9 @@ def _dispatch_operation_command(
         from app.entrypoints.cli.handlers.internal_agent.concepts.add import (
             run_concept_add_operation,
         )
-        from app.entrypoints.cli.request_parsing.concepts import prepare_concept_add_request
+        from app.entrypoints.cli.request_parsing.concepts import (
+            prepare_concept_add_request,
+        )
 
         prepared = prepare_concept_add_request(payload, inferred_repo_id=repo_id)
         return run_concept_add_operation(
@@ -435,18 +395,3 @@ def _dispatch_operation_command(
             repo_root=capture_repo_root,
         )
     raise ValueError(f"Unsupported command: {command}")
-
-
-def _resolve_admin_repo_root(repo_root_arg: str | None) -> Path:
-    """Resolve one admin repo root without inferring repo_id."""
-
-    repo_root = (
-        Path(repo_root_arg).expanduser().resolve()
-        if repo_root_arg
-        else Path.cwd().resolve()
-    )
-    if not repo_root.exists():
-        raise ValueError(f"repo_root does not exist: {repo_root}")
-    if not repo_root.is_dir():
-        raise ValueError(f"repo_root must be a directory: {repo_root}")
-    return repo_root

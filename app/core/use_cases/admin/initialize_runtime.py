@@ -125,7 +125,7 @@ def run_initialize_runtime(
                             f"Preserved corrupt machine config at {backup_path}"
                         )
                     lines.append(
-                        "Rerun `shellbrain init` after repairing or replacing the runtime configuration."
+                        "Rerun `shellbrain upgrade` after repairing or replacing the runtime configuration."
                     )
                     return InitResult(
                         outcome=INIT_OUTCOME_BLOCKED_CONFIG_CORRUPT, lines=lines

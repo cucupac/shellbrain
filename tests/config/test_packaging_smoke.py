@@ -19,7 +19,7 @@ from tests._shared.packaging_smoke_helpers import (
     repo_root as resolve_repo_root,
 )
 
-CURRENT_ALEMBIC_HEAD = "20260901_0039"
+CURRENT_ALEMBIC_HEAD = "20260922_0040"
 
 
 def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
@@ -49,10 +49,10 @@ def test_editable_install_should_expose_shellbrain_help_in_a_clean_room(
 
     assert python_executable.exists()
     assert shellbrain_executable.exists()
-    assert "shellbrain admin migrate" in completed.stdout
+    assert "shellbrain admin migrate" not in completed.stdout
     assert "shellbrain upgrade" in completed.stdout
-    assert "closed or idle-stable" in completed.stdout
-    assert "Explicit teach agents run immediately" in completed.stdout
+    assert "Internal commands:" in completed.stdout
+    assert "teach" not in completed.stdout
 
 
 def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(
@@ -93,9 +93,9 @@ def test_git_file_install_should_expose_shellbrain_help_in_a_clean_room(
     )
 
     assert shellbrain_executable.exists()
-    assert "Audience lanes" in completed.stdout
-    assert "Working agents" in completed.stdout
-    assert "Internal recall agents" in completed.stdout
+    assert "Internal commands:" in completed.stdout
+    assert "Use recall for context" in completed.stdout
+    assert "scenario" in completed.stdout
     assert "shellbrain upgrade" in completed.stdout
     assert "read" in completed.stdout
     assert "events" in completed.stdout
@@ -129,9 +129,9 @@ def test_editable_install_should_package_onboarding_assets_in_a_clean_room(
                 "print(root.joinpath('codex', 'shellbrain', 'agents', 'openai.yaml').read_text()); "
                 "print(root.joinpath('codex', 'shellbrain', 'assets', 'shellbrain_logo.png').is_file()); "
                 "print(root.joinpath('claude', 'skills', 'shellbrain', 'SKILL.md').read_text()); "
-                "print(root.joinpath('codex', 'shellbrain-usage-review', 'agents', 'openai.yaml').read_text()); "
-                "print(root.joinpath('codex', 'shellbrain-usage-review', 'assets', 'shellbrain_logo.png').is_file()); "
-                "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text())"
+                "print(root.joinpath('codex', 'shellbrain', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('codex', 'shellbrain', 'assets', 'shellbrain_logo.png').is_file()); "
+                "print(root.joinpath('claude', 'skills', 'shellbrain', 'SKILL.md').read_text())"
             ),
         ],
         check=True,
@@ -144,8 +144,8 @@ def test_editable_install_should_package_onboarding_assets_in_a_clean_room(
     assert 'display_name: "Shellbrain"' in completed.stdout
     assert "True" in completed.stdout
     assert "# Shellbrain Recall Workflow" in completed.stdout
-    assert 'display_name: "Shellbrain Usage Review"' in completed.stdout
-    assert "# Shellbrain Usage Review" in completed.stdout
+    assert 'display_name: "Shellbrain"' in completed.stdout
+    assert "# Shellbrain" in completed.stdout
 
 
 def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
@@ -178,9 +178,9 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
                 "print(root.joinpath('codex', 'shellbrain', 'agents', 'openai.yaml').read_text()); "
                 "print(root.joinpath('codex', 'shellbrain', 'assets', 'shellbrain_logo.png').is_file()); "
                 "print(root.joinpath('claude', 'skills', 'shellbrain', 'SKILL.md').read_text()); "
-                "print(root.joinpath('codex', 'shellbrain-usage-review', 'agents', 'openai.yaml').read_text()); "
-                "print(root.joinpath('codex', 'shellbrain-usage-review', 'assets', 'shellbrain_logo.png').is_file()); "
-                "print(root.joinpath('claude', 'skills', 'shellbrain-usage-review', 'SKILL.md').read_text())"
+                "print(root.joinpath('codex', 'shellbrain', 'agents', 'openai.yaml').read_text()); "
+                "print(root.joinpath('codex', 'shellbrain', 'assets', 'shellbrain_logo.png').is_file()); "
+                "print(root.joinpath('claude', 'skills', 'shellbrain', 'SKILL.md').read_text())"
             ),
         ],
         check=True,
@@ -193,8 +193,8 @@ def test_git_file_install_should_package_onboarding_assets_in_a_clean_room(
     assert 'display_name: "Shellbrain"' in completed.stdout
     assert "True" in completed.stdout
     assert "# Shellbrain Recall Workflow" in completed.stdout
-    assert 'display_name: "Shellbrain Usage Review"' in completed.stdout
-    assert "# Shellbrain Usage Review" in completed.stdout
+    assert 'display_name: "Shellbrain"' in completed.stdout
+    assert "# Shellbrain" in completed.stdout
 
 
 def test_git_file_install_should_package_internal_agent_settings(
@@ -255,7 +255,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
     repo_root = resolve_repo_root()
     external_repo = tmp_path / "external-migrate-repo"
     external_repo.mkdir()
-    _, shellbrain_executable = create_isolated_install(
+    python_executable, shellbrain_executable = create_isolated_install(
         tmp_path=tmp_path,
         name="migrate-install",
         install_spec=str(repo_root),
@@ -267,7 +267,7 @@ def test_admin_migrate_should_initialize_schema_from_an_installed_package(
     package_admin_dsn = replace_database_dsn(admin_base_dsn, db_name)
     try:
         completed = subprocess.run(
-            [shellbrain_executable, "admin", "migrate"],
+            [python_executable, "-m", "app.entrypoints.bootstrap", "--migrate-only"],
             check=True,
             cwd=external_repo,
             text=True,
@@ -655,7 +655,7 @@ def test_admin_migrate_should_preserve_data_and_retire_frontier_and_memory_ancho
                 )
 
         completed = subprocess.run(
-            [shellbrain_executable, "admin", "migrate"],
+            [python_executable, "-m", "app.entrypoints.bootstrap", "--migrate-only"],
             check=True,
             cwd=external_repo,
             text=True,
@@ -1146,7 +1146,7 @@ def test_admin_migrate_should_abort_on_unconvertible_memory_anchor(
                 )
 
         completed = subprocess.run(
-            [shellbrain_executable, "admin", "migrate"],
+            [python_executable, "-m", "app.entrypoints.bootstrap", "--migrate-only"],
             check=False,
             cwd=external_repo,
             text=True,

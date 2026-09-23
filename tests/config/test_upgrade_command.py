@@ -19,10 +19,7 @@ def test_run_upgrade_should_fail_cleanly_when_required_tools_are_missing(
     assert exit_code == 1
     err = capsys.readouterr().err
     assert "shellbrain upgrade requires curl, bash." in err
-    assert (
-        "python3 -m pip install --user --upgrade shellbrain && shellbrain init" in err
-    )
-    assert "pipx upgrade shellbrain && shellbrain init" in err
+    assert "Install the missing tools" in err
 
 
 def test_run_upgrade_should_shell_out_to_the_hosted_upgrade_script(monkeypatch) -> None:

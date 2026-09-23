@@ -323,7 +323,7 @@ def _run_alembic_upgrade(dsn: str) -> None:
     env["SHELLBRAIN_DB_ADMIN_DSN"] = os.getenv("SHELLBRAIN_DB_ADMIN_DSN_TEST", dsn)
     env["SHELLBRAIN_INSTANCE_MODE"] = "test"
     subprocess.run(
-        [sys.executable, "-m", "app.entrypoints.cli.main", "admin", "migrate"],
+        [sys.executable, "-m", "app.entrypoints.bootstrap", "--migrate-only"],
         check=True,
         cwd=repo_root,
         env=env,

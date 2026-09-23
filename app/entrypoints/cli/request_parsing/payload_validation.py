@@ -30,9 +30,6 @@ from app.core.use_cases.retrieval.read.request import (
 )
 from app.core.use_cases.retrieval.recall.request import MemoryRecallRequest
 from app.core.use_cases.scenarios.record.request import ScenarioRecordRequest
-from app.core.use_cases.knowledge_builder.teach_knowledge.request import (
-    TeachCurrentProblem,
-)
 
 
 class StrictBaseModel(BaseModel):
@@ -82,18 +79,6 @@ class AgentReadRequest(StrictBaseModel):
         if len(value) != len(set(value)):
             raise ValueError("kinds must be unique")
         return value
-
-
-class AgentTeachRequest(StrictBaseModel):
-    """Worker-facing payload for explicit user teaching."""
-
-    text: str = Field(min_length=1)
-    current_problem: TeachCurrentProblem
-
-    @field_validator("text")
-    @classmethod
-    def _validate_text(cls, value: str) -> str:
-        return _normalize_required_string(value, field_name="text")
 
 
 class AgentMemoryAddBody(StrictBaseModel):
@@ -258,17 +243,6 @@ def validate_events_schema(
 
     try:
         return AgentEventsRequest.model_validate(payload), []
-    except ValidationError as exc:
-        return None, _format_validation_errors(exc)
-
-
-def validate_teach_schema(
-    payload: dict[str, Any],
-) -> tuple[AgentTeachRequest | None, list[ErrorDetail]]:
-    """Validate and parse worker teach payloads."""
-
-    try:
-        return AgentTeachRequest.model_validate(payload), []
     except ValidationError as exc:
         return None, _format_validation_errors(exc)
 

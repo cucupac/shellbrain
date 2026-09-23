@@ -7,14 +7,12 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from app.core.entities.inner_agents import InnerAgentSettings
-from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import (
     ThresholdSettings,
 )
 from app.core.ports.host_apps.inner_agents import (
     IInnerAgentRunner,
-    ITeachKnowledgeAgentRunner,
 )
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 from app.core.ports.local_state.shadow_git import IShadowGitStore
@@ -38,8 +36,6 @@ class OperationDependencies(Protocol):
     id_generator: IIdGenerator
     build_context_inner_agent_runner: IInnerAgentRunner | None
     build_context_settings: InnerAgentSettings
-    teach_knowledge_inner_agent_runner: ITeachKnowledgeAgentRunner | None
-    teach_knowledge_settings: TeachKnowledgeSettings
     shadow_git_store: IShadowGitStore
     get_operation_telemetry_context: Callable[
         [], OperationDispatchTelemetryContext | None

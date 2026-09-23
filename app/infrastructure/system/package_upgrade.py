@@ -9,10 +9,6 @@ import sys
 
 
 UPGRADE_URL = "shellbrain.ai/upgrade"
-_MANUAL_PIP_UPGRADE = (
-    "python3 -m pip install --user --upgrade shellbrain && shellbrain init"
-)
-_MANUAL_PIPX_UPGRADE = "pipx upgrade shellbrain && shellbrain init"
 
 
 def run_upgrade() -> int:
@@ -27,9 +23,9 @@ def run_upgrade() -> int:
             if path is None
         )
         print(f"shellbrain upgrade requires {missing}.", file=sys.stderr)
-        print("manual fallback:", file=sys.stderr)
-        print(f"  {_MANUAL_PIP_UPGRADE}", file=sys.stderr)
-        print(f"  {_MANUAL_PIPX_UPGRADE}", file=sys.stderr)
+        print(
+            "Install the missing tools, then retry shellbrain upgrade.", file=sys.stderr
+        )
         return 1
 
     command = (

@@ -33,7 +33,7 @@ If recall would not help:
 
 Then continue. Do not call recall reflexively.
 
-Use `shellbrain recall` for normal task context. Use `shellbrain teach` only when the user explicitly asks you to store or teach Shellbrain something.
+Use `shellbrain recall` for normal task context.
 
 If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed.
 

@@ -25,9 +25,6 @@ class CliRuntime(Protocol):
     ensure_shadow_baseline: Callable[..., None]
     maybe_start_sync: Callable[[Any], bool]
     update_operation_polling_status: Callable[..., None]
-    should_register_repo_during_init: Callable[..., bool]
-    run_init: Callable[..., Any]
-    init_success_presenter_context: Callable[[], dict[str, Any]]
     run_upgrade_command: Callable[[], int]
     warn_or_fail_on_unsafe_app_role: Callable[[], None]
     admin_dependencies: Any

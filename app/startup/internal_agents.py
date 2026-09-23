@@ -2,27 +2,25 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from typing import Any
-
 
 from app.core.entities.inner_agents import (
     BuildKnowledgeSettings,
     InnerAgentSettings,
-    TeachKnowledgeSettings,
 )
 from app.core.ports.host_apps.inner_agents import (
     IBuildKnowledgeAgentRunner,
     IInnerAgentRunner,
-    ITeachKnowledgeAgentRunner,
 )
 from app.infrastructure.host_apps.inner_agents.claude_cli import (
     ClaudeCliInnerAgentRunner,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
-from app.infrastructure.local_state.recall_mode_store import (
-    RECALL_MODE_FAST,
-    load_recall_mode,
+from app.infrastructure.local_state.recall_provider_store import load_recall_provider
+from app.infrastructure.host_apps.inner_agents.inception_api import (
+    InceptionApiInnerAgentRunner,
 )
 from app.startup.internal_agent_config import (
     InternalAgentsConfig,
@@ -53,20 +51,15 @@ def get_build_knowledge_settings() -> BuildKnowledgeSettings:
     return _resolve_settings(config, config.build_knowledge)
 
 
-def get_teach_knowledge_settings() -> TeachKnowledgeSettings:
-    """Return typed settings for the explicit teaching agent."""
-
-    config = get_internal_agents_config()
-    return _resolve_settings(config, config.teach)
-
-
-def get_build_context_inner_agent_runner() -> IInnerAgentRunner | None:
+def get_build_context_inner_agent_runner(
+    settings: InnerAgentSettings,
+) -> IInnerAgentRunner | None:
     """Return the configured build_context provider adapter."""
 
+    if settings.provider == "inception":
+        key = os.environ.get("INCEPTION_API_KEY", "").strip()
+        return InceptionApiInnerAgentRunner(api_key=key) if key else None
     config = get_internal_agents_config()
-    settings = _resolve_build_context_settings(config)
-    if settings.strategy == "deterministic_only":
-        return None
     return _runner_for(config, settings)
 
 
@@ -77,17 +70,10 @@ def get_build_knowledge_inner_agent_runner() -> IBuildKnowledgeAgentRunner | Non
     return _runner_for(config, config.build_knowledge)
 
 
-def get_teach_knowledge_inner_agent_runner() -> ITeachKnowledgeAgentRunner | None:
-    """Return the configured explicit teaching provider adapter."""
-
-    config = get_internal_agents_config()
-    return _runner_for(config, config.teach)
-
-
 def _runner_for(
     config: InternalAgentsConfig,
     settings: Any,
-) -> IInnerAgentRunner | IBuildKnowledgeAgentRunner | ITeachKnowledgeAgentRunner | None:
+) -> IInnerAgentRunner | IBuildKnowledgeAgentRunner | None:
     provider_name = _select_provider(config, settings.provider)
     if provider_name is None:
         return None
@@ -117,13 +103,13 @@ def _resolve_settings(
 
 
 def _resolve_build_context_settings(config: InternalAgentsConfig) -> InnerAgentSettings:
-    settings = _resolve_settings(config, config.build_context)
-    mode, _path, exists = load_recall_mode()
-    if not exists:
-        return settings
-    if mode == RECALL_MODE_FAST:
-        return settings.model_copy(update={"strategy": "deterministic_only"})
-    return settings.model_copy(update={"strategy": "deterministic_synthesis"})
+    provider = load_recall_provider()
+    settings = config.build_context.model_copy(update={"provider": provider})
+    if provider == "inception":
+        return settings.model_copy(
+            update={"model": "mercury-2.5", "reasoning": "low", "timeout_seconds": 10}
+        )
+    return _resolve_settings(config, settings)
 
 
 def _select_provider(

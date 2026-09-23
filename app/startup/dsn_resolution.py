@@ -19,7 +19,7 @@ def resolve_database_dsn(
     if machine_error:
         if required:
             raise RuntimeError(
-                "Shellbrain machine config is unreadable. Rerun `shellbrain init` to repair it."
+                "Shellbrain machine config is unreadable. Rerun `shellbrain upgrade` to repair it."
             )
         return None
     if machine_config is not None:

@@ -129,9 +129,8 @@ class IsolatedDockerPostgres:
             [
                 _resolve_python_executable(),
                 "-m",
-                "app.entrypoints.cli.main",
-                "admin",
-                "migrate",
+                "app.entrypoints.bootstrap",
+                "--migrate-only",
             ],
             env_overrides={
                 "SHELLBRAIN_DB_DSN": self.dsn,

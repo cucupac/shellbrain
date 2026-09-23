@@ -290,17 +290,17 @@ ensure_user_bin_on_shell_path() {
 run_shellbrain_init_with_recovery() {
   local init_exit_code=0
 
-  if "$SHELLBRAIN" init; then
+  if "$(dirname "$SHELLBRAIN")/_shellbrain-bootstrap"; then
     return 0
   else
     init_exit_code=$?
   fi
 
   echo ""
-  echo "shellbrain init did not complete."
+  echo "Shellbrain setup did not complete."
   echo "  shellbrain is installed at: $SHELLBRAIN"
   echo "  your current shell may not have reloaded PATH yet."
-  printf '  rerun bootstrap with: "%s" init\n' "$SHELLBRAIN"
+  printf '  retry setup with: "%s" upgrade\n' "$SHELLBRAIN"
   echo "  after bootstrap succeeds, open a new terminal to use shellbrain by name."
   return "$init_exit_code"
 }
@@ -355,7 +355,7 @@ USER_BIN=$($PY -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_
 if [ -n "$USER_BIN" ] && [ -x "$USER_BIN/shellbrain" ]; then
   SHELLBRAIN="$USER_BIN/shellbrain"
 elif command -v shellbrain &>/dev/null; then
-  SHELLBRAIN=shellbrain
+  SHELLBRAIN="$(command -v shellbrain)"
 fi
 
 if [ -z "$SHELLBRAIN" ]; then
@@ -371,7 +371,7 @@ fi
 if [ -z "$SHELLBRAIN" ]; then
   echo ""
   echo "shellbrain was installed but could not be found."
-  echo "restart your terminal, then run: shellbrain init"
+  echo "restart your terminal, then rerun this installer"
   exit 0
 fi
 
@@ -385,7 +385,7 @@ fi
 
 echo ""
 echo "initializing..."
-echo "  shellbrain init will ask how it should store data."
+echo "  Setup will ask how it should store data."
 echo "  default: let shellbrain set up local PostgreSQL + pgvector for you."
 echo "  advanced: use an existing PostgreSQL + pgvector database."
 echo ""

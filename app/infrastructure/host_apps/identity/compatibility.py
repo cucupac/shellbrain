@@ -10,7 +10,7 @@ def host_hook_missing_error() -> ErrorDetail:
 
     return ErrorDetail(
         code=ErrorCode.HOST_HOOK_MISSING,
-        message="Claude Code runtime detected but Shellbrain hook identity is missing. Run `shellbrain admin install-claude-hook` in this repo and restart Claude Code.",
+        message="Claude Code runtime detected but Shellbrain hook identity is missing. Run `shellbrain upgrade` in this repo and restart Claude Code.",
     )
 
 

@@ -88,7 +88,7 @@ def _knowledge_build_run_id_from_env() -> str | None:
     """Return the parent build_knowledge run id for nested builder commands."""
 
     mode = os.environ.get(_INNER_AGENT_MODE_ENV, "").strip()
-    if mode not in {"build_knowledge", "teach"}:
+    if mode not in {"build_knowledge"}:
         return None
     value = os.environ.get(_KNOWLEDGE_BUILD_RUN_ID_ENV, "").strip()
     return value or None

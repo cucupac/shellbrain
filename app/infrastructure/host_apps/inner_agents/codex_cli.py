@@ -14,7 +14,6 @@ from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentResult,
     InnerAgentRunRequest,
     InnerAgentRunResult,
-    TeachKnowledgeAgentRequest,
 )
 from app.infrastructure.host_apps.inner_agents.output_parser import (
     InnerAgentOutputParseError,
@@ -24,7 +23,6 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
-    render_teach_knowledge_prompt,
 )
 
 
@@ -146,18 +144,9 @@ class CodexCliInnerAgentRunner:
             mode="build_knowledge",
         )
 
-    def run_teach_knowledge(
-        self, request: TeachKnowledgeAgentRequest
-    ) -> BuildKnowledgeAgentResult:
-        return self._run_knowledge(
-            request,
-            prompt=render_teach_knowledge_prompt(request),
-            mode="teach",
-        )
-
     def _run_knowledge(
         self,
-        request: BuildKnowledgeAgentRequest | TeachKnowledgeAgentRequest,
+        request: BuildKnowledgeAgentRequest,
         *,
         prompt: str,
         mode: str,
@@ -325,7 +314,7 @@ def _result(
 
 
 def _build_knowledge_result(
-    request: BuildKnowledgeAgentRequest | TeachKnowledgeAgentRequest,
+    request: BuildKnowledgeAgentRequest,
     *,
     status,
     duration_ms: int = 0,
@@ -427,7 +416,7 @@ def _inner_agent_env(
     env = dict(os.environ)
     env["SHELLBRAIN_INNER_AGENT_MODE"] = mode
     _inherit_parent_caller_identity(env)
-    if mode in {"build_knowledge", "teach"}:
+    if mode in {"build_knowledge"}:
         if knowledge_build_run_id:
             env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] = knowledge_build_run_id
         _scrub_admin_env(env)

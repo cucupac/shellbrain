@@ -96,14 +96,12 @@ def test_build_context_default_uses_deterministic_graph_synthesis(monkeypatch) -
     assert telemetry["concept_expansion_count"] == 1
 
 
-def test_build_context_deterministic_only_skips_provider(monkeypatch) -> None:
+def test_build_context_missing_provider_returns_deterministic_context(
+    monkeypatch,
+) -> None:
     """deterministic_only should return a graph brief without running a model."""
 
     _stub_graph_pack(monkeypatch, pack=_graph_pack())
-
-    class _FailingRunner:
-        def run(self, request):
-            raise AssertionError("deterministic_only must not call provider")
 
     result = execute_build_context(
         MemoryRecallRequest.model_validate(
@@ -113,18 +111,18 @@ def test_build_context_deterministic_only_skips_provider(monkeypatch) -> None:
             }
         ),
         object(),
-        inner_agent_runner=_FailingRunner(),
-        build_context_settings=_deterministic_only_settings(),
+        inner_agent_runner=None,
+        build_context_settings=_recall_settings(),
     )
 
     assert result.data["brief"]["summary"] == (
         "Shellbrain found 1 memory source(s) and 1 concept source(s) for this recall query."
     )
     assert "sources" not in result.data["brief"]
-    assert result.data["fallback_reason"] is None
+    assert result.data["fallback_reason"] == "provider_unavailable"
     telemetry = result.data["_telemetry"]["inner_agent"]
-    assert telemetry["provider"] == "deterministic"
-    assert telemetry["model"] == "none"
+    assert telemetry["provider"] == "codex"
+    assert telemetry["model"] == "gpt-5.4-mini"
 
 
 def test_build_context_provider_unavailable_uses_deterministic_graph_fallback(
@@ -237,7 +235,7 @@ def test_build_context_provider_error_uses_deterministic_fallback(
         inner_agent_runner=_ErrorRunner(),
     )
 
-    assert result.data["fallback_reason"] is None
+    assert result.data["fallback_reason"] is not None
     assert result.data["brief"]["summary"] == (
         "Shellbrain found 1 memory source(s) and 1 concept source(s) for this recall query."
     )
@@ -260,11 +258,10 @@ def _stub_graph_pack(monkeypatch, *, pack: dict) -> None:
     )
 
 
-def _deterministic_only_settings() -> InnerAgentSettings:
-    """Return deterministic-only build_context settings."""
+def _recall_settings() -> InnerAgentSettings:
+    """Return configured build_context settings."""
 
     return InnerAgentSettings(
-        strategy="deterministic_only",
         provider="codex",
         model="gpt-5.4-mini",
         reasoning="medium",

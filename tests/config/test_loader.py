@@ -5,22 +5,13 @@ from pathlib import Path
 import pytest
 
 import app.core.entities.inner_agents as core_inner_agents
-from app.infrastructure.host_apps.inner_agents.claude_cli import (
-    ClaudeCliInnerAgentRunner,
-)
 from app.infrastructure.host_apps.inner_agents.codex_cli import CodexCliInnerAgentRunner
-from app.infrastructure.local_state.recall_mode_store import (
-    load_recall_mode,
-    save_recall_mode,
-)
 from app.startup.internal_agent_config import InternalAgentsConfig
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_context_settings,
     get_build_knowledge_inner_agent_runner,
     get_build_knowledge_settings,
-    get_teach_knowledge_inner_agent_runner,
-    get_teach_knowledge_settings,
 )
 from app.startup.internal_agent_config import default_internal_agents_config
 
@@ -35,8 +26,7 @@ def test_packaged_defaults_preserve_inner_agent_settings() -> None:
 
     settings = default_internal_agents_config().model_dump()
 
-    assert settings["build_context"]["strategy"] == "deterministic_synthesis"
-    assert settings["build_context"]["provider"] == "auto"
+    assert settings["build_context"]["provider"] == "codex"
     assert settings["build_context"]["model"] == "gpt-5.6-luna"
     assert settings["build_context"]["reasoning"] == "low"
     assert settings["build_context"]["max_brief_tokens"] == 500
@@ -53,13 +43,6 @@ def test_packaged_defaults_preserve_inner_agent_settings() -> None:
     assert settings["build_knowledge"]["idle_stable_seconds"] == 900
     assert settings["build_knowledge"]["running_run_stale_seconds"] == 3600
     assert "max_private_reads" not in settings["build_knowledge"]
-    assert settings["teach"]["model"] == "gpt-5.4-mini"
-    assert settings["teach"]["reasoning"] == "medium"
-    assert settings["teach"]["timeout_seconds"] == 600
-    assert settings["teach"]["max_shellbrain_reads"] == 6
-    assert settings["teach"]["max_code_files"] == 5
-    assert settings["teach"]["max_write_commands"] == 12
-    assert "idle_stable_seconds" not in settings["teach"]
     assert settings["providers"]["codex"]["command"] == "codex"
     assert settings["providers"]["codex"]["model_override"] is None
     assert settings["providers"]["claude"]["command"] == "claude"
@@ -140,122 +123,9 @@ def test_startup_auto_prefers_codex_when_both_commands_exist(monkeypatch) -> Non
 
     _patch_which(monkeypatch, {"codex", "claude"})
 
-    runner = get_build_context_inner_agent_runner()
+    runner = get_build_context_inner_agent_runner(get_build_context_settings())
 
     assert isinstance(runner, CodexCliInnerAgentRunner)
-
-
-def test_startup_auto_uses_claude_when_codex_is_missing(monkeypatch) -> None:
-    """auto should use Claude only when Codex is unavailable."""
-
-    _patch_which(monkeypatch, {"claude"})
-
-    runner = get_build_context_inner_agent_runner()
-
-    assert isinstance(runner, ClaudeCliInnerAgentRunner)
-
-
-def test_startup_auto_returns_no_runner_when_no_provider_is_installed(
-    monkeypatch,
-) -> None:
-    """auto should not construct a runner when no configured CLI exists."""
-
-    _patch_which(monkeypatch, set())
-
-    assert get_build_context_inner_agent_runner() is None
-
-
-def test_startup_resolves_runtime_settings_to_selected_provider(monkeypatch) -> None:
-    """runtime settings should not pass provider=auto into provider requests."""
-
-    _patch_which(monkeypatch, {"claude"})
-
-    settings = get_build_context_settings()
-
-    assert settings.provider == "claude"
-    assert settings.model == "sonnet"
-
-
-def test_recall_mode_store_defaults_to_full_when_missing(tmp_path: Path) -> None:
-    """missing recall override should preserve packaged defaults."""
-
-    mode, path, exists = load_recall_mode(tmp_path / "missing.toml")
-
-    assert mode == "full"
-    assert path == tmp_path / "missing.toml"
-    assert exists is False
-
-
-@pytest.mark.parametrize("mode", ("fast", "full"))
-def test_recall_mode_store_round_trips_modes(tmp_path: Path, mode: str) -> None:
-    """machine-local recall mode should persist as tiny TOML."""
-
-    path = tmp_path / "recall.toml"
-
-    save_recall_mode(mode, path)
-
-    assert path.read_text(encoding="utf-8") == f'mode = "{mode}"\n'
-    assert load_recall_mode(path) == (mode, path, True)
-
-
-@pytest.mark.parametrize(
-    "text",
-    ("mode = [", 'mode = "turbo"\n', 'mode = "fast"\nextra = true\n'),
-)
-def test_recall_mode_store_rejects_invalid_config(tmp_path: Path, text: str) -> None:
-    """bad recall override files should fail clearly."""
-
-    path = tmp_path / "recall.toml"
-    path.write_text(text, encoding="utf-8")
-
-    with pytest.raises(ValueError, match="Invalid recall mode config"):
-        load_recall_mode(path)
-
-
-def test_recall_mode_fast_skips_build_context_runner(
-    monkeypatch, tmp_path: Path
-) -> None:
-    """fast recall mode should force deterministic-only recall."""
-
-    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
-    save_recall_mode("fast")
-    _patch_which(monkeypatch, {"codex", "claude"})
-
-    settings = get_build_context_settings()
-
-    assert settings.strategy == "deterministic_only"
-    assert get_build_context_inner_agent_runner() is None
-
-
-def test_recall_mode_full_forces_synthesis(monkeypatch, tmp_path: Path) -> None:
-    """full recall mode should force the normal synthesis strategy."""
-
-    settings = default_internal_agents_config().model_dump()
-    settings["build_context"]["strategy"] = "deterministic_only"
-    monkeypatch.setattr(
-        "app.startup.internal_agents.get_internal_agents_config",
-        lambda: InternalAgentsConfig.model_validate(settings),
-    )
-    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
-    save_recall_mode("full")
-    _patch_which(monkeypatch, {"codex"})
-
-    resolved = get_build_context_settings()
-
-    assert resolved.strategy == "deterministic_synthesis"
-    assert isinstance(get_build_context_inner_agent_runner(), CodexCliInnerAgentRunner)
-
-
-def test_missing_recall_mode_preserves_packaged_strategy(
-    monkeypatch, tmp_path: Path
-) -> None:
-    """missing recall override should not rewrite packaged build-context config."""
-
-    monkeypatch.setenv("SHELLBRAIN_HOME", str(tmp_path))
-
-    settings = get_build_context_settings()
-
-    assert settings.strategy == "deterministic_synthesis"
 
 
 def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
@@ -269,7 +139,7 @@ def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
     )
     _patch_which(monkeypatch, {"claude"})
 
-    runner = get_build_context_inner_agent_runner()
+    runner = get_build_context_inner_agent_runner(get_build_context_settings())
     resolved = get_build_context_settings()
 
     assert isinstance(runner, CodexCliInnerAgentRunner)
@@ -279,10 +149,7 @@ def test_explicit_provider_does_not_auto_fallback(monkeypatch) -> None:
 
 @pytest.mark.parametrize(
     "runner_getter",
-    (
-        get_build_knowledge_inner_agent_runner,
-        get_teach_knowledge_inner_agent_runner,
-    ),
+    (get_build_knowledge_inner_agent_runner,),
 )
 def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> None:
     """startup should compose the configured non-recall runners."""
@@ -296,10 +163,7 @@ def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> N
 
 @pytest.mark.parametrize(
     ("settings_getter", "expected_model"),
-    (
-        (get_build_knowledge_settings, "gpt-5.6-luna"),
-        (get_teach_knowledge_settings, "gpt-5.4-mini"),
-    ),
+    ((get_build_knowledge_settings, "gpt-5.6-luna"),),
 )
 def test_startup_preserves_codex_workflow_models(
     monkeypatch, settings_getter, expected_model: str

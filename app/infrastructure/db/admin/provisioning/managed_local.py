@@ -126,7 +126,7 @@ def ensure_existing_managed_container_running(config: MachineConfig) -> bool:
     info = inspect_container(config.managed.container_name)
     if info is None:
         raise InitConflictError(
-            f"Managed container {config.managed.container_name} does not exist. Rerun `shellbrain init` to repair it."
+            f"Managed container {config.managed.container_name} does not exist. Rerun `shellbrain upgrade` to repair it."
         )
     _ensure_owned_container(config, info)
     return _start_if_stopped(config, info)

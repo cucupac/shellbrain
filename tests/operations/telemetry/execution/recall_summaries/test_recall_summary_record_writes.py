@@ -129,7 +129,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
 
     assert result["status"] == "ok"
     assert "_telemetry" not in result["data"]
-    assert result["data"]["fallback_reason"] is None
+    assert result["data"]["fallback_reason"] == "provider_unavailable"
     assert "sources" not in result["data"]["brief"]
     recall_request = captured["request"]
     assert recall_request.query == "recall telemetry"
@@ -146,7 +146,7 @@ def test_successful_recall_should_write_recall_summary_source_items_and_no_read_
     assert summary_rows[0]["query_text"] == "recall telemetry"
     assert summary_rows[0]["candidate_token_estimate"] > 0
     assert summary_rows[0]["brief_token_estimate"] > 0
-    assert summary_rows[0]["fallback_reason"] is None
+    assert summary_rows[0]["fallback_reason"] == "provider_unavailable"
     assert summary_rows[0]["provider"] == "codex"
     assert summary_rows[0]["model"] == "gpt-5.6-luna"
     assert summary_rows[0]["reasoning"] == "low"
@@ -192,7 +192,7 @@ def test_provider_recall_should_write_inner_agent_token_profile(
     _stub_graph_pack(monkeypatch, pack=_candidate_pack())
     monkeypatch.setattr(
         "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
-        lambda: _FakeInnerAgentRunner(),
+        lambda settings: _FakeInnerAgentRunner(),
     )
 
     result = handle_recall(
@@ -329,7 +329,7 @@ def _stub_graph_pack(
     )
     monkeypatch.setattr(
         "app.startup.operation_dependencies.get_build_context_inner_agent_runner",
-        lambda: None,
+        lambda settings: None,
     )
 
     def _fake_build_graph_pack(request, uow, **kwargs) -> dict:

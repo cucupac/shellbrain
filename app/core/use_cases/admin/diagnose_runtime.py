@@ -65,7 +65,9 @@ def build_diagnose_runtime_report(
             (checked_at - created_at.astimezone(timezone.utc)).total_seconds()
         )
     home_root = ports.get_shellbrain_home()
-    disk = ports.disk_usage(home_root if ports.path_exists(home_root) else home_root.parent)
+    disk = ports.disk_usage(
+        home_root if ports.path_exists(home_root) else home_root.parent
+    )
     repo_report = _build_repo_report(repo_root=repo_root, ports=ports)
     host_integrations = ports.inspect_host_assets()
     cursor_statusline = getattr(
@@ -143,7 +145,7 @@ def build_diagnose_runtime_report(
     claude_hook = report["host_integrations"]["claude_global_hook"]
     if claude_hook.get("managed") and not claude_hook.get("executable_exists", False):
         report["host_integration_warning"] = (
-            "Claude global hook points at a missing interpreter. Rerun `shellbrain init` to repair it."
+            "Claude global hook points at a missing interpreter. Rerun `shellbrain upgrade` to repair it."
         )
     return report
 

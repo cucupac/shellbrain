@@ -11,12 +11,9 @@ class _StrictModel(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-InnerAgentName = Literal["build_context", "build_knowledge", "teach"]
+InnerAgentName = Literal["build_context", "build_knowledge"]
 InnerAgentProviderName = str
 InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
-BuildContextStrategy = Literal[
-    "deterministic_synthesis", "deterministic_only"
-]
 TokenCaptureQuality = Literal["exact", "estimated"]
 InnerAgentRunStatus = Literal[
     "ok",
@@ -31,7 +28,6 @@ InnerAgentRunStatus = Literal[
 class BuildContextSettings(_StrictModel):
     """Typed model/runtime settings for the build_context recall agent."""
 
-    strategy: BuildContextStrategy = "deterministic_synthesis"
     provider: InnerAgentProviderName = Field(min_length=1)
     model: str = Field(min_length=1)
     reasoning: InnerAgentReasoningLevel
@@ -51,18 +47,6 @@ class BuildKnowledgeSettings(_StrictModel):
     max_write_commands: int = Field(default=20, ge=1, le=200)
     idle_stable_seconds: int = Field(default=900, ge=60, le=86_400)
     running_run_stale_seconds: int = Field(default=3600, ge=60, le=86_400)
-
-
-class TeachKnowledgeSettings(_StrictModel):
-    """Typed model/runtime settings for explicit teaching consolidation."""
-
-    provider: InnerAgentProviderName = Field(min_length=1)
-    model: str = Field(min_length=1)
-    reasoning: InnerAgentReasoningLevel
-    timeout_seconds: int = Field(ge=1, le=1200)
-    max_shellbrain_reads: int = Field(default=6, ge=1, le=50)
-    max_code_files: int = Field(default=5, ge=0, le=200)
-    max_write_commands: int = Field(default=12, ge=1, le=200)
 
 
 InnerAgentSettings = BuildContextSettings

@@ -29,7 +29,6 @@ from app.core.use_cases.retrieval.recall.result import RecallMemoryResult
 
 
 _DEFAULT_SETTINGS = InnerAgentSettings(
-    strategy="deterministic_synthesis",
     provider="configured",
     model="configured",
     reasoning="medium",
@@ -82,7 +81,7 @@ def execute_build_context(
             },
         )
 
-    if fallback_reason == "no_candidates" or settings.strategy == "deterministic_only":
+    if fallback_reason == "no_candidates":
         return _graph_result(
             deterministic_brief_from_graph_pack(graph_pack),
             fallback_reason,
@@ -109,12 +108,12 @@ def execute_build_context(
         deterministic_pack=synthesis_pack,
     )
     if synthesis_result.status == "ok" and synthesis_result.brief is not None:
-        return _graph_result(
-            _normalize_provider_brief(synthesis_result.brief), None, synthesis_result
-        )
+        return _graph_result(synthesis_result.brief, None, synthesis_result)
     return _graph_result(
         deterministic_brief_from_graph_pack(graph_pack),
-        fallback_reason,
+        synthesis_result.status
+        if synthesis_result.status != "ok"
+        else "invalid_output",
         synthesis_result.model_copy(update={"fallback_used": True}),
     )
 
@@ -197,28 +196,3 @@ def _with_graph_counts(
             "concept_expansion_count": concept_count,
         }
     )
-
-
-def _normalize_provider_brief(brief: dict[str, Any]) -> dict[str, Any]:
-    """Ensure provider output keeps the stable worker-facing brief shape."""
-
-    return {
-        "summary": str(brief.get("summary") or "").strip()
-        or "Shellbrain synthesized relevant recall context.",
-        "constraints": _string_list(brief.get("constraints")),
-        "known_traps": _string_list(brief.get("known_traps")),
-        "prior_cases": _string_list(brief.get("prior_cases")),
-        "concept_orientation": _string_list(brief.get("concept_orientation")),
-        "anchors": _string_list(brief.get("anchors")),
-        "conflicts": _string_list(brief.get("conflicts")),
-        "gaps": _string_list(brief.get("gaps")),
-        "next_checks": _string_list(brief.get("next_checks")),
-    }
-
-
-def _string_list(value: Any) -> list[str]:
-    """Coerce provider brief sections into stable string lists."""
-
-    if not isinstance(value, list):
-        return []
-    return [str(item) for item in value if str(item).strip()]

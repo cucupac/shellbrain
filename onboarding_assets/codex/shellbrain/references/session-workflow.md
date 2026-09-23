@@ -14,22 +14,9 @@ Recall asks Shellbrain's internal recall agent to inspect relevant memories, con
 
 Treat current repo state as ground truth. Treat recall as advisory long-term memory that helps answer: "Have I seen anything like this before, and what was useful?"
 
-## Bootstrap
+## Setup
 
-Treat `shellbrain init` as first-time bootstrap plus repair, not as a routine start-of-session command.
-
-Normal session rhythm:
-
-- if Shellbrain already works in this repo, go straight to `recall`
-- if readiness is unclear, run `shellbrain admin doctor`
-- if Shellbrain has never been bootstrapped on this machine, this repo has never been registered, or `doctor` says `repair_needed`, run `shellbrain init`
-
-Bootstrap and repair path:
-
-```bash
-shellbrain init
-shellbrain admin doctor
-```
+Installation configures Shellbrain automatically. Use `shellbrain upgrade` for repair. Repositories register on first use.
 
 In Codex Desktop and similar tool shells, if direct `shellbrain` calls fail in the current session, do a one-time login-shell retry:
 
@@ -147,13 +134,8 @@ Use current repo state to verify anything operational before editing.
 
 As the working agent, use `shellbrain recall` for normal task context.
 
-Use `shellbrain teach` only when the user explicitly asks you to store, remember, or teach Shellbrain a specific point:
 
-```bash
-shellbrain teach --json '{"text":"In this repo, startup wires dependencies but should not own workflow behavior.","current_problem":{"goal":"record architecture preference","surface":"startup and clean architecture","obstacle":"agents may put behavior in startup","hypothesis":"teach should become a durable preference or concept claim"}}'
-```
 
-Teach stores the user statement as evidence and immediately runs a separate teach agent. Do not use it as a generic closeout summary.
 
 If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed:
 
@@ -180,13 +162,13 @@ Those are internal-agent commands. Shellbrain's internal recall agent handles ra
 ## Recovery
 
 - New agent session, but Shellbrain was already set up:
-  do not rerun `init`. Use `recall`. Use `doctor` only if readiness is unclear.
+  do not rerun setup. Use `recall`. Use `shellbrain upgrade` if repair is needed.
 
 - `shellbrain: command not found`:
   retry through `zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain'` first. Do not keep prefixing every Shellbrain command with profile sourcing.
 
-- `shellbrain init` fails or `doctor` shows `repair_needed`:
-  rerun `shellbrain init`. That is the normal repair path.
+- `shellbrain upgrade` fails reports `repair_needed`:
+  rerun `shellbrain upgrade`. That is the normal repair path.
 
 - Recall returns no relevant context:
   continue from current repo evidence. A truthful no-context brief is a valid result.

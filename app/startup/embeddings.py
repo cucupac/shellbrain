@@ -25,7 +25,7 @@ def get_embedding_provider() -> IEmbeddingProvider:
         cache_folder = machine_config.embeddings.cache_path
         if machine_config.embeddings.readiness_state != "ready":
             raise RuntimeError(
-                "Shellbrain embeddings are not ready. Rerun `shellbrain init` to finish model setup."
+                "Shellbrain embeddings are not ready. Rerun `shellbrain upgrade` to finish model setup."
             )
         local_files_only = True
     return SentenceTransformersEmbeddingProvider(

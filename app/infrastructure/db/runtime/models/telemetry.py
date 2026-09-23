@@ -155,7 +155,7 @@ recall_invocation_summaries = Table(
         "brief_token_estimate >= 0", name="ck_recall_brief_token_estimate_nonnegative"
     ),
     CheckConstraint(
-        "fallback_reason IS NULL OR fallback_reason = 'no_candidates'",
+        "fallback_reason IS NULL OR fallback_reason IN ('no_candidates', 'no_context', 'provider_unavailable', 'timeout', 'invalid_output', 'error')",
         name="ck_recall_fallback_reason",
     ),
     CheckConstraint(

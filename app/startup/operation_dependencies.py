@@ -7,14 +7,12 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.core.entities.inner_agents import InnerAgentSettings
-from app.core.entities.inner_agents import TeachKnowledgeSettings
 from app.core.entities.runtime_context import OperationDispatchTelemetryContext
 from app.core.entities.settings import (
     ThresholdSettings,
 )
 from app.core.ports.host_apps.inner_agents import (
     IInnerAgentRunner,
-    ITeachKnowledgeAgentRunner,
 )
 from app.core.ports.local_state.session_state_store import ISessionStateStore
 from app.core.ports.local_state.shadow_git import IShadowGitStore
@@ -44,8 +42,6 @@ from app.infrastructure.telemetry.sink import TelemetrySink
 from app.startup.internal_agents import (
     get_build_context_inner_agent_runner,
     get_build_context_settings,
-    get_teach_knowledge_inner_agent_runner,
-    get_teach_knowledge_settings,
 )
 from app.startup.runtime_context import get_operation_telemetry_context
 from app.startup.thresholds import get_typed_threshold_settings
@@ -61,8 +57,6 @@ class OperationDependencies:
     id_generator: IIdGenerator
     build_context_inner_agent_runner: IInnerAgentRunner | None
     build_context_settings: InnerAgentSettings
-    teach_knowledge_inner_agent_runner: ITeachKnowledgeAgentRunner | None
-    teach_knowledge_settings: TeachKnowledgeSettings
     shadow_git_store: IShadowGitStore
     get_operation_telemetry_context: Callable[
         [], OperationDispatchTelemetryContext | None
@@ -79,15 +73,16 @@ def build_operation_dependencies() -> OperationDependencies:
     """Wire concrete runtime ports into core operation orchestration."""
 
     clock = SystemClock()
+    recall_settings = get_build_context_settings()
     return OperationDependencies(
         session_state_store=FileSessionStateStore(),
         threshold_settings=get_typed_threshold_settings(),
         clock=clock,
         id_generator=UuidGenerator(),
-        build_context_inner_agent_runner=get_build_context_inner_agent_runner(),
-        build_context_settings=get_build_context_settings(),
-        teach_knowledge_inner_agent_runner=get_teach_knowledge_inner_agent_runner(),
-        teach_knowledge_settings=get_teach_knowledge_settings(),
+        build_context_inner_agent_runner=get_build_context_inner_agent_runner(
+            recall_settings
+        ),
+        build_context_settings=recall_settings,
         shadow_git_store=ShadowGitStore(),
         get_operation_telemetry_context=get_operation_telemetry_context,
         resolve_caller_identity=resolve_caller_identity,

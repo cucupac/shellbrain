@@ -10,7 +10,6 @@ from pydantic import ValidationError
 from app.core.ports.host_apps.inner_agents import (
     BuildKnowledgeAgentRequest,
     InnerAgentRunRequest,
-    TeachKnowledgeAgentRequest,
 )
 from app.infrastructure.host_apps.inner_agents.codex_cli import (
     CodexCliInnerAgentRunner,
@@ -24,7 +23,6 @@ from app.infrastructure.host_apps.inner_agents.output_parser import (
 from app.infrastructure.host_apps.inner_agents.prompt import (
     render_build_context_synthesis_prompt,
     render_build_knowledge_prompt,
-    render_teach_knowledge_prompt,
 )
 
 
@@ -82,8 +80,7 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
         tmp_path.joinpath("seen.txt").write_text("ran", encoding="utf-8")
         with open(output_path, "w", encoding="utf-8") as handle:
             handle.write(
-                '{"brief":{"summary":"Stub synthesis","constraints":["Keep core clean"]},'
-                '"read_trace":{"commands":[{"command":"shellbrain read --json {}","source_ids":["mem-1"]}],"source_ids":["mem-1"]}}'
+                '{"brief": {"summary": "Stub synthesis", "constraints": ["Keep core clean"], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}, "read_trace": {"commands": [{"command": "shellbrain read --json {}", "source_ids": ["mem-1"]}], "source_ids": ["mem-1"]}}'
             )
         return subprocess.CompletedProcess(
             args,
@@ -106,7 +103,7 @@ def test_codex_runner_parses_stubbed_last_message(monkeypatch, tmp_path) -> None
     result = runner.run(_request(repo_root=str(tmp_path)))
 
     assert result.status == "ok"
-    assert result.brief == {
+    assert {k: v for k, v in result.brief.items() if v} == {
         "summary": "Stub synthesis",
         "constraints": ["Keep core clean"],
     }
@@ -132,7 +129,9 @@ def test_codex_runner_synthesis_only_uses_synthesis_mode(monkeypatch, tmp_path) 
         assert "shellbrain read --json" not in input
         output_path = args[args.index("--output-last-message") + 1]
         with open(output_path, "w", encoding="utf-8") as handle:
-            handle.write('{"brief":{"summary":"Synthesized from pack"}}')
+            handle.write(
+                '{"brief": {"summary": "Synthesized from pack", "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "gaps": [], "next_checks": []}}'
+            )
         return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
 
     monkeypatch.setattr(
@@ -153,14 +152,16 @@ def test_codex_runner_synthesis_only_uses_synthesis_mode(monkeypatch, tmp_path) 
     )
 
     assert result.status == "ok"
-    assert result.brief == {"summary": "Synthesized from pack"}
+    assert {k: v for k, v in result.brief.items() if v} == {
+        "summary": "Synthesized from pack"
+    }
 
 
 def test_inner_agent_output_parser_accepts_json_fenced_brief() -> None:
     """Output parser should accept common fenced JSON responses."""
 
     brief = parse_inner_agent_brief_output(
-        '```json\n{"brief":{"summary":"Context found","gaps":[]}}\n```'
+        '```json\n{"brief": {"summary": "Context found", "gaps": [], "constraints": [], "known_traps": [], "prior_cases": [], "concept_orientation": [], "anchors": [], "conflicts": [], "next_checks": []}}\n```'
     )
 
     assert brief["summary"] == "Context found"
@@ -221,54 +222,6 @@ def test_build_knowledge_runner_uses_build_knowledge_mode(
     assert result.capture_quality == "estimated"
 
 
-def test_teach_knowledge_runner_uses_teach_mode(monkeypatch, tmp_path) -> None:
-    """Codex teach_knowledge runs with the explicit teaching inner-agent mode."""
-
-    def _fake_which(command: str) -> str:
-        assert command == "codex"
-        return "/usr/bin/codex"
-
-    def _fake_run(args, *, input, text, capture_output, timeout, check, env):
-        assert "teaching_text" in input
-        del text, capture_output, timeout, check
-        assert env["SHELLBRAIN_INNER_AGENT_MODE"] == "teach"
-        assert env["SHELLBRAIN_KNOWLEDGE_BUILD_RUN_ID"] == "run-1"
-        assert "SHELLBRAIN_DB_ADMIN_DSN" not in env
-        output_path = args[args.index("--output-last-message") + 1]
-        assert args[args.index("--ask-for-approval") + 1] == "never"
-        assert args[args.index("--sandbox") + 1] == "danger-full-access"
-        assert 'model_reasoning_effort="medium"' in args
-        with open(output_path, "w", encoding="utf-8") as handle:
-            handle.write(
-                '{"status":"ok","run_summary":"Stored teaching.",'
-                '"write_count":1,"skipped_items":[],'
-                '"read_trace":{"commands":[]},"code_trace":{"files":[]}}'
-            )
-        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
-
-    monkeypatch.setenv("SHELLBRAIN_DB_ADMIN_DSN", "postgresql://admin")
-    monkeypatch.setattr(
-        "app.infrastructure.host_apps.inner_agents.codex_cli.shutil.which",
-        _fake_which,
-    )
-    monkeypatch.setattr(
-        "app.infrastructure.host_apps.inner_agents.codex_cli.subprocess.run",
-        _fake_run,
-    )
-    runner = CodexCliInnerAgentRunner(command="codex")
-
-    result = runner.run_teach_knowledge(
-        _teach_knowledge_request(repo_root=str(tmp_path))
-    )
-
-    assert result.status == "ok"
-    assert result.write_count == 1
-    assert result.run_summary == "Stored teaching."
-    assert result.input_tokens is not None
-    assert result.output_tokens is not None
-    assert result.capture_quality == "estimated"
-
-
 def test_build_knowledge_output_parser_accepts_no_write_skips() -> None:
     """Parser should accept valid no-write builder output."""
 
@@ -290,7 +243,7 @@ def test_recall_provider_requires_an_evidence_pack_and_brief_envelope() -> None:
         InnerAgentRunRequest.model_validate(payload)
     with pytest.raises(ValidationError, match="deterministic_pack"):
         InnerAgentRunRequest.model_validate({**payload, "deterministic_pack": None})
-    with pytest.raises(InnerAgentOutputParseError, match="object brief"):
+    with pytest.raises(InnerAgentOutputParseError, match="valid brief"):
         parse_inner_agent_brief_output('{"summary":"Missing the brief envelope"}')
 
 
@@ -422,10 +375,7 @@ def test_build_knowledge_prompt_defines_authority_and_readiness() -> None:
 def test_knowledge_prompts_require_clear_targeted_writing() -> None:
     """Automatic learning and explicit teaching should receive the same writing rules."""
 
-    for prompt in (
-        render_build_knowledge_prompt(_build_knowledge_request()),
-        render_teach_knowledge_prompt(_teach_knowledge_request()),
-    ):
+    for prompt in (render_build_knowledge_prompt(_build_knowledge_request()),):
         assert "Write one focused lesson per memory." in prompt
         assert "Use active voice." in prompt
         assert "Use one term for one meaning." in prompt
@@ -444,67 +394,6 @@ def test_build_knowledge_prompt_targets_repo_root_when_available(tmp_path) -> No
     assert f"shellbrain --repo-root {tmp_path} memory add --json" in prompt
     assert f"shellbrain --repo-root {tmp_path} concept update --json" in prompt
     assert f"shellbrain --repo-root {tmp_path} scenario record --json" in prompt
-
-
-def test_teach_knowledge_prompt_is_separate_and_immediate(tmp_path) -> None:
-    """Teach prompt should not reuse the session build protocol."""
-
-    prompt = render_teach_knowledge_prompt(
-        _teach_knowledge_request(repo_root=str(tmp_path))
-    )
-
-    assert "# IDENTITY" in prompt
-    assert "teach_knowledge" in prompt
-    assert "teaching text is already the evidence" in prompt
-    assert "Do not run the session build_knowledge" in prompt
-    assert "shellbrain events --json" not in prompt
-    assert "scenario record --json" not in prompt
-    assert "Forbidden: `shellbrain events`, `shellbrain scenario record`" in prompt
-    assert "teaching_event_id" in prompt
-    assert "teaching-evt-1" in prompt
-    assert f"shellbrain --repo-root {tmp_path} read --json" in prompt
-    assert f"shellbrain --repo-root {tmp_path} memory add --json" in prompt
-    assert f"shellbrain --repo-root {tmp_path} concept update --json" in prompt
-    assert "Run the exact `first_command`" not in prompt
-    assert "Segment the episode into memory boundaries" not in prompt
-    assert "Concept graph records:" in prompt
-    assert "definition, behavior, invariant" in prompt
-    assert "contains, involves" in prompt
-    assert "Use memory links for concept-to-memory bridges" in prompt
-    assert "created_by `manual`" in prompt
-    assert "Use current_problem only to interpret" in prompt
-    assert "Run a targeted `read` for each teaching topic" in prompt
-    assert "leave unchecked topics as evidence" in prompt
-    assert "Prefer updating aliases or scope_note" in prompt
-    assert 'source_kind":"transcript_event' in prompt
-    assert "memory update` sparingly" in prompt
-    assert "stale or disputed item is a concept claim" in prompt
-    assert "Do not mark historically true memories wrong" in " ".join(prompt.split())
-    assert "You may write Shellbrain only through:" in prompt
-    assert "`shellbrain memory add`" in prompt
-    assert "`shellbrain concept update`" in prompt
-    assert (
-        "Before `add_relation`, ensure both subject and object concepts exist" in prompt
-    )
-    assert "not framed as a revision" in prompt
-    assert (
-        "Write both a memory and a concept claim only when each has independent future"
-        in prompt
-    )
-    assert "multiple independent durable instructions" in prompt
-    assert "Prefer pytest-style tests" in prompt
-    assert "Failed deposit address lookups must not be cached" in prompt
-    assert "Concept container with scope and alias" in prompt
-    assert '"type":"add_concept"' in prompt
-    assert '"aliases":["deposit lookup","depository lookup"]' in prompt
-    assert (
-        "Concept relation when the teaching explicitly relates two concepts" in prompt
-    )
-    assert '"type":"add_relation"' in prompt
-    assert "Grounding after narrow verification of a named anchor" in prompt
-    assert '"type":"add_grounding"' in prompt
-    assert "Concept-memory link when the memory explains the concept" in prompt
-    assert '"type":"link_memory"' in prompt
 
 
 def _request(
@@ -548,35 +437,48 @@ def _build_knowledge_request(
     )
 
 
-def _teach_knowledge_request(
-    *, repo_root: str = "/tmp/repo"
-) -> TeachKnowledgeAgentRequest:
-    return TeachKnowledgeAgentRequest(
-        run_id="run-1",
-        provider="codex",
-        model="gpt-5.4-mini",
-        reasoning="medium",
-        timeout_seconds=600,
-        repo_id="repo-a",
-        repo_root=repo_root,
-        episode_id="episode-1",
-        teaching_event_id="teaching-evt-1",
-        teaching_event_seq=4,
-        teaching_text="Startup wires dependencies but should not own workflow behavior.",
-        current_problem={
-            "goal": "record architecture preference",
-            "surface": "startup",
-            "obstacle": "agents may put behavior in startup",
-            "hypothesis": "store a preference",
-        },
-        max_shellbrain_reads=6,
-        max_code_files=5,
-        max_write_commands=12,
-    )
-
-
 def _disabled_feature(args: list[str], feature: str) -> bool:
     return any(
         left == "--disable" and right == feature
         for left, right in zip(args, args[1:], strict=False)
     )
+
+
+def test_synthesis_resolves_similar_case_endpoints_without_mutating_input():
+    """Relationship text stays paired even when candidate order differs."""
+    import copy
+    import json
+
+    pack = {
+        "memories": [
+            {"id": "s2", "text": "Free disk space"},
+            {"id": "p1", "text": "Writes time out with a lock held"},
+            {"id": "p2", "text": "Writes time out with a full disk"},
+            {"id": "s1", "text": "Release the lock"},
+        ],
+        "memory_relations": [
+            {
+                "subject_memory_id": "p2",
+                "object_memory_id": "s2",
+                "predicate": "solved_by",
+                "status": "maybe_stale",
+            },
+            {
+                "subject_memory_id": "p1",
+                "object_memory_id": "s1",
+                "predicate": "solved_by",
+                "status": "active",
+            },
+        ],
+    }
+    original = copy.deepcopy(pack)
+    prompt = render_build_context_synthesis_prompt(_request(deterministic_pack=pack))
+    payload = json.loads(
+        next(line for line in prompt.splitlines() if line.startswith('{"budgets"'))
+    )
+    cases = payload["deterministic_graph_pack"]["memory_relations"]
+    assert cases[0]["subject_text"] == "Writes time out with a full disk"
+    assert cases[0]["object_text"] == "Free disk space"
+    assert cases[0]["status"] == "maybe_stale"
+    assert cases[1]["object_text"] == "Release the lock"
+    assert pack == original

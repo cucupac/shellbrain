@@ -121,6 +121,7 @@ def test_entrypoints_do_not_import_infrastructure_directly() -> None:
 def test_non_bootstrap_entrypoints_do_not_import_startup() -> None:
     allowed_startup_importers = {
         "app/entrypoints/cli/main.py",
+        "app/entrypoints/bootstrap.py",
         "app/entrypoints/jobs/episode_sync.py",
     }
     violations: list[str] = []

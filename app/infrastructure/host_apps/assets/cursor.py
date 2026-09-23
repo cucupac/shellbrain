@@ -15,8 +15,11 @@ from app.infrastructure.host_apps.assets.packaged_assets import packaged_asset_r
 from app.infrastructure.host_apps.assets.paths import default_cursor_home
 
 PRIMARY_CURSOR_SKILL_NAME = "shellbrain"
-CURSOR_SKILL_NAMES = ("shellbrain", "shellbrain-usage-review")
-LEGACY_CURSOR_SKILL_NAMES = ("shellbrain-session-start",)
+CURSOR_SKILL_NAMES = ("shellbrain",)
+LEGACY_CURSOR_SKILL_NAMES = (
+    "shellbrain-usage-review",
+    "shellbrain-session-start",
+)
 
 
 def install_cursor_assets(*, force: bool, render_install_status) -> list[str]:

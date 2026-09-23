@@ -40,7 +40,7 @@ def _write_fake_python(
     fake_python = fake_bin / "python3.13"
     shellbrain_stub = (
         "#!/usr/bin/env bash\n"
-        'if [ "$1" = "init" ]; then\n'
+        'if [ "${0##*/}" = "_shellbrain-bootstrap" ]; then\n'
         f"  touch {str(marker_path)!r}\n"
         f"  [ -n {init_stdout!r} ] && printf '%s\\n' {init_stdout!r}\n"
         f"  [ -n {init_stderr!r} ] && printf '%s\\n' {init_stderr!r} >&2\n"
@@ -75,6 +75,9 @@ if len(sys.argv) >= 3 and sys.argv[1:3] == ["-m", "pip"]:
     shellbrain = user_bin / "shellbrain"
     shellbrain.write_text({shellbrain_stub!r}, encoding="utf-8")
     shellbrain.chmod(0o755)
+    bootstrap = user_bin / "_shellbrain-bootstrap"
+    bootstrap.write_text(shellbrain.read_text())
+    bootstrap.chmod(0o755)
     print("stub pip install")
     raise SystemExit(0)
 
@@ -364,7 +367,7 @@ def test_install_script_should_delegate_storage_choice_to_init_when_docker_is_mi
 
     assert completed.returncode == 0
     assert marker_path.exists()
-    assert "shellbrain init will ask how it should store data." in completed.stdout
+    assert "Setup will ask how it should store data." in completed.stdout
     assert (
         "default: let shellbrain set up local PostgreSQL + pgvector for you."
         in completed.stdout
@@ -392,7 +395,7 @@ def test_install_script_should_not_block_init_when_the_docker_daemon_is_unreacha
 
     assert completed.returncode == 0
     assert marker_path.exists()
-    assert "shellbrain init will ask how it should store data." in completed.stdout
+    assert "Setup will ask how it should store data." in completed.stdout
     assert (
         "advanced: use an existing PostgreSQL + pgvector database." in completed.stdout
     )
@@ -462,10 +465,10 @@ def test_install_script_should_print_absolute_recovery_guidance_when_init_fails(
     assert completed.returncode == 12
     assert marker_path.exists()
     assert "Outcome: blocked_dependency" in completed.stdout
-    assert "shellbrain init did not complete." in completed.stdout
+    assert "Shellbrain setup did not complete." in completed.stdout
     assert f"shellbrain is installed at: {expected_cli}" in completed.stdout
     assert "your current shell may not have reloaded PATH yet." in completed.stdout
-    assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
+    assert f'  retry setup with: "{expected_cli}" upgrade' in completed.stdout
     assert (
         "after bootstrap succeeds, open a new terminal to use shellbrain by name."
         in completed.stdout
@@ -493,9 +496,9 @@ def test_upgrade_script_should_print_absolute_recovery_guidance_when_init_fails(
 
     assert completed.returncode == 12
     assert marker_path.exists()
-    assert "shellbrain init did not complete." in completed.stdout
+    assert "Shellbrain setup did not complete." in completed.stdout
     assert f"shellbrain is installed at: {expected_cli}" in completed.stdout
-    assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
+    assert f'  retry setup with: "{expected_cli}" upgrade' in completed.stdout
     assert "restart your terminal, then run: shellbrain init" not in completed.stdout
 
 
@@ -552,5 +555,5 @@ def test_upgrade_script_should_fail_when_ready_machine_maintenance_fails(
     assert marker_path.exists()
     assert "machine already initialized — running maintenance." in completed.stdout
     assert "Outcome: blocked_conflict" in completed.stdout
-    assert "shellbrain init did not complete." in completed.stdout
-    assert f'  rerun bootstrap with: "{expected_cli}" init' in completed.stdout
+    assert "Shellbrain setup did not complete." in completed.stdout
+    assert f'  retry setup with: "{expected_cli}" upgrade' in completed.stdout
