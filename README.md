@@ -4,7 +4,7 @@
 
 <h3 align="center">ShellBrain</h3>
 
-<p align="center">Long-term Memory for AI Agents.</p>
+<p align="center">Long-term Memory for AI.</p>
 
 ShellBrain uses case-based reasoning and a self-managing concept graph as long-term memory for software engineering.
 
