@@ -39,7 +39,7 @@ shellbrain upgrade
 
 ShellBrain stores evidence and two forms of reusable knowledge:
 
-- **Episodic Knowledge.** It stores prompts, responses, and tool calls.
+- **Episodic Memory.** It stores prompts, responses, and tool calls.
 - **Case-Based Memory.** Problems, solutions, and failed attempts are structured and stored.
 - **Concept Graph.** It connects claims, relations, and implementations.
 
