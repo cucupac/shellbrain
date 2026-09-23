@@ -53,7 +53,7 @@ Memories and concepts link directly to supporting evidence. The code is the sour
 
 Working agents run `shellbrain recall` for long-term memory related to their current task.
 
-Recall combines BM25, vector similarity, and explicit graph associations--and then summarizes using an LLM.
+Recall combines BM25, vector similarity, and explicit graph associations.
 
 ```bash
 shellbrain recall "What is ShellBrain, and how does it help a working coding agent?"
