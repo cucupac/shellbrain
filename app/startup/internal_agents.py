@@ -107,7 +107,7 @@ def _resolve_build_context_settings(config: InternalAgentsConfig) -> InnerAgentS
     settings = config.build_context.model_copy(update={"provider": provider})
     if provider == "inception":
         return settings.model_copy(
-            update={"model": "mercury-2.5", "reasoning": "low", "timeout_seconds": 10}
+            update={"model": "mercury-2.5", "reasoning": "instant", "timeout_seconds": 10}
         )
     return _resolve_settings(config, settings)
 

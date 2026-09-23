@@ -65,6 +65,7 @@ def test_missing_key_does_not_break_shared_dependencies(monkeypatch):
     assert dependencies.shadow_git_store is not None
     settings = dependencies.build_context_settings
     assert settings.model == "mercury-2.5" and settings.timeout_seconds == 10
+    assert settings.reasoning == "instant"
     monkeypatch.setenv("INCEPTION_API_KEY", "test-key")
     assert isinstance(
         get_build_context_inner_agent_runner(settings), InceptionApiInnerAgentRunner

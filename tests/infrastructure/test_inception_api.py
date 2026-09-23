@@ -18,7 +18,7 @@ def request():
         agent_name="build_context",
         provider="inception",
         model="mercury-2.5",
-        reasoning="low",
+        reasoning="instant",
         timeout_seconds=10,
         max_brief_tokens=500,
         query="Fix write timeouts",
@@ -65,7 +65,7 @@ def test_request_and_usage(monkeypatch):
         assert req.full_url == "https://api.inceptionlabs.ai/v1/chat/completions"
         assert req.get_header("Authorization") == "Bearer test-key"
         assert timeout == 10
-        assert payload["reasoning_effort"] == "low"
+        assert payload["reasoning_effort"] == "instant"
         assert payload["max_completion_tokens"] > 500
         assert payload["response_format"]["type"] == "json_schema"
         assert payload["response_format"]["json_schema"]["strict"] is True
@@ -74,6 +74,7 @@ def test_request_and_usage(monkeypatch):
     monkeypatch.setattr(inception_api, "urlopen", send)
     result = InceptionApiInnerAgentRunner(api_key="test-key").run(request())
     assert result.status == "ok" and not result.fallback_used
+    assert result.reasoning == "instant"
     assert result.input_tokens == 200
     assert result.output_tokens == 80
     assert result.reasoning_output_tokens == 30

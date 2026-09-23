@@ -13,7 +13,9 @@ class _StrictModel(BaseModel):
 
 InnerAgentName = Literal["build_context", "build_knowledge"]
 InnerAgentProviderName = str
-InnerAgentReasoningLevel = Literal["none", "minimal", "low", "medium", "high", "xhigh"]
+InnerAgentReasoningLevel = Literal[
+    "none", "instant", "minimal", "low", "medium", "high", "xhigh"
+]
 TokenCaptureQuality = Literal["exact", "estimated"]
 InnerAgentRunStatus = Literal[
     "ok",
