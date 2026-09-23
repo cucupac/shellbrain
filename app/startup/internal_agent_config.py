@@ -73,7 +73,7 @@ def default_internal_agents_config() -> InternalAgentsConfig:
         ),
         build_knowledge=BuildKnowledgeSettings(
             provider="auto",
-            model="gpt-5.6-luna",
+            model="gpt-6-luna",
             reasoning="xhigh",
             timeout_seconds=600,
         ),

@@ -34,7 +34,7 @@ def test_packaged_defaults_preserve_inner_agent_settings() -> None:
     assert "fallback" not in settings["build_context"]
     assert "enabled" not in settings["build_knowledge"]
     assert "fallback" not in settings["build_knowledge"]
-    assert settings["build_knowledge"]["model"] == "gpt-5.6-luna"
+    assert settings["build_knowledge"]["model"] == "gpt-6-luna"
     assert settings["build_knowledge"]["reasoning"] == "xhigh"
     assert settings["build_knowledge"]["timeout_seconds"] == 600
     assert settings["build_knowledge"]["max_shellbrain_reads"] == 8
@@ -163,7 +163,7 @@ def test_startup_wires_codex_non_recall_runners(monkeypatch, runner_getter) -> N
 
 @pytest.mark.parametrize(
     ("settings_getter", "expected_model"),
-    ((get_build_knowledge_settings, "gpt-5.6-luna"),),
+    ((get_build_knowledge_settings, "gpt-6-luna"),),
 )
 def test_startup_preserves_codex_workflow_models(
     monkeypatch, settings_getter, expected_model: str

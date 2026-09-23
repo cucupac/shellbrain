@@ -256,7 +256,7 @@ def _codex_exec_args(
     ]
     for feature in _CODEX_DISABLED_FEATURES:
         args.extend(["--disable", feature])
-    if model == "gpt-5.6-luna":
+    if model in {"gpt-5.6-luna", "gpt-6-luna"}:
         args.extend(["-c", 'service_tier="fast"'])
     args.extend(
         [
