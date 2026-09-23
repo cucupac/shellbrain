@@ -6,7 +6,7 @@
 
 <p align="center">Long-term Memory for AI Agents.</p>
 
-ShellBrain carries useful lessons from one agent task to the next. It preserves decision reasons, failed approaches, product direction, and preferences that the resulting code does not explain.
+ShellBrain uses case-based reasoning and a self-managing concept graph as long-term memory for software engineering.
 
 ## Install
 
@@ -14,7 +14,7 @@ ShellBrain carries useful lessons from one agent task to the next. It preserves 
 curl -L shellbrain.ai/install | bash
 ```
 
-**Works for Codex, Claude Code, and Cursor.** The installer configures the runtime automatically. Repos register themselves on first use.
+**Works for Codex, Claude Code, and Cursor.**
 
 Requirements.
 - macOS or Linux, Python 3.11+, Docker for the managed local Postgres+pgvector runtime.
@@ -45,7 +45,7 @@ ShellBrain stores evidence and two forms of reusable knowledge:
 - **Empirical knowledge extracts concrete memories.** It organizes problems, solutions, failed tactics, facts, preferences, and changes in a semantic graph for **case-based reasoning**.
 - **Conceptual knowledge abstracts reusable ideas.** Its concept graph connects claims, relations, and implementations to empirical knowledge.
 
-Memories and concept claims link to supporting evidence. A concept can express a product principle without a duplicate memory. Current code remains the source of truth for implementation details.
+Memories and concepts link directly to supporting evidence. The code is the source of truth.
 
 ---
 
@@ -53,17 +53,15 @@ Memories and concept claims link to supporting evidence. A concept can express a
 
 ### Recall
 
-Working agents run `shellbrain recall` to get one compact brief for the current task.
+Working agents run `shellbrain recall` for long-term memory related to their current task.
 
-Recall and automatic learning use the same evidence selector. It combines BM25, vector similarity, and graph links. Learning agents receive the selected records. The recall agent can summarize them.
-
-Recall receives only the quoted query. Include the relevant task, failure, subsystem, or decision in the question.
+Recall combines BM25, vector similarity, and explicit graph associations--and then summarizes using an LLM.
 
 ```bash
 shellbrain recall "What is ShellBrain, and how does it help a working coding agent?"
 ```
 
-**Response format:**
+**Response:**
 
 ```json
 {
@@ -86,11 +84,11 @@ shellbrain recall "What is ShellBrain, and how does it help a working coding age
 }
 ```
 
-Recall selects an evidence pack in code, then asks an inner agent to summarize it. Source attribution comes from the selected records. Provider failures return a brief directly from that same pack.
+If there are no relevant memories, nothing is returned.
 
-### Recall provider
+### Recall Provider
 
-For faster recall, [get an Inception API key](https://platform.inceptionlabs.ai/dashboard/api-keys), replace `PASTE_YOUR_KEY_HERE`, and run once:
+For blazing fast recall for cheap, [get an Inception API key](https://platform.inceptionlabs.ai/dashboard/api-keys) and run:
 
 ```bash
 mkdir -p ~/.shellbrain
@@ -99,13 +97,7 @@ chmod 600 ~/.shellbrain/.env
 shellbrain admin recall provider inception
 ```
 
-Shellbrain loads the saved key automatically. Switch back with `shellbrain admin recall provider codex` (the default), or choose `claude`.
-
----
-
-## Repair
-
-Run `shellbrain upgrade` to repair an existing installation. Setup and schema migrations run automatically.
+Switch back with `shellbrain admin recall provider codex`, or choose `claude`.
 
 ---
 
