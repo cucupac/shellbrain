@@ -189,7 +189,7 @@ def test_concept_keyword_corpus_should_include_anchors_and_exclude_inactive_conc
 
     with uow_factory() as uow:
         rows = uow.concept_keyword_retrieval.list_concept_keyword_corpus(
-            repo_id="repo-a", query_terms=["deposit"], candidate_limit=10
+            repo_id="repo-a"
         )
 
     rows_by_id = {row["concept_id"]: row for row in rows}

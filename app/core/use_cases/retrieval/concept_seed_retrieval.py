@@ -17,7 +17,6 @@ from app.core.policies.retrieval.lexical_query import (
     normalize_lexical_text,
 )
 from app.core.ports.db.retrieval_repositories import (
-    IConceptKeywordRetrievalRepo,
     IConceptSemanticRetrievalRepo,
 )
 
@@ -25,7 +24,7 @@ from app.core.ports.db.retrieval_repositories import (
 def retrieve_concept_seeds(
     request_data: dict[str, Any],
     *,
-    concept_keyword_retrieval: IConceptKeywordRetrievalRepo | None,
+    concept_corpus: Sequence[dict[str, Any]],
     concept_semantic_retrieval: IConceptSemanticRetrievalRepo | None,
     query_vector: Sequence[float],
     query_model: str | None,
@@ -46,7 +45,7 @@ def retrieve_concept_seeds(
     )
     keyword = _keyword_concept_candidates(
         request_data,
-        concept_keyword_retrieval=concept_keyword_retrieval,
+        concept_corpus=concept_corpus,
         lexical_query=lexical_query,
         thresholds=thresholds,
         limit=limit,
@@ -81,19 +80,19 @@ def _semantic_concept_candidates(
 def _keyword_concept_candidates(
     request_data: dict[str, Any],
     *,
-    concept_keyword_retrieval: IConceptKeywordRetrievalRepo | None,
+    concept_corpus: Sequence[dict[str, Any]],
     lexical_query: LexicalQuery,
     thresholds: ThresholdSettings,
     limit: int,
 ) -> list[dict[str, Any]]:
-    if concept_keyword_retrieval is None:
-        return []
+    terms = lexical_query.terms
+    matching_rows = [
+        row
+        for row in concept_corpus
+        if any(term in str(row["text"]).lower() for term in terms)
+    ]
     candidates = _rank_concept_keyword_candidates(
-        concept_keyword_retrieval.list_concept_keyword_corpus(
-            repo_id=str(request_data["repo_id"]),
-            query_terms=lexical_query.terms,
-            candidate_limit=max(limit * 10, 100),
-        ),
+        (matching_rows or concept_corpus)[: max(limit * 10, 100)],
         lexical_query=lexical_query,
         mode=str(request_data["mode"]),
         limit=limit,

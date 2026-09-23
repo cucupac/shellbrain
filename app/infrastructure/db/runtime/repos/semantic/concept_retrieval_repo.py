@@ -33,8 +33,6 @@ class ConceptKeywordRetrievalRepo(IConceptKeywordRetrievalRepo):
         self,
         *,
         repo_id: str,
-        query_terms: Sequence[str] | None = None,
-        candidate_limit: int | None = None,
     ) -> Sequence[dict[str, Any]]:
         """Return one aggregate lexical document per active concept."""
 
@@ -70,15 +68,11 @@ class ConceptKeywordRetrievalRepo(IConceptKeywordRetrievalRepo):
         self._append_claim_parts(repo_id=repo_id, parts_by_id=parts_by_id)
         self._append_grounding_parts(repo_id=repo_id, parts_by_id=parts_by_id)
 
-        rows = [
+        return [
             {"concept_id": concept_id, "text": " ".join(parts_by_id[concept_id])}
             for concept_id in ordered_ids
             if parts_by_id[concept_id]
         ]
-        filtered_rows = _filter_candidate_rows(rows, query_terms=query_terms)
-        if candidate_limit is not None and candidate_limit > 0:
-            return filtered_rows[: int(candidate_limit)]
-        return filtered_rows
 
     def _append_alias_parts(
         self, *, repo_id: str, parts_by_id: dict[str, list[str]]
@@ -96,7 +90,9 @@ class ConceptKeywordRetrievalRepo(IConceptKeywordRetrievalRepo):
                     concepts.c.repo_id == repo_id,
                     concepts.c.status == "active",
                 )
-                .order_by(concept_aliases.c.concept_id.asc(), concept_aliases.c.alias.asc())
+                .order_by(
+                    concept_aliases.c.concept_id.asc(), concept_aliases.c.alias.asc()
+                )
             )
             .mappings()
             .all()
@@ -241,20 +237,6 @@ def _extend_parts(parts: list[str], *values: object) -> None:
         text = str(value).strip()
         if text:
             parts.append(text)
-
-
-def _filter_candidate_rows(
-    rows: list[dict[str, Any]], *, query_terms: Sequence[str] | None
-) -> list[dict[str, Any]]:
-    if not query_terms:
-        return rows
-    terms = [str(term).strip().lower() for term in query_terms if str(term).strip()]
-    if not terms:
-        return rows
-    matched = [
-        row for row in rows if any(term in str(row["text"]).lower() for term in terms)
-    ]
-    return matched or rows
 
 
 def _locator_scalars(value: object) -> tuple[str, ...]:

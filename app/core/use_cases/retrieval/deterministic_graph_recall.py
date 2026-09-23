@@ -143,6 +143,7 @@ def build_deterministic_graph_pack(
     concept_bundles = uow.concepts.get_concept_bundles(
         repo_id=request.repo_id,
         concept_ids=list(concept_candidates),
+        include_evidence=False,
     )
     selected_concepts, concept_trace = _select_concepts(
         request=request,
@@ -473,6 +474,22 @@ def _expand_structural_memory_relations(
 ) -> dict[str, Any]:
     """Add canonical structural memory-relation neighbors to recall candidates."""
 
+    rows_by_anchor = defaultdict(list)
+    rows = uow.read_policy.list_structural_memory_relation_rows(
+        repo_id=request.repo_id,
+        include_global=request.include_global,
+        anchor_memory_ids=tuple(memory_candidates),
+        kinds=request.kinds or list(MATURE_MEMORY_KIND_VALUES),
+        predicates=(
+            *STRUCTURAL_PROBLEM_RELATION_PREDICATES,
+            *STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
+        ),
+    )
+    for row in rows:
+        for anchor_id in {row["subject_memory_id"], row["object_memory_id"]}:
+            if anchor_id in memory_candidates:
+                rows_by_anchor[anchor_id].append(row)
+
     discovered: list[dict[str, Any]] = []
     for anchor_memory_id in tuple(memory_candidates):
         anchor_entry = memory_candidates[anchor_memory_id]
@@ -481,13 +498,11 @@ def _expand_structural_memory_relations(
             STRUCTURAL_PROBLEM_RELATION_PREDICATES,
             STRUCTURAL_FACT_UPDATE_RELATION_PREDICATES,
         ):
-            rows = uow.read_policy.list_structural_memory_relation_rows(
-                repo_id=request.repo_id,
-                include_global=request.include_global,
-                anchor_memory_id=anchor_memory_id,
-                kinds=request.kinds or list(MATURE_MEMORY_KIND_VALUES),
-                predicates=predicates,
-            )
+            rows = [
+                row
+                for row in rows_by_anchor[anchor_memory_id]
+                if row["predicate"] in predicates
+            ]
             for row in rows:
                 key = (
                     row["subject_memory_id"],
@@ -578,11 +593,14 @@ def _discover_concepts(
             memory_entry["concept_refs"].add(concept_id)
             memory_entry["link_roles"].add(role)
 
+    concept_corpus = uow.concept_keyword_retrieval.list_concept_keyword_corpus(
+        repo_id=request.repo_id
+    )
     for lane in lanes:
         query_vector, query_model = embeddings[lane.name]
         seeds = retrieve_concept_seeds(
             _lane_request_data(request=request, query=lane.query),
-            concept_keyword_retrieval=uow.concept_keyword_retrieval,
+            concept_corpus=concept_corpus,
             concept_semantic_retrieval=uow.concept_semantic_retrieval,
             query_vector=query_vector,
             query_model=query_model,
@@ -733,6 +751,7 @@ def _traverse_selected_concepts(
             uow.concepts.get_concept_bundles(
                 repo_id=request.repo_id,
                 concept_ids=missing_ids,
+                include_evidence=False,
             )
         )
     for neighbor_id in unique_neighbor_ids:
