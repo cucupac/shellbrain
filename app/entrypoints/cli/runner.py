@@ -11,6 +11,7 @@ import sys
 from typing import Any, Sequence
 
 from app.entrypoints.cli.parser import build_parser
+from app.entrypoints.cli.presenters.output import print_result
 from app.entrypoints.cli.runtime import CliRuntime
 
 
@@ -116,7 +117,7 @@ def main(
                 _dispatch_operation_command(command, payload, context, runtime=runtime)
             ),
         )
-        print(json.dumps(result, separators=(",", ":")))
+        print_result(result, command=command)
         if result.get("status") == "error":
             return 1
         return 0
