@@ -19,7 +19,10 @@ from app.core.use_cases.memories.add import execute_create_memory
 from tests.operations._shared.id_generators import SequenceIdGenerator
 from app.infrastructure.db.runtime.engine import get_engine
 from app.infrastructure.embeddings.local_provider import (
-    SentenceTransformersEmbeddingProvider,
+    MODEL_REPOSITORY,
+    MODEL_REVISION,
+    MODEL_FILES,
+    OnnxEmbeddingProvider,
 )
 from app.infrastructure.db.runtime.models.episodes import episode_events, episodes
 from app.infrastructure.db.runtime.models.memories import memory_embeddings
@@ -76,7 +79,16 @@ def test_create_persists_memory_embedding_row() -> None:
             }
         )
 
-        provider = SentenceTransformersEmbeddingProvider(model="all-MiniLM-L6-v2")
+        from huggingface_hub import snapshot_download
+
+        cache = os.environ["HF_HOME"]
+        snapshot_download(
+            MODEL_REPOSITORY,
+            revision=MODEL_REVISION,
+            cache_dir=cache,
+            allow_patterns=list(MODEL_FILES),
+        )
+        provider = OnnxEmbeddingProvider(cache_folder=cache)
 
         with PostgresUnitOfWork(get_session_factory(engine)) as uow:
             uow.episodes.create_episode(

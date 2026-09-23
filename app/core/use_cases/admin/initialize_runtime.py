@@ -230,20 +230,21 @@ def run_initialize_runtime(
             schema_changed = ports.apply_schema_migrations(machine_config)
             mutated_machine = mutated_machine or schema_changed
 
-            if not maintenance_only:
-                machine_config = ports.update_bootstrap_state(
-                    machine_config,
-                    bootstrap_state=ports.bootstrap_state_provisioning,
-                    current_step="embeddings",
-                    last_error=None,
-                )
-                ports.save_machine_config(machine_config)
-                embedding_changed, machine_config = ports.prewarm_embeddings(
-                    machine_config,
-                    skip_model_download=skip_model_download,
-                )
-                ports.save_machine_config(machine_config)
-                mutated_machine = mutated_machine or embedding_changed
+            machine_config = ports.update_bootstrap_state(
+                machine_config,
+                bootstrap_state=ports.bootstrap_state_provisioning,
+                current_step="embeddings",
+                last_error=None,
+            )
+            ports.save_machine_config(machine_config)
+            embedding_changed, machine_config = ports.prewarm_embeddings(
+                machine_config,
+                skip_model_download=skip_model_download,
+            )
+            ports.save_machine_config(machine_config)
+            mutated_machine = mutated_machine or embedding_changed
+            if machine_config.embeddings.readiness_state == "failed":
+                raise InitDependencyError(machine_config.embeddings.last_error)
 
             machine_config = ports.update_bootstrap_state(
                 machine_config,

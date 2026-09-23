@@ -89,7 +89,7 @@ def build_fresh_machine_config(*, embeddings: dict[str, object]) -> MachineConfi
         ),
         backups=BackupState(root=str(get_machine_backups_dir()), mirror_root=None),
         embeddings=EmbeddingRuntimeState(
-            provider=str(embeddings.get("provider") or "sentence_transformers"),
+            provider=str(embeddings.get("provider") or "onnxruntime"),
             model=str(embeddings.get("model") or "all-MiniLM-L6-v2"),
             model_revision=None,
             backend_version=None,
@@ -288,7 +288,7 @@ def recover_machine_config_from_docker(
         ),
         backups=BackupState(root=str(get_machine_backups_dir()), mirror_root=None),
         embeddings=EmbeddingRuntimeState(
-            provider="sentence_transformers",
+            provider="onnxruntime",
             model=str(embeddings.get("model") or "all-MiniLM-L6-v2"),
             model_revision=None,
             backend_version=None,

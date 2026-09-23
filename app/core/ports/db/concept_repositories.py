@@ -94,6 +94,16 @@ class IConceptsRepo(ABC):
         """This method returns one concept plus directly related graph records."""
 
     @abstractmethod
+    def get_concept_bundles(
+        self,
+        *,
+        repo_id: str,
+        concept_ids: Sequence[str],
+        include_lifecycle_events: bool = False,
+    ) -> dict[str, dict[str, Any]]:
+        """Return bundles keyed by concept ID; omit missing concepts."""
+
+    @abstractmethod
     def find_concepts_for_memory_ids(
         self, *, repo_id: str, memory_ids: Sequence[str]
     ) -> Sequence[dict[str, Any]]:

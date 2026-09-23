@@ -189,10 +189,14 @@ def test_recall_preserves_case_pairings(monkeypatch, seed_both_endpoints, exclud
         lambda **kw: [
             {
                 **row,
-                "visible_memory_ids": (row["subject_memory_id"], row["object_memory_id"]),
+                "visible_memory_ids": (
+                    row["subject_memory_id"],
+                    row["object_memory_id"],
+                ),
             }
             for row in relations
-            if kw["anchor_memory_id"] in (row["subject_memory_id"], row["object_memory_id"])
+            if kw["anchor_memory_id"]
+            in (row["subject_memory_id"], row["object_memory_id"])
             and row["predicate"] in kw["predicates"]
         ],
     )
@@ -209,19 +213,27 @@ def test_recall_preserves_case_pairings(monkeypatch, seed_both_endpoints, exclud
     expected = [
         {**row, "validated_at": row["validated_at"].isoformat()}
         for row in relations
-        if excluded != "budget" and (excluded != "hidden" or row["object_memory_id"] != "s2")
+        if excluded != "budget"
+        and (excluded != "hidden" or row["object_memory_id"] != "s2")
     ]
     assert sorted(pack["memory_relations"], key=str) == sorted(expected, key=str)
     synthesis = synthesis_pack_from_graph_pack(pack)
     read = execute_read_memory(request, uow).data["pack"]
-    assert synthesis["memory_relations"] == read["memory_relations"] == pack["memory_relations"]
+    assert (
+        synthesis["memory_relations"]
+        == read["memory_relations"]
+        == pack["memory_relations"]
+    )
     cases = deterministic_brief_from_graph_pack(pack)["prior_cases"]
     for row in expected:
         subject = uow.memories._memories[row["subject_memory_id"]].text
         target = uow.memories._memories[row["object_memory_id"]].text
         assert any(
-            subject in case and target in case and row["predicate"] in case
-            and row["status"] in case and row["validated_at"] in case
+            subject in case
+            and target in case
+            and row["predicate"] in case
+            and row["status"] in case
+            and row["validated_at"] in case
             for case in cases
         )
     assert not any("lock is held" in case and "Free disk" in case for case in cases)
@@ -241,15 +253,31 @@ def _request(*, query: str) -> MemoryReadRequest:
 @pytest.mark.parametrize("linked_solutions", [(0, 1, 2), (5,)])
 def test_fast_brief_preserves_case_order_without_duplicate_solutions(linked_solutions):
     memories = [
-        {"id": f"s{i}", "kind": "solution", "text": f"Fix {i}.", "currentness": "current"}
+        {
+            "id": f"s{i}",
+            "kind": "solution",
+            "text": f"Fix {i}.",
+            "currentness": "current",
+        }
         for i in range(6)
     ] + [
-        {"id": f"p{i}", "kind": "problem", "text": f"Problem {i}.", "currentness": "current"}
+        {
+            "id": f"p{i}",
+            "kind": "problem",
+            "text": f"Problem {i}.",
+            "currentness": "current",
+        }
         for i in linked_solutions
     ]
     relations = [
-        {"subject_memory_id": f"p{i}", "predicate": "solved_by", "object_memory_id": f"s{i}",
-         "status": "active", "confidence": None, "validated_at": None}
+        {
+            "subject_memory_id": f"p{i}",
+            "predicate": "solved_by",
+            "object_memory_id": f"s{i}",
+            "status": "active",
+            "confidence": None,
+            "validated_at": None,
+        }
         for i in reversed(linked_solutions)
     ]
     cases = deterministic_brief_from_graph_pack(
@@ -372,6 +400,14 @@ class _FakeConcepts:
     def find_concepts_for_memory_ids(self, **kwargs):
         del kwargs
         return []
+
+    def get_concept_bundles(self, *, repo_id, concept_ids):
+        return {
+            key: bundle
+            for key in concept_ids
+            if (bundle := self.get_concept_bundle(repo_id=repo_id, concept_ref=key))
+            is not None
+        }
 
     def get_concept_bundle(self, *, repo_id: str, concept_ref: str):
         if repo_id != "repo-a":
@@ -500,7 +536,7 @@ class _ArchivedFakeConcepts(_FakeConcepts):
         }
 
 
-class _NoFakeConcepts:
+class _NoFakeConcepts(_FakeConcepts):
     def find_concepts_for_memory_ids(self, **kwargs):
         del kwargs
         return []
@@ -613,7 +649,11 @@ def test_historical_facets_do_not_lower_active_concept_rank(
     request = _request(query="TimeoutError in app/core/settings.py")
     candidates = {"c-db": {"score": 1.0, "why": []}}
     before, _ = _select_concepts(
-        request=request, concept_candidates=candidates, uow=uow
+        request=request,
+        concept_candidates=candidates,
+        concept_bundles=uow.concepts.get_concept_bundles(
+            repo_id=request.repo_id, concept_ids=list(candidates)
+        ),
     )
     get_bundle = uow.concepts.get_concept_bundle
 
@@ -634,7 +674,13 @@ def test_historical_facets_do_not_lower_active_concept_rank(
         return bundle
 
     monkeypatch.setattr(uow.concepts, "get_concept_bundle", with_history)
-    after, _ = _select_concepts(request=request, concept_candidates=candidates, uow=uow)
+    after, _ = _select_concepts(
+        request=request,
+        concept_candidates=candidates,
+        concept_bundles=uow.concepts.get_concept_bundles(
+            repo_id=request.repo_id, concept_ids=list(candidates)
+        ),
+    )
     assert [entry["bundle"]["concept"].slug for entry in after] == ["db-admin"]
     assert after[0]["score"] == before[0]["score"]
     pack = build_deterministic_graph_pack(request=request, uow=uow)

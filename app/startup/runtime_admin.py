@@ -337,4 +337,4 @@ def _recover_machine_config() -> MachineConfig | None:
 def _runtime_embeddings_config() -> dict[str, object]:
     """Return runtime embedding config for adapter construction."""
 
-    return {"provider": "sentence_transformers", "model": DEFAULT_EMBEDDING_MODEL}
+    return {"provider": "onnxruntime", "model": DEFAULT_EMBEDDING_MODEL}
