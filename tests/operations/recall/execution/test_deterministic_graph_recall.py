@@ -195,8 +195,8 @@ def test_recall_preserves_case_pairings(monkeypatch, seed_both_endpoints, exclud
                 ),
             }
             for row in relations
-            if kw["anchor_memory_id"]
-            in (row["subject_memory_id"], row["object_memory_id"])
+            if set(kw["anchor_memory_ids"])
+            & {row["subject_memory_id"], row["object_memory_id"]}
             and row["predicate"] in kw["predicates"]
         ],
     )
@@ -401,7 +401,7 @@ class _FakeConcepts:
         del kwargs
         return []
 
-    def get_concept_bundles(self, *, repo_id, concept_ids):
+    def get_concept_bundles(self, *, repo_id, concept_ids, include_evidence):
         return {
             key: bundle
             for key in concept_ids
@@ -554,7 +554,7 @@ class _EmptyFakeReadPolicy:
 
 class _StructuralFakeReadPolicy:
     def list_structural_memory_relation_rows(self, **kwargs):
-        if kwargs["anchor_memory_id"] != "mem-direct":
+        if "mem-direct" not in kwargs["anchor_memory_ids"]:
             return []
         if "explained_by_change" not in set(kwargs["predicates"]):
             return []
@@ -652,7 +652,9 @@ def test_historical_facets_do_not_lower_active_concept_rank(
         request=request,
         concept_candidates=candidates,
         concept_bundles=uow.concepts.get_concept_bundles(
-            repo_id=request.repo_id, concept_ids=list(candidates)
+            repo_id=request.repo_id,
+            concept_ids=list(candidates),
+            include_evidence=False,
         ),
     )
     get_bundle = uow.concepts.get_concept_bundle
@@ -678,7 +680,9 @@ def test_historical_facets_do_not_lower_active_concept_rank(
         request=request,
         concept_candidates=candidates,
         concept_bundles=uow.concepts.get_concept_bundles(
-            repo_id=request.repo_id, concept_ids=list(candidates)
+            repo_id=request.repo_id,
+            concept_ids=list(candidates),
+            include_evidence=False,
         ),
     )
     assert [entry["bundle"]["concept"].slug for entry in after] == ["db-admin"]
@@ -958,3 +962,19 @@ def test_learning_limit_bounds_all_memory_sources(limit):
     request = MemoryReadRequest(repo_id="repo-a", query="TimeoutError", limit=limit)
     pack = build_deterministic_graph_pack(request=request, uow=_FakeUow())
     assert len(pack["memories"]) == limit
+
+
+def test_concept_corpus_is_read_once_per_recall(monkeypatch):
+    uow = _FakeUow()
+    calls = []
+    monkeypatch.setattr(
+        uow.concept_keyword_retrieval,
+        "list_concept_keyword_corpus",
+        lambda **kwargs: calls.append(kwargs) or [],
+    )
+    request = _request(query="TimeoutError in app/core/settings.py")
+    first = build_deterministic_graph_pack(request=request, uow=uow)
+    assert len(first["query_lanes"]) > 1
+    assert calls == [{"repo_id": "repo-a"}]
+    build_deterministic_graph_pack(request=request, uow=uow)
+    assert len(calls) == 2

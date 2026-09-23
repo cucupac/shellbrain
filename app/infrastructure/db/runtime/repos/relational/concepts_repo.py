@@ -445,6 +445,7 @@ class ConceptsRepo(IConceptsRepo):
         return self.get_concept_bundles(
             repo_id=repo_id,
             concept_ids=[concept.id],
+            include_evidence=True,
             include_lifecycle_events=include_lifecycle_events,
         ).get(concept.id)
 
@@ -453,6 +454,7 @@ class ConceptsRepo(IConceptsRepo):
         *,
         repo_id: str,
         concept_ids: Sequence[str],
+        include_evidence: bool,
         include_lifecycle_events: bool = False,
     ) -> dict[str, dict[str, Any]]:
         """Fetch candidate bundles in a fixed number of repo-scoped queries."""
@@ -535,7 +537,7 @@ class ConceptsRepo(IConceptsRepo):
                 for concept_id in concept_ids_for_event:
                     bundles[concept_id]["lifecycle_events"].append(event)
                 owners[("lifecycle_event", event.id)].update(concept_ids_for_event)
-        if owners:
+        if include_evidence and owners:
             for row in self._unified_evidence_rows(
                 repo_id=repo_id,
                 targets=[(f"concept_{kind}", target_id) for kind, target_id in owners],

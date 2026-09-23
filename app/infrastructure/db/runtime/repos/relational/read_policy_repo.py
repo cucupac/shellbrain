@@ -26,11 +26,14 @@ class ReadPolicyRepo(IReadPolicyRepo):
         *,
         repo_id: str,
         include_global: bool,
-        anchor_memory_id: str,
+        anchor_memory_ids: Sequence[str],
         kinds: Sequence[str] | None,
         predicates: Sequence[str],
     ) -> Sequence[dict[str, Any]]:
-        """Return active structural relation rows touching an anchor."""
+        """Return active structural relation rows touching the anchors in stable order."""
+
+        if not anchor_memory_ids:
+            return []
 
         rows = (
             self._session.execute(
@@ -41,22 +44,40 @@ class ReadPolicyRepo(IReadPolicyRepo):
                     structural_memory_relations.c.status,
                     structural_memory_relations.c.confidence,
                     structural_memory_relations.c.validated_at,
-                ).where(
+                )
+                .where(
                     structural_memory_relations.c.repo_id == repo_id,
                     structural_memory_relations.c.predicate.in_(list(predicates)),
                     structural_memory_relations.c.status.in_(
                         list(POSITIVE_LIFECYCLE_STATUSES)
                     ),
                     or_(
-                        structural_memory_relations.c.subject_memory_id
-                        == anchor_memory_id,
-                        structural_memory_relations.c.object_memory_id
-                        == anchor_memory_id,
+                        structural_memory_relations.c.subject_memory_id.in_(
+                            anchor_memory_ids
+                        ),
+                        structural_memory_relations.c.object_memory_id.in_(
+                            anchor_memory_ids
+                        ),
                     ),
+                )
+                .order_by(
+                    structural_memory_relations.c.subject_memory_id,
+                    structural_memory_relations.c.predicate,
+                    structural_memory_relations.c.object_memory_id,
                 )
             )
             .mappings()
             .all()
+        )
+        visible_ids = self._visible_memory_ids(
+            repo_id=repo_id,
+            include_global=include_global,
+            kinds=kinds,
+            memory_ids=[
+                str(row[field])
+                for row in rows
+                for field in ("subject_memory_id", "object_memory_id")
+            ],
         )
         return [
             {
@@ -68,15 +89,8 @@ class ReadPolicyRepo(IReadPolicyRepo):
                 "validated_at": row["validated_at"],
                 "visible_memory_ids": tuple(
                     sorted(
-                        self._visible_memory_ids(
-                            repo_id=repo_id,
-                            include_global=include_global,
-                            kinds=kinds,
-                            memory_ids=(
-                                str(row["subject_memory_id"]),
-                                str(row["object_memory_id"]),
-                            ),
-                        )
+                        {str(row["subject_memory_id"]), str(row["object_memory_id"])}
+                        & visible_ids
                     )
                 ),
             }

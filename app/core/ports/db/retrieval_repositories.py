@@ -60,8 +60,6 @@ class IConceptKeywordRetrievalRepo(ABC):
         self,
         *,
         repo_id: str,
-        query_terms: Sequence[str] | None = None,
-        candidate_limit: int | None = None,
     ) -> Sequence[dict[str, Any]]:
         """This method returns active concept text rows for lexical ranking."""
 
@@ -75,8 +73,8 @@ class IReadPolicyRepo(ABC):
         *,
         repo_id: str,
         include_global: bool,
-        anchor_memory_id: str,
+        anchor_memory_ids: Sequence[str],
         kinds: Sequence[str] | None,
         predicates: Sequence[str],
     ) -> Sequence[dict[str, Any]]:
-        """Return structural relation rows touching an anchor plus visible participants."""
+        """Return structural relation rows touching the anchors plus visible participants."""

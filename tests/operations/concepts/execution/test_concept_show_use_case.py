@@ -370,10 +370,14 @@ def test_bulk_bundles_preserve_typed_evidence_lifecycle_and_repo_scope(uow_facto
         event.listen(connection, "before_cursor_execute", count)
         try:
             assert (
-                uow.concepts.get_concept_bundles(repo_id="repo-a", concept_ids=[]) == {}
+                uow.concepts.get_concept_bundles(
+                    include_evidence=True, repo_id="repo-a", concept_ids=[]
+                )
+                == {}
             )
             assert statements == []
             bundles = uow.concepts.get_concept_bundles(
+                include_evidence=True,
                 repo_id="repo-a",
                 concept_ids=["third", second_id, "missing", "foreign", first_id],
                 include_lifecycle_events=True,
@@ -381,6 +385,21 @@ def test_bulk_bundles_preserve_typed_evidence_lifecycle_and_repo_scope(uow_facto
         finally:
             event.remove(connection, "before_cursor_execute", count)
         assert len(statements) == 9
+        statements.clear()
+        event.listen(connection, "before_cursor_execute", count)
+        try:
+            lean_bundles = uow.concepts.get_concept_bundles(
+                repo_id="repo-a",
+                concept_ids=list(bundles),
+                include_evidence=False,
+                include_lifecycle_events=True,
+            )
+        finally:
+            event.remove(connection, "before_cursor_execute", count)
+        assert len(statements) == 8
+        assert lean_bundles == {
+            key: {**bundle, "evidence": []} for key, bundle in bundles.items()
+        }
         assert set(bundles) == {first_id, second_id, "third"}
         assert bundles[first_id]["relations"] == bundles[second_id]["relations"]
         assert bundles[first_id]["lifecycle_events"] == []
@@ -401,6 +420,7 @@ def test_bulk_bundles_preserve_typed_evidence_lifecycle_and_repo_scope(uow_facto
                 repo_id="repo-a", concept_ref=concept_id, include_lifecycle_events=True
             )
         assert bundles == uow.concepts.get_concept_bundles(
+            include_evidence=True,
             repo_id="repo-a",
             concept_ids=list(reversed(bundles)),
             include_lifecycle_events=True,

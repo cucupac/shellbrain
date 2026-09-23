@@ -99,6 +99,7 @@ class IConceptsRepo(ABC):
         *,
         repo_id: str,
         concept_ids: Sequence[str],
+        include_evidence: bool,
         include_lifecycle_events: bool = False,
     ) -> dict[str, dict[str, Any]]:
         """Return bundles keyed by concept ID; omit missing concepts."""

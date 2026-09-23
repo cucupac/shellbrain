@@ -66,6 +66,13 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
 
         ts_vector = func.to_tsvector(_ENGLISH_REGCONFIG, memories.c.text)
         ts_query = func.websearch_to_tsquery(_ENGLISH_REGCONFIG, query_string)
+        # Keep the broad visibility query from choosing a full text-parsing scan.
+        keyword_hits = (
+            select(memories.c.id)
+            .where(ts_vector.op("@@")(ts_query))
+            .cte("keyword_hits")
+            .prefix_with("MATERIALIZED")
+        )
         rank = func.ts_rank_cd(ts_vector, ts_query)
         stmt = (
             select(
@@ -79,7 +86,7 @@ class KeywordRetrievalRepo(IKeywordRetrievalRepo):
                     include_global=include_global,
                     kinds=kinds,
                 ),
-                ts_vector.op("@@")(ts_query),
+                memories.c.id.in_(select(keyword_hits.c.id)),
             )
             .order_by(desc(rank), memories.c.id.asc())
         )
