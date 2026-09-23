@@ -97,20 +97,6 @@ shellbrain admin recall provider inception
 
 Switch back with `shellbrain admin recall provider codex`, or choose `claude`.
 
-Tune recall in `~/.shellbrain/recall.yaml` (optional; these are the defaults):
-
-```yaml
-recall:
-  max_memories: 12
-  max_concepts: 4
-  max_neighbor_concepts: 2
-  max_claims_per_concept: 3
-  max_groundings_per_concept: 2
-  max_input_tokens: 8000
-```
-
-The input budget uses a byte-based token estimate. Settings affect recall synthesis only.
-
 
 ---
 
