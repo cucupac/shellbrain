@@ -39,9 +39,9 @@ shellbrain upgrade
 
 ShellBrain stores evidence and two forms of reusable knowledge:
 
-- **Episodic knowledge records evidence.** It stores prompts, agent steps, tool calls, and outputs from each session.
-- **Empirical knowledge extracts concrete memories.** It organizes problems, solutions, failed tactics, facts, preferences, and changes in a semantic graph for **case-based reasoning**.
-- **Conceptual knowledge abstracts reusable ideas.** Its concept graph connects claims, relations, and implementations to empirical knowledge.
+- **Episodic Knowledge.** It stores prompts, responses, and tool calls.
+- **Case-Based Memory.** Problems, solutions, and failed attempts are structured and stored.
+- **Concept Graph.** It connects claims, relations, and implementations.
 
 Memories and concepts link directly to supporting evidence. The code is the source of truth.
 
