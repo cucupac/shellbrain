@@ -1,172 +1,98 @@
 ---
 name: shellbrain
-description: Use when an agent should remember to ask Shellbrain for targeted recall at task start, subproblem changes, repeated failures, hypothesis changes, or closeout.
+description: Recall project knowledge, past decisions, failures, and preferences when they can help a coding task. Capture changed files before responding.
 ---
 
 # Shellbrain Recall Workflow
 
-## Purpose
+Use Shellbrain for remembered project knowledge. It can explain a system's purpose,
+past decisions, useful fixes, and constraints learned during earlier work.
 
-Shellbrain is a persistent memory system for agent work.
+## Choose the source
 
-As the working agent, your interface is:
+Use code search for current implementation: where a function lives, its parameters,
+callers, or present behavior. Use docs or the web for general technical information.
+Recall helps with project context that may be missing from those sources.
+
+| Need | Action |
+| --- | --- |
+| Find the quote endpoint | Search the repo. |
+| Understand a previous quote failure | Ask: "What past failures explain a quote returning 503 while the Swap API health check succeeds?" |
+| Prepare to change discovery | Ask: "What earlier problems or design decisions matter when changing the discovery-to-optimization handoff in compute_route?" |
+| Get project orientation | Ask about the named system's remembered purpose and responsibilities, then check current code. |
+
+A normal question is enough. Include the subject, your task or symptom, and what you need to learn.
+Do not invent a prior failure or guess the answer to make a query specific.
+
+## Recall
 
 ```bash
-shellbrain recall "<targeted natural-language question>"
+shellbrain recall "<self-contained question>"
 ```
 
-Recall returns a compact brief synthesized from prior memories, concepts, scenarios, and recent episode context. It is meant to reduce wasted exploration and help you decide where to look next.
+Recall receives only this query. It does not receive your conversation or previous recall questions.
+Name the subject again in follow-up questions. Include exact errors or symbols when known.
+Avoid vague questions such as "anything relevant?" or requests to solve the whole task.
 
-If you changed any files since your last user-facing response, run this exactly once after validation and immediately before your next user-facing response:
+Run from the target repo. From elsewhere, use:
 
 ```bash
-shellbrain snapshot
+shellbrain --repo-root /absolute/path/to/repo recall "<self-contained question>"
 ```
 
-Snapshot stores exact repo code state in repo-local shadow Git so the knowledge builder can later attach exact solution deltas to solved problem runs.
+Read **Memories** for useful knowledge and **Code** for locations to inspect.
+Concept claims can appear in Memories along with remembered cases.
+Verify current behavior, commands, and paths before relying on them.
+Preserve distinctions between proposals, completed changes, and verified results.
+An answer can be partial or outdated. Missing information does not prove a feature is absent.
+If recall finds nothing useful, continue with code and docs. A provider error is a failed lookup.
+Retry a query only when new context gives you a more specific question.
 
-Do not call Shellbrain internal commands directly. `read`, `events`, `memory`, `concept`, and `scenario` are for Shellbrain's internal agents.
+## When to consider recall
 
-## Quick Start
+Track `goal | surface | obstacle | hypothesis`.
+Emit one `SB:` line when this tuple changes, the same approach fails twice,
+an error repeats, you switch files or subsystems, you make an evidence-bearing decision,
+or you close out.
 
-Use `shellbrain recall` with a targeted query. Run `shellbrain upgrade` to repair an existing installation.
+When prior knowledge may help:
 
-If `shellbrain` is not found, do a one-time PATH check:
+`SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
+
+Then ask one focused question. Otherwise:
+
+`SB: skip | same signature | <one-line reason>`
+
+Continue without a recall call when you already have the needed evidence.
+
+## Capture changed files
+
+If you changed any files since your last user-facing response, run `shellbrain snapshot`
+exactly once after validation and immediately before your next user-facing response.
+Do this on every response cycle where files changed; skip only when no files changed.
+Use `--repo-root /absolute/path/to/repo` when outside the repo.
+
+Snapshot captures code state. The background knowledge builder uses session evidence
+and snapshots to record lessons and completed problem-solving runs.
+Do not manually write memories. `read`, `events`, `memory`, `concept`, and `scenario`
+are internal-agent commands; do not call them during working-agent tasks.
+
+## Repair
+
+Use `shellbrain upgrade` to repair installation. If the executable is missing,
+check the login profile once for your shell:
 
 ```bash
 zsh -lc 'source ~/.zprofile >/dev/null 2>&1; command -v shellbrain'
-```
-
-If the host shell is bash instead of zsh, use:
-
-```bash
 bash -lc 'source ~/.bash_profile >/dev/null 2>&1; command -v shellbrain'
 ```
 
-Once found, use plain `shellbrain ...`. Do not keep sourcing the login profile on every Shellbrain command.
-
-If the one-time login-shell retry still cannot find `shellbrain`, inspect Python's user script directory:
+Use the resolved executable or plain `shellbrain` afterward.
+Do not keep sourcing the login profile on every Shellbrain command.
+If still missing, inspect Python's user script directory:
 
 ```bash
 python3 -c "import sysconfig; print(sysconfig.get_path('scripts', 'posix_user'))"
 ```
 
-If that directory contains `shellbrain`, call it directly or add that directory to the login profile PATH and retry. If it does not, reinstall the Shellbrain CLI.
-
-## Repo Targeting
-
-- Use the current working directory when already inside the repo.
-- Pass `--repo-root /absolute/path/to/repo` when your shell is elsewhere.
-- Treat repo path as operational context. Shellbrain normally derives durable repo identity from normalized git remote.
-
-## Attention Programming
-
-Maintain this tuple while you work:
-
-`goal | surface | obstacle | hypothesis`
-
-Pause and emit an `SB:` line when the tuple changes or a boundary state occurs.
-
-Boundary states:
-
-- The goal changed.
-- The surface changed.
-- The obstacle changed.
-- The hypothesis changed.
-- The same approach failed twice.
-- An error is repeating.
-- You are switching subsystems or files.
-- You are about to make an important implementation decision.
-- You are closing out a task.
-
-If recall might help:
-
-`SB: recall | <goal> | <surface> | <obstacle> | <hypothesis-or-trigger>`
-
-Then call recall.
-
-If recall would not add information:
-
-`SB: skip | same signature | <one-line reason>`
-
-Then continue.
-
-## Recall Query
-
-Pass one self-contained question as a quoted positional argument. Recall receives only this query, so include relevant task context naturally.
-
-```bash
-shellbrain recall "Have we seen this architecture guardrail failure or subsystem boundary before?"
-```
-
-## Snapshot Habit
-
-If you changed any files since your last user-facing response, run `shellbrain snapshot` exactly once after validation and immediately before your next user-facing response. Do this on every response cycle where files changed; skip only when no files changed. It does not need `--json`.
-
-Use standard repo targeting only when your shell is outside the repo:
-
-```bash
-shellbrain snapshot --repo-root /absolute/path/to/repo
-```
-
-## Query Guidance
-
-Good recall queries are concrete. Name the failure mode, subsystem, decision, file area, or constraint.
-
-Good examples:
-
-```bash
-shellbrain recall "I'm debugging a migration lock timeout. What prior context matters?"
-```
-
-```bash
-shellbrain recall "What architectural constraints matter before moving this CLI handler?"
-```
-
-```bash
-shellbrain recall "What user preferences matter while simplifying Shellbrain onboarding assets?"
-```
-
-Avoid vague queries:
-
-- `what should I know about this repo?`
-- `what should I do?`
-- `anything relevant?`
-
-## How To Use The Brief
-
-Treat recall as advisory memory, not ground truth.
-
-Use the brief to identify:
-
-- relevant prior cases
-- files or functions worth inspecting
-- constraints and preferences
-- known traps
-- concept orientation
-- gaps where Shellbrain found nothing useful
-
-Current repo state remains the source of truth.
-
-## What Not To Do
-
-
-Do not call:
-
-```bash
-shellbrain read
-shellbrain events
-shellbrain memory add
-shellbrain memory update
-shellbrain concept add
-shellbrain concept update
-shellbrain scenario record
-```
-
-Those are internal-agent commands.
-
-Do not manually write memories at closeout. Shellbrain's knowledge-builder agent consolidates episodes after the session lifecycle.
-
-## Resources
-
-- Read [references/session-workflow.md](references/session-workflow.md) for the detailed recall cadence and attention habit.
+If it contains `shellbrain`, use that path or add it to PATH. Otherwise reinstall.

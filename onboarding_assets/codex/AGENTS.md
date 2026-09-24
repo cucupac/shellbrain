@@ -1,6 +1,8 @@
 ## Shellbrain
 
 Use Shellbrain for targeted recall during agent work.
+Ask about remembered project purpose, decisions, constraints, or past attempts.
+Use code search to check current implementation, commands, and paths.
 
 Keep this tuple in mind:
 
@@ -25,7 +27,9 @@ Then run:
 shellbrain recall "<targeted natural-language question>"
 ```
 
-Recall receives only this query, so include relevant task context naturally in the question.
+Recall receives only this query, without your conversation or previous recall questions.
+Name the subject and include the task, symptom, or decision you need context for.
+Answers can be partial or outdated. Missing information does not prove a feature is absent.
 
 If recall would not help:
 

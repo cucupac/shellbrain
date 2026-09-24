@@ -52,10 +52,11 @@
             <div class="code-block">
               <pre>shellbrain recall "&lt;what you want to know&gt;"</pre>
             </div>
-            <p>Recall receives only this query. Include the task, failure, subsystem, or decision in your question.</p>
+            <p>Recall receives only this query, without your conversation or previous questions. Name the system and ask about its remembered purpose, decisions, or past problems. Use code search to check current implementation.</p>
+            <p>Answers can be partial or outdated. Verify current behavior before relying on them.</p>
             <div class="module-grid" style="margin-top: var(--spacing-40);">
               <article class="module">
-                <h3>Call recall when</h3>
+                <h3>Consider recall when</h3>
                 <ul>
                   <li>You start a task</li>
                   <li>The task or hypothesis changes</li>
@@ -66,9 +67,9 @@
               <article class="module">
                 <h3>The brief returns</h3>
                 <ul>
-                  <li>A summary and relevant constraints</li>
-                  <li>Prior cases, known traps, and anchors</li>
-                  <li>Conflicts, gaps, and next checks</li>
+                  <li>Memories: useful cases and concept knowledge</li>
+                  <li>Code: locations to inspect</li>
+                  <li>No relevant memories found, when nothing helps</li>
                 </ul>
               </article>
             </div>

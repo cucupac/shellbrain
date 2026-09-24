@@ -128,3 +128,6 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+
+# Final local database backup
+/shellbrain-final-backup/

@@ -74,35 +74,25 @@ def test_public_agent_page_should_show_current_worker_commands() -> None:
     assert "shellbrain teach" not in agent_page
 
 
-def test_session_workflow_and_quickstart_should_treat_profile_sourcing_as_one_time_fallback() -> (
-    None
-):
-    """The longer workflow docs should forbid per-command profile sourcing."""
+def test_host_skills_share_query_and_snapshot_guidance() -> None:
+    """Each host gets the same source-selection, recall, and snapshot rules."""
 
-    repo_root = Path(__file__).resolve().parents[2]
-    external_quickstart = _read_text(repo_root / "docs" / "external-quickstart.md")
-    session_workflow = _read_text(
-        _onboarding_assets_root()
-        / "codex"
-        / "shellbrain"
-        / "references"
-        / "session-workflow.md"
-    )
-
-    required_phrase = (
-        "Do not keep sourcing the login profile on every Shellbrain command."
-    )
-
-    assert "shellbrain upgrade" in external_quickstart
-    assert required_phrase in session_workflow
-    assert (
-        "Then use the same wrapper shape for real commands when needed:"
-        not in external_quickstart
-    )
-    assert (
-        "keep using the `zsh -lc 'source ~/.zprofile ...'` wrapper"
-        not in session_workflow
-    )
+    assets = _onboarding_assets_root()
+    skills = [
+        _read_text(assets / "codex/shellbrain/SKILL.md"),
+        _read_text(assets / "claude/skills/shellbrain/SKILL.md"),
+        _read_text(assets / "cursor/skills/shellbrain/SKILL.md"),
+    ]
+    assert skills[0] == skills[1] == skills[2]
+    for instruction in (
+        "Use code search for current implementation",
+        "Recall receives only this query",
+        "Missing information does not prove a feature is absent",
+        "A provider error is a failed lookup",
+        "exactly once after validation and immediately before your next user-facing response",
+        "Do not keep sourcing the login profile on every Shellbrain command",
+    ):
+        assert instruction in skills[0]
 
 
 def test_cli_help_should_share_the_short_protocol() -> None:
@@ -148,7 +138,6 @@ def test_packaged_codex_asset_should_include_required_files() -> None:
         Path("assets") / "shellbrain-small.svg",
         Path("assets") / "shellbrain-large.svg",
         Path("assets") / "shellbrain_logo.png",
-        Path("references") / "session-workflow.md",
     ]
 
     for relative_path in relative_paths:

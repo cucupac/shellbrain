@@ -45,7 +45,7 @@ Restore uses a scratch database. It does not overwrite the live database.
 
 ## Agent workflow
 
-Use a self-contained recall query at a task boundary when prior knowledge may help. Snapshot repository changes after validation. Automatic knowledge building records useful lessons from session evidence. The internal `read`, `events`, `concept`, `memory`, and `scenario` endpoints serve those background agents.
+Ask a self-contained question about remembered project purpose, decisions, or past problems when that knowledge may help. Recall receives only this query. Use code search to check current behavior and paths. An incomplete answer does not prove a feature is absent. Snapshot repository changes after validation. Automatic knowledge building records useful lessons from session evidence. The internal `read`, `events`, `concept`, `memory`, and `scenario` endpoints serve those background agents.
 
 ## Repair
 
